@@ -1,0 +1,184 @@
+import { BedDouble, Users, Wallet, FileText, Bell, ArrowRight, IndianRupee, QrCode } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import axios from "axios";
+import { Settings } from "lucide-react";
+import BottomNav from "../components/BottomNav";
+
+function Dashboard() {
+  const navigate = useNavigate();
+  const [stats, setStats] = useState({ residents: "-", rooms: "-", occupancyRate: "-", pendingRent: "-", todayCollection: "-" });
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        const response = await axios.get("http://localhost:5000/api/owner/dashboard", {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (response.data.success) {
+          setStats(response.data.stats);
+        }
+      } catch (error) {
+        console.error("Failed to fetch dashboard stats", error);
+      }
+    };
+    fetchStats();
+  }, []);
+
+  return (
+    <div className="pb-24">
+      {/* HEADER */}
+      <div className="gradient-header mb-6">
+        <div className="flex justify-between items-center mb-6">
+          <div>
+            <p className="text-small" style={{ color: "rgba(255,255,255,0.8)" }}>Welcome Back 👋</p>
+            <h1 className="text-h1" style={{ color: "white" }}>HostelMate</h1>
+          </div>
+          <div className="flex gap-3">
+            <button className="btn-icon" style={{ background: "rgba(255,255,255,0.2)", backdropFilter: "blur(10px)" }}>
+              <Bell size={24} color="white" />
+            </button>
+            <button className="btn-icon" style={{ background: "rgba(255,255,255,0.2)", backdropFilter: "blur(10px)" }} onClick={() => navigate("/profile")}>
+              <Settings size={24} color="white" />
+            </button>
+          </div>
+        </div>
+
+        {/* HERO CARD */}
+        <div style={{
+          background: "rgba(255,255,255,0.15)",
+          border: "1px solid rgba(255,255,255,0.2)",
+          backdropFilter: "blur(20px)",
+          borderRadius: "24px",
+          padding: "24px",
+          position: "relative",
+          overflow: "hidden"
+        }}>
+          <div style={{
+            position: "absolute",
+            width: "150px", height: "150px",
+            borderRadius: "50%",
+            background: "rgba(255,255,255,0.1)",
+            top: "-50px", right: "-30px"
+          }} />
+          <p style={{ color: "rgba(255,255,255,0.9)", marginBottom: "8px", fontWeight: 500 }}>Hostel Business Overview</p>
+          <h2 className="text-h2" style={{ color: "white", marginBottom: "12px", lineHeight: 1.3 }}>
+            Manage Your Hostel<br/>From Your Phone
+          </h2>
+          <p className="text-small" style={{ color: "rgba(255,255,255,0.8)" }}>
+            Rooms, residents, payments, and reports in one place.
+          </p>
+        </div>
+      </div>
+
+      <div className="p-4 flex-col gap-6">
+        {/* STATS */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+          <StatCard title="Residents" value={stats.residents} icon={<Users size={24} color="var(--primary)" />} />
+          <StatCard title="Rooms" value={stats.rooms} icon={<BedDouble size={24} color="var(--primary)" />} />
+          <StatCard title="Occupancy" value={`${stats.occupancyRate}%`} icon={<Users size={24} color="var(--primary)" />} />
+          <StatCard title="Today's Collection" value={`₹${stats.todayCollection}`} icon={<IndianRupee size={24} color="var(--primary)" />} />
+          <StatCard title="Pending Rent" value={`₹${stats.pendingRent}`} icon={<Wallet size={24} color="var(--status-pending)" />} full />
+        </div>
+
+        {/* QUICK ACTIONS */}
+        <div className="card">
+          <h2 className="text-h2 mb-4" style={{ color: "var(--text-main)" }}>Quick Access</h2>
+          <ActionButton
+            title="Manage Rooms"
+            subtitle="Beds, occupancy and room status"
+            icon={<BedDouble size={22} color="var(--primary-dark)" />}
+            onClick={() => navigate("/rooms")}
+          />
+          <ActionButton
+            title="Pending Admissions"
+            subtitle="Review digital admissions from QR"
+            icon={<Users size={22} color="var(--primary-dark)" />}
+            onClick={() => navigate("/admissions")}
+          />
+          <ActionButton
+            title="Residents"
+            subtitle="View and manage residents"
+            icon={<Users size={22} color="var(--primary-dark)" />}
+            onClick={() => navigate("/residents")}
+          />
+          <ActionButton
+            title="Payments"
+            subtitle="Rent collection and dues"
+            icon={<Wallet size={22} color="var(--primary-dark)" />}
+            onClick={() => navigate("/payments")}
+          />
+          <ActionButton
+            title="Public QR & Link"
+            subtitle="View and share admission QR"
+            icon={<QrCode size={22} color="var(--primary-dark)" />}
+            onClick={() => navigate("/profile")}
+          />
+          <ActionButton
+            title="Reports"
+            subtitle="Download reports and analytics"
+            icon={<FileText size={22} color="var(--primary-dark)" />}
+            onClick={() => navigate("/reports")}
+          />
+        </div>
+      </div>
+
+      <BottomNav />
+    </div>
+  );
+}
+
+function StatCard({ title, value, icon, full }) {
+  return (
+    <div className="card" style={{
+      gridColumn: full ? "span 2" : "span 1",
+      display: "flex", flexDirection: "column", gap: "8px"
+    }}>
+      <div style={{
+        width: "40px", height: "40px", borderRadius: "12px",
+        background: "rgba(37, 211, 102, 0.1)",
+        display: "flex", alignItems: "center", justifyContent: "center"
+      }}>
+        {icon}
+      </div>
+      <p className="text-small">{title}</p>
+      <h2 className="text-h1" style={{ fontSize: "28px", color: "var(--text-main)" }}>{value}</h2>
+    </div>
+  );
+}
+
+function ActionButton({ title, subtitle, icon, onClick }) {
+  return (
+    <div 
+      onClick={onClick}
+      style={{
+        background: "var(--bg-color)",
+        borderRadius: "16px",
+        padding: "16px",
+        marginBottom: "12px",
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        cursor: "pointer"
+      }}
+    >
+      <div className="flex items-center gap-4">
+        <div style={{
+          width: "48px", height: "48px", borderRadius: "14px",
+          background: "var(--accent)",
+          display: "flex", justifyContent: "center", alignItems: "center"
+        }}>
+          {icon}
+        </div>
+        <div>
+          <h3 className="text-h3" style={{ marginBottom: "4px" }}>{title}</h3>
+          <p className="text-small">{subtitle}</p>
+        </div>
+      </div>
+      <ArrowRight size={20} color="var(--text-muted)" />
+    </div>
+  );
+}
+
+export default Dashboard;

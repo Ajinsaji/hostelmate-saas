@@ -1,0 +1,54 @@
+const mongoose = require("mongoose");
+
+const ownerSchema = new mongoose.Schema(
+  {
+    hostelId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Hostel",
+      required: true,
+    },
+
+    ownerName: {
+      type: String,
+      required: true,
+    },
+
+    phone: {
+      type: String,
+      unique: true,
+      required: true,
+    },
+
+    email: {
+      type: String,
+      unique: true,
+      sparse: true,
+    },
+
+    password: {
+      type: String,
+      required: true,
+    },
+
+    tempPassword: {
+      type: String,
+    },
+
+    role: {
+      type: String,
+      default: "owner",
+      enum: ["owner"],
+      required: true,
+    },
+
+    status: {
+      type: String,
+      default: "active",
+      enum: ["active", "disabled", "suspended"],
+    },
+  },
+  { timestamps: true }
+);
+
+module.exports = mongoose.model("Owner", ownerSchema);
+

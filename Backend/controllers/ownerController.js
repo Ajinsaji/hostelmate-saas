@@ -1,0 +1,295 @@
+const jwt = require("jsonwebtoken");
+const Owner = require("../models/Owner");
+const Hostel = require("../models/Hostel");
+const Subscription = require("../models/Subscription");
+const Room = require("../models/Room");
+const Resident = require("../models/Resident");
+const Payment = require("../models/Payment");
+const PublicAdmission = require("../models/PublicAdmission");
+
+// ==========================
+// OWNER LOGIN (phone/email + password)
+// Issues JWT
+// Payload: { ownerId, hostelId, role: "owner" }
+// ==========================
+const loginOwner = async (req, res) => {
+  try {
+    const { phone, email, password } = req.body;
+
+    const owner = await Owner.findOne({
+      password,
+      status: { $ne: "disabled" },
+      ...(phone ? { phone } : {}),
+      ...(email ? { email } : {}),
+    });
+
+    if (!owner) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid credentials",
+      });
+    }
+
+    // Ensure hostel exists
+    const hostel = await Hostel.findById(owner.hostelId);
+    if (!hostel) {
+      return res.status(400).json({
+        success: false,
+        message: "Hostel not found for this owner",
+      });
+    }
+
+    const payload = {
+      ownerId: owner._id,
+      hostelId: hostel._id,
+      role: "owner",
+    };
+
+    const secret = process.env.JWT_SECRET || "change_me_secret";
+
+    const token = jwt.sign(payload, secret, {
+      expiresIn: "7d",
+    });
+
+    // Optional: subscription info can be returned for UI gating
+    const subscription = await Subscription.findOne({ hostelId: hostel._id });
+
+    return res.status(200).json({
+      success: true,
+      message: "Login Success",
+      token,
+      owner: {
+        _id: owner._id,
+        ownerName: owner.ownerName,
+        phone: owner.phone,
+        email: owner.email,
+        status: owner.status,
+        hostelId: hostel._id,
+      },
+      subscription,
+    });
+  } catch (error) {
+    return res.status(500).json(error);
+  }
+};
+
+// ==========================
+// SUPERADMIN: RESET OWNER PASSWORD
+// ==========================
+const resetOwnerPassword = async (req, res) => {
+  try {
+    const { ownerId, phone, email, newPassword } = req.body;
+
+    if (!newPassword) {
+      return res.status(400).json({ success: false, message: "newPassword is required" });
+    }
+
+    const query = {
+      status: { $ne: "disabled" },
+      ...(ownerId ? { _id: ownerId } : {}),
+      ...(phone ? { phone } : {}),
+      ...(email ? { email } : {}),
+    };
+
+    const updated = await Owner.findOneAndUpdate(
+      query,
+      { password: newPassword },
+      { new: true }
+    );
+
+    if (!updated) {
+      return res.status(404).json({ success: false, message: "Owner not found" });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Password reset successfully",
+      owner: updated,
+    });
+  } catch (error) {
+    res.status(500).json(error);
+  }
+};
+
+// ==========================
+// SUPERADMIN: DISABLE/SUSPEND OWNER
+// ==========================
+const setOwnerStatus = async (req, res) => {
+  try {
+    const { ownerId } = req.params;
+    const { status } = req.body;
+
+    if (!["active", "disabled", "suspended"].includes(status)) {
+      return res.status(400).json({ success: false, message: "Invalid status" });
+    }
+
+    const updated = await Owner.findByIdAndUpdate(
+      ownerId,
+      { status },
+      { new: true }
+    );
+
+    if (!updated) {
+      return res.status(404).json({ success: false, message: "Owner not found" });
+    }
+
+    res.status(200).json({ success: true, owner: updated });
+  } catch (error) {
+    res.status(500).json(error);
+  }
+};
+
+// ==========================
+// SUPERADMIN: FORCE LOGOUT (PLACEHOLDER)
+// ==========================
+// Your current system does not use JWT/session. So this is a placeholder.
+const forceLogout = async (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: "Force logout not implemented (no token/session in current project).",
+  });
+};
+
+// ==========================
+// SUPERADMIN: TRANSFER OWNERSHIP (PLACEHOLDER)
+// ==========================
+const transferOwnership = async (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: "Transfer ownership not implemented yet.",
+  });
+};
+
+// ==========================
+// OWNER DASHBOARD STATS
+// ==========================
+const getDashboardStats = async (req, res) => {
+  try {
+    const { hostelId } = req.owner;
+    
+    const rooms = await Room.find({ hostelId });
+    const residentsCount = await Resident.countDocuments({ hostelId, status: "active" });
+    
+    let totalBeds = 0;
+    rooms.forEach(room => { totalBeds += room.totalBeds; });
+    
+    const pendingPayments = await Payment.find({ hostelId, status: { $in: ["pending", "partial"] } });
+    let pendingRent = 0;
+    pendingPayments.forEach(p => { pendingRent += (p.balance || 0); });
+    
+    const startOfDay = new Date();
+    startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date();
+    endOfDay.setHours(23, 59, 59, 999);
+    
+    const payments = await Payment.find({ hostelId });
+    let todayCollection = 0;
+    payments.forEach(p => {
+      p.entries.forEach(entry => {
+        if (entry.createdAt >= startOfDay && entry.createdAt <= endOfDay) {
+          todayCollection += entry.amount;
+        }
+      });
+    });
+
+    const hostel = await Hostel.findById(hostelId);
+
+    res.status(200).json({
+      success: true,
+      stats: {
+        residents: residentsCount,
+        rooms: rooms.length,
+        totalBeds,
+        occupancyRate: totalBeds > 0 ? Math.round((residentsCount / totalBeds) * 100) : 0,
+        pendingRent,
+        todayCollection
+      },
+      hostel
+    });
+
+  } catch (error) {
+    res.status(500).json(error);
+  }
+};
+
+// ==========================
+// OWNER: GET PUBLIC ADMISSIONS
+// ==========================
+const getAdmissions = async (req, res) => {
+  try {
+    const { hostelId } = req.owner;
+    const admissions = await PublicAdmission.find({ hostelId }).sort({ createdAt: -1 });
+    res.status(200).json({ success: true, admissions });
+  } catch (error) {
+    res.status(500).json(error);
+  }
+};
+
+// ==========================
+// OWNER: APPROVE ADMISSION
+// ==========================
+const approveAdmission = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { hostelId } = req.owner;
+    
+    const admission = await PublicAdmission.findOne({ _id: id, hostelId });
+    if (!admission) return res.status(404).json({ success: false, message: "Not found" });
+
+    // Create resident
+    const resident = await Resident.create({
+      hostelId,
+      name: admission.residentName,
+      phone: admission.phone,
+      email: admission.email,
+      emergencyContact: admission.emergencyContact,
+      address: admission.address,
+      roomId: admission.roomPreference, // Assumes roomPreference holds roomId
+      status: "active",
+      aadhaarPhoto: admission.idProofFile,
+      userPhoto: admission.photoFile,
+    });
+
+    admission.status = "Approved";
+    await admission.save();
+
+    res.status(200).json({ success: true, message: "Admission approved & Resident created", resident });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json(error);
+  }
+};
+
+// ==========================
+// OWNER: REJECT ADMISSION
+// ==========================
+const rejectAdmission = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { hostelId } = req.owner;
+    
+    const admission = await PublicAdmission.findOne({ _id: id, hostelId });
+    if (!admission) return res.status(404).json({ success: false, message: "Not found" });
+
+    admission.status = "Rejected";
+    await admission.save();
+
+    res.status(200).json({ success: true, message: "Admission rejected" });
+  } catch (error) {
+    res.status(500).json(error);
+  }
+};
+
+module.exports = {
+  loginOwner,
+  resetOwnerPassword,
+  setOwnerStatus,
+  forceLogout,
+  transferOwnership,
+  getDashboardStats,
+  getAdmissions,
+  approveAdmission,
+  rejectAdmission,
+};
+
+
