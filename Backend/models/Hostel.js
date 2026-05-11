@@ -21,6 +21,16 @@ const hostelSchema = new mongoose.Schema({
     default: "trial",
   },
 
+  planType: {
+    type: String,
+    default: "Basic",
+  },
+
+  isPublic: {
+    type: Boolean,
+    default: true,
+  },
+
   subscriptionStartDate: Date,
 
   subscriptionEndDate: Date,

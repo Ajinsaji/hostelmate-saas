@@ -69,17 +69,19 @@ function HostelManagement() {
     }
   };
 
-  const filteredHostels = hostels.filter(h => {
-    const matchesSearch = 
-      (h.hostelName || "").toLowerCase().includes(searchQuery.toLowerCase()) || 
+  const filteredHostels = hostels.filter((h) => {
+    const matchesSearch =
+      (h.hostelName || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
       (h.phone || "").includes(searchQuery);
-    
+
+    const subscriptionStatus = (h.subscriptionStatus || "").toLowerCase();
+
     let matchesFilter = true;
-    if (filter === "active") matchesFilter = h.subscriptionStatus === "active";
+    if (filter === "active") matchesFilter = subscriptionStatus === "active";
     if (filter === "trial") matchesFilter = h.isTrial;
-    if (filter === "expired") matchesFilter = h.subscriptionStatus === "expired";
-    if (filter === "locked") matchesFilter = h.subscriptionStatus === "locked";
-    
+    if (filter === "expired") matchesFilter = subscriptionStatus === "expired";
+    if (filter === "locked") matchesFilter = subscriptionStatus === "locked";
+
     return matchesSearch && matchesFilter;
   });
 

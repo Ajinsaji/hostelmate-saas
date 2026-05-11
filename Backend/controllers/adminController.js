@@ -255,35 +255,55 @@ const rejectRequest =
 
 const getAllHostels = async (req, res) => {
   try {
-    const hostels = await Hostel.find().sort({ createdAt: -1 });
+    const hostels = await Hostel.find().lean();
+
+    const safeHostels = (hostels || []).map((hostel) => ({
+      ...hostel,
+      uniqueCode: hostel.uniqueCode || "",
+      publicUrl: hostel.publicUrl || "",
+      qrCodeUrl: hostel.qrCodeUrl || "",
+      subscriptionStatus: hostel.subscriptionStatus || "trial",
+      planType: hostel.planType || "Basic",
+      isPublic: hostel.isPublic === undefined ? true : hostel.isPublic,
+    }));
+
     const result = [];
-    
-    for (const hostel of hostels) {
+
+    for (const hostel of safeHostels) {
       const owner = await Owner.findOne({ hostelId: hostel._id });
       const subscription = await Subscription.findOne({ hostelId: hostel._id });
-      
+
       let totalBeds = 0;
       let occupiedBeds = 0;
       const rooms = await Room.find({ hostelId: hostel._id });
-      rooms.forEach(r => {
-        totalBeds += r.totalBeds;
-        occupiedBeds += r.occupiedBeds;
+      (rooms || []).forEach((r) => {
+        totalBeds += r.totalBeds || 0;
+        occupiedBeds += r.occupiedBeds || 0;
       });
 
       result.push({
-        ...hostel.toObject(),
-        ownerName: owner?.ownerName,
-        phone: owner?.phone,
-        tempPassword: owner?.tempPassword || "Temp@123",
-        subscriptionStatus: subscription?.subscriptionStatus,
-        isTrial: subscription?.isTrial,
-        occupancy: { totalBeds, occupiedBeds }
+        ...hostel,
+        ownerName: owner && owner.ownerName ? owner.ownerName : undefined,
+        phone: owner && owner.phone ? owner.phone : undefined,
+        tempPassword: owner && owner.tempPassword ? owner.tempPassword : "Temp@123",
+        subscriptionStatus:
+          (subscription && subscription.subscriptionStatus) ||
+          hostel.subscriptionStatus ||
+          "trial",
+        isTrial:
+          subscription && subscription.isTrial !== undefined
+            ? subscription.isTrial
+            : (((subscription && subscription.subscriptionStatus) ||
+                hostel.subscriptionStatus ||
+                "trial") === "trial"),
+        occupancy: { totalBeds, occupiedBeds },
       });
     }
-    
+
     res.status(200).json({ success: true, hostels: result });
   } catch (error) {
-    res.status(500).json(error);
+    console.error("Error fetching hostels:", error);
+    res.status(500).json({ success: false, message: "Failed to fetch hostels" });
   }
 };
 
