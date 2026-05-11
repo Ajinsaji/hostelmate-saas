@@ -2,11 +2,14 @@ const Admin = require("../models/Admin");
 
 const loginAdmin = async (req, res) => {
   try {
-    const { username, password } = req.body;
+    const { username, email, password } = req.body;
 
     const admin = await Admin.findOne({
-      username,
       password,
+      $or: [
+        { username },
+        { email },
+      ],
     });
 
     if (!admin) {
@@ -22,7 +25,11 @@ const loginAdmin = async (req, res) => {
       admin,
     });
   } catch (error) {
-    res.status(500).json(error);
+    console.log(error);
+    return res.status(500).json({
+      success: false,
+      message: error?.message || "Internal Server Error",
+    });
   }
 };
 

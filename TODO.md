@@ -1,6 +1,11 @@
-- [ ] Determine admin login credentials source (current code uses Admin collection with exact username/password)
-- [ ] Create/insert initial Admin record OR add a config-based fallback admin account
-- [ ] Prefer hashing (bcrypt) and secure storage via environment variables
-- [ ] Update frontend if needed (AdminLogin already posts username/password)
-- [ ] Provide steps to set credentials and verify login endpoint: POST /api/auth/login
+- [x] Inspect auth + CORS + deployment config (server.js, authController.js, frontend API base usage)
+- [x] Fix CORS to allow production Vercel origin + localhost and enable credentials
+- [x] Fix Render port: use process.env.PORT || 5000
+- [x] Update admin login backend to support username OR email fields
+- [x] Add safe structured error logging/response in authController.js
+- [ ] Verify protected admin routes work end-to-end (token name consistency)
+- [ ] Verify frontend VITE_API_URL points to production Render backend (no localhost hardcoding)
+- [ ] Add default admin seeding if Admin collection is empty (optional/only if production DB lacks admin)
+- [ ] Run/verify backend health endpoint returns expected string
+- [ ] git add/commit/push changes
 

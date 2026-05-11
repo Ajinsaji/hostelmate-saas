@@ -45,13 +45,22 @@ const app = express();
 // MIDDLEWARE
 // ==========================
 
-app.use(cors({
-  origin: [
-    "http://localhost:5173",
-    "https://hostelmate-saas-8fvq.vercel.app"
-  ],
-  credentials: true
-}))
+const allowedOrigins = [
+  "http://localhost:5173",
+  "https://hostelmate-saas.vercel.app",
+];
+
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      // allow requests with no origin (e.g. mobile apps, curl)
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.includes(origin)) return callback(null, true);
+      return callback(new Error("Not allowed by CORS"));
+    },
+    credentials: true,
+  })
+);
 
 app.use(express.json());
 
@@ -138,10 +147,8 @@ app.get("/", (req, res) => {
 // SERVER
 // ==========================
 
-app.listen(5000, () => {
+const PORT = process.env.PORT || 5000;
 
-  console.log(
-    "Server Running on Port 5000"
-  );
-
+app.listen(PORT, () => {
+  console.log(`Server Running on Port ${PORT}`);
 });
