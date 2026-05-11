@@ -20,8 +20,8 @@ import Reports from "./owner/Reports";
 import Profile from "./owner/Profile";
 import PendingAdmissions from "./owner/PendingAdmissions";
 
-import AdminDashboard from "./superadmin/AdminDashboard";
-import PendingRequests from "./superadmin/PendingRequests";
+import AdminDashboard from "./Superadmin/AdminDashboard";
+import PendingRequests from "./Superadmin/PendingRequests";
 import SubscriptionControl from "./Superadmin/SubscriptionControl";
 import AddHostel from "./Superadmin/AddHostel";
 import AdminProfile from "./Superadmin/AdminPage";
