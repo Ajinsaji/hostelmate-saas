@@ -14,6 +14,8 @@ const Owner = require(
   "../models/Owner"
 );
 
+const Room = require("../models/Room");
+
 const QRCode = require('qrcode');
 const path = require('path');
 const { sendApprovalMessages } = require('../utils/messageService');
