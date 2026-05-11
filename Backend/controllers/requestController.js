@@ -75,9 +75,13 @@ const createRequest = async (req, res) => {
       request,
     });
   } catch (error) {
-    console.log(error);
+    console.error("createRequest error:", error);
 
-    res.status(500).json(error);
+    res.status(500).json({
+      success: false,
+      message: "Server error while submitting application",
+      details: error?.message || String(error),
+    });
   }
 };
 
@@ -108,7 +112,13 @@ const checkRequestStatus =
         request,
       });
     } catch (error) {
-      res.status(500).json(error);
+      console.error("checkRequestStatus error:", error);
+
+      res.status(500).json({
+        success: false,
+        message: "Server error while checking application status",
+        details: error?.message || String(error),
+      });
     }
   };
 
