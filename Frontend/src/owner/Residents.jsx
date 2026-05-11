@@ -22,7 +22,7 @@ function Residents() {
 
   const fetchResidents = async () => {
     try {
-      const response = await axios.get("http://localhost:5000/api/residents/hostel", {
+      const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/residents/hostel`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setResidents(response.data.residents || []);
@@ -33,7 +33,7 @@ function Residents() {
 
   const fetchRooms = async () => {
     try {
-      const response = await axios.get("http://localhost:5000/api/rooms/get-rooms", {
+      const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/rooms/get-rooms`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setRooms(response.data.rooms || []);
@@ -59,14 +59,14 @@ function Residents() {
 
       if (editingResident) {
         await axios.put(
-          `http://localhost:5000/api/residents/update/${editingResident._id}`,
+          `${import.meta.env.VITE_API_URL}/api/residents/update/${editingResident._id}`,
           data,
           { headers: { Authorization: `Bearer ${token}` } }
         );
         toast.success("Resident updated successfully!");
       } else {
         await axios.post(
-          "http://localhost:5000/api/residents/create",
+          `${import.meta.env.VITE_API_URL}/api/residents/create`,
           data,
           { headers: { Authorization: `Bearer ${token}` } }
         );
@@ -91,7 +91,7 @@ function Residents() {
 
   const handleDelete = async (id) => {
     try {
-      await axios.delete(`http://localhost:5000/api/residents/delete/${id}`, {
+      await axios.delete(`${import.meta.env.VITE_API_URL}/api/residents/delete/${id}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       toast.success("Resident deleted successfully!");
@@ -264,7 +264,7 @@ function Residents() {
               <div className="flex items-center justify-between mb-4 pb-4" style={{ borderBottom: "1px solid var(--border-color)" }}>
                 <div className="flex items-center gap-4">
                   {item.photo ? (
-                    <img src={`http://localhost:5000/uploads/${item.photo}`} alt="avatar" style={{ width: 50, height: 50, borderRadius: 16, objectFit: "cover" }} />
+                    <img src={`${import.meta.env.VITE_API_URL}/uploads/${item.photo}`} alt="avatar" style={{ width: 50, height: 50, borderRadius: 16, objectFit: "cover" }} />
                   ) : (
                     <div style={{ width: "50px", height: "50px", borderRadius: "16px", background: "rgba(37, 211, 102, 0.15)", display: "flex", justifyContent: "center", alignItems: "center", color: "var(--primary)" }}>
                       <span className="text-h2" style={{ color: "var(--primary)" }}>{item.name?.charAt(0).toUpperCase()}</span>

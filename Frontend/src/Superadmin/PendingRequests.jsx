@@ -12,7 +12,7 @@ function PendingRequests() {
 
   const fetchRequests = async () => {
     try {
-      const response = await axios.get("http://localhost:5000/api/admin/requests");
+      const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/admin/requests`);
       setRequests(response.data.requests);
     } catch (error) {
       console.log(error);
@@ -34,7 +34,7 @@ function PendingRequests() {
       // Optimistic update
       setRequests(prev => prev.map(r => r._id === id ? { ...r, status: "Approved" } : r));
       
-      const response = await axios.put(`http://localhost:5000/api/admin/approve/${id}`);
+      const response = await axios.put(`${import.meta.env.VITE_API_URL}/api/admin/approve/${id}`);
       toast.success("✅ Hostel Approved");
       
       if (response.data.success && response.data.qrCodeUrl) {
@@ -53,7 +53,7 @@ function PendingRequests() {
     setLoadingActionId(id);
     try {
       setRequests(prev => prev.map(r => r._id === id ? { ...r, status: "Rejected" } : r));
-      await axios.put(`http://localhost:5000/api/admin/reject/${id}`);
+      await axios.put(`${import.meta.env.VITE_API_URL}/api/admin/reject/${id}`);
       toast.success("✅ Request Rejected");
       fetchRequests();
     } catch (error) {
@@ -125,9 +125,9 @@ function PendingRequests() {
               </div>
 
               <div className="flex gap-2 flex-wrap mb-4">
-                {item.aadhaarFile && <a href={`http://localhost:5000/uploads/${item.aadhaarFile}`} target="_blank" rel="noreferrer" className="text-xs text-blue-500 underline bg-blue-50 px-2 py-1 rounded-md">View Aadhaar</a>}
-                {item.ownerPhoto && <a href={`http://localhost:5000/uploads/${item.ownerPhoto}`} target="_blank" rel="noreferrer" className="text-xs text-blue-500 underline bg-blue-50 px-2 py-1 rounded-md">View Photo</a>}
-                {item.licensePhoto && <a href={`http://localhost:5000/uploads/${item.licensePhoto}`} target="_blank" rel="noreferrer" className="text-xs text-blue-500 underline bg-blue-50 px-2 py-1 rounded-md">View License</a>}
+                {item.aadhaarFile && <a href={`${import.meta.env.VITE_API_URL}/uploads/${item.aadhaarFile}`} target="_blank" rel="noreferrer" className="text-xs text-blue-500 underline bg-blue-50 px-2 py-1 rounded-md">View Aadhaar</a>}
+                {item.ownerPhoto && <a href={`${import.meta.env.VITE_API_URL}/uploads/${item.ownerPhoto}`} target="_blank" rel="noreferrer" className="text-xs text-blue-500 underline bg-blue-50 px-2 py-1 rounded-md">View Photo</a>}
+                {item.licensePhoto && <a href={`${import.meta.env.VITE_API_URL}/uploads/${item.licensePhoto}`} target="_blank" rel="noreferrer" className="text-xs text-blue-500 underline bg-blue-50 px-2 py-1 rounded-md">View License</a>}
               </div>
 
               {item.status === "Pending" && (
@@ -171,10 +171,10 @@ function PendingRequests() {
             <h2 style={{ color: "var(--text-main)", marginBottom: "8px", fontSize: "22px", fontWeight: "bold" }}>Approval Success!</h2>
             <p className="text-small text-muted mb-4">Credentials & QR generated.</p>
             
-            <img src={`http://localhost:5000/uploads/${approvedData.qrCodeUrl}`} alt="QR Code" style={{ width: "180px", height: "180px", margin: "0 auto", borderRadius: "12px", border: "1px solid #f1f5f9" }} />
+            <img src={`${import.meta.env.VITE_API_URL}/uploads/${approvedData.qrCodeUrl}`} alt="QR Code" style={{ width: "180px", height: "180px", margin: "0 auto", borderRadius: "12px", border: "1px solid #f1f5f9" }} />
             
             <div className="flex justify-center gap-2 mt-4">
-              <a href={`http://localhost:5000/uploads/${approvedData.qrCodeUrl}`} download className="flex items-center gap-1 text-xs bg-gray-100 px-3 py-2 rounded-lg text-gray-700 font-medium">
+              <a href={`${import.meta.env.VITE_API_URL}/uploads/${approvedData.qrCodeUrl}`} download className="flex items-center gap-1 text-xs bg-gray-100 px-3 py-2 rounded-lg text-gray-700 font-medium">
                 <Download size={14} /> Download QR
               </a>
               <button onClick={() => handleCopy(approvedData.publicUrl)} className="flex items-center gap-1 text-xs bg-blue-50 text-blue-600 px-3 py-2 rounded-lg font-medium">

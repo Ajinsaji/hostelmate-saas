@@ -24,7 +24,7 @@ function Profile() {
     const fetchHostelData = async () => {
       try {
         const token = localStorage.getItem("token");
-        const response = await axios.get("http://localhost:5000/api/owner/dashboard", {
+        const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/owner/dashboard`, {
           headers: { Authorization: `Bearer ${token}` }
         });
         if (response.data.success && response.data.hostel) {
@@ -122,9 +122,9 @@ function Profile() {
             
             {hostelData.qrCodeUrl ? (
               <>
-                <img src={`http://localhost:5000/uploads/${hostelData.qrCodeUrl}`} alt="QR Code" style={{ width: "200px", height: "200px", margin: "0 auto", borderRadius: "10px", border: "1px solid #eee" }} />
+                <img src={`${import.meta.env.VITE_API_URL}/uploads/${hostelData.qrCodeUrl}`} alt="QR Code" style={{ width: "200px", height: "200px", margin: "0 auto", borderRadius: "10px", border: "1px solid #eee" }} />
                 <div className="flex justify-center gap-2 mt-4">
-                  <a href={`http://localhost:5000/uploads/${hostelData.qrCodeUrl}`} download className="flex items-center gap-1 text-xs bg-gray-100 px-3 py-2 rounded-lg text-gray-700 font-medium">
+                  <a href={`${import.meta.env.VITE_API_URL}/uploads/${hostelData.qrCodeUrl}`} download className="flex items-center gap-1 text-xs bg-gray-100 px-3 py-2 rounded-lg text-gray-700 font-medium">
                     <Download size={14} /> Download QR
                   </a>
                   <button onClick={() => handleCopy(hostelData.publicUrl)} className="flex items-center gap-1 text-xs bg-blue-50 text-blue-600 px-3 py-2 rounded-lg font-medium">

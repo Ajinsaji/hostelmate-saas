@@ -12,7 +12,7 @@ function ApplicationStatusPage() {
   const checkStatus = async () => {
     try {
       setError("");
-      const response = await axios.get(`http://localhost:5000/api/request/status/${phone}`);
+      const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/request/status/${phone}`);
       setData(response.data);
     } catch (error) {
       setError("No application found for this number");

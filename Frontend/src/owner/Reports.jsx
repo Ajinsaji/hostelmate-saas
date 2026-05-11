@@ -18,8 +18,8 @@ function Reports() {
       try {
         setLoading(true);
         const [paymentRes, statsRes] = await Promise.all([
-          axios.get("http://localhost:5000/api/payments/hostel", { headers: { Authorization: `Bearer ${token}` } }),
-          axios.get("http://localhost:5000/api/owner/dashboard", { headers: { Authorization: `Bearer ${token}` } })
+          axios.get(`${import.meta.env.VITE_API_URL}/api/payments/hostel`, { headers: { Authorization: `Bearer ${token}` } }),
+          axios.get(`${import.meta.env.VITE_API_URL}/api/owner/dashboard`, { headers: { Authorization: `Bearer ${token}` } })
         ]);
         setPayments(paymentRes.data?.payments || []);
         setDashboardStats(statsRes.data?.stats || {});

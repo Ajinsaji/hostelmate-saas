@@ -99,7 +99,7 @@ function AddHostel() {
       if (ownerPhoto) data.append("ownerPhoto", ownerPhoto);
       if (licensePhoto) data.append("licensePhoto", licensePhoto);
 
-      const response = await axios.post("http://localhost:5000/api/admin/hostels/add", data, {
+      const response = await axios.post(`${import.meta.env.VITE_API_URL}/api/admin/hostels/add`, data, {
         headers: { Authorization: `Bearer ${token}` }
       });
 

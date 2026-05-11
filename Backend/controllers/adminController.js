@@ -130,7 +130,7 @@ const approveHostel =
 
       // GENERATE PUBLIC URL AND QR
       const uniqueCode = "RMH" + Date.now().toString().slice(-6) + Math.random().toString(36).substring(2, 5).toUpperCase();
-      const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+      const frontendUrl = process.env.FRONTEND_URL;
       const publicUrl = `${frontendUrl}/h/${uniqueCode}`;
       const qrFilename = `${uniqueCode}-QR.png`;
       const qrPath = path.join(__dirname, '..', 'uploads', qrFilename);

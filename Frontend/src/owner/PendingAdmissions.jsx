@@ -11,7 +11,7 @@ function PendingAdmissions() {
 
   const fetchAdmissions = async () => {
     try {
-      const response = await axios.get("http://localhost:5000/api/owner/admissions", {
+      const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/owner/admissions`, {
         headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
       });
       setAdmissions(response.data.admissions);
@@ -28,7 +28,7 @@ function PendingAdmissions() {
     setLoadingActionId(id);
     try {
       setAdmissions(prev => prev.map(a => a._id === id ? { ...a, status: "Approved" } : a));
-      await axios.put(`http://localhost:5000/api/owner/admissions/${id}/approve`, {}, {
+      await axios.put(`${import.meta.env.VITE_API_URL}/api/owner/admissions/${id}/approve`, {}, {
         headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
       });
       toast.success("Admission Approved! Resident created.");
@@ -45,7 +45,7 @@ function PendingAdmissions() {
     setLoadingActionId(id);
     try {
       setAdmissions(prev => prev.map(a => a._id === id ? { ...a, status: "Rejected" } : a));
-      await axios.put(`http://localhost:5000/api/owner/admissions/${id}/reject`, {}, {
+      await axios.put(`${import.meta.env.VITE_API_URL}/api/owner/admissions/${id}/reject`, {}, {
         headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
       });
       toast.success("Admission Rejected");
@@ -77,9 +77,9 @@ function PendingAdmissions() {
               <p className="text-small mb-3"><strong>Status:</strong> <span style={{ color: item.status === "Pending" ? "var(--status-pending)" : "var(--primary)" }}>{item.status}</span></p>
 
               <div className="flex gap-2 mb-4">
-                {item.idProofFile && <a href={`http://localhost:5000/uploads/${item.idProofFile}`} target="_blank" className="text-xs text-blue-500 underline">ID Proof</a>}
-                {item.photoFile && <a href={`http://localhost:5000/uploads/${item.photoFile}`} target="_blank" className="text-xs text-blue-500 underline">Photo</a>}
-                {item.signatureFile && <a href={`http://localhost:5000/uploads/${item.signatureFile}`} target="_blank" className="text-xs text-blue-500 underline">Signature</a>}
+                {item.idProofFile && <a href={`${import.meta.env.VITE_API_URL}/uploads/${item.idProofFile}`} target="_blank" className="text-xs text-blue-500 underline">ID Proof</a>}
+                {item.photoFile && <a href={`${import.meta.env.VITE_API_URL}/uploads/${item.photoFile}`} target="_blank" className="text-xs text-blue-500 underline">Photo</a>}
+                {item.signatureFile && <a href={`${import.meta.env.VITE_API_URL}/uploads/${item.signatureFile}`} target="_blank" className="text-xs text-blue-500 underline">Signature</a>}
               </div>
 
               {item.status === "Pending" && (

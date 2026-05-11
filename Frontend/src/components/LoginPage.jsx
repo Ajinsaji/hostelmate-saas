@@ -12,7 +12,7 @@ function LoginPage() {
   const handleLogin = async () => {
     try {
       // Owner login endpoint (JWT payload includes: ownerId, hostelId, role:"owner")
-      const response = await axios.post("http://localhost:5000/api/owner/login", {
+      const response = await axios.post(`${import.meta.env.VITE_API_URL}/api/owner/login`, {
         // backend supports phone or email + password; your UI uses username
         ...(username.includes("@")
           ? { email: username }

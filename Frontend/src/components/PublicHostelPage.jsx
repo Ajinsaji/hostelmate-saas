@@ -26,7 +26,7 @@ function PublicHostelPage() {
   useEffect(() => {
     const fetchHostel = async () => {
       try {
-        const response = await axios.get(`http://localhost:5000/api/public/hostel/${hostelCode}`);
+        const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/public/hostel/${hostelCode}`);
         setHostel(response.data.hostel);
       } catch (error) {
         toast.error("Hostel not found");
@@ -60,7 +60,7 @@ function PublicHostelPage() {
     data.append("signatureFile", signatureFile);
 
     try {
-      const response = await axios.post(`http://localhost:5000/api/public/hostel/${hostelCode}/admission`, data);
+      const response = await axios.post(`${import.meta.env.VITE_API_URL}/api/public/hostel/${hostelCode}/admission`, data);
       if (response.data.success) {
         toast.success("Admission requested successfully!");
         setFormStep(3); // success screen

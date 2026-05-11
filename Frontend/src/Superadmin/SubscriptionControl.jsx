@@ -14,7 +14,7 @@ function SubscriptionControl() {
 
   const fetchSubscriptions = async () => {
     try {
-      const response = await axios.get("http://localhost:5000/api/admin/subscriptions", {
+      const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/admin/subscriptions`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setSubscriptions(response.data.subscriptions || []);
@@ -42,7 +42,7 @@ function SubscriptionControl() {
 
   const handleUpdate = async () => {
     try {
-      await axios.put(`http://localhost:5000/api/admin/subscription/update/${editingSub._id}`, formData, {
+      await axios.put(`${import.meta.env.VITE_API_URL}/api/admin/subscription/update/${editingSub._id}`, formData, {
         headers: { Authorization: `Bearer ${token}` }
       });
       toast.success("Subscription updated successfully");

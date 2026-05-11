@@ -19,7 +19,7 @@ function Payments() {
   const fetchPayments = async () => {
     try {
       setLoading(true);
-      const res = await axios.get("http://localhost:5000/api/payments/hostel", {
+      const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/payments/hostel`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setPayments(res.data?.payments || []);
@@ -32,7 +32,7 @@ function Payments() {
 
   const fetchResidents = async () => {
     try {
-      const res = await axios.get("http://localhost:5000/api/residents/hostel", {
+      const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/residents/hostel`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setResidents(res.data?.residents || []);
@@ -65,7 +65,7 @@ function Payments() {
       Object.keys(formData).forEach(key => data.append(key, formData[key]));
       if (proofFile) data.append("proof", proofFile);
 
-      await axios.post("http://localhost:5000/api/payments/create", data, {
+      await axios.post(`${import.meta.env.VITE_API_URL}/api/payments/create`, data, {
         headers: { Authorization: `Bearer ${token}` }
       });
       toast.success("Payment added successfully");
@@ -80,7 +80,7 @@ function Payments() {
 
   const verifyEntry = async (paymentId, entryId) => {
     try {
-      await axios.put(`http://localhost:5000/api/payments/verify/${paymentId}/${entryId}`, {}, {
+      await axios.put(`${import.meta.env.VITE_API_URL}/api/payments/verify/${paymentId}/${entryId}`, {}, {
         headers: { Authorization: `Bearer ${token}` }
       });
       toast.success("Payment Verified");
@@ -92,7 +92,7 @@ function Payments() {
 
   const deletePayment = async (paymentId) => {
     try {
-      await axios.delete(`http://localhost:5000/api/payments/delete/${paymentId}`, {
+      await axios.delete(`${import.meta.env.VITE_API_URL}/api/payments/delete/${paymentId}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       toast.success("Payment deleted");

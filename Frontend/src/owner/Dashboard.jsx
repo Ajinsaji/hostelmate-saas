@@ -13,7 +13,7 @@ function Dashboard() {
     const fetchStats = async () => {
       try {
         const token = localStorage.getItem("token");
-        const response = await axios.get("http://localhost:5000/api/owner/dashboard", {
+        const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/owner/dashboard`, {
           headers: { Authorization: `Bearer ${token}` }
         });
         if (response.data.success) {

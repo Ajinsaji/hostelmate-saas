@@ -59,7 +59,7 @@ function RegisterPage() {
       data.append("ownerPhoto", ownerPhoto);
       data.append("licensePhoto", licensePhoto);
 
-      const response = await axios.post("http://localhost:5000/api/request/register", data);
+      const response = await axios.post(`${import.meta.env.VITE_API_URL}/api/request/register`, data);
 
       if (response.data.success) {
         toast.success("Application Submitted Successfully");

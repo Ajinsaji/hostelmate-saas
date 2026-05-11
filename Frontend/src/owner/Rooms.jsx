@@ -25,7 +25,7 @@ function Rooms() {
   const fetchRooms = async () => {
     try {
       const response = await axios.get(
-        `http://localhost:5000/api/rooms/get-rooms`,
+        `${import.meta.env.VITE_API_URL}/api/rooms/get-rooms`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -44,14 +44,14 @@ function Rooms() {
     try {
       if (editingRoom) {
         await axios.put(
-          `http://localhost:5000/api/rooms/edit-room/${editingRoom._id}`,
+          `${import.meta.env.VITE_API_URL}/api/rooms/edit-room/${editingRoom._id}`,
           { ...formData },
           { headers: { Authorization: `Bearer ${token}` } }
         );
         toast.success("Room updated successfully!");
       } else {
         await axios.post(
-          "http://localhost:5000/api/rooms/create-room",
+          `${import.meta.env.VITE_API_URL}/api/rooms/create-room`,
           { ...formData },
           { headers: { Authorization: `Bearer ${token}` } }
         );
@@ -84,7 +84,7 @@ function Rooms() {
   const deleteRoom = async (roomId) => {
     try {
       await axios.delete(
-        `http://localhost:5000/api/rooms/delete-room/${roomId}`,
+        `${import.meta.env.VITE_API_URL}/api/rooms/delete-room/${roomId}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,

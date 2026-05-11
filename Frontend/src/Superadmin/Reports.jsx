@@ -18,7 +18,7 @@ function Reports() {
       // NOTE: Backend endpoint not present in this repo snapshot.
       // Keep a safe fallback so UI works without backend integration.
       // Replace this URL once you create the real endpoint.
-      const res = await axios.get("http://localhost:5000/api/admin/reports/stats");
+      const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/admin/reports/stats`);
 
       setStats({
         totalCollection: res.data?.totalCollection ?? 0,
