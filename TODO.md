@@ -7,7 +7,8 @@
 - Reviewed public admission and registration request controllers
 
 ## Step 1 - Fix manual addHostel QR/public/uniqueCode inconsistency
-- Status: in progress
+- Status: done
+
 - Update Backend/controllers/adminController.js:addHostel to generate uniqueCode/publicUrl/qrCodeUrl/isPublic=true
 - Use frontendUrl fallback: process.env.FRONTEND_URL || "https://hostelmate-saas.vercel.app"
 - Generate QR using QRCode.toFile exactly like approveHostel

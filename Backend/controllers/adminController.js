@@ -458,6 +458,7 @@ const addHostel = async (req, res) => {
       });
     }
 
+    // Check for duplicate owner phone
     const existingOwner = await Owner.findOne({ phone });
     if (existingOwner) {
       return res.status(400).json({
@@ -466,14 +467,36 @@ const addHostel = async (req, res) => {
       });
     }
 
-    const ownerPassword = req.body.ownerPassword || "123456";
-
     // Uploads
     const aadhaarFileName = req.files?.aadhaarFile?.[0]?.filename;
     const ownerPhotoFileName = req.files?.ownerPhoto?.[0]?.filename;
     const licensePhotoFileName = req.files?.licensePhoto?.[0]?.filename;
 
-    const subPayload = typeof subscription === 'string' ? JSON.parse(subscription) : subscription || {};
+    const subPayload =
+      typeof subscription === "string"
+        ? JSON.parse(subscription)
+        : subscription || {};
+
+    const ownerPassword = req.body.ownerPassword || "123456";
+
+    // ==========================
+    // GENERATE PUBLIC URL + QR (match approveHostel)
+    // ==========================
+    const uniqueCode =
+      "RMH" +
+      Date.now().toString().slice(-6) +
+      Math.random().toString(36).substring(2, 5).toUpperCase();
+
+    const frontendUrl =
+      process.env.FRONTEND_URL ||
+      "https://hostelmate-saas.vercel.app";
+
+    const publicUrl = `${frontendUrl}/h/${uniqueCode}`;
+
+    const qrFilename = `${uniqueCode}-QR.png`;
+    const qrPath = path.join(__dirname, "..", "uploads", qrFilename);
+
+    await QRCode.toFile(qrPath, publicUrl);
 
     // Create hostel
     const hostel = await Hostel.create({
@@ -481,6 +504,11 @@ const addHostel = async (req, res) => {
       ownerName,
       phone,
       address: hostelAddress,
+      uniqueCode: uniqueCode,
+      publicUrl: publicUrl,
+      qrCodeUrl: qrFilename,
+      isPublic: true,
+
       subscriptionStatus: subPayload.subscriptionStatus || "trial",
       planType: subPayload.planType || "Basic",
       subscriptionStartDate: subPayload.subscriptionStartDate,
@@ -495,6 +523,7 @@ const addHostel = async (req, res) => {
       ownerName,
       phone,
       password: ownerPassword,
+      tempPassword: ownerPassword,
       role: "owner",
       status: "active",
       aadhaarFile: aadhaarFileName,
@@ -524,6 +553,9 @@ const addHostel = async (req, res) => {
       hostel,
       ownerId: owner._id,
       subscription: subscriptionDoc,
+      publicUrl,
+      qrCodeUrl: qrFilename,
+      uniqueCode,
     });
   } catch (error) {
     console.log(error);
