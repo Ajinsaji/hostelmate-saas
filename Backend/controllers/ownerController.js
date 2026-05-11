@@ -14,14 +14,33 @@ const PublicAdmission = require("../models/PublicAdmission");
 // ==========================
 const loginOwner = async (req, res) => {
   try {
-    const { phone, email, password } = req.body;
+    console.log("LOGIN BODY:", req.body);
+
+    const { email, phone, password } = req.body || {};
+
+    if (!password) {
+      return res.status(400).json({
+        success: false,
+        message: "Password is required",
+      });
+    }
+
+    if (!email && !phone) {
+      return res.status(400).json({
+        success: false,
+        message: "Provide email or phone",
+      });
+    }
 
     const owner = await Owner.findOne({
       password,
       status: { $ne: "disabled" },
-      ...(phone ? { phone } : {}),
-      ...(email ? { email } : {}),
+      $or: [
+        ...(email ? [{ email }] : []),
+        ...(phone ? [{ phone }] : []),
+      ],
     });
+
 
     if (!owner) {
       return res.status(400).json({
@@ -69,7 +88,12 @@ const loginOwner = async (req, res) => {
       subscription,
     });
   } catch (error) {
-    return res.status(500).json(error);
+    console.error("OWNER LOGIN ERROR:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal Server Error",
+      details: error?.message,
+    });
   }
 };
 

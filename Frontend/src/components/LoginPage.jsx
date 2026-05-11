@@ -1,4 +1,5 @@
 import { useState } from "react";
+
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, User, Lock, Eye, EyeOff } from "lucide-react";
 
@@ -10,17 +11,36 @@ function LoginPage() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [passwordVisible, setPasswordVisible] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const handleLogin = async () => {
+    if (!username?.trim()) {
+      toast.error("Enter email or phone");
+      return;
+    }
+    if (!password) {
+      toast.error("Enter password");
+      return;
+    }
+
+    const trimmed = username.trim();
+    const isEmail = trimmed.includes("@");
+
+    const payload = isEmail
+      ? { email: trimmed, password }
+      : { phone: trimmed, password };
+
+    setLoading(true);
     try {
+
       // Owner login endpoint (JWT payload includes: ownerId, hostelId, role:"owner")
-      const response = await axios.post(`${import.meta.env.VITE_API_URL}/api/owner/login`, {
-        // backend supports phone or email + password; your UI uses username
-        ...(username.includes("@")
-          ? { email: username }
-          : { phone: username }),
-        password,
-      });
+      const response = await axios.post(
+        `${import.meta.env.VITE_API_URL}/api/owner/login`,
+        payload
+      );
+
+
+
 
       if (response.data.success) {
         toast.success("Login Successful!");
@@ -28,8 +48,13 @@ function LoginPage() {
         navigate("/dashboard");
       }
     } catch (error) {
-      const msg = error?.response?.data?.message || "Invalid Username or Password";
+      const msg =
+        error?.response?.data?.message ||
+        error?.response?.data?.details ||
+        "Invalid Username or Password";
       toast.error(msg);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -100,8 +125,8 @@ function LoginPage() {
             </div>
           </div>
 
-          <button className="btn-primary mb-6" onClick={handleLogin}>
-            Login to Dashboard
+          <button className="btn-primary mb-6" onClick={handleLogin} disabled={loading}>
+            {loading ? "Logging in..." : "Login to Dashboard"}
           </button>
 
           <p className="text-center text-body">
