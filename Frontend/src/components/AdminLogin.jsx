@@ -2,12 +2,14 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import toast from "react-hot-toast";
-import { ArrowLeft, User, Lock } from "lucide-react";
+import { ArrowLeft, User, Lock, Eye, EyeOff } from "lucide-react";
+
 
 function AdminLogin() {
   const navigate = useNavigate();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [passwordVisible, setPasswordVisible] = useState(false);
 
   const handleLogin = async () => {
     try {
@@ -86,13 +88,31 @@ function AdminLogin() {
                 style={{ position: "absolute", left: "16px", top: "16px", color: "var(--text-muted)" }}
               />
               <input
-                type="password"
+                type={passwordVisible ? "text" : "password"}
                 placeholder="Enter password"
                 className="input-field"
-                style={{ paddingLeft: "48px" }}
+                style={{ paddingLeft: "48px", paddingRight: "48px" }}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
               />
+
+              <button
+                type="button"
+                aria-label={passwordVisible ? "Hide password" : "Show password"}
+                onClick={() => setPasswordVisible((v) => !v)}
+                style={{
+                  position: "absolute",
+                  right: 10,
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  background: "transparent",
+                  border: "none",
+                  cursor: "pointer",
+                  color: "var(--text-muted)",
+                }}
+              >
+                {passwordVisible ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
             </div>
           </div>
 
@@ -115,4 +135,5 @@ function AdminLogin() {
 }
 
 export default AdminLogin;
+
 
