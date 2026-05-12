@@ -51,9 +51,11 @@ const upload = multer({
 // CREATE RESIDENT
 // ==========================
 
+const ownerAuth = require("../middleware/ownerAuth");
+
 router.post(
   "/create",
-
+  ownerAuth,
   upload.fields([
     {
       name: "photo",
@@ -74,8 +76,6 @@ router.post(
 // GET ALL RESIDENTS
 // BY HOSTEL
 // ==========================
-
-const ownerAuth = require("../middleware/ownerAuth");
 
 router.get(
   "/hostel",
@@ -103,7 +103,7 @@ router.get(
 
 router.put(
   "/update/:residentId",
-
+  ownerAuth,
   upload.fields([
     {
       name: "photo",
