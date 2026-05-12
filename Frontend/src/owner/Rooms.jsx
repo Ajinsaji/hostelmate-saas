@@ -105,21 +105,30 @@ function Rooms() {
   );
 
   return (
-    <div className="pb-24" style={{ minHeight: "100vh" }}>
+    <div className="pb-32" style={{ minHeight: "100vh" }}>
       {/* Header */}
       <div className="gradient-header mb-6">
         <h1 className="text-h1 mb-2">Room Management</h1>
         <p style={{ opacity: 0.8 }}>Manage your hostel's rooms and beds</p>
         
-        <div style={{ position: "absolute", bottom: "-20px", right: "20px" }}>
-          <button 
-            className="btn-icon" 
-            style={{ width: "56px", height: "56px", background: "var(--accent)" }}
-            onClick={() => setShowAddForm(!showAddForm)}
+        {!showAddForm && (
+          <div
+            style={{
+              position: "absolute",
+              bottom: "-20px",
+              right: "20px",
+              zIndex: 5,
+            }}
           >
-            <Plus size={28} color="var(--primary-dark)" />
-          </button>
-        </div>
+            <button 
+              className="btn-icon" 
+              style={{ width: "56px", height: "56px", background: "var(--accent)" }}
+              onClick={() => setShowAddForm(!showAddForm)}
+            >
+              <Plus size={28} color="var(--primary-dark)" />
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="p-4">
@@ -142,7 +151,14 @@ function Rooms() {
 
         {/* Add/Edit Room Form */}
         {showAddForm && (
-          <div className="card animate-slide-up mb-6">
+          <div
+            className="card animate-slide-up mb-6"
+            style={{
+              position: "relative",
+              zIndex: 50,
+              pointerEvents: "auto",
+            }}
+          >
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-h2">{editingRoom ? "Edit Room" : "Create New Room"}</h2>
               <button className="btn-icon" style={{ width: 32, height: 32 }} onClick={() => { setShowAddForm(false); setEditingRoom(null); }}>
@@ -152,28 +168,28 @@ function Rooms() {
             
             <div className="input-group">
               <span className="input-label">Room Number / Name</span>
-              <input name="roomNumber" placeholder="e.g. 101" className="input-field" value={formData.roomNumber} onChange={handleChange} />
+              <input name="roomNumber" placeholder="e.g. 101" className="input-field" style={{ pointerEvents: "auto" }} value={formData.roomNumber} onChange={handleChange} />
             </div>
 
             <div className="flex gap-4 mb-4">
               <div className="input-group" style={{ marginBottom: 0 }}>
                 <span className="input-label">Total Beds</span>
-                <input name="totalBeds" type="number" placeholder="e.g. 2" className="input-field" value={formData.totalBeds} onChange={handleChange} />
+                <input name="totalBeds" type="number" placeholder="e.g. 2" className="input-field" style={{ pointerEvents: "auto" }} value={formData.totalBeds} onChange={handleChange} />
               </div>
               <div className="input-group" style={{ marginBottom: 0 }}>
                 <span className="input-label">Rent/Bed (₹)</span>
-                <input name="rentPerBed" type="number" placeholder="e.g. 5000" className="input-field" value={formData.rentPerBed} onChange={handleChange} />
+                <input name="rentPerBed" type="number" placeholder="e.g. 5000" className="input-field" style={{ pointerEvents: "auto" }} value={formData.rentPerBed} onChange={handleChange} />
               </div>
             </div>
 
             <div className="flex gap-4 mb-4">
               <div className="input-group" style={{ marginBottom: 0 }}>
                 <span className="input-label">Floor</span>
-                <input name="floor" placeholder="e.g. Ground" className="input-field" value={formData.floor} onChange={handleChange} />
+                <input name="floor" placeholder="e.g. Ground" className="input-field" style={{ pointerEvents: "auto" }} value={formData.floor} onChange={handleChange} />
               </div>
               <div className="input-group" style={{ marginBottom: 0 }}>
                 <span className="input-label">Type</span>
-                <input name="roomType" placeholder="e.g. AC / Non-AC" className="input-field" value={formData.roomType} onChange={handleChange} />
+                <input name="roomType" placeholder="e.g. AC / Non-AC" className="input-field" style={{ pointerEvents: "auto" }} value={formData.roomType} onChange={handleChange} />
               </div>
             </div>
 
@@ -244,7 +260,7 @@ function Rooms() {
                       cursor: "pointer",
                       transition: "transform 0.2s"
                     }}
-                    onActive={(e) => e.currentTarget.style.transform = "scale(0.95)"}
+
                   >
                     <BedDouble size={24} color={bed.status === "vacant" ? "var(--status-vacant)" : "var(--status-occupied)"} />
                     <span style={{ 
