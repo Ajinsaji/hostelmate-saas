@@ -1,6 +1,8 @@
 require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
+const path = require("path");
+const fs = require("fs");
 
 const connectDB =
   require("./config/db");
@@ -64,9 +66,19 @@ app.use(
 
 app.use(express.json());
 
+// ==========================
+// AUTO-CREATE UPLOADS FOLDER
+// ==========================
+
+const uploadsPath = path.join(__dirname, "uploads");
+if (!fs.existsSync(uploadsPath)) {
+  fs.mkdirSync(uploadsPath, { recursive: true });
+  console.log("✓ Uploads folder created at startup");
+}
+
 app.use(
   "/uploads",
-  express.static("uploads")
+  express.static(path.join(__dirname, "uploads"))
 );
 
 

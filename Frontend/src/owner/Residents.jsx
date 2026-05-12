@@ -264,12 +264,31 @@ function Residents() {
               <div className="flex items-center justify-between mb-4 pb-4" style={{ borderBottom: "1px solid var(--border-color)" }}>
                 <div className="flex items-center gap-4">
                   {item.photo ? (
-                    <img src={`${import.meta.env.VITE_API_URL}/uploads/${item.photo}`} alt="avatar" style={{ width: 50, height: 50, borderRadius: 16, objectFit: "cover" }} />
-                  ) : (
-                    <div style={{ width: "50px", height: "50px", borderRadius: "16px", background: "rgba(37, 211, 102, 0.15)", display: "flex", justifyContent: "center", alignItems: "center", color: "var(--primary)" }}>
-                      <span className="text-h2" style={{ color: "var(--primary)" }}>{item.name?.charAt(0).toUpperCase()}</span>
-                    </div>
-                  )}
+                    <img 
+                      src={`${import.meta.env.VITE_API_URL}/uploads/${item.photo}`} 
+                      alt="avatar" 
+                      style={{ width: 50, height: 50, borderRadius: 16, objectFit: "cover" }}
+                      onError={(e) => {
+                        e.target.style.display = "none";
+                        e.target.nextElementSibling.style.display = "flex";
+                      }}
+                    />
+                  ) : null}
+                  <div 
+                    id="avatar-fallback"
+                    style={{ 
+                      width: "50px", 
+                      height: "50px", 
+                      borderRadius: "16px", 
+                      background: "rgba(37, 211, 102, 0.15)", 
+                      display: item.photo ? "none" : "flex",
+                      justifyContent: "center", 
+                      alignItems: "center", 
+                      color: "var(--primary)" 
+                    }}
+                  >
+                    <span className="text-h2" style={{ color: "var(--primary)" }}>{item.name?.charAt(0).toUpperCase()}</span>
+                  </div>
                   <div>
                     <h3 className="text-h3" style={{ marginBottom: "2px" }}>{item.name}</h3>
                     <div className="flex items-center gap-2 text-small">

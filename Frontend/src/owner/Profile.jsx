@@ -76,15 +76,15 @@ function Profile() {
 
         {/* Menu Items */}
         <div className="card p-0 overflow-hidden mb-4">
-          <MenuItem icon={<Building size={20} color="var(--primary)" />} title="Hostel Settings" subtitle="Update hostel details and address" />
+          <MenuItem icon={<Building size={20} color="var(--primary)" />} title="Hostel Settings" subtitle="Update hostel details and address" onClick={() => toast("Hostel settings page coming soon")} />
           <div style={{ borderBottom: "1px solid var(--border-color)" }}></div>
-          <MenuItem icon={<User size={20} color="var(--primary)" />} title="Owner Profile" subtitle="Manage personal information" />
+          <MenuItem icon={<User size={20} color="var(--primary)" />} title="Owner Profile" subtitle="Manage personal information" onClick={() => toast("Owner profile editor coming soon")} />
           <div style={{ borderBottom: "1px solid var(--border-color)" }}></div>
-          <MenuItem icon={<Lock size={20} color="var(--primary)" />} title="Update Password" subtitle="Change your login password" />
+          <MenuItem icon={<Lock size={20} color="var(--primary)" />} title="Update Password" subtitle="Change your login password" onClick={() => toast("Password change page coming soon")} />
         </div>
 
         <div className="card p-0 overflow-hidden mb-6">
-          <MenuItem icon={<Settings size={20} color="var(--status-paid)" />} title="Bank Details" subtitle="Manage account for settlements" />
+          <MenuItem icon={<Settings size={20} color="var(--status-paid)" />} title="Bank Details" subtitle="Manage account for settlements" onClick={() => toast("Bank details page coming soon")} />
           <div style={{ borderBottom: "1px solid var(--border-color)" }}></div>
           <div className="flex items-center gap-4 p-4 hover:bg-gray-50 cursor-pointer" onClick={() => setShowQR(true)}>
             <div style={{ width: 40, height: 40, borderRadius: 12, background: "rgba(37, 211, 102, 0.1)", display: "flex", justifyContent: "center", alignItems: "center" }}>
@@ -98,7 +98,7 @@ function Profile() {
         </div>
 
         <div className="card p-0 overflow-hidden mb-6">
-          <MenuItem icon={<Ticket size={20} color="var(--status-pending)" />} title="Support Ticket" subtitle="Contact HostelMate team" />
+          <MenuItem icon={<Ticket size={20} color="var(--status-pending)" />} title="Support Ticket" subtitle="Contact HostelMate team" onClick={() => window.open("https://wa.me/919999999999", "_blank")} />
         </div>
 
         <button 
@@ -157,9 +157,9 @@ function Profile() {
   );
 }
 
-function MenuItem({ icon, title, subtitle }) {
+function MenuItem({ icon, title, subtitle, onClick }) {
   return (
-    <div className="flex items-center gap-4 p-4 hover:bg-gray-50 cursor-pointer" onClick={() => toast("Coming soon!")}>
+    <div className="flex items-center gap-4 p-4 hover:bg-gray-50 cursor-pointer" onClick={onClick} style={{ transition: "background 0.2s" }}>
       <div style={{ width: 40, height: 40, borderRadius: 12, background: "rgba(37, 211, 102, 0.1)", display: "flex", justifyContent: "center", alignItems: "center" }}>
         {icon}
       </div>

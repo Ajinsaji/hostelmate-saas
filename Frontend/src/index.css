@@ -305,26 +305,31 @@ body {
 .input-label {
   font-size: 14px;
   font-weight: 700;
-  color: var(--text-muted);
+  color: rgba(255, 255, 255, 0.75);
   margin-left: 4px;
 }
 
 .input-field {
   background: #1E293B;
   border: 1px solid rgba(255,255,255,0.08);
-
   border-radius: var(--border-radius-sm);
   padding: 16px;
   font-size: 16px;
-  color: var(--text-main);
+  color: #ffffff;
+  caret-color: #25d366;
   width: 100%;
-  transition: border-color 0.25s ease, box-shadow 0.25s ease;
+  transition: border-color 0.25s ease, box-shadow 0.25s ease, color 0.2s ease;
+}
+
+.input-field::placeholder {
+  color: rgba(255, 255, 255, 0.45);
 }
 
 .input-field:focus {
   outline: none;
-  border-color: rgba(0, 255, 209, 0.70);
-  box-shadow: 0 0 0 4px rgba(0, 224, 184, 0.16);
+  color: #ffffff;
+  border-color: #25d366;
+  box-shadow: 0 0 0 3px rgba(37, 211, 102, 0.15);
 }
 
 /* Status Badges */

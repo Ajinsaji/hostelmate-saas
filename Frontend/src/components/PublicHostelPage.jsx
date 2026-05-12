@@ -133,6 +133,16 @@ function PublicHostelPage() {
                 <p className="text-muted text-small p-4 bg-gray-50 rounded-xl">No rooms available currently.</p>
               )}
 
+              {/* Contact Buttons */}
+              <div className="flex gap-3 mt-6 mb-6">
+                <a href={`tel:+91${hostel.phone}`} className="flex-1 btn-secondary py-3 flex justify-center items-center gap-2">
+                  <Phone size={20}/> Call
+                </a>
+                <a href={`https://wa.me/91${hostel.phone}`} target="_blank" rel="noopener noreferrer" className="flex-1 py-3 flex justify-center items-center gap-2" style={{ background: "#25D366", color: "white", borderRadius: "14px", border: "none", fontWeight: "bold", textDecoration: "none" }}>
+                  💬 WhatsApp
+                </a>
+              </div>
+
               <button onClick={handleNextStep} className="btn-primary mt-6 py-4 w-full shadow-lg flex justify-center items-center gap-2 text-lg">
                 Apply for Admission <ArrowRight size={20}/>
               </button>
