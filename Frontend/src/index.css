@@ -180,6 +180,7 @@ body {
               radial-gradient(380px circle at 90% 20%, rgba(20, 241, 217, 0.14), transparent 55%);
   opacity: 0;
   transition: opacity 0.25s ease;
+  pointer-events: none;
 }
 .card:hover {
   transform: translateY(-3px);
@@ -375,6 +376,7 @@ body {
   inset: -40px;
   background: radial-gradient(circle at 30% 20%, rgba(255,255,255,0.35), transparent 55%);
   opacity: 0.35;
+  pointer-events: none;
 }
 .gradient-header * { position: relative; z-index: 1; color: var(--text-inverse); }
 
