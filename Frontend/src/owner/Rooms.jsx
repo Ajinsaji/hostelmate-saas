@@ -105,7 +105,7 @@ function Rooms() {
   );
 
   return (
-    <div className="pb-32" style={{ minHeight: "100vh" }}>
+    <div className="pb-32" style={{ minHeight: "100vh", position: "relative", zIndex: 100 }}>
       {/* Header */}
       <div className="gradient-header mb-6">
         <h1 className="text-h1 mb-2">Room Management</h1>
@@ -155,7 +155,7 @@ function Rooms() {
             className="card animate-slide-up mb-6"
             style={{
               position: "relative",
-              zIndex: 50,
+              zIndex: 1000,
               pointerEvents: "auto",
             }}
           >
