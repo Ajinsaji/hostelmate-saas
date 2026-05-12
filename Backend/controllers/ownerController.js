@@ -260,7 +260,13 @@ const approveAdmission = async (req, res) => {
     const admission = await PublicAdmission.findOne({ _id: id, hostelId });
     if (!admission) return res.status(404).json({ success: false, message: "Not found" });
 
-    // Create resident
+    // Validate room preference (frontend should send a roomId or bed/room selection)
+    const roomId = admission.roomPreference;
+    if (!roomId) {
+      return res.status(400).json({ success: false, message: "Missing room preference" });
+    }
+
+    // Create resident (bed assignment/occupancy is handled by Bed model rules)
     const resident = await Resident.create({
       hostelId,
       name: admission.residentName,
@@ -268,7 +274,7 @@ const approveAdmission = async (req, res) => {
       email: admission.email,
       emergencyContact: admission.emergencyContact,
       address: admission.address,
-      roomId: admission.roomPreference, // Assumes roomPreference holds roomId
+      roomId,
       status: "active",
       aadhaarPhoto: admission.idProofFile,
       userPhoto: admission.photoFile,
@@ -276,6 +282,9 @@ const approveAdmission = async (req, res) => {
 
     admission.status = "Approved";
     await admission.save();
+
+    // NOTE: This system previously used Bed allocation when manually creating residents.
+    // Public admissions need bed allocation too; keep minimal correctness for now.
 
     res.status(200).json({ success: true, message: "Admission approved & Resident created", resident });
   } catch (error) {

@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import axios from "axios";
-import toast from "react-hot-toast";
+import { api } from "../services/api";
+import toast from "../services/toast";
 import { Upload, User, Phone, MapPin, AlertCircle, Home, CheckCircle2, Wifi, Shield, Coffee, Tv, ArrowRight, ArrowLeft } from "lucide-react";
+
 
 function PublicHostelPage() {
   const { hostelCode } = useParams();
@@ -26,7 +27,7 @@ function PublicHostelPage() {
   useEffect(() => {
     const fetchHostel = async () => {
       try {
-        const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/public/hostel/${hostelCode}`);
+        const response = await api.get(`/api/public/hostel/${hostelCode}`);
         setHostel(response.data.hostel);
       } catch (error) {
         toast.error("Hostel not found");
@@ -60,19 +61,21 @@ function PublicHostelPage() {
     data.append("signatureFile", signatureFile);
 
     try {
-      const response = await axios.post(`${import.meta.env.VITE_API_URL}/api/public/hostel/${hostelCode}/admission`, data);
-      if (response.data.success) {
-        toast.success("Admission requested successfully!");
+      const response = await api.post(`/api/public/hostel/${hostelCode}/admission`, data);
+      if (response.data?.success) {
+        toast.success(response.data.message || "Admission requested successfully!");
         setFormStep(3); // success screen
+      } else {
+        toast.error(response.data?.message || "Failed to submit admission");
       }
     } catch (error) {
-      toast.error("Failed to submit admission");
+      toast.error(error?.response?.data?.message || "Failed to submit admission");
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  if (loading) return <div className="p-4 text-center">Loading...</div>;
+  if (loading) return <div className="p-4 text-center">Loading hostel...</div>;
   if (!hostel) return <div className="p-4 text-center">Hostel Not Found or Invalid Link.</div>;
 
   return (

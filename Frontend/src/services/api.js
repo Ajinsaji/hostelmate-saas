@@ -6,6 +6,9 @@ export const api = axios.create({
   baseURL: apiBaseURL,
 });
 
+// Allow browser to upload files correctly
+api.defaults.withCredentials = false;
+
 // Attach token automatically
 api.interceptors.request.use(
   (config) => {

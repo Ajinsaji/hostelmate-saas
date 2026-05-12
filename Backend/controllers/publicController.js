@@ -13,27 +13,23 @@ const getPublicHostel = async (req, res) => {
     }
 
     // Fetch rooms to show availability
-    // Wait, let's assume we have a Room model where hostelId is saved
-    let rooms = [];
-    if (Room) {
-      rooms = await Room.find({ hostelId: hostel._id });
-    }
+    const rooms = await Room.find({ hostelId: hostel._id });
 
     // Prepare safe data (no internal tokens or admin data)
     const publicData = {
       _id: hostel._id,
       hostelName: hostel.hostelName,
       address: hostel.address,
-      phone: hostel.phone, // maybe public contact
+      phone: hostel.phone,
       qrCodeUrl: hostel.qrCodeUrl,
-      rooms: rooms.map(r => ({
+      rooms: rooms.map((r) => ({
         _id: r._id,
         roomNumber: r.roomNumber,
-        type: r.type,
-        rent: r.rent,
-        capacity: r.capacity,
-        // Calculate vacant beds
-        vacantBeds: r.capacity - (r.occupants ? r.occupants.length : 0)
+        type: r.roomType || r.type,
+        rent: r.rentPerBed || r.rent,
+        capacity: r.totalBeds,
+        occupiedBeds: r.occupiedBeds,
+        vacantBeds: (r.totalBeds || 0) - (r.occupiedBeds || 0),
       })),
     };
 

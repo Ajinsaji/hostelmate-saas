@@ -189,51 +189,52 @@ const getResidentPayments =
 const verifyPayment =
   async (req, res) => {
     try {
-      const {
-        paymentId,
-        entryId,
-      } = req.params;
+      const { paymentId, entryId } = req.params;
 
-      const payment =
-        await Payment.findById(
-          paymentId
-        );
-
+      const payment = await Payment.findById(paymentId);
       if (!payment) {
         return res.status(404).json({
           success: false,
-          message:
-            "Payment not found",
+          message: "Payment not found",
         });
       }
 
-      // FIND ENTRY
-      const entry =
-        payment.entries.id(
-          entryId
-        );
-
+      const entry = payment.entries.id(entryId);
       if (!entry) {
         return res.status(404).json({
           success: false,
-          message:
-            "Payment entry not found",
+          message: "Payment entry not found",
         });
       }
 
       // VERIFY
-      entry.verified =
-        true;
+      entry.verified = true;
+
+      // Recalculate totals/status to keep UI consistent
+      const totalPaid = payment.entries.reduce(
+        (sum, e) => sum + Number(e.amount || 0),
+        0
+      );
+      payment.balance = Number(payment.totalRent || payment.balance + (payment.totalRent ? 0 : 0)) - totalPaid;
+      // If totalRent exists in schema, prefer it; otherwise keep computed balance
+      if (payment.totalRent !== undefined && payment.totalRent !== null) {
+        payment.balance = payment.totalRent - totalPaid;
+      }
+      payment.status = payment.balance <= 0 ? "paid" : "partial";
 
       await payment.save();
 
       res.status(200).json({
         success: true,
-        message:
-          "Payment Verified",
+        message: "Payment Verified",
+        payment,
       });
     } catch (error) {
-      res.status(500).json(error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to verify payment",
+        details: error?.message || String(error),
+      });
     }
   };
 

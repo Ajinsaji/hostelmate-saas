@@ -27,12 +27,12 @@ import AddHostel from "./Superadmin/AddHostel";
 import AdminProfile from "./Superadmin/AdminPage";
 import HostelManagement from "./Superadmin/HostelManagement";
 import ProtectedRoute from "./components/ProtectedRoute";
-import { Toaster } from "react-hot-toast";
+import { ToastContainer } from "react-toastify";
 
 function App() {
   return (
     <BrowserRouter>
-      <Toaster position="top-center" />
+      <ToastContainer position="top-center" autoClose={3000} hideProgressBar newestOnTop closeOnClick rtl={false} draggable pauseOnHover />
       <Routes>
         <Route
           path="/"
