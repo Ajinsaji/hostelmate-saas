@@ -1,22 +1,35 @@
-# TODO - Hostelmate UI/UX Improvements
+# HostelMate OS - Fixes TODO
 
-## Step 1: Implement quick actions + tel/WhatsApp links
-- [x] Update `Frontend/src/Superadmin/HostelManagement.jsx` to wrap owner phone with `tel:${phone}`
-- [x] Add WhatsApp quick action using `https://wa.me/91${phone}`
-- [x] Add quick action row (Call / WhatsApp / Public Link / View QR) in hostel cards
+## Step 1: Quick Access card clickability
+- [x] Update ActionButton card to support hover + touch feedback
+- [x] Add keyboard accessibility (Enter/Space) and role/tabIndex
+- [ ] Verify no overlay blocks pointer events
 
-## Step 2: Remove Edit Hostel CRUD controls
-- [ ] Verify whether “Edit Hostel” exists in `HostelManagement.jsx` and remove it if present
 
-## Step 3: Convert entire project theme to white SaaS
-- [ ] Update `Frontend/src/index.css` variables and global styles to white theme:
-  - BG: #F7F8FA
-  - Cards: #FFFFFF
-  - Primary green: #0F5D46
-  - Accent gold: #D4AF37
-  - Text: #1A1A1A
-- [ ] Remove/soften excessive dark backgrounds/overlays (body gradient-header, card/glass colors)
+## Step 2: Owner Create Room form typing bug
+- [ ] Audit owner/Rooms create-room form wrappers for pointer-events/z-index/overlays
+- [ ] Ensure inputs remain clickable/editable when add form is shown
 
-## Step 4: Validate
-- [ ] Run frontend build/dev and confirm tel/WhatsApp links work + no broken styles
+## Step 3: Hostel registration/public contact section
+- [ ] Update PublicHostelPage (and any public flow pages) to show:
+  - [ ] Hostel Name
+  - [ ] Owner Name
+  - [ ] Phone number with tel link
+  - [ ] WhatsApp button using https://wa.me/91${phone}
+
+## Step 4: Superadmin manual add hostel end-to-end
+- [ ] Verify AddHostel entry point (route + button)
+- [ ] Verify POST /api/admin/hostels/add works with FormData
+- [ ] Confirm response includes QR + credentials and frontend renders them
+
+## Step 5: QR images preview/download/public onboarding
+- [ ] Verify QR URL construction (buildQrUrl) matches backend /uploads serving
+- [ ] Confirm QR preview renders
+- [ ] Confirm QR download uses correct URL
+- [ ] Confirm public onboarding page can be reached via /h/:uniqueCode
+
+## Step 6: Global dark premium theme + contrast
+- [ ] Update index.css variables for dark theme
+- [ ] Ensure cards, inputs, text, modals, tables are readable
+
 

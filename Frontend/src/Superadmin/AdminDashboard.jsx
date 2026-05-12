@@ -157,7 +157,12 @@ function StatCard({ title, value, icon }) {
 function ActionButton({ title, subtitle, icon, onClick }) {
   return (
     <div
+      role="button"
+      tabIndex={0}
       onClick={onClick}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") onClick?.();
+      }}
       style={{
         background: "var(--bg-color)",
         borderRadius: "16px",
@@ -167,6 +172,30 @@ function ActionButton({ title, subtitle, icon, onClick }) {
         justifyContent: "space-between",
         alignItems: "center",
         cursor: "pointer",
+        userSelect: "none",
+        WebkitTapHighlightColor: "transparent",
+        transition: "transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease",
+        border: "1px solid transparent",
+        touchAction: "manipulation",
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.borderColor = "rgba(20, 241, 217, 0.35)";
+        e.currentTarget.style.boxShadow = "0 18px 60px rgba(0,0,0,0.35)";
+        e.currentTarget.style.transform = "translateY(-2px)";
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.borderColor = "transparent";
+        e.currentTarget.style.boxShadow = "none";
+        e.currentTarget.style.transform = "none";
+      }}
+      onMouseDown={(e) => {
+        e.currentTarget.style.transform = "translateY(0px) scale(0.99)";
+      }}
+      onTouchStart={(e) => {
+        e.currentTarget.style.transform = "translateY(0px) scale(0.99)";
+      }}
+      onTouchEnd={(e) => {
+        e.currentTarget.style.transform = "translateY(-2px)";
       }}
     >
       <div className="flex items-center gap-4">
