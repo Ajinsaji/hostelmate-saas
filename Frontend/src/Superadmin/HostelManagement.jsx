@@ -12,6 +12,7 @@ function HostelManagement() {
   const [isResetting, setIsResetting] = useState(false);
   const [isResending, setIsResending] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [confirmModal, setConfirmModal] = useState({ isOpen: false, title: "", message: "", action: null, ownerId: null });
 
   const fetchHostels = async () => {
     setIsLoading(true);
@@ -41,7 +42,18 @@ function HostelManagement() {
   };
 
   const handleResetPassword = async (ownerId) => {
-    if (!window.confirm("Are you sure you want to generate a new temporary password?")) return;
+    setConfirmModal({
+      isOpen: true,
+      title: "Reset Password?",
+      message: "Generate a new temporary password for this owner?",
+      action: "reset",
+      ownerId: ownerId
+    });
+  };
+
+  const confirmResetPassword = async () => {
+    const ownerId = confirmModal.ownerId;
+    setConfirmModal({ isOpen: false, title: "", message: "", action: null, ownerId: null });
     setIsResetting(true);
     try {
       const res = await axios.put(`${import.meta.env.VITE_API_URL}/api/admin/hostels/${ownerId}/reset-password`);
@@ -60,10 +72,16 @@ function HostelManagement() {
   const handleResendWhatsApp = async (ownerId) => {
     setIsResending(true);
     try {
-      await axios.post(`${import.meta.env.VITE_API_URL}/api/admin/hostels/${ownerId}/resend-whatsapp`);
-      toast.success("WhatsApp message triggered!");
+      const res = await axios.post(`${import.meta.env.VITE_API_URL}/api/admin/hostels/${ownerId}/resend-whatsapp`);
+      if (res.data.success && res.data.whatsappURL) {
+        toast.success("Opening WhatsApp...");
+        // Open WhatsApp in new tab
+        window.open(res.data.whatsappURL, '_blank');
+      } else {
+        toast.success("WhatsApp credentials ready!");
+      }
     } catch (error) {
-      toast.error("Failed to resend WhatsApp");
+      toast.error("Failed to generate WhatsApp link");
     } finally {
       setIsResending(false);
     }
@@ -252,6 +270,35 @@ function HostelManagement() {
             <button onClick={() => setSelectedHostel(null)} className="w-full mt-4 py-3 bg-gray-100 rounded-xl font-semibold text-gray-600">
               Close
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Confirmation Modal */}
+      {confirmModal.isOpen && (
+        <div style={{
+          position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
+          background: "rgba(0,0,0,0.5)", backdropFilter: "blur(4px)", display: "flex", justifyContent: "center", alignItems: "center",
+          zIndex: 1001, padding: "20px"
+        }}>
+          <div className="bg-white rounded-2xl p-6 max-w-[350px] shadow-2xl" style={{ animation: "slideUp 0.3s ease-out" }}>
+            <h2 className="text-lg font-bold text-gray-900 mb-2">{confirmModal.title}</h2>
+            <p className="text-gray-600 text-sm mb-6">{confirmModal.message}</p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setConfirmModal({ isOpen: false, title: "", message: "", action: null, ownerId: null })}
+                className="flex-1 py-2 bg-gray-100 text-gray-600 font-semibold rounded-lg hover:bg-gray-200"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmResetPassword}
+                disabled={isResetting}
+                className="flex-1 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 disabled:opacity-70"
+              >
+                {isResetting ? "Processing..." : "Confirm"}
+              </button>
+            </div>
           </div>
         </div>
       )}

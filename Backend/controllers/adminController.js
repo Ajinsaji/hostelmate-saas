@@ -16,8 +16,7 @@ const Owner = require(
 
 const Room = require("../models/Room");
 
-const QRCode = require('qrcode');
-const path = require('path');
+const { generateQRCode } = require('../utils/qrCodeService');
 const { sendApprovalMessages } = require('../utils/messageService');
 
 
@@ -135,8 +134,16 @@ const approveHostel =
       const frontendUrl = process.env.FRONTEND_URL;
       const publicUrl = `${frontendUrl}/h/${uniqueCode}`;
       const qrFilename = `${uniqueCode}-QR.png`;
-      const qrPath = path.join(__dirname, '..', 'uploads', qrFilename);
-      await QRCode.toFile(qrPath, publicUrl);
+      
+      // Generate QR code with error handling
+      const qrResult = await generateQRCode(publicUrl, qrFilename);
+      if (!qrResult.success) {
+        console.error('QR Generation failed:', qrResult.error);
+        return res.status(500).json({
+          success: false,
+          message: "Failed to generate QR code: " + qrResult.error,
+        });
+      }
 
       const tempPassword = "Temp@123";
 
@@ -204,6 +211,7 @@ const approveHostel =
         success: true,
         message: "Hostel Approved Successfully",
         qrCodeUrl: qrFilename,
+        qrCodeFullUrl: qrResult.url,
         publicUrl: publicUrl,
         username: request.phone,
         tempPassword: tempPassword
@@ -319,13 +327,29 @@ const resendWhatsApp = async (req, res) => {
     if (!owner) return res.status(404).json({ success: false, message: "Owner not found" });
 
     const hostel = owner.hostelId;
-    if (hostel) {
-      await sendApprovalMessages(owner.phone, owner.ownerName, hostel.hostelName, owner.phone, owner.tempPassword || "Temp@123", hostel.publicUrl);
-    }
+    if (!hostel) return res.status(404).json({ success: false, message: "Hostel not found" });
+
+    const { generateResendWhatsAppURL } = require('../utils/messageService');
+    const whatsappURL = generateResendWhatsAppURL(
+      hostel.hostelName, 
+      owner.phone, 
+      owner.tempPassword || "Temp@123", 
+      hostel.publicUrl, 
+      owner.phone
+    );
     
-    res.status(200).json({ success: true, message: "WhatsApp message resent successfully" });
+    // Call the message service to log
+    const result = await sendApprovalMessages(owner.phone, owner.ownerName, hostel.hostelName, owner.phone, owner.tempPassword || "Temp@123", hostel.publicUrl);
+    
+    res.status(200).json({ 
+      success: true, 
+      message: "WhatsApp link generated", 
+      whatsappURL: whatsappURL,
+      phone: owner.phone
+    });
   } catch (error) {
-    res.status(500).json(error);
+    console.error("ResendWhatsApp Error:", error);
+    res.status(500).json({ success: false, error: error.message });
   }
 };
 
@@ -516,9 +540,16 @@ const addHostel = async (req, res) => {
     const publicUrl = `${frontendUrl}/h/${uniqueCode}`;
 
     const qrFilename = `${uniqueCode}-QR.png`;
-    const qrPath = path.join(__dirname, "..", "uploads", qrFilename);
 
-    await QRCode.toFile(qrPath, publicUrl);
+    // Generate QR code with error handling
+    const qrResult = await generateQRCode(publicUrl, qrFilename);
+    if (!qrResult.success) {
+      console.error('QR Generation failed:', qrResult.error);
+      return res.status(500).json({
+        success: false,
+        message: "Failed to generate QR code: " + qrResult.error,
+      });
+    }
 
     // Create hostel
     const hostel = await Hostel.create({
@@ -577,6 +608,7 @@ const addHostel = async (req, res) => {
       subscription: subscriptionDoc,
       publicUrl,
       qrCodeUrl: qrFilename,
+      qrCodeFullUrl: qrResult.url,
       uniqueCode,
     });
   } catch (error) {
@@ -589,6 +621,181 @@ const addHostel = async (req, res) => {
   }
 };
 
+const Admin = require("../models/Admin");
+
+// ==========================
+// GET ADMIN PROFILE
+// ==========================
+const getAdminProfile = async (req, res) => {
+  try {
+    const adminId = req.user?.id || req.userId;
+    
+    if (!adminId) {
+      return res.status(401).json({
+        success: false,
+        message: "Admin not authenticated",
+      });
+    }
+
+    const admin = await Admin.findById(adminId).select("-password");
+    
+    if (!admin) {
+      return res.status(404).json({
+        success: false,
+        message: "Admin not found",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      admin,
+    });
+  } catch (error) {
+    console.error("Get Admin Profile Error:", error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
+  }
+};
+
+// ==========================
+// UPDATE ADMIN PROFILE
+// ==========================
+const updateAdminProfile = async (req, res) => {
+  try {
+    const adminId = req.user?.id || req.userId;
+    const { fullName, email, phone, profileImage } = req.body;
+
+    if (!adminId) {
+      return res.status(401).json({
+        success: false,
+        message: "Admin not authenticated",
+      });
+    }
+
+    // Check for duplicate email (if being updated)
+    if (email) {
+      const existingAdmin = await Admin.findOne({ 
+        email, 
+        _id: { $ne: adminId } 
+      });
+      if (existingAdmin) {
+        return res.status(400).json({
+          success: false,
+          message: "Email already in use",
+        });
+      }
+    }
+
+    const updateData = {};
+    if (fullName) updateData.fullName = fullName;
+    if (email) updateData.email = email;
+    if (phone) updateData.phone = phone;
+    if (profileImage) updateData.profileImage = profileImage;
+    updateData.updatedAt = new Date();
+
+    const admin = await Admin.findByIdAndUpdate(
+      adminId,
+      updateData,
+      { new: true, runValidators: true }
+    ).select("-password");
+
+    res.status(200).json({
+      success: true,
+      message: "Profile updated successfully",
+      admin,
+    });
+  } catch (error) {
+    console.error("Update Admin Profile Error:", error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
+  }
+};
+
+// ==========================
+// CHANGE ADMIN PASSWORD
+// ==========================
+const changeAdminPassword = async (req, res) => {
+  try {
+    const adminId = req.user?.id || req.userId;
+    const { oldPassword, newPassword, confirmPassword } = req.body;
+
+    if (!adminId) {
+      return res.status(401).json({
+        success: false,
+        message: "Admin not authenticated",
+      });
+    }
+
+    if (!oldPassword || !newPassword || !confirmPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "All fields are required",
+      });
+    }
+
+    if (newPassword !== confirmPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "New passwords do not match",
+      });
+    }
+
+    // Validate password strength
+    if (newPassword.length < 6) {
+      return res.status(400).json({
+        success: false,
+        message: "Password must be at least 6 characters",
+      });
+    }
+
+    const admin = await Admin.findById(adminId);
+    
+    if (!admin) {
+      return res.status(404).json({
+        success: false,
+        message: "Admin not found",
+      });
+    }
+
+    // Check old password
+    const bcryptjs = require("bcryptjs");
+    const isPasswordCorrect = await bcryptjs.compare(oldPassword, admin.password);
+
+    if (!isPasswordCorrect) {
+      return res.status(400).json({
+        success: false,
+        message: "Old password is incorrect",
+      });
+    }
+
+    // Hash new password
+    const salt = await bcryptjs.genSalt(10);
+    const hashedPassword = await bcryptjs.hash(newPassword, salt);
+
+    admin.password = hashedPassword;
+    admin.updatedAt = new Date();
+    await admin.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Password changed successfully",
+    });
+  } catch (error) {
+    console.error("Change Admin Password Error:", error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
+  }
+};
+
+// ==========================
+// Module.exports
+// ==========================
 module.exports = {
 
   getDashboardStats,
@@ -608,6 +815,14 @@ module.exports = {
   getSubscriptions,
 
   addHostel,
+  
   resendWhatsApp,
+  
   resetOwnerTempPassword,
+  
+  getAdminProfile,
+  
+  updateAdminProfile,
+  
+  changeAdminPassword,
 };

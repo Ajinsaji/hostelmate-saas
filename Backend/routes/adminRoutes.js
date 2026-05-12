@@ -23,6 +23,9 @@ const {
   addHostel,
   resendWhatsApp,
   resetOwnerTempPassword,
+  getAdminProfile,
+  updateAdminProfile,
+  changeAdminPassword,
 } = require(
   "../controllers/adminController"
 );
@@ -140,6 +143,28 @@ router.post(
     { name: "licensePhoto" },
   ]),
   addHostel
+);
+
+// ==========================
+// ADMIN PROFILE
+// ==========================
+
+// GET PROFILE
+router.get(
+  "/profile",
+  getAdminProfile
+);
+
+// UPDATE PROFILE
+router.put(
+  "/profile/update",
+  updateAdminProfile
+);
+
+// CHANGE PASSWORD
+router.put(
+  "/profile/change-password",
+  changeAdminPassword
 );
 
 module.exports = router;
