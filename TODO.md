@@ -1,25 +1,22 @@
-# HostelMate OS — Stabilization Work Log
+# TODO - Hostelmate UI/UX Improvements
 
-## Phase 1 — Centralized API Migration (in progress)
-- [ ] Replace raw `axios` usage with `api` client in all Frontend files (remove `import axios from "axios";`).
-- [ ] Ensure every migrated file imports: `import { api } from "../services/api";` (correct relative path).
+## Step 1: Implement quick actions + tel/WhatsApp links
+- [x] Update `Frontend/src/Superadmin/HostelManagement.jsx` to wrap owner phone with `tel:${phone}`
+- [x] Add WhatsApp quick action using `https://wa.me/91${phone}`
+- [x] Add quick action row (Call / WhatsApp / Public Link / View QR) in hostel cards
 
-## Phase 2 — Auth Stabilization (not started)
-- [ ] Audit `localStorage.getItem("token")` vs `localStorage.getItem("adminToken")` usage.
-- [ ] Add `OwnerProtectedRoute` and `AdminProtectedRoute`.
-- [ ] Fix `Frontend/src/services/api.js` interceptor to use correct token for admin vs owner.
+## Step 2: Remove Edit Hostel CRUD controls
+- [ ] Verify whether “Edit Hostel” exists in `HostelManagement.jsx` and remove it if present
 
-## Phase 3 — QR Repair (not started)
-- [ ] Verify `/uploads` static serving.
-- [ ] Fix frontend QR image URL building.
-- [ ] Verify onboarding flow end-to-end.
+## Step 3: Convert entire project theme to white SaaS
+- [ ] Update `Frontend/src/index.css` variables and global styles to white theme:
+  - BG: #F7F8FA
+  - Cards: #FFFFFF
+  - Primary green: #0F5D46
+  - Accent gold: #D4AF37
+  - Text: #1A1A1A
+- [ ] Remove/soften excessive dark backgrounds/overlays (body gradient-header, card/glass colors)
 
-## Phase 4 — Upload System Repair (not started)
-- [ ] Verify multer field names match `FormData` keys.
-- [ ] Fix upload previews.
-
-## Phase 5+ — Buttons/forms/CRUD refresh/polish (not started)
-- [ ] Stabilize handlers, loading states, toast feedback.
-- [ ] Ensure CRUD pages refetch after mutations.
-- [ ] Mobile-first UX fixes.
+## Step 4: Validate
+- [ ] Run frontend build/dev and confirm tel/WhatsApp links work + no broken styles
 

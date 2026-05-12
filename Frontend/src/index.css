@@ -5,44 +5,48 @@
 @tailwind utilities;
 
 :root {
-  /* Premium Emerald/Teal Theme */
-  --primary: #00C896;
-  --primary-dark: #00A67F;
-  --primary-light: #00E0B8;
+  /* Premium SaaS Green Theme */
+  --primary: #0F5D46;
+  --primary-dark: #0F5D46;
+  --primary-light: #0F7A5E;
 
-  --accent: #14F1D9;
-  --accent-2: #00FFD1;
+  /* Accent */
+  --accent: #D4AF37;
+  --accent-2: #E2C95E;
 
-  /* Background (Admin UI) */
-  --bg-1: #071821;
-  --bg-2: #0B2230;
-  --bg-3: #102B3F;
+  /* Background (White SaaS) */
+  --bg-1: #F7F8FA;
+  --bg-2: #F7F8FA;
+  --bg-3: #F7F8FA;
 
   /* Card + Surfaces */
-  --surface: rgba(255,255,255,0.06);
-  --surface-2: rgba(255,255,255,0.10);
-  --surface-glass: rgba(255,255,255,0.08);
+  --surface: rgba(15, 93, 70, 0.04);
+  --surface-2: rgba(15, 93, 70, 0.06);
+  --surface-glass: rgba(255,255,255,0.75);
 
-  /* Text (high contrast) */
-  --text-main: #FFFFFF;
-  --text-secondary: #B6C2CF;
-  --text-muted: #7F95A8;
-  --text-inverse: rgba(255,255,255,0.92);
+  /* Text */
+  --text-main: #1A1A1A;
+  --text-secondary: rgba(26, 26, 26, 0.75);
+  --text-muted: rgba(26, 26, 26, 0.55);
+  --text-inverse: #FFFFFF;
+
 
   /* Status / Trial / Error / Success */
-  --status-warning: #FFB800;
-  --status-error: #FF5A7A;
-  --status-success: #00D26A;
+  --status-warning: #B45309;
+  --status-error: #DC2626;
+  --status-success: #059669;
 
   --border-radius: 26px;
   --border-radius-sm: 16px;
 
-  --border: rgba(255,255,255,0.10);
-  --border-strong: rgba(255,255,255,0.16);
+  --border: rgba(15, 93, 70, 0.14);
+  --border-strong: rgba(15, 93, 70, 0.22);
 
-  --shadow-sm: 0 10px 30px rgba(0,0,0,0.22);
-  --shadow-md: 0 18px 60px rgba(0,0,0,0.35);
-  --shadow-glass: 0 10px 30px rgba(0,0,0,0.35);
+
+  --shadow-sm: 0 10px 30px rgba(15, 93, 70, 0.10);
+  --shadow-md: 0 18px 60px rgba(15, 93, 70, 0.16);
+  --shadow-glass: 0 10px 30px rgba(15, 93, 70, 0.12);
+
 }
 
 * {
@@ -57,12 +61,11 @@ body {
   min-height: 100vh;
   display: flex;
   justify-content: center;
-  background: radial-gradient(1200px circle at 20% -10%, rgba(0, 200, 150, 0.22), transparent 40%),
-              radial-gradient(900px circle at 90% 20%, rgba(20, 241, 217, 0.16), transparent 45%),
-              linear-gradient(135deg, var(--bg-1) 0%, var(--bg-2) 40%, var(--bg-3) 100%);
+  background: #F7F8FA;
   color: var(--text-main);
   overflow-x: hidden;
 }
+
 
 /* Subtle moving glow circles (attach with <div className="bg-animations" />) */
 .bg-animations {
@@ -150,15 +153,16 @@ body {
 
 /* Components */
 .card {
-  background: rgba(255,255,255,0.04);
-  border: 1px solid var(--border);
+  background: #FFFFFF;
+  border: 1px solid rgba(15, 93, 70, 0.10);
   border-radius: var(--border-radius);
   padding: 20px;
-  box-shadow: var(--shadow-sm);
+  box-shadow: 0 8px 28px rgba(15, 93, 70, 0.08);
   transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
   position: relative;
   overflow: hidden;
 }
+
 .card::after {
   content: '';
   position: absolute;
@@ -329,15 +333,16 @@ body {
 
 /* Header Gradient Area */
 .gradient-header {
-  background: radial-gradient(900px circle at 10% -20%, rgba(0, 200, 150, 0.55), transparent 40%),
-              linear-gradient(135deg, #064E3B 0%, #00C896 45%, #00E0B8 100%);
+  background: radial-gradient(900px circle at 10% -20%, rgba(15, 93, 70, 0.18), transparent 40%),
+              linear-gradient(135deg, #0F5D46 0%, #0F7A5E 55%, #0F5D46 100%);
   padding: 34px 24px 68px;
   border-bottom-left-radius: 38px;
   border-bottom-right-radius: 38px;
-  color: var(--text-main);
+  color: #FFFFFF;
   position: relative;
   overflow: hidden;
 }
+
 .gradient-header::after {
   content: '';
   position: absolute;

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { api } from "../services/api";
 
-import { Copy, Download, Share2, Search, Building, User, Phone, CheckCircle2, ShieldAlert, Key, MessageCircle, RefreshCw } from "lucide-react";
+import { Copy, Download, Share2, Search, Building, User, Phone, ShieldAlert, Key, MessageCircle, RefreshCw } from "lucide-react";
 
 const buildQrUrl = (qrCodeUrl) => {
   if (!qrCodeUrl) return "";
@@ -175,8 +175,25 @@ const res = await api.post(`/api/admin/hostels/${ownerId}/resend-whatsapp`);
                     <h3 className="text-h3" style={{ color: "var(--text-main)", display: "flex", alignItems: "center", gap: "6px" }}>
                       <Building size={16} color="var(--primary)"/> {h.hostelName}
                     </h3>
-                    <p className="text-xs text-muted mt-1 flex items-center gap-1">
-                      <User size={12}/> {h.ownerName} • <Phone size={12}/> {h.phone}
+                    <p className="text-xs text-muted mt-1 flex items-center gap-2 flex-wrap">
+                      <User size={12} /> {h.ownerName}
+                      <span style={{ opacity: 0.65 }}>•</span>
+                      <a
+                        href={`tel:${h.phone}`}
+                        className="flex items-center gap-1"
+                        style={{
+                          color: "var(--primary-dark)",
+                          fontWeight: 800,
+                          textDecoration: "none",
+                          padding: "6px 10px",
+                          borderRadius: 999,
+                          background: "rgba(15, 93, 70, 0.08)",
+                          border: "1px solid rgba(15, 93, 70, 0.12)",
+                        }}
+                      >
+                        <Phone size={12} />
+                        {h.phone}
+                      </a>
                     </p>
                   </div>
                   <span className="text-xs px-2 py-1 rounded-full font-bold" style={{
@@ -200,9 +217,80 @@ const res = await api.post(`/api/admin/hostels/${ownerId}/resend-whatsapp`);
                   </div>
                 </div>
 
+                <div className="grid grid-cols-4 gap-2 mb-1">
+                  <a
+                    href={`tel:${h.phone}`}
+                    className="btn-icon"
+                    style={{
+                      width: "100%",
+                      height: 44,
+                      borderRadius: 14,
+                      background: "rgba(15, 93, 70, 0.08)",
+                      border: "1px solid rgba(15, 93, 70, 0.12)",
+                      color: "var(--primary-dark)",
+                    }}
+                    aria-label="Call owner"
+                  >
+                    <Phone size={16} />
+                  </a>
+
+                  <a
+                    href={`https://wa.me/91${h.phone.replace(/\D/g, "")}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="btn-icon"
+                    style={{
+                      width: "100%",
+                      height: 44,
+                      borderRadius: 14,
+                      background: "rgba(37, 211, 102, 0.10)",
+                      border: "1px solid rgba(37, 211, 102, 0.15)",
+                      color: "#25D366",
+                    }}
+                    aria-label="WhatsApp owner"
+                  >
+                    <MessageCircle size={16} />
+                  </a>
+
+                  <button
+                    onClick={() => window.open(h.publicUrl, "_blank")}
+                    className="btn-icon"
+                    style={{
+                      width: "100%",
+                      height: 44,
+                      borderRadius: 14,
+                      background: "rgba(16, 185, 129, 0.08)",
+                      border: "1px solid rgba(16, 185, 129, 0.12)",
+                      color: "var(--primary-dark)",
+                    }}
+                    aria-label="Open public link"
+                  >
+                    <Share2 size={16} />
+                  </button>
+
+                  <button
+                    onClick={() => setSelectedHostel(h)}
+                    className="btn-icon"
+                    style={{
+                      width: "100%",
+                      height: 44,
+                      borderRadius: 14,
+                      background: "rgba(212, 175, 55, 0.10)",
+                      border: "1px solid rgba(212, 175, 55, 0.18)",
+                      color: "#D4AF37",
+                    }}
+                    aria-label="View QR"
+                  >
+                    <Key size={16} />
+                  </button>
+                </div>
+
                 <div className="flex gap-2">
-                  <button onClick={() => setSelectedHostel(h)} className="flex-1 bg-green-50 text-green-700 py-3 rounded-xl font-medium flex justify-center items-center gap-2 border border-green-100">
-                    <Key size={16}/> View Credentials & QR
+                  <button
+                    onClick={() => setSelectedHostel(h)}
+                    className="flex-1 bg-green-50 text-green-700 py-3 rounded-xl font-medium flex justify-center items-center gap-2 border border-green-100"
+                  >
+                    <Key size={16} /> View Credentials & QR
                   </button>
                 </div>
               </div>
@@ -246,9 +334,48 @@ const res = await api.post(`/api/admin/hostels/${ownerId}/resend-whatsapp`);
             <div className="bg-gray-50 rounded-2xl p-4 mb-4 border border-gray-100">
               <div className="flex justify-between items-center mb-1">
                 <p className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">Username</p>
-                <button onClick={() => handleCopy(selectedHostel.phone, "Username")}><Copy size={12} className="text-gray-400"/></button>
+                <button onClick={() => handleCopy(selectedHostel.phone, "Username")}>
+                  <Copy size={12} className="text-gray-400" />
+                </button>
               </div>
-              <p className="font-semibold text-gray-800 mb-3">{selectedHostel.phone}</p>
+              <div className="flex items-center justify-between gap-2 mb-3">
+                <a
+                  href={`tel:${selectedHostel.phone}`}
+                  className="font-semibold"
+                  style={{
+                    textDecoration: "none",
+                    color: "var(--primary-dark)",
+                    padding: "10px 12px",
+                    borderRadius: 14,
+                    background: "rgba(15, 93, 70, 0.08)",
+                    border: "1px solid rgba(15, 93, 70, 0.12)",
+                  }}
+                >
+                  {selectedHostel.phone}
+                </a>
+
+                <a
+                  href={`https://wa.me/91${selectedHostel.phone.replace(/\D/g, "")}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    width: 42,
+                    height: 42,
+                    borderRadius: 14,
+                    background: "rgba(37, 211, 102, 0.10)",
+                    border: "1px solid rgba(37, 211, 102, 0.15)",
+                    color: "#25D366",
+                    textDecoration: "none",
+                    flex: "0 0 auto",
+                  }}
+                  aria-label="WhatsApp owner"
+                >
+                  <MessageCircle size={18} />
+                </a>
+              </div>
 
               <div className="flex justify-between items-center mb-1">
                 <p className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">Temporary Password</p>
@@ -260,26 +387,30 @@ const res = await api.post(`/api/admin/hostels/${ownerId}/resend-whatsapp`);
             </div>
 
             <div className="flex flex-col gap-2">
-              <button onClick={() => handleCopyAll(selectedHostel)} className="w-full bg-gray-900 text-white py-3 rounded-xl font-medium text-sm flex justify-center items-center gap-2">
-                <Copy size={16}/> Copy All Credentials
+              <button
+                onClick={() => handleCopyAll(selectedHostel)}
+                className="w-full bg-gray-900 text-white py-3 rounded-xl font-medium text-sm flex justify-center items-center gap-2"
+              >
+                <Copy size={16} /> Copy All Credentials
               </button>
-              
-                <button 
-                  disabled={isResending}
-                  onClick={() => handleResendWhatsApp(selectedHostel.ownerId)} 
-                  className="w-full bg-[#25D366] text-white py-3 rounded-xl font-medium text-sm flex justify-center items-center gap-2"
-                  style={{ opacity: isResending ? 0.7 : 1 }}
-                >
-                  <MessageCircle size={16}/> Resend Credentials via WhatsApp
-                </button>
-                <button 
-                  disabled={isResetting}
-                  onClick={() => handleResetPassword(selectedHostel.ownerId)} 
-                  className="w-full bg-orange-50 text-orange-600 py-3 rounded-xl font-medium text-sm flex justify-center items-center gap-2 border border-orange-200"
-                  style={{ opacity: isResetting ? 0.7 : 1 }}
-                >
-                  {isResetting ? <RefreshCw size={16} className="animate-spin" /> : <RefreshCw size={16}/>} Generate New Temporary Password
-                </button>
+
+              <button
+                disabled={isResending}
+                onClick={() => handleResendWhatsApp(selectedHostel.ownerId)}
+                className="w-full bg-[#25D366] text-white py-3 rounded-xl font-medium text-sm flex justify-center items-center gap-2"
+                style={{ opacity: isResending ? 0.7 : 1 }}
+              >
+                <MessageCircle size={16} /> Resend Credentials via WhatsApp
+              </button>
+
+              <button
+                disabled={isResetting}
+                onClick={() => handleResetPassword(selectedHostel.ownerId)}
+                className="w-full bg-orange-50 text-orange-600 py-3 rounded-xl font-medium text-sm flex justify-center items-center gap-2 border border-orange-200"
+                style={{ opacity: isResetting ? 0.7 : 1 }}
+              >
+                {isResetting ? <RefreshCw size={16} className="animate-spin" /> : <RefreshCw size={16} />} Generate New Temporary Password
+              </button>
             </div>
 
             <button onClick={() => setSelectedHostel(null)} className="w-full mt-4 py-3 bg-gray-100 rounded-xl font-semibold text-gray-600">
