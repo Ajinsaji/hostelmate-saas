@@ -1,5 +1,6 @@
 import { useState } from "react";
-import axios from "axios";
+import { api } from "../services/api";
+
 import { ArrowLeft, Phone, Search, Info } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
@@ -8,11 +9,14 @@ function ApplicationStatusPage() {
   const [phone, setPhone] = useState("");
   const [data, setData] = useState(null);
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
 
   const checkStatus = async () => {
     try {
       setError("");
-      const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/request/status/${phone}`);
+      const response = await api.get(`/api/request/status/${phone}`);
+
       setData(response.data);
     } catch (error) {
       setError("No application found for this number");

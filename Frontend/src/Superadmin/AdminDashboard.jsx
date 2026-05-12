@@ -1,7 +1,8 @@
 import { BedDouble, Users, Wallet, FileText, Bell, ArrowRight, IndianRupee, ShieldCheck, TrendingUp, CheckCircle2, Building } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
-import axios from "axios";
+import { api } from "../services/api";
+
 import SuperadminBottomNav from "../components/SuperadminBottomNav";
 
 function AdminDashboard() {
@@ -11,7 +12,7 @@ function AdminDashboard() {
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/admin/dashboard`);
+const response = await api.get("/api/admin/dashboard");
         if (response.data.success) {
           setStats(response.data);
         }

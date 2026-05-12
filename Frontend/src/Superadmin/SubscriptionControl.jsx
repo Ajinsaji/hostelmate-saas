@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import axios from "axios";
+import { api } from "../services/api";
+
 import { CheckCircle2, XCircle, CreditCard, Edit2, Shield, Calendar, Users, IndianRupee } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -12,9 +13,9 @@ function SubscriptionControl() {
 
   const token = localStorage.getItem("adminToken");
 
-  const fetchSubscriptions = async () => {
+const fetchSubscriptions = async () => {
     try {
-      const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/admin/subscriptions`, {
+      const response = await api.get("/api/admin/subscriptions", {
         headers: { Authorization: `Bearer ${token}` }
       });
       setSubscriptions(response.data.subscriptions || []);
@@ -42,7 +43,7 @@ function SubscriptionControl() {
 
   const handleUpdate = async () => {
     try {
-      await axios.put(`${import.meta.env.VITE_API_URL}/api/admin/subscription/update/${editingSub._id}`, formData, {
+await api.put(`/api/admin/subscription/update/${editingSub._id}`, formData, {
         headers: { Authorization: `Bearer ${token}` }
       });
       toast.success("Subscription updated successfully");

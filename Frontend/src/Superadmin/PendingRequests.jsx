@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import axios from "axios";
+import { api } from "../services/api";
+
 import { CheckCircle, XCircle, Copy, Download, Share2, Loader2 } from "lucide-react";
 import SuperadminBottomNav from "../components/SuperadminBottomNav";
 import toast from "react-hot-toast";
@@ -12,7 +13,7 @@ function PendingRequests() {
 
   const fetchRequests = async () => {
     try {
-      const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/admin/requests`);
+const response = await api.get("/api/admin/requests");
       setRequests(response.data.requests);
     } catch (error) {
       console.log(error);
@@ -34,7 +35,7 @@ function PendingRequests() {
       // Optimistic update
       setRequests(prev => prev.map(r => r._id === id ? { ...r, status: "Approved" } : r));
       
-      const response = await axios.put(`${import.meta.env.VITE_API_URL}/api/admin/approve/${id}`);
+const response = await api.put(`/api/admin/approve/${id}`);
       toast.success("✅ Hostel Approved");
       
       if (response.data.success && response.data.qrCodeUrl) {
@@ -53,7 +54,7 @@ function PendingRequests() {
     setLoadingActionId(id);
     try {
       setRequests(prev => prev.map(r => r._id === id ? { ...r, status: "Rejected" } : r));
-      await axios.put(`${import.meta.env.VITE_API_URL}/api/admin/reject/${id}`);
+await api.put(`/api/admin/reject/${id}`);
       toast.success("✅ Request Rejected");
       fetchRequests();
     } catch (error) {

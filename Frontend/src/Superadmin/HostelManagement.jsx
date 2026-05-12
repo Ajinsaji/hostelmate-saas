@@ -1,6 +1,20 @@
 import { useEffect, useState } from "react";
-import axios from "axios";
+import { api } from "../services/api";
+
 import { Copy, Download, Share2, Search, Building, User, Phone, CheckCircle2, ShieldAlert, Key, MessageCircle, RefreshCw } from "lucide-react";
+
+const buildQrUrl = (qrCodeUrl) => {
+  if (!qrCodeUrl) return "";
+
+  if (
+    qrCodeUrl.startsWith("http://") ||
+    qrCodeUrl.startsWith("https://")
+  ) {
+    return qrCodeUrl;
+  }
+
+  return `${import.meta.env.VITE_API_URL}/uploads/${qrCodeUrl}`;
+};
 import SuperadminBottomNav from "../components/SuperadminBottomNav";
 import toast from "react-hot-toast";
 
@@ -17,7 +31,7 @@ function HostelManagement() {
   const fetchHostels = async () => {
     setIsLoading(true);
     try {
-      const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/admin/hostels`);
+const response = await api.get("/api/admin/hostels");
       setHostels(response.data.hostels || []);
     } catch (error) {
       toast.error("Failed to load hostels");
@@ -56,7 +70,7 @@ function HostelManagement() {
     setConfirmModal({ isOpen: false, title: "", message: "", action: null, ownerId: null });
     setIsResetting(true);
     try {
-      const res = await axios.put(`${import.meta.env.VITE_API_URL}/api/admin/hostels/${ownerId}/reset-password`);
+const res = await api.put(`/api/admin/hostels/${ownerId}/reset-password`);
       toast.success("New temporary password generated!");
       setHostels(prev => prev.map(h => h.ownerId === ownerId ? { ...h, tempPassword: res.data.tempPassword } : h));
       if (selectedHostel?.ownerId === ownerId) {
@@ -72,7 +86,7 @@ function HostelManagement() {
   const handleResendWhatsApp = async (ownerId) => {
     setIsResending(true);
     try {
-      const res = await axios.post(`${import.meta.env.VITE_API_URL}/api/admin/hostels/${ownerId}/resend-whatsapp`);
+const res = await api.post(`/api/admin/hostels/${ownerId}/resend-whatsapp`);
       if (res.data.success && res.data.whatsappURL) {
         toast.success("Opening WhatsApp...");
         // Open WhatsApp in new tab
@@ -212,13 +226,14 @@ function HostelManagement() {
             <h2 className="text-xl font-bold mb-1 text-center">{selectedHostel.hostelName}</h2>
             <p className="text-xs text-center text-muted mb-6">Owner: {selectedHostel.ownerName}</p>
 
+
             {/* QR Section */}
             <div className="mb-6 flex flex-col items-center">
               <div className="p-2 border border-gray-100 rounded-2xl shadow-sm mb-3">
-                <img src={`${import.meta.env.VITE_API_URL}/uploads/${selectedHostel.qrCodeUrl}`} alt="QR" style={{ width: 150, height: 150, borderRadius: 12 }} />
+<img src={buildQrUrl(selectedHostel.qrCodeUrl)} alt="QR" style={{ width: 150, height: 150, borderRadius: 12 }} />
               </div>
               <div className="flex gap-2 w-full">
-                <a href={`${import.meta.env.VITE_API_URL}/uploads/${selectedHostel.qrCodeUrl}`} download className="flex-1 bg-gray-50 border border-gray-200 py-2 rounded-xl flex justify-center items-center gap-2 text-xs font-semibold text-gray-700">
+<a href={buildQrUrl(selectedHostel.qrCodeUrl)} download className="flex-1 bg-gray-50 border border-gray-200 py-2 rounded-xl flex justify-center items-center gap-2 text-xs font-semibold text-gray-700">
                   <Download size={14}/> Download QR
                 </a>
                 <button onClick={() => handleCopy(selectedHostel.publicUrl, "Link")} className="flex-1 bg-blue-50 border border-blue-100 text-blue-600 py-2 rounded-xl flex justify-center items-center gap-2 text-xs font-semibold">

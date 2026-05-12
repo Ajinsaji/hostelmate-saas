@@ -137,6 +137,7 @@ const approveHostel =
       
       // Generate QR code with error handling
       const qrResult = await generateQRCode(publicUrl, qrFilename);
+      console.log("Generated QR:", { data: publicUrl, filename: qrFilename, result: qrResult });
       if (!qrResult.success) {
         console.error('QR Generation failed:', qrResult.error);
         return res.status(500).json({
@@ -543,6 +544,7 @@ const addHostel = async (req, res) => {
 
     // Generate QR code with error handling
     const qrResult = await generateQRCode(publicUrl, qrFilename);
+    console.log("Generated QR:", { data: publicUrl, filename: qrFilename, result: qrResult });
     if (!qrResult.success) {
       console.error('QR Generation failed:', qrResult.error);
       return res.status(500).json({

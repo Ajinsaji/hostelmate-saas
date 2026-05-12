@@ -1,5 +1,6 @@
 import { useState } from "react";
-import axios from "axios";
+import { api } from "../services/api";
+
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, User, Phone, Home, MapPin, Upload, Settings } from "lucide-react";
 import toast from "react-hot-toast";
@@ -99,7 +100,7 @@ function AddHostel() {
       if (ownerPhoto) data.append("ownerPhoto", ownerPhoto);
       if (licensePhoto) data.append("licensePhoto", licensePhoto);
 
-      const response = await axios.post(`${import.meta.env.VITE_API_URL}/api/admin/hostels/add`, data, {
+const response = await api.post("/api/admin/hostels/add", data, {
         headers: { Authorization: `Bearer ${token}` }
       });
 
