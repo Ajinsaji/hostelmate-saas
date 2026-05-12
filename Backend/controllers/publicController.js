@@ -64,8 +64,8 @@ const submitAdmission = async (req, res) => {
     const idProofFile = req.files?.idProofFile?.[0]?.filename;
     const signatureFile = req.files?.signatureFile?.[0]?.filename;
 
-    if (!photoFile || !idProofFile) {
-      return res.status(400).json({ success: false, message: "Missing required documents" });
+    if (!photoFile || !idProofFile || !signatureFile) {
+      return res.status(400).json({ success: false, message: "Please upload photo, ID proof, and signature." });
     }
 
     const admission = await PublicAdmission.create({

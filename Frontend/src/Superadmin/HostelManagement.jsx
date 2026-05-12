@@ -27,6 +27,8 @@ function HostelManagement() {
   const [isResending, setIsResending] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [confirmModal, setConfirmModal] = useState({ isOpen: false, title: "", message: "", action: null, ownerId: null });
+  const [isDeleting, setIsDeleting] = useState(false);
+
 
   const fetchHostels = async () => {
     setIsLoading(true);
@@ -126,7 +128,8 @@ const res = await api.post(`/api/admin/hostels/${ownerId}/resend-whatsapp`);
 
       <div className="p-4" style={{ marginTop: "-30px" }}>
         {/* Search & Filters */}
-        <div className="bg-white rounded-2xl p-4 shadow-sm mb-6 flex flex-col gap-3">
+        <div className="card" style={{ marginBottom: "24px" }}>
+
           <div style={{ position: "relative" }}>
             <Search size={18} style={{ position: "absolute", left: "16px", top: "50%", transform: "translateY(-50%)", color: "var(--text-muted)" }} />
             <input
@@ -158,16 +161,17 @@ const res = await api.post(`/api/admin/hostels/${ownerId}/resend-whatsapp`);
         {/* Hostel List */}
         <div className="flex flex-col gap-4">
           {isLoading ? (
-            <div className="text-center p-8 bg-white rounded-2xl shadow-sm text-muted animate-pulse">
+            <div className="text-center p-8 card animate-pulse" style={{ background: "var(--bg-2)" }}>
               Loading hostels...
             </div>
           ) : filteredHostels.length === 0 ? (
-            <div className="text-center p-8 bg-white rounded-2xl shadow-sm text-muted">
+            <div className="text-center p-8 card" style={{ background: "var(--bg-2)" }}>
               No hostels found
             </div>
           ) : (
+
             filteredHostels.map(h => (
-              <div key={h.hostelId} className="bg-white p-5 rounded-2xl shadow-sm relative overflow-hidden">
+              <div key={h.hostelId || h._id} className="bg-white p-5 rounded-2xl shadow-sm relative overflow-hidden">
                 <div style={{ position: "absolute", top: 0, left: 0, width: "6px", height: "100%", background: h.isTrial ? "#eab308" : h.subscriptionStatus === "active" ? "#22c55e" : "#ef4444" }} />
                 
                 <div className="flex justify-between items-start mb-3">

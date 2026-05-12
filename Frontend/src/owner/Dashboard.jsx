@@ -8,8 +8,15 @@ import BottomNav from "../components/BottomNav";
 function Dashboard() {
   const navigate = useNavigate();
   const [stats, setStats] = useState({ residents: "-", rooms: "-", occupancyRate: "-", pendingRent: "-", todayCollection: "-" });
+  const [hostel, setHostel] = useState(null);
+  const [ownerName, setOwnerName] = useState("Hostel Owner");
 
   useEffect(() => {
+    const user = JSON.parse(localStorage.getItem("user") || "null");
+    if (user?.ownerName) {
+      setOwnerName(user.ownerName);
+    }
+
     const fetchStats = async () => {
       try {
         const token = localStorage.getItem("token");
@@ -18,6 +25,10 @@ function Dashboard() {
         });
         if (response.data.success) {
           setStats(response.data.stats);
+          setHostel(response.data.hostel || null);
+          if (response.data.hostel?.hostelName) {
+            setHostel(response.data.hostel);
+          }
         }
       } catch (error) {
         console.error("Failed to fetch dashboard stats", error);
@@ -32,8 +43,11 @@ function Dashboard() {
       <div className="gradient-header mb-6">
         <div className="flex justify-between items-center mb-6">
           <div>
-            <p className="text-small" style={{ color: "rgba(255,255,255,0.8)" }}>Welcome Back 👋</p>
-            <h1 className="text-h1" style={{ color: "white" }}>HostelMate</h1>
+            <p className="text-small" style={{ color: "rgba(255,255,255,0.8)" }}>Welcome Back, {ownerName} 👋</p>
+            <h1 className="text-h1" style={{ color: "white" }}>{hostel?.hostelName || "HostelMate Premium"}</h1>
+            <p className="text-small" style={{ color: "rgba(255,255,255,0.75)", marginTop: 8 }}>
+              “Small improvements every day create big success.”
+            </p>
           </div>
           <div className="flex gap-3">
             <button className="btn-icon" style={{ background: "rgba(255,255,255,0.2)", backdropFilter: "blur(10px)" }}>
@@ -47,8 +61,8 @@ function Dashboard() {
 
         {/* HERO CARD */}
         <div style={{
-          background: "rgba(255,255,255,0.15)",
-          border: "1px solid rgba(255,255,255,0.2)",
+          background: "rgba(255,255,255,0.1)",
+          border: "1px solid rgba(255,255,255,0.18)",
           backdropFilter: "blur(20px)",
           borderRadius: "24px",
           padding: "24px",
@@ -59,15 +73,15 @@ function Dashboard() {
             position: "absolute",
             width: "150px", height: "150px",
             borderRadius: "50%",
-            background: "rgba(255,255,255,0.1)",
+            background: "rgba(15, 93, 70, 0.14)",
             top: "-50px", right: "-30px"
           }} />
-          <p style={{ color: "rgba(255,255,255,0.9)", marginBottom: "8px", fontWeight: 500 }}>Hostel Business Overview</p>
+          <p style={{ color: "rgba(255,255,255,0.9)", marginBottom: "8px", fontWeight: 500 }}>Your premium SaaS dashboard</p>
           <h2 className="text-h2" style={{ color: "white", marginBottom: "12px", lineHeight: 1.3 }}>
-            Manage Your Hostel<br/>From Your Phone
+            Manage your hostel with clarity and speed.
           </h2>
-          <p className="text-small" style={{ color: "rgba(255,255,255,0.8)" }}>
-            Rooms, residents, payments, and reports in one place.
+          <p className="text-small" style={{ color: "rgba(255,255,255,0.78)" }}>
+            Rooms, residents, payments, and reports in one premium experience.
           </p>
         </div>
       </div>

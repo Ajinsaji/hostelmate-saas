@@ -79,8 +79,10 @@ function PublicHostelPage() {
   if (!hostel) return <div className="p-4 text-center">Hostel Not Found or Invalid Link.</div>;
 
   return (
-    <div style={{ minHeight: "100vh", background: "#f8fafc", paddingBottom: "50px" }}>
+<div style={{ minHeight: "100vh", background: "var(--bg-2)", paddingBottom: "50px" }}>
+
       {/* Header */}
+
       <div className="gradient-header" style={{ paddingBottom: "80px", borderBottomLeftRadius: "30px", borderBottomRightRadius: "30px" }}>
         <h1 className="text-h1" style={{ color: "white", textAlign: "center" }}>{hostel.hostelName}</h1>
         <p style={{ color: "rgba(255,255,255,0.8)", textAlign: "center" }}>
@@ -92,7 +94,8 @@ function PublicHostelPage() {
         
         {formStep === 0 && (
           <div className="animate-slide-up">
-            <div className="glass-card mb-6 p-5" style={{ background: "white", boxShadow: "0 10px 30px rgba(0,0,0,0.05)" }}>
+            <div className="glass-card mb-6 p-5" style={{ background: "var(--bg-2)", boxShadow: "0 10px 30px rgba(0,0,0,0.25)" }}>
+
               <div className="flex justify-between items-center mb-4">
                 <h2 className="text-h2" style={{ color: "var(--text-main)" }}>Hostel Overview</h2>
                 <div className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1">
@@ -138,7 +141,8 @@ function PublicHostelPage() {
         )}
 
         {formStep === 1 && (
-          <div className="glass-card p-5 animate-slide-up" style={{ background: "white", boxShadow: "0 10px 30px rgba(0,0,0,0.05)" }}>
+          <div className="glass-card p-5 animate-slide-up" style={{ background: "var(--bg-2)", boxShadow: "0 10px 30px rgba(0,0,0,0.25)" }}>
+
             <div className="flex items-center gap-2 mb-6">
               <button onClick={handlePrevStep} className="bg-gray-100 p-2 rounded-full"><ArrowLeft size={20}/></button>
               <h2 className="text-h2" style={{ color: "var(--text-main)", margin: 0 }}>Personal Details</h2>
@@ -174,7 +178,8 @@ function PublicHostelPage() {
         )}
 
         {formStep === 2 && (
-          <div className="glass-card p-5 animate-slide-up" style={{ background: "white", boxShadow: "0 10px 30px rgba(0,0,0,0.05)" }}>
+          <div className="glass-card p-5 animate-slide-up" style={{ background: "var(--bg-2)", boxShadow: "0 10px 30px rgba(0,0,0,0.25)" }}>
+
             <div className="flex items-center gap-2 mb-6">
               <button onClick={handlePrevStep} className="bg-gray-100 p-2 rounded-full"><ArrowLeft size={20}/></button>
               <h2 className="text-h2" style={{ color: "var(--text-main)", margin: 0 }}>Upload Documents</h2>
@@ -199,7 +204,9 @@ function PublicHostelPage() {
         )}
 
         {formStep === 3 && (
-          <div className="glass-card p-8 animate-slide-up text-center" style={{ background: "white", boxShadow: "0 10px 30px rgba(0,0,0,0.05)" }}>
+          <div className="glass-card p-8 animate-slide-up text-center" style={{ background: "var(--bg-2)", boxShadow: "0 10px 30px rgba(0,0,0,0.25)" }}>
+
+
             <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
               <CheckCircle2 size={40} className="text-green-500" />
             </div>

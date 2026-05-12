@@ -1,6 +1,7 @@
 import { ArrowLeft, User, Building, Lock, QrCode, LogOut, Ticket, Settings, Copy, Download } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import axios from "axios";
 import toast from "react-hot-toast";
 
 function Profile() {
@@ -113,40 +114,40 @@ function Profile() {
       {showQR && hostelData && (
         <div style={{
           position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
-          background: "rgba(0,0,0,0.8)", display: "flex", justifyContent: "center", alignItems: "center",
+          background: "rgba(0,0,0,0.85)", display: "flex", justifyContent: "center", alignItems: "center",
           zIndex: 1000, padding: "20px"
         }}>
-          <div style={{ background: "white", padding: "24px", borderRadius: "20px", maxWidth: "400px", width: "100%", textAlign: "center" }}>
-            <h2 style={{ color: "var(--primary-dark)", marginBottom: "8px", fontSize: "20px", fontWeight: "bold" }}>Digital Admission QR</h2>
-            <p className="text-small text-muted mb-4">Residents can scan this to request admission.</p>
+          <div style={{ background: "#172033", padding: "24px", borderRadius: "24px", maxWidth: "420px", width: "100%", textAlign: "center", border: "1px solid rgba(255,255,255,0.08)" }}>
+            <h2 style={{ color: "var(--text-main)", marginBottom: "8px", fontSize: "20px", fontWeight: "bold" }}>Digital Admission QR</h2>
+            <p className="text-small text-muted mb-4" style={{ color: "var(--text-muted)" }}>Residents can scan this to request admission.</p>
             
             {hostelData.qrCodeUrl ? (
               <>
-                <img src={`${import.meta.env.VITE_API_URL}/uploads/${hostelData.qrCodeUrl}`} alt="QR Code" style={{ width: "200px", height: "200px", margin: "0 auto", borderRadius: "10px", border: "1px solid #eee" }} />
+                <img src={`${import.meta.env.VITE_API_URL}/uploads/${hostelData.qrCodeUrl}`} alt="QR Code" style={{ width: "200px", height: "200px", margin: "0 auto", borderRadius: "16px", border: "1px solid rgba(255,255,255,0.08)" }} />
                 <div className="flex justify-center gap-2 mt-4">
-                  <a href={`${import.meta.env.VITE_API_URL}/uploads/${hostelData.qrCodeUrl}`} download className="flex items-center gap-1 text-xs bg-gray-100 px-3 py-2 rounded-lg text-gray-700 font-medium">
+                  <a href={`${import.meta.env.VITE_API_URL}/uploads/${hostelData.qrCodeUrl}`} download className="flex items-center gap-1 text-xs bg-gray-100 px-3 py-2 rounded-lg text-gray-700 font-medium" style={{ background: "rgba(255,255,255,0.08)", color: "var(--text-main)", borderColor: "rgba(255,255,255,0.12)" }}>
                     <Download size={14} /> Download QR
                   </a>
-                  <button onClick={() => handleCopy(hostelData.publicUrl)} className="flex items-center gap-1 text-xs bg-blue-50 text-blue-600 px-3 py-2 rounded-lg font-medium">
+                  <button onClick={() => handleCopy(hostelData.publicUrl)} className="flex items-center gap-1 text-xs px-3 py-2 rounded-lg font-medium" style={{ background: "rgba(15,93,70,0.12)", color: "var(--primary)", border: "1px solid rgba(15,93,70,0.18)" }}>
                     <Copy size={14} /> Copy Link
                   </button>
                 </div>
               </>
             ) : (
-              <p className="p-8 bg-gray-100 rounded-xl text-muted text-small">QR Code not generated yet.</p>
+              <p className="p-8 rounded-xl text-small" style={{ background: "rgba(255,255,255,0.06)", color: "var(--text-muted)" }}>QR Code not generated yet.</p>
             )}
             
-            <div style={{ marginTop: "16px", textAlign: "left", background: "#f8fafc", padding: "16px", borderRadius: "10px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div style={{ marginTop: "16px", textAlign: "left", background: "rgba(255,255,255,0.04)", padding: "16px", borderRadius: "16px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", paddingRight: "8px" }}>
-                <strong className="text-xs">Public Link:</strong>
-                <p style={{ fontSize: "12px", color: "var(--primary)", margin: 0 }}>{hostelData.publicUrl}</p>
+                <strong className="text-xs" style={{ color: "var(--text-secondary)" }}>Public Link:</strong>
+                <p style={{ fontSize: "12px", color: "var(--primary)", margin: 0, wordBreak: "break-all" }}>{hostelData.publicUrl}</p>
               </div>
-              <button onClick={() => handleCopy(hostelData.publicUrl)} style={{ padding: "8px", background: "white", borderRadius: "8px", border: "1px solid #eee" }}>
+              <button onClick={() => handleCopy(hostelData.publicUrl)} style={{ padding: "8px", background: "rgba(255,255,255,0.08)", borderRadius: "12px", border: "1px solid rgba(255,255,255,0.10)" }}>
                 <Copy size={16} color="var(--text-muted)" />
               </button>
             </div>
             
-            <button onClick={() => setShowQR(false)} style={{ marginTop: "20px", background: "var(--primary)", color: "white", padding: "10px 20px", borderRadius: "10px", width: "100%", border: "none" }}>
+            <button onClick={() => setShowQR(false)} style={{ marginTop: "20px", background: "var(--primary)", color: "white", padding: "12px 20px", borderRadius: "14px", width: "100%", border: "none" }}>
               Close
             </button>
           </div>

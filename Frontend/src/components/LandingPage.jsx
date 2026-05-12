@@ -9,13 +9,14 @@ function LandingPage() {
       <div className="gradient-header" style={{ paddingBottom: "120px", borderBottomLeftRadius: "40px", borderBottomRightRadius: "40px" }}>
         <div className="flex justify-between items-center mb-8">
           <h2 style={{ fontWeight: 700, fontSize: "24px" }}>HostelMate</h2>
-          <button 
+<button 
             className="btn-secondary" 
-            style={{ width: "auto", padding: "8px 16px", borderRadius: "100px", border: "1px solid rgba(255,255,255,0.3)", background: "transparent", color: "white" }}
+            style={{ width: "auto", padding: "8px 16px", borderRadius: "100px", border: "1px solid rgba(255,255,255,0.08)", background: "rgba(23, 32, 51, 0.55)", color: "var(--text-main)" }}
             onClick={() => navigate("/login")}
           >
             Login
           </button>
+
         </div>
         
         <h1 style={{ fontSize: "42px", fontWeight: 800, lineHeight: 1.1, marginBottom: "20px" }}>

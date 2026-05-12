@@ -45,6 +45,7 @@ function LoginPage() {
       if (response.data.success) {
         toast.success("Login Successful!");
         localStorage.setItem("token", response.data.token);
+        localStorage.setItem("user", JSON.stringify(response.data.owner || {}));
         navigate("/dashboard");
       }
     } catch (error) {

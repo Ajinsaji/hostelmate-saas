@@ -294,6 +294,8 @@ const getAllHostels = async (req, res) => {
 
       result.push({
         ...hostel,
+        hostelId: hostel._id,
+        ownerId: owner && owner._id ? owner._id : undefined,
         ownerName: owner && owner.ownerName ? owner.ownerName : undefined,
         phone: owner && owner.phone ? owner.phone : undefined,
         tempPassword: owner && owner.tempPassword ? owner.tempPassword : "Temp@123",

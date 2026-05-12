@@ -1,35 +1,38 @@
-# HostelMate OS - Fixes TODO
+# TODO
 
-## Step 1: Quick Access card clickability
-- [x] Update ActionButton card to support hover + touch feedback
-- [x] Add keyboard accessibility (Enter/Space) and role/tabIndex
-- [ ] Verify no overlay blocks pointer events
+- [ ] Step 1: Global dark premium UI (ensure no light surfaces remain)
+  - [ ] Frontend/src/index.css verify palette + add missing dark surfaces
+  - [ ] Frontend/src/Superadmin/HostelManagement.jsx remove light bg/card colors
+  - [ ] Frontend/src/components/PublicHostelPage.jsx darkify premium rooms/cards/sections
 
+- [ ] Step 2: Quick access arrow buttons / card navigation works (Owner + Superadmin)
+  - [ ] Audit Owner dashboard quick access click handling and any z-index/click blockers
+  - [ ] Audit Superadmin bottom nav / quick access navigation
 
-## Step 2: Owner Create Room form typing bug
-- [ ] Audit owner/Rooms create-room form wrappers for pointer-events/z-index/overlays
-- [ ] Ensure inputs remain clickable/editable when add form is shown
+- [ ] Step 3: Owner dashboard improvements (welcome owner + hostel name, quote, stats)
+  - [ ] Frontend/src/owner/Dashboard.jsx replace placeholders with real values
+  - [ ] Backend: confirm/extend /api/owner/dashboard response if needed
 
-## Step 3: Hostel registration/public contact section
-- [ ] Update PublicHostelPage (and any public flow pages) to show:
-  - [ ] Hostel Name
-  - [ ] Owner Name
-  - [ ] Phone number with tel link
-  - [ ] WhatsApp button using https://wa.me/91${phone}
+- [ ] Step 4: Owner Rooms add/edit input clickability + typing
+  - [ ] Frontend/src/owner/Rooms.jsx click-block audit (z-index/pointer-events/overlays)
 
-## Step 4: Superadmin manual add hostel end-to-end
-- [ ] Verify AddHostel entry point (route + button)
-- [ ] Verify POST /api/admin/hostels/add works with FormData
-- [ ] Confirm response includes QR + credentials and frontend renders them
+- [ ] Step 5: Owner Payments add inputs clickability + submit end-to-end
+  - [ ] Frontend/src/owner/Payments.jsx click-block audit + file input + select
 
-## Step 5: QR images preview/download/public onboarding
-- [ ] Verify QR URL construction (buildQrUrl) matches backend /uploads serving
-- [ ] Confirm QR preview renders
-- [ ] Confirm QR download uses correct URL
-- [ ] Confirm public onboarding page can be reached via /h/:uniqueCode
+- [ ] Step 6: QR system stabilization
+  - [ ] Frontend/src/owner/Profile.jsx confirm display/download URLs
+  - [ ] Frontend/src/Superadmin/HostelManagement.jsx confirm buildQrUrl usage
+  - [ ] Frontend/src/components/PublicHostelPage.jsx verify QR route rendering
 
-## Step 6: Global dark premium theme + contrast
-- [ ] Update index.css variables for dark theme
-- [ ] Ensure cards, inputs, text, modals, tables are readable
+- [ ] Step 7: Admin hostel delete option required
+  - [ ] Backend: endpoint exists (verify)
+  - [ ] Frontend/src/Superadmin/HostelManagement.jsx add delete button + confirmation modal
+  - [ ] toast.success("Hostel deleted") + refresh UI
+
+- [ ] Step 8: Resident registration public page improvements
+  - [ ] Frontend/src/components/PublicHostelPage.jsx add clear contact card (tel + WhatsApp)
+
+- [ ] Step 9: Public hostel page premium improvements
+  - [ ] Enhance owner contact card, hostel banner, premium CTA buttons
 
 
