@@ -1,8 +1,7 @@
-import { BedDouble, Users, Wallet, FileText, Bell, ArrowRight, IndianRupee, QrCode, ShieldCheck } from "lucide-react";
+import { BedDouble, Users, Wallet, FileText, Bell, ArrowRight, IndianRupee, QrCode, ShieldCheck, Settings } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import axios from "axios";
-import { Settings } from "lucide-react";
 import BottomNav from "../components/BottomNav";
 
 function Dashboard() {

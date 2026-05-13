@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
-import { CalendarDays, Coffee, Food, Moon } from "lucide-react";
+import { CalendarDays, Coffee, Utensils, Moon } from "lucide-react";
 
 function CookDashboard() {
   const navigate = useNavigate();
