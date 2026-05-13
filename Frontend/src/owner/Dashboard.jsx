@@ -1,4 +1,4 @@
-import { BedDouble, Users, Wallet, FileText, Bell, ArrowRight, IndianRupee, QrCode } from "lucide-react";
+import { BedDouble, Users, Wallet, FileText, Bell, ArrowRight, IndianRupee, QrCode, ShieldCheck } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import axios from "axios";
@@ -128,6 +128,12 @@ function Dashboard() {
             subtitle="View and share admission QR"
             icon={<QrCode size={22} color="var(--primary-dark)" />}
             onClick={() => navigate("/profile")}
+          />
+          <ActionButton
+            title="Staff Management"
+            subtitle="Add wardens and cooks"
+            icon={<ShieldCheck size={22} color="var(--primary-dark)" />}
+            onClick={() => navigate("/staff")}
           />
           <ActionButton
             title="Reports"

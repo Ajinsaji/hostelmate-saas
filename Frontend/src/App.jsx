@@ -19,6 +19,10 @@ import Payments from "./owner/Payments";
 import Reports from "./owner/Reports";
 import Profile from "./owner/Profile";
 import PendingAdmissions from "./owner/PendingAdmissions";
+import StaffManagement from "./owner/StaffManagement";
+
+import WardenDashboard from "./warden/Dashboard";
+import CookDashboard from "./cook/Dashboard";
 
 import AdminDashboard from "./Superadmin/AdminDashboard";
 import PendingRequests from "./Superadmin/PendingRequests";
@@ -26,7 +30,9 @@ import SubscriptionControl from "./Superadmin/SubscriptionControl";
 import AddHostel from "./Superadmin/AddHostel";
 import AdminProfile from "./Superadmin/AdminPage";
 import HostelManagement from "./Superadmin/HostelManagement";
-import ProtectedRoute from "./components/ProtectedRoute";
+import OwnerProtectedRoute from "./components/OwnerProtectedRoute";
+import WardenProtectedRoute from "./components/WardenProtectedRoute";
+import CookProtectedRoute from "./components/CookProtectedRoute";
 import { ToastContainer } from "react-toastify";
 
 function App() {
@@ -52,63 +58,90 @@ function App() {
         <Route
           path="/dashboard"
           element={
-            <ProtectedRoute>
+            <OwnerProtectedRoute>
               <Dashboard />
-            </ProtectedRoute>
+            </OwnerProtectedRoute>
           }
         />
 
         <Route
           path="/rooms"
           element={
-            <ProtectedRoute>
+            <OwnerProtectedRoute>
               <Rooms />
-            </ProtectedRoute>
+            </OwnerProtectedRoute>
           }
         />
 
         <Route
           path="/residents"
           element={
-            <ProtectedRoute>
+            <OwnerProtectedRoute>
               <Residents />
-            </ProtectedRoute>
+            </OwnerProtectedRoute>
           }
         />
 
         <Route
           path="/payments"
           element={
-            <ProtectedRoute>
+            <OwnerProtectedRoute>
               <Payments />
-            </ProtectedRoute>
+            </OwnerProtectedRoute>
           }
         />
 
         <Route
           path="/reports"
           element={
-            <ProtectedRoute>
+            <OwnerProtectedRoute>
               <Reports />
-            </ProtectedRoute>
+            </OwnerProtectedRoute>
           }
         />
 
         <Route
           path="/profile"
           element={
-            <ProtectedRoute>
+            <OwnerProtectedRoute>
               <Profile />
-            </ProtectedRoute>
+            </OwnerProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/staff"
+          element={
+            <OwnerProtectedRoute>
+              <StaffManagement />
+            </OwnerProtectedRoute>
           }
         />
 
         <Route
           path="/admissions"
           element={
-            <ProtectedRoute>
+            <OwnerProtectedRoute>
               <PendingAdmissions />
-            </ProtectedRoute>
+            </OwnerProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/warden"
+          element={
+            <WardenProtectedRoute>
+              <WardenDashboard />
+            </WardenProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/cook"
+          element={
+            <CookProtectedRoute>
+              <CookDashboard />
+            </CookProtectedRoute>
           }
         />
 

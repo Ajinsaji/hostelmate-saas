@@ -54,6 +54,11 @@ Need help? Contact: support@hostelmate.com`;
   return message;
 };
 
+const generateStaffWhatsAppMessage = (staffName, role, username, password, loginUrl) => {
+  const normalizedRole = role ? role.charAt(0).toUpperCase() + role.slice(1) : "Staff";
+  return `👋 Hello ${staffName},\n\nYour HostelMate OS account has been created.\n\n*Role:* ${normalizedRole}\n*Username:* ${username}\n*Password:* ${password}\n\n*Login:* ${loginUrl}\n\nPlease keep this information secure and access your dashboard using the provided credentials.`;
+};
+
 /**
  * Generate WhatsApp URL for direct messaging
  * @param {string} phone - Phone number
@@ -113,6 +118,7 @@ module.exports = {
   sendApprovalMessages,
   generateWhatsAppURL,
   generateWhatsAppMessage,
+  generateStaffWhatsAppMessage,
   generateResendWhatsAppURL,
   formatPhoneNumber,
 };

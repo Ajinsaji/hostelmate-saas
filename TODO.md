@@ -1,38 +1,39 @@
-# TODO
+# HOSTELMATE FINAL PRODUCTION FIX ROUND - TODO
 
-- [ ] Step 1: Global dark premium UI (ensure no light surfaces remain)
-  - [ ] Frontend/src/index.css verify palette + add missing dark surfaces
-  - [ ] Frontend/src/Superadmin/HostelManagement.jsx remove light bg/card colors
-  - [ ] Frontend/src/components/PublicHostelPage.jsx darkify premium rooms/cards/sections
+## Step 1: QR uploads + logging (backend)
+- [x] Update `Backend/utils/qrCodeService.js`
+  - [x] Add requested logs: `QR FILE:` and `QR PATH:`
+  - [x] Ensure uploads directory is created
 
-- [ ] Step 2: Quick access arrow buttons / card navigation works (Owner + Superadmin)
-  - [ ] Audit Owner dashboard quick access click handling and any z-index/click blockers
-  - [ ] Audit Superadmin bottom nav / quick access navigation
 
-- [ ] Step 3: Owner dashboard improvements (welcome owner + hostel name, quote, stats)
-  - [ ] Frontend/src/owner/Dashboard.jsx replace placeholders with real values
-  - [ ] Backend: confirm/extend /api/owner/dashboard response if needed
 
-- [ ] Step 4: Owner Rooms add/edit input clickability + typing
-  - [ ] Frontend/src/owner/Rooms.jsx click-block audit (z-index/pointer-events/overlays)
+## Step 2: Frontend QR URL builder
+- [x] Add/confirm `buildQrUrl` helper in frontend (recommended in `Frontend/src/services/api.js` or a small util file)
+- [ ] Update all QR `<img>` src + download links to use `buildQrUrl`
 
-- [ ] Step 5: Owner Payments add inputs clickability + submit end-to-end
-  - [ ] Frontend/src/owner/Payments.jsx click-block audit + file input + select
 
-- [ ] Step 6: QR system stabilization
-  - [ ] Frontend/src/owner/Profile.jsx confirm display/download URLs
-  - [ ] Frontend/src/Superadmin/HostelManagement.jsx confirm buildQrUrl usage
-  - [ ] Frontend/src/components/PublicHostelPage.jsx verify QR route rendering
+## Step 3: Owner profile navigation + clickable styling
+- [ ] Fix `Frontend/src/owner/Profile.jsx` menu items to navigate to the correct routes instead of `toast("coming soon")`
+- [ ] Ensure clickable cards have `cursor: pointer` (and consistent click handlers)
 
-- [ ] Step 7: Admin hostel delete option required
-  - [ ] Backend: endpoint exists (verify)
-  - [ ] Frontend/src/Superadmin/HostelManagement.jsx add delete button + confirmation modal
-  - [ ] toast.success("Hostel deleted") + refresh UI
+## Step 4: Quick access arrow cards (admin/owner)
+- [ ] Locate the dashboard components that render quick access arrow cards
+- [ ] Ensure each arrow/card calls `navigate("/route")`
 
-- [ ] Step 8: Resident registration public page improvements
-  - [ ] Frontend/src/components/PublicHostelPage.jsx add clear contact card (tel + WhatsApp)
+## Step 5: Input cursor color issue
+- [ ] Verify `Frontend/src/index.css` has the required `.input-field:focus` and `.input-field` rules
 
-- [ ] Step 9: Public hostel page premium improvements
-  - [ ] Enhance owner contact card, hostel banner, premium CTA buttons
+## Step 6: Resident avatar production URL
+- [ ] Ensure resident avatar uses `${import.meta.env.VITE_API_URL}/uploads/...`
+- [ ] Add fallback image handling
 
+## Step 7: QR direct URL test procedure
+- [ ] After deploying, test `https://hostelmate-saas-1.onrender.com/uploads/FILENAME.png`
+
+## Step 8: Validate all production requirements
+- [ ] Verify QR visible
+- [ ] Verify resident avatar visible
+- [ ] Verify cursor visible
+- [ ] Verify navigation buttons work
+- [ ] Verify quick access arrows work
 

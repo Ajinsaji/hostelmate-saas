@@ -1,5 +1,7 @@
 const jwt = require("jsonwebtoken");
+const bcrypt = require("bcryptjs");
 const Owner = require("../models/Owner");
+const Staff = require("../models/Staff");
 const Hostel = require("../models/Hostel");
 const Subscription = require("../models/Subscription");
 const Room = require("../models/Room");
@@ -8,15 +10,15 @@ const Payment = require("../models/Payment");
 const PublicAdmission = require("../models/PublicAdmission");
 
 // ==========================
-// OWNER LOGIN (phone/email + password)
-// Issues JWT
-// Payload: { ownerId, hostelId, role: "owner" }
+// OWNER/STAFF LOGIN
+// Supports owner, warden, cook
+// Issues JWT payload: { userId, hostelId, role }
 // ==========================
 const loginOwner = async (req, res) => {
   try {
     console.log("LOGIN BODY:", req.body);
 
-    const { email, phone, password } = req.body || {};
+    const { email, phone, password, username } = req.body || {};
 
     if (!password) {
       return res.status(400).json({
@@ -25,67 +27,117 @@ const loginOwner = async (req, res) => {
       });
     }
 
-    if (!email && !phone) {
+    if (!email && !phone && !username) {
       return res.status(400).json({
         success: false,
-        message: "Provide email or phone",
+        message: "Provide email, phone or username",
       });
     }
 
-    const owner = await Owner.findOne({
-      password,
-      status: { $ne: "disabled" },
-      $or: [
-        ...(email ? [{ email }] : []),
-        ...(phone ? [{ phone }] : []),
-      ],
-    });
+    let owner = null;
+    let staff = null;
+    let userRole = "owner";
+    let userId = null;
+    let hostelId = null;
+    let userResponse = null;
 
-
-    if (!owner) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid credentials",
-      });
+    if (username) {
+      staff = await Staff.findOne({ username, isActive: true });
     }
 
-    // Ensure hostel exists
-    const hostel = await Hostel.findById(owner.hostelId);
-    if (!hostel) {
-      return res.status(400).json({
-        success: false,
-        message: "Hostel not found for this owner",
+    if (!staff && (phone || email)) {
+      owner = await Owner.findOne({
+        password,
+        status: { $ne: "disabled" },
+        $or: [
+          ...(email ? [{ email }] : []),
+          ...(phone ? [{ phone }] : []),
+        ],
       });
+
+      if (!owner) {
+        staff = await Staff.findOne({
+          phone,
+          isActive: true,
+        });
+      }
     }
 
-    const payload = {
-      ownerId: owner._id,
-      hostelId: hostel._id,
-      role: "owner",
-    };
+    if (staff) {
+      const isValid = await bcrypt.compare(password, staff.passwordHash);
+      if (!isValid) {
+        return res.status(400).json({ success: false, message: "Invalid credentials" });
+      }
 
-    const secret = process.env.JWT_SECRET || "change_me_secret";
+      userRole = staff.role;
+      userId = staff._id;
+      hostelId = staff.hostelId;
+      userResponse = {
+        _id: staff._id,
+        fullName: staff.fullName,
+        phone: staff.phone,
+        username: staff.username,
+        role: staff.role,
+        isActive: staff.isActive,
+        hostelId: staff.hostelId,
+      };
+    }
 
-    const token = jwt.sign(payload, secret, {
-      expiresIn: "7d",
-    });
+    if (!staff && owner) {
+      // Ensure hostel exists
+      const hostel = await Hostel.findById(owner.hostelId);
+      if (!hostel) {
+        return res.status(400).json({
+          success: false,
+          message: "Hostel not found for this owner",
+        });
+      }
 
-    // Optional: subscription info can be returned for UI gating
-    const subscription = await Subscription.findOne({ hostelId: hostel._id });
-
-    return res.status(200).json({
-      success: true,
-      message: "Login Success",
-      token,
-      owner: {
+      userRole = "owner";
+      userId = owner._id;
+      hostelId = hostel._id;
+      userResponse = {
         _id: owner._id,
         ownerName: owner.ownerName,
         phone: owner.phone,
         email: owner.email,
         status: owner.status,
         hostelId: hostel._id,
-      },
-      subscription,
+      };
+    }
+
+    if (!staff && !owner) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid credentials",
+      });
+    }
+
+    const payload = {
+      userId,
+      hostelId,
+      role: userRole,
+    };
+
+    const secret = process.env.JWT_SECRET || "change_me_secret";
+    const token = jwt.sign(payload, secret, { expiresIn: "7d" });
+
+    if (owner) {
+      const subscription = await Subscription.findOne({ hostelId: hostelId });
+      return res.status(200).json({
+        success: true,
+        message: "Login Success",
+        token,
+        owner: userResponse,
+        subscription,
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Login Success",
+      token,
+      user: userResponse,
     });
   } catch (error) {
     console.error("OWNER LOGIN ERROR:", error);

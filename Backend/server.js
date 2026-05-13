@@ -30,6 +30,8 @@ const paymentRoutes =
 const ownerRoutes =
   require("./routes/ownerRoutes");
 
+const staffRoutes = require("./routes/staffRoutes");
+
 const adminRoutes =
   require("./routes/adminRoutes");
 
@@ -127,6 +129,12 @@ app.use(
 app.use(
   "/api/admin",
   adminRoutes
+);
+
+// STAFF
+app.use(
+  "/api/staff",
+  staffRoutes
 );
 
 // OWNER

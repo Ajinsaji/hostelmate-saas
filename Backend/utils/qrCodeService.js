@@ -18,9 +18,14 @@ const generateQRCode = async (data, filename) => {
     }
 
     const qrPath = path.join(uploadsDir, filename);
-    
+
+    // Requested debug logs for production (Render/Vercel)
+    console.log("QR FILE:", filename);
+    console.log("QR PATH:", qrPath);
+
     // Generate QR code
     await QRCode.toFile(qrPath, data, {
+
       errorCorrectionLevel: 'H',
       type: 'image/png',
       width: 300,
@@ -41,8 +46,14 @@ const generateQRCode = async (data, filename) => {
       console.error("✗ QR file not found after generation:", qrPath);
     }
 
-    // Return full URL with BACKEND_URL
-    const backendUrl = process.env.BACKEND_URL || process.env.FRONTEND_URL?.replace('5173', '5000') || 'http://localhost:5000';
+    // Return full URL (must match the domain that serves /uploads)
+    // Prefer BACKEND_URL if set in Render.
+    const backendUrl =
+      process.env.BACKEND_URL ||
+      process.env.RENDER_EXTERNAL_URL ||
+      process.env.FRONTEND_URL?.replace('5173', '5000') ||
+      'http://localhost:5000';
+
     const fullUrl = `${backendUrl}/uploads/${filename}`;
 
     console.log("✓ QR URL:", fullUrl);

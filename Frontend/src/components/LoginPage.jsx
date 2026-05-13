@@ -15,7 +15,7 @@ function LoginPage() {
 
   const handleLogin = async () => {
     if (!username?.trim()) {
-      toast.error("Enter email or phone");
+      toast.error("Enter email, phone or username");
       return;
     }
     if (!password) {
@@ -25,28 +25,35 @@ function LoginPage() {
 
     const trimmed = username.trim();
     const isEmail = trimmed.includes("@");
+    const isPhone = /^\+?\d{10,15}$/.test(trimmed);
 
     const payload = isEmail
       ? { email: trimmed, password }
-      : { phone: trimmed, password };
+      : isPhone
+      ? { phone: trimmed, password }
+      : { username: trimmed, password };
 
     setLoading(true);
     try {
-
-      // Owner login endpoint (JWT payload includes: ownerId, hostelId, role:"owner")
       const response = await axios.post(
         `${import.meta.env.VITE_API_URL}/api/owner/login`,
         payload
       );
 
-
-
-
       if (response.data.success) {
         toast.success("Login Successful!");
         localStorage.setItem("token", response.data.token);
-        localStorage.setItem("user", JSON.stringify(response.data.owner || {}));
-        navigate("/dashboard");
+        const userData = response.data.owner || response.data.user || {};
+        localStorage.setItem("user", JSON.stringify(userData));
+
+        const role = userData.role || "owner";
+        if (role === "warden") {
+          navigate("/warden");
+        } else if (role === "cook") {
+          navigate("/cook");
+        } else {
+          navigate("/dashboard");
+        }
       }
     } catch (error) {
       const msg =
