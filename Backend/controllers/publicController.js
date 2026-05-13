@@ -84,7 +84,30 @@ const submitAdmission = async (req, res) => {
       status: "Pending"
     });
 
+    // Notification for owner/admin of this hostel
+    try {
+      const { publishNotification } = require("../utils/notificationPublisher");
+      const Owner = require("../models/Owner");
+      const owner = await Owner.findOne({ hostelId: hostel._id, role: "owner" });
+      if (owner?._id) {
+        await publishNotification({
+          userId: owner._id,
+          hostelId: hostel._id,
+          type: "admission_submitted",
+          message: "New resident admission submitted",
+          meta: {
+            route: "/admissions",
+            admissionId: admission._id,
+          },
+        });
+      }
+    } catch (e) {
+      // never break admission flow
+      console.error("Admission submit notification failed:", e?.message || e);
+    }
+
     res.status(201).json({ success: true, message: "Admission request submitted", admission });
+
 
   } catch (error) {
     console.log(error);

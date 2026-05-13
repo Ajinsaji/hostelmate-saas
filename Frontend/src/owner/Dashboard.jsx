@@ -108,6 +108,7 @@ function Dashboard() {
                 </span>
               )}
             </button>
+
             <button className="btn-icon" style={{ background: "rgba(255,255,255,0.2)", backdropFilter: "blur(10px)" }} onClick={() => navigate("/profile")}>
               <Settings size={24} color="white" />
             </button>

@@ -33,13 +33,29 @@ import HostelManagement from "./Superadmin/HostelManagement";
 import OwnerProtectedRoute from "./components/OwnerProtectedRoute";
 import WardenProtectedRoute from "./components/WardenProtectedRoute";
 import CookProtectedRoute from "./components/CookProtectedRoute";
-import { ToastContainer } from "react-toastify";
+import NotificationBell from "./components/NotificationBell";
+
 
 function App() {
   return (
     <BrowserRouter>
-      <ToastContainer position="top-center" autoClose={3000} hideProgressBar newestOnTop closeOnClick rtl={false} draggable pauseOnHover />
+
+
+      {/* Notification Bell (top-right) */}
+      <div
+        style={{
+          position: "fixed",
+          top: 14,
+          right: 14,
+          zIndex: 3000,
+          pointerEvents: "auto",
+        }}
+      >
+        <NotificationBell />
+      </div>
+
       <Routes>
+
         <Route
           path="/"
           element={<LandingPage />}

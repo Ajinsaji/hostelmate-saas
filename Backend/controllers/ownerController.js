@@ -360,7 +360,26 @@ const approveAdmission = async (req, res) => {
     admission.status = "Approved";
     await admission.save();
 
+    // Notification for this approval
+    try {
+      const { publishNotification } = require("../utils/notificationPublisher");
+      await publishNotification({
+        userId: req.owner?.ownerId,
+        hostelId,
+        type: "resident_approved",
+        message: "Resident approved",
+        meta: {
+          route: "/admissions",
+          residentId: resident?._id || null,
+          admissionId: admission?._id || null,
+        },
+      });
+    } catch (e) {
+      console.error("Resident approval notification failed:", e?.message || e);
+    }
+
     // NOTE: This system previously used Bed allocation when manually creating residents.
+
     // Public admissions need bed allocation too; keep minimal correctness for now.
 
     res.status(200).json({ success: true, message: "Admission approved & Resident created", resident });
@@ -384,7 +403,25 @@ const rejectAdmission = async (req, res) => {
     admission.status = "Rejected";
     await admission.save();
 
+    // Notification for rejection
+    try {
+      const { publishNotification } = require("../utils/notificationPublisher");
+      await publishNotification({
+        userId: req.owner?.ownerId,
+        hostelId,
+        type: "resident_rejected",
+        message: "Resident rejected",
+        meta: {
+          route: "/admissions",
+          admissionId: admission?._id || null,
+        },
+      });
+    } catch (e) {
+      console.error("Resident rejection notification failed:", e?.message || e);
+    }
+
     res.status(200).json({ success: true, message: "Admission rejected" });
+
   } catch (error) {
     res.status(500).json(error);
   }

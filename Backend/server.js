@@ -149,6 +149,14 @@ app.use(
   publicRoutes
 );
 
+// NOTIFICATIONS
+const notificationRoutes = require("./routes/notificationRoutes");
+app.use(
+  "/api/notifications",
+  notificationRoutes
+);
+
+
 
 // ==========================
 // TEST ROUTE

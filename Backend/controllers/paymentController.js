@@ -91,12 +91,31 @@ const createPayment =
         await payment.save();
 
 
-        return res.status(200).json({
-          success: true,
-          message:
-            "Partial Payment Added",
-          payment,
-        });
+      // Notification for this payment upload
+      try {
+        const { publishNotification } = require("../utils/notificationPublisher");
+        const Owner = require("../models/Owner");
+        const owner = await Owner.findOne({ hostelId: req.owner?.hostelId, role: "owner" });
+        if (owner?._id) {
+          await publishNotification({
+            userId: owner._id,
+            hostelId: req.owner?.hostelId,
+            type: "payment_uploaded",
+            message: "Payment uploaded",
+            meta: { route: "/payments", paymentId: payment?._id || null, residentId: payment?.residentId || null },
+          });
+        }
+      } catch (e) {
+        console.error("Payment notification failed:", e?.message || e);
+      }
+
+      res.status(200).json({
+        success: true,
+        message:
+          "Partial Payment Added",
+        payment,
+      });
+
       }
 
       // CREATE NEW PAYMENT
