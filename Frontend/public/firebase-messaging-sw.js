@@ -10,47 +10,67 @@ importScripts("https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-com
 // We rely on Vite to copy env-inlined values by generating this file in build in real deployment.
 // For now, keep placeholders; the runtime will no-op if credentials are missing.
 
+// IMPORTANT: Service workers cannot access `import.meta.env` in production.
+// Use VITE_FIREBASE_* values at build-time by hardcoding them here during deployment,
+// OR ensure you generate this file at build time.
+//
+// To prevent Vercel service worker evaluation crashes, we only attempt initialization
+// when required config fields are non-empty.
+
 const firebaseConfig = {
-  apiKey: import.meta?.env?.VITE_FIREBASE_API_KEY || "",
-  authDomain: "",
-  projectId: import.meta?.env?.VITE_FIREBASE_PROJECT_ID || "",
-  storageBucket: "",
-  messagingSenderId: import.meta?.env?.VITE_FIREBASE_MESSAGING_SENDER_ID || "",
-  appId: import.meta?.env?.VITE_FIREBASE_APP_ID || "",
+  // NOTE: These placeholders must be replaced during deployment.
+  // For production you should generate this file at build time, or manually
+  // set real values here (public Firebase config only).
+  apiKey: "BIV9VuYsa_WqehZNiyaepcgB-Lh1hpTs_UmUKgetlpW1Mx2DMkxpyhBrxo_izXfxjPqbD03865KzYji-S0mLh7U",
+  authDomain: "hostelmate-f0de8.firebaseapp.com",
+  projectId: "hostelmate-f0de8",
+  storageBucket: "hostelmate-f0de8.firebasestorage.app",
+  messagingSenderId: "654995812093",
+  appId: "1:654995812093:web:6cfeed4b8a6fc5a15d9894",
 };
 
-// Fallback for environments where import.meta is not available in SW runtime.
-// The SW will still parse, but FCM will only work once firebaseConfig is properly injected.
+function isValidFirebaseConfig(cfg) {
+  return Boolean(
+    cfg &&
+      cfg.apiKey &&
+      cfg.projectId &&
+      cfg.messagingSenderId &&
+      cfg.appId
+  );
+}
 
-let app;
-try {
-  if (!firebase.apps?.length) {
-    app = firebase.initializeApp(firebaseConfig);
-  } else {
-    app = firebase.app();
+// Always register click handler to avoid SW crashes.
+// Background message handler is attached only when Firebase config exists.
+
+if (isValidFirebaseConfig(firebaseConfig)) {
+  try {
+    firebase.initializeApp(firebaseConfig);
+  } catch (e) {
+    // ignore if already initialized
   }
-} catch (e) {
-  // ignore
-}
 
-const messaging = app ? firebase.messaging() : null;
+  const messaging = firebase.messaging();
 
-if (messaging) {
   messaging.onBackgroundMessage((payload) => {
-    const title = payload?.notification?.title || "HostelMate";
-    const body = payload?.notification?.body || "New notification";
+    console.log("[firebase-messaging-sw.js] Background message:", payload);
 
-    const route = payload?.data?.route || "";
+    const notificationTitle = payload?.notification?.title || "HostelMate";
+    const notificationOptions = {
+      body: payload?.notification?.body || "New notification",
+      data: payload?.data || {},
+      icon: payload?.notification?.icon || "/logo192.png",
+      badge: payload?.notification?.icon || "/logo192.png",
+    };
 
-    self.registration.showNotification({
-      title,
-      body,
-      // Pass route in data so the click handler can navigate.
-      data: { route },
-      icon: payload?.notification?.icon || undefined,
-    });
+    self.registration.showNotification(notificationTitle, notificationOptions);
   });
+} else {
+  console.warn(
+    "[firebase-messaging-sw.js] Firebase config missing/invalid. Background notifications disabled."
+  );
 }
+
+
 
 self.addEventListener("notificationclick", function (event) {
   event.notification.close();

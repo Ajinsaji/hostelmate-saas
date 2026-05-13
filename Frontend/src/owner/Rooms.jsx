@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
-import { Plus, BedDouble, Trash2, Users, Edit2, Search } from "lucide-react";
+import { Plus, Trash2, Users, Edit2, Search, BedDouble, User, Phone, CalendarDays, ArrowRight, SwapHoriz, UserRound, XCircle } from "lucide-react";
 import toast from "react-hot-toast";
 import BottomNav from "../components/BottomNav";
 
