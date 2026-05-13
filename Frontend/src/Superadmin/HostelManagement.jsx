@@ -120,7 +120,7 @@ const res = await api.post(`/api/admin/hostels/${ownerId}/resend-whatsapp`);
   });
 
   return (
-    <div style={{ minHeight: "100vh", background: "#f8fafc", paddingBottom: "100px", fontFamily: "Poppins" }}>
+    <div style={{ minHeight: "100vh", background: "#081028", paddingBottom: "100px", fontFamily: "Poppins" }}>
       <div className="gradient-header mb-6" style={{ paddingBottom: "40px", borderBottomLeftRadius: "30px", borderBottomRightRadius: "30px" }}>
         <h1 className="text-h1" style={{ color: "white" }}>Hostel Management</h1>
         <p style={{ color: "rgba(255,255,255,0.8)" }}>Manage approved hostels & credentials</p>
@@ -161,9 +161,10 @@ const res = await api.post(`/api/admin/hostels/${ownerId}/resend-whatsapp`);
         {/* Hostel List */}
         <div className="flex flex-col gap-4">
           {isLoading ? (
-            <div className="text-center p-8 card animate-pulse" style={{ background: "var(--bg-2)" }}>
+            <div className="text-center p-8 glass-card animate-pulse" style={{ background: 'rgba(11,23,57,0.55)', borderColor: 'rgba(255,255,255,0.08)' }}>
               Loading hostels...
             </div>
+
           ) : filteredHostels.length === 0 ? (
             <div className="text-center p-8 card" style={{ background: "var(--bg-2)" }}>
               No hostels found
@@ -289,10 +290,25 @@ const res = await api.post(`/api/admin/hostels/${ownerId}/resend-whatsapp`);
                   </button>
                 </div>
 
-                <div className="flex gap-2">
+              <div className="flex gap-2">
                   <button
                     onClick={() => setSelectedHostel(h)}
-                    className="flex-1 bg-green-50 text-green-700 py-3 rounded-xl font-medium flex justify-center items-center gap-2 border border-green-100"
+                    className="flex-1"
+                    style={{
+                      background: "rgba(34,197,94,0.10)",
+                      border: "1px solid rgba(34,197,94,0.22)",
+                      color: "#22c55e",
+                      padding: "14px 16px",
+                      borderRadius: 16,
+                      fontWeight: 900,
+                      display: "flex",
+                      justifyContent: "center",
+                      alignItems: "center",
+                      gap: 10,
+                      transition: "transform 200ms ease, box-shadow 200ms ease, border-color 200ms ease",
+                      boxShadow: "0 18px 60px rgba(34,197,94,0.08)",
+                    }}
+                    aria-label="View credentials and QR"
                   >
                     <Key size={16} /> View Credentials & QR
                   </button>

@@ -3,6 +3,7 @@ import {
   Routes,
   Route,
   Navigate,
+  useLocation,
 } from "react-router-dom";
 
 import LandingPage from "./components/LandingPage";
@@ -10,7 +11,6 @@ import LoginPage from "./components/LoginPage";
 import RegisterPage from "./components/RegisterPage";
 import AdminLogin from "./components/AdminLogin";
 import PublicHostelPage from "./components/PublicHostelPage";
-
 
 import Dashboard from "./owner/Dashboard";
 import Rooms from "./owner/Rooms";
@@ -30,46 +30,54 @@ import SubscriptionControl from "./Superadmin/SubscriptionControl";
 import AddHostel from "./Superadmin/AddHostel";
 import AdminProfile from "./Superadmin/AdminPage";
 import HostelManagement from "./Superadmin/HostelManagement";
+
 import OwnerProtectedRoute from "./components/OwnerProtectedRoute";
 import WardenProtectedRoute from "./components/WardenProtectedRoute";
 import CookProtectedRoute from "./components/CookProtectedRoute";
 import NotificationBell from "./components/NotificationBell";
 
+function NotificationBellHost() {
+  const location = useLocation();
+  const token = localStorage.getItem("token");
+
+  let user = null;
+  try {
+    user = JSON.parse(localStorage.getItem("user") || "null");
+  } catch {
+    user = null;
+  }
+
+  // Hide on public/non-auth pages
+  const hideOnPublic = ["/", "/login", "/register"].includes(location.pathname);
+
+  const shouldShowBell = !!token && !!user && !hideOnPublic;
+
+  if (!shouldShowBell) return null;
+
+  return (
+    <div
+      style={{
+        position: "fixed",
+        top: 14,
+        right: 14,
+        zIndex: 3000,
+        pointerEvents: "auto",
+      }}
+    >
+      <NotificationBell />
+    </div>
+  );
+}
 
 function App() {
   return (
     <BrowserRouter>
-
-
-      {/* Notification Bell (top-right) */}
-      <div
-        style={{
-          position: "fixed",
-          top: 14,
-          right: 14,
-          zIndex: 3000,
-          pointerEvents: "auto",
-        }}
-      >
-        <NotificationBell />
-      </div>
+      <NotificationBellHost />
 
       <Routes>
-
-        <Route
-          path="/"
-          element={<LandingPage />}
-        />
-
-        <Route
-          path="/login"
-          element={<LoginPage />}
-        />
-
-        <Route
-          path="/register"
-          element={<RegisterPage />}
-        />
+        <Route path="/" element={<LandingPage />} />
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/register" element={<RegisterPage />} />
 
         <Route
           path="/dashboard"
@@ -79,7 +87,6 @@ function App() {
             </OwnerProtectedRoute>
           }
         />
-
         <Route
           path="/rooms"
           element={
@@ -88,7 +95,6 @@ function App() {
             </OwnerProtectedRoute>
           }
         />
-
         <Route
           path="/residents"
           element={
@@ -97,7 +103,6 @@ function App() {
             </OwnerProtectedRoute>
           }
         />
-
         <Route
           path="/payments"
           element={
@@ -106,7 +111,6 @@ function App() {
             </OwnerProtectedRoute>
           }
         />
-
         <Route
           path="/reports"
           element={
@@ -115,7 +119,6 @@ function App() {
             </OwnerProtectedRoute>
           }
         />
-
         <Route
           path="/profile"
           element={
@@ -124,7 +127,6 @@ function App() {
             </OwnerProtectedRoute>
           }
         />
-
         <Route
           path="/staff"
           element={
@@ -133,7 +135,6 @@ function App() {
             </OwnerProtectedRoute>
           }
         />
-
         <Route
           path="/admissions"
           element={
@@ -151,7 +152,6 @@ function App() {
             </WardenProtectedRoute>
           }
         />
-
         <Route
           path="/cook"
           element={
@@ -161,60 +161,22 @@ function App() {
           }
         />
 
-        <Route
-          path="/h/:hostelCode"
-          element={<PublicHostelPage />}
-        />
+        <Route path="/h/:hostelCode" element={<PublicHostelPage />} />
 
+        <Route path="/admin/login" element={<AdminLogin />} />
+        <Route path="/admin" element={<AdminDashboard />} />
+        <Route path="/admin/profile" element={<AdminProfile />} />
+        <Route path="/admin/reports" element={<Reports />} />
+        <Route path="/admin/pending-requests" element={<PendingRequests />} />
+        <Route path="/admin/subscriptions" element={<SubscriptionControl />} />
+        <Route path="/admin/add-hostel" element={<AddHostel />} />
+        <Route path="/admin/hostels" element={<HostelManagement />} />
 
-        <Route
-          path="/admin/login"
-          element={<AdminLogin />}
-        />
-
-        <Route
-          path="/admin"
-          element={<AdminDashboard />}
-        />
-
-
-        <Route
-          path="/admin/profile"
-          element={<AdminProfile />}
-        />
-
-        <Route
-          path="/admin/reports"
-          element={<Reports />}
-        />
-
-        <Route
-          path="/admin/pending-requests"
-          element={<PendingRequests />}
-        />
-
-        <Route
-          path="/admin/subscriptions"
-          element={<SubscriptionControl />}
-        />
-
-        <Route
-          path="/admin/add-hostel"
-          element={<AddHostel />}
-        />
-
-        <Route
-          path="/admin/hostels"
-          element={<HostelManagement />}
-        />
-
-        <Route
-          path="*"
-          element={<Navigate to="/" />}
-        />
+        <Route path="*" element={<Navigate to="/" />} />
       </Routes>
     </BrowserRouter>
   );
 }
 
 export default App;
+

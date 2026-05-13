@@ -3,7 +3,7 @@ const DeviceToken = require("../models/DeviceToken");
 const { sendPushToUserDevices } = require("./fcmService");
 
 async function publishNotification({ userId, hostelId, type, message, meta }) {
-  // Persist first
+  // Persist first (scoped to target hostel when provided)
   const notification = await Notification.create({
     userId,
     hostelId: hostelId || null,
@@ -12,9 +12,15 @@ async function publishNotification({ userId, hostelId, type, message, meta }) {
     meta: meta || {},
   });
 
+
   // Push (optional: if firebase configured)
   try {
-    const tokens = await DeviceToken.find({ userId, isActive: true }).select("token");
+    const tokens = await DeviceToken.find({
+      userId,
+      isActive: true,
+      ...(hostelId ? { hostelId } : {}),
+    }).select("token");
+
     const tokenList = tokens.map((t) => t.token);
 
     // When FCM isn't configured, helper will no-op.

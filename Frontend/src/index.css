@@ -70,6 +70,19 @@ body {
   overflow-x: hidden;
 }
 
+/* Global cleanup: ensure no accidental light-mode overflow on mobile */
+html,
+body,
+#root {
+  overflow-x: hidden;
+  max-width: 100%;
+}
+
+* {
+  max-width: 100%;
+}
+
+
 
 
 

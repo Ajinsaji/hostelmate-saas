@@ -6,7 +6,7 @@ const { sendPushToUserDevices } = require("../utils/fcmService");
 // store/refresh token
 const registerDeviceToken = async (req, res) => {
   try {
-    const { token, platform, role, hostelId } = req.body || {};
+    const { token, platform } = req.body || {};
     const userId = req.owner?.ownerId;
 
     if (!token) {
@@ -16,8 +16,9 @@ const registerDeviceToken = async (req, res) => {
       return res.status(401).json({ success: false, message: "Unauthorized" });
     }
 
-    const hostId = hostelId || req.owner?.hostelId || null;
-    const r = role || req.owner?.role || "owner";
+    // SCOPED BY JWT PAYLOAD ONLY (prevents role/hostel spoofing from client)
+    const hostId = req.owner?.hostelId || null;
+    const r = req.owner?.role || "owner";
 
     await DeviceToken.findOneAndUpdate(
       { token },
@@ -40,15 +41,21 @@ const registerDeviceToken = async (req, res) => {
   }
 };
 
+
 const getMyNotifications = async (req, res) => {
   try {
     const userId = req.owner?.ownerId;
+    const hostelId = req.owner?.hostelId || null;
     if (!userId) return res.status(401).json({ success: false, message: "Unauthorized" });
 
     const { limit } = req.query;
     const pageLimit = Math.min(Number(limit || 20), 50);
 
-    const notifications = await Notification.find({ userId })
+    // Filter by userId (+ optionally hostelId when present)
+    const query = { userId };
+    if (hostelId) query.hostelId = hostelId;
+
+    const notifications = await Notification.find(query)
       .sort({ createdAt: -1 })
       .limit(pageLimit);
 
@@ -58,17 +65,23 @@ const getMyNotifications = async (req, res) => {
   }
 };
 
+
 const getUnreadCount = async (req, res) => {
   try {
     const userId = req.owner?.ownerId;
+    const hostelId = req.owner?.hostelId || null;
     if (!userId) return res.status(401).json({ success: false, message: "Unauthorized" });
 
-    const count = await Notification.countDocuments({ userId, isRead: false });
+    const query = { userId, isRead: false };
+    if (hostelId) query.hostelId = hostelId;
+
+    const count = await Notification.countDocuments(query);
     res.status(200).json({ success: true, unreadCount: count || 0 });
   } catch (e) {
     res.status(500).json({ success: false, message: "Failed to fetch unread count", error: e?.message });
   }
 };
+
 
 const markNotificationRead = async (req, res) => {
   try {
