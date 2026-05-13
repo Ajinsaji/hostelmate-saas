@@ -289,6 +289,31 @@ const getDashboardStats = async (req, res) => {
 };
 
 // ==========================
+// OWNER: GET PENDING ADMISSION COUNT
+// ==========================
+const getPendingCount = async (req, res) => {
+  try {
+    const { hostelId } = req.owner;
+    
+    const pendingAdmissions = await Resident.countDocuments({
+      hostelId,
+      status: "pending"
+    });
+
+    res.status(200).json({
+      success: true,
+      pendingAdmissions: pendingAdmissions || 0
+    });
+  } catch (error) {
+    console.error("Pending Count Error:", error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+};
+
+// ==========================
 // OWNER: GET PUBLIC ADMISSIONS
 // ==========================
 const getAdmissions = async (req, res) => {
@@ -372,6 +397,7 @@ module.exports = {
   forceLogout,
   transferOwnership,
   getDashboardStats,
+  getPendingCount,
   getAdmissions,
   approveAdmission,
   rejectAdmission,

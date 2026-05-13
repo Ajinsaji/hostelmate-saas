@@ -1,39 +1,31 @@
-# HOSTELMATE FINAL PRODUCTION FIX ROUND - TODO
+# HostelMate - Execution TODO
 
-## Step 1: QR uploads + logging (backend)
-- [x] Update `Backend/utils/qrCodeService.js`
-  - [x] Add requested logs: `QR FILE:` and `QR PATH:`
-  - [x] Ensure uploads directory is created
+- [x] 1) SETTINGS hover color global fix in `Frontend/src/index.css`
 
+- [x] 2) Partial payment system
+  - [x] 2a) Backend: extend `Backend/controllers/paymentController.js` to persist `cashAmount/onlineAmount/paymentSplit/paidAmount` when `paymentMethod === "partial"`
+  - [x] 2b) Frontend: update `Frontend/src/owner/Payments.jsx` UI to show cash/online split fields only for partial
 
+- [ ] 3) Resident details page
+  - [ ] 3a) Create `Frontend/src/owner/ResidentDetails.jsx`
+  - [ ] 3b) Add route `/resident/:id` in `Frontend/src/App.jsx`
+  - [ ] 3c) Update `Frontend/src/owner/Residents.jsx` to include “View More” navigation
+- [ ] 4) Shared QR helper + apply to QR download links + QR images where applicable
+  - [ ] 4a) Create helper `Frontend/src/utils/buildQrUrl.js`
+  - [ ] 4b) Update owner QR usage in `Frontend/src/owner/Profile.jsx`
+  - [ ] 4c) Search and update other QR usage across `Frontend/src`
+- [ ] 5) Resident admission form dark theme autofill fix (global inputs)
+  - [ ] 5a) Update `Frontend/src/index.css` for dark autofill + consistent text color
+- [ ] 6) Owner profile navigation
 
-## Step 2: Frontend QR URL builder
-- [x] Add/confirm `buildQrUrl` helper in frontend (recommended in `Frontend/src/services/api.js` or a small util file)
-- [ ] Update all QR `<img>` src + download links to use `buildQrUrl`
+  - [ ] 6a) Add missing routes in `Frontend/src/App.jsx`
+  - [ ] 6b) Create minimal pages with dark glass UI:
+    - [ ] `/owner/settings`
+    - [ ] `/owner/profile`
+    - [ ] `/owner/update-password`
+    - [ ] `/owner/bank-details`
+    - [ ] `/owner/support`
+- [ ] 7) Micro-UX only for dashboard badge (smoother pulse/spacing/refresh handling)
+  - [ ] 7a) Verify `Frontend/src/owner/Dashboard.jsx` badge animation/polling; improve without changing logic
 
-
-## Step 3: Owner profile navigation + clickable styling
-- [ ] Fix `Frontend/src/owner/Profile.jsx` menu items to navigate to the correct routes instead of `toast("coming soon")`
-- [ ] Ensure clickable cards have `cursor: pointer` (and consistent click handlers)
-
-## Step 4: Quick access arrow cards (admin/owner)
-- [ ] Locate the dashboard components that render quick access arrow cards
-- [ ] Ensure each arrow/card calls `navigate("/route")`
-
-## Step 5: Input cursor color issue
-- [ ] Verify `Frontend/src/index.css` has the required `.input-field:focus` and `.input-field` rules
-
-## Step 6: Resident avatar production URL
-- [ ] Ensure resident avatar uses `${import.meta.env.VITE_API_URL}/uploads/...`
-- [ ] Add fallback image handling
-
-## Step 7: QR direct URL test procedure
-- [ ] After deploying, test `https://hostelmate-saas-1.onrender.com/uploads/FILENAME.png`
-
-## Step 8: Validate all production requirements
-- [ ] Verify QR visible
-- [ ] Verify resident avatar visible
-- [ ] Verify cursor visible
-- [ ] Verify navigation buttons work
-- [ ] Verify quick access arrows work
 

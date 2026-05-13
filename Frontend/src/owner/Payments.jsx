@@ -10,7 +10,14 @@ function Payments() {
   const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
   const [formData, setFormData] = useState({
-    residentId: "", month: "", amount: "", method: "UPI", totalRent: ""
+    residentId: "",
+    month: "",
+    amount: "",
+    method: "UPI",
+    totalRent: "",
+    paymentMethod: "cash", // cash | online | partial
+    cashAmount: "",
+    onlineAmount: "",
   });
   const [proofFile, setProofFile] = useState(null);
 
@@ -46,7 +53,19 @@ function Payments() {
     fetchResidents();
   }, []);
 
-  const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => {
+      const updated = { ...prev, [name]: value };
+      // Auto-calculate paidAmount if partial payment method
+      if (updated.paymentMethod === "partial") {
+        const cash = parseInt(updated.cashAmount || 0);
+        const online = parseInt(updated.onlineAmount || 0);
+        updated.amount = cash + online;
+      }
+      return updated;
+    });
+  };
 
   const handleResidentChange = (e) => {
     const rId = e.target.value;
@@ -163,18 +182,55 @@ function Payments() {
 
               <div className="flex gap-4 mb-4">
                 <div className="input-group" style={{ marginBottom: 0 }}>
-                  <span className="input-label">Amount Paid (₹)</span>
-                  <input name="amount" type="number" className="input-field" value={formData.amount} onChange={handleChange} required />
-                </div>
-                <div className="input-group" style={{ marginBottom: 0 }}>
                   <span className="input-label">Method</span>
-                  <select name="method" className="input-field" value={formData.method} onChange={handleChange} required>
-                    <option value="UPI">UPI / GPay</option>
-                    <option value="Cash">Cash</option>
-                    <option value="Bank Transfer">Bank Transfer</option>
+                  <select name="paymentMethod" className="input-field" value={formData.paymentMethod} onChange={handleChange} required>
+                    <option value="cash">Cash</option>
+                    <option value="online">Online</option>
+                    <option value="partial">Partial</option>
                   </select>
                 </div>
+
+                <div className="input-group" style={{ marginBottom: 0 }}>
+                  <span className="input-label">Total Paid (₹)</span>
+                  <input
+                    name="amount"
+                    type="number"
+                    className="input-field"
+                    value={formData.amount}
+                    onChange={handleChange}
+                    required
+                    disabled={formData.paymentMethod === "partial"}
+                    style={formData.paymentMethod === "partial" ? { opacity: 0.75 } : undefined}
+                  />
+                </div>
               </div>
+
+              {formData.paymentMethod === "partial" && (
+                <div className="flex gap-4 mb-4">
+                  <div className="input-group" style={{ marginBottom: 0 }}>
+                    <span className="input-label">Cash Amount (₹)</span>
+                    <input
+                      name="cashAmount"
+                      type="number"
+                      className="input-field"
+                      value={formData.cashAmount}
+                      onChange={handleChange}
+                      required
+                    />
+                  </div>
+                  <div className="input-group" style={{ marginBottom: 0 }}>
+                    <span className="input-label">Online Amount (₹)</span>
+                    <input
+                      name="onlineAmount"
+                      type="number"
+                      className="input-field"
+                      value={formData.onlineAmount}
+                      onChange={handleChange}
+                      required
+                    />
+                  </div>
+                </div>
+              )}
 
               <label className="input-group mb-6 hover:border-primary" style={{ padding: "16px", border: "2px dashed rgba(0,0,0,0.1)", borderRadius: "12px", textAlign: "center", cursor: "pointer" }}>
                 <Upload size={20} color="var(--primary)" style={{ margin: "0 auto 8px" }} />

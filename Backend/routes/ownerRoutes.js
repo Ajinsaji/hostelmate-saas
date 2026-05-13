@@ -9,6 +9,7 @@ const {
   forceLogout,
   transferOwnership,
   getDashboardStats,
+  getPendingCount,
   getAdmissions,
   approveAdmission,
   rejectAdmission,
@@ -21,6 +22,7 @@ router.post("/login", loginOwner);
 
 // Owner Dashboard
 router.get("/dashboard", ownerAuth, getDashboardStats);
+router.get("/pending-count", ownerAuth, getPendingCount);
 
 // Public Admissions
 router.get("/admissions", ownerAuth, getAdmissions);

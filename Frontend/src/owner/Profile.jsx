@@ -4,15 +4,8 @@ import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import toast from "react-hot-toast";
 
-const buildQrUrl = (qrCodeUrl) => {
-  if (!qrCodeUrl) return "";
+import buildQrUrl from "../utils/buildQrUrl";
 
-  if (qrCodeUrl.startsWith("http://") || qrCodeUrl.startsWith("https://")) {
-    return qrCodeUrl;
-  }
-
-  return `${import.meta.env.VITE_API_URL}/uploads/${qrCodeUrl}`;
-};
 
 function Profile() {
   const navigate = useNavigate();
@@ -120,16 +113,27 @@ function Profile() {
           <div style={{ borderBottom: "1px solid var(--border-color)" }}></div>
 
           <div
-            className="flex items-center gap-4 p-4 hover:bg-gray-50 cursor-pointer"
-            style={{ transition: "transform 0.15s ease" }}
+            className="flex items-center gap-4 p-4 cursor-pointer"
+            style={{ 
+              transition: "all 0.2s ease-in-out",
+              borderRadius: "12px"
+            }}
             onClick={() => setShowQR(true)}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = "rgba(16, 185, 129, 0.12)";
+              e.currentTarget.style.transform = "translateY(-2px)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = "transparent";
+              e.currentTarget.style.transform = "translateY(0)";
+            }}
           >
             <div style={{ width: 40, height: 40, borderRadius: 12, background: "rgba(37, 211, 102, 0.1)", display: "flex", justifyContent: "center", alignItems: "center" }}>
               <QrCode size={20} color="var(--status-paid)" />
             </div>
             <div>
-              <h3 className="text-h3" style={{ marginBottom: 2 }}>Public Admission QR</h3>
-              <p className="text-small">View your hostel's public QR code</p>
+              <h3 className="text-h3" style={{ marginBottom: 2, color: "#ffffff" }}>Public Admission QR</h3>
+              <p className="text-small" style={{ color: "#ffffff" }}>View your hostel's public QR code</p>
             </div>
           </div>
         </div>
@@ -217,18 +221,31 @@ function Profile() {
 function MenuItem({ icon, title, subtitle, onClick }) {
   return (
     <div
-      className="flex items-center gap-4 p-4 hover:bg-gray-50 cursor-pointer"
+      className="flex items-center gap-4 p-4 cursor-pointer"
       onClick={onClick}
       role="button"
       tabIndex={0}
-      style={{ transition: "transform 0.15s ease, background 0.2s" }}
+      style={{ 
+        transition: "all 0.2s ease-in-out",
+        borderRadius: "12px"
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.background = "rgba(16, 185, 129, 0.12)";
+        e.currentTarget.style.borderColor = "rgba(16, 185, 129, 0.35)";
+        e.currentTarget.style.transform = "translateY(-2px)";
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.background = "transparent";
+        e.currentTarget.style.borderColor = "transparent";
+        e.currentTarget.style.transform = "translateY(0)";
+      }}
     >
       <div style={{ width: 40, height: 40, borderRadius: 12, background: "rgba(37, 211, 102, 0.1)", display: "flex", justifyContent: "center", alignItems: "center" }}>
         {icon}
       </div>
       <div>
-        <h3 className="text-h3" style={{ marginBottom: 2 }}>{title}</h3>
-        <p className="text-small">{subtitle}</p>
+        <h3 className="text-h3" style={{ marginBottom: 2, color: "#ffffff" }}>{title}</h3>
+        <p className="text-small" style={{ color: "#ffffff" }}>{subtitle}</p>
       </div>
     </div>
   );

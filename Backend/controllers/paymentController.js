@@ -16,6 +16,9 @@ const createPayment =
         amount,
         method,
         totalRent,
+        paymentMethod,
+        cashAmount,
+        onlineAmount,
       } = req.body;
 
       const hostelId = req.owner?.hostelId;
@@ -35,55 +38,58 @@ const createPayment =
         });
 
       // CREATE ENTRY
+      // Preserve existing entry shape: { amount, method, proof, verified, createdAt }
+      // Extend split fields on entry when method is partial
+      const effectivePaymentMethod = paymentMethod || method;
+
       const paymentEntry = {
         amount,
-
-        method,
-
-        proof:
-          req.file?.filename || "",
-
+        method: effectivePaymentMethod,
+        proof: req.file?.filename || "",
         verified: false,
+        createdAt: new Date(),
 
-        createdAt:
-          new Date(),
+        // optional split fields (safe if unused)
+        ...(effectivePaymentMethod === "partial"
+          ? {
+              cashAmount: Number(cashAmount || 0),
+              onlineAmount: Number(onlineAmount || 0),
+            }
+          : {}),
       };
 
       // IF PAYMENT EXISTS
       if (payment) {
-        payment.entries.push(
-          paymentEntry
-        );
+        payment.entries.push(paymentEntry);
 
         // CALCULATE TOTAL PAID
-        const totalPaid =
-          payment.entries.reduce(
-            (sum, entry) =>
-              sum +
-              Number(
-                entry.amount
-              ),
+        const totalPaid = payment.entries.reduce(
+          (sum, entry) => sum + Number(entry.amount || 0),
+          0
+        );
 
-            0
-          );
+        // If this is a split payment, persist split amounts and paidAmount.
+        // Otherwise keep existing behavior.
+        if (effectivePaymentMethod === "partial") {
+          const cashTotal = Number(payment.cashAmount || 0) + Number(cashAmount || 0);
+          const onlineTotal = Number(payment.onlineAmount || 0) + Number(onlineAmount || 0);
+          payment.cashAmount = cashTotal;
+          payment.onlineAmount = onlineTotal;
+          payment.paidAmount = cashTotal + onlineTotal;
+        }
 
         // UPDATE BALANCE
-        payment.balance =
-          totalRent -
-          totalPaid;
+        payment.balance = totalRent - totalPaid;
 
         // UPDATE STATUS
-        if (
-          payment.balance <= 0
-        ) {
-          payment.status =
-            "paid";
+        if (payment.balance <= 0) {
+          payment.status = "paid";
         } else {
-          payment.status =
-            "partial";
+          payment.status = "partial";
         }
 
         await payment.save();
+
 
         return res.status(200).json({
           success: true,
@@ -94,29 +100,33 @@ const createPayment =
       }
 
       // CREATE NEW PAYMENT
-      const newPayment =
-        await Payment.create({
-          hostelId,
+      const effectivePaidAmount =
+        effectivePaymentMethod === "partial"
+          ? Number(cashAmount || 0) + Number(onlineAmount || 0)
+          : Number(amount || 0);
 
-          residentId,
+      const newPayment = await Payment.create({
+        hostelId,
+        residentId,
+        month,
+        totalRent,
+        entries: [paymentEntry],
 
-          month,
+        // Persist split fields when paymentMethod is partial
+        ...(effectivePaymentMethod === "partial"
+          ? {
+              cashAmount: Number(cashAmount || 0),
+              onlineAmount: Number(onlineAmount || 0),
+              paidAmount: effectivePaidAmount,
+            }
+          : {}),
 
-          totalRent,
-
-          entries: [
-            paymentEntry,
-          ],
-
-          balance:
-            totalRent -
-            amount,
-
-          status:
-            amount >= totalRent
-              ? "paid"
-              : "partial",
-        });
+        balance: Number(totalRent || 0) - effectivePaidAmount,
+        status:
+          effectivePaidAmount >= Number(totalRent || 0)
+            ? "paid"
+            : "partial",
+      });
 
       res.status(201).json({
         success: true,

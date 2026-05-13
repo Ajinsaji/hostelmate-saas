@@ -8,6 +8,7 @@ import BottomNav from "../components/BottomNav";
 function Dashboard() {
   const navigate = useNavigate();
   const [stats, setStats] = useState({ residents: "-", rooms: "-", occupancyRate: "-", pendingRent: "-", todayCollection: "-" });
+  const [pendingCount, setPendingCount] = useState(0);
   const [hostel, setHostel] = useState(null);
   const [ownerName, setOwnerName] = useState("Hostel Owner");
 
@@ -37,6 +38,35 @@ function Dashboard() {
     fetchStats();
   }, []);
 
+  // Fetch pending admission count with auto-refresh every 20 seconds
+  useEffect(() => {
+    const fetchPendingCount = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        const response = await axios.get(
+          `${import.meta.env.VITE_API_URL}/api/owner/pending-count`,
+          {
+            headers: { Authorization: `Bearer ${token}` }
+          }
+        );
+        if (response.data.success) {
+          setPendingCount(response.data.pendingAdmissions || 0);
+        }
+      } catch (error) {
+        console.error("Failed to fetch pending count", error);
+      }
+    };
+
+    fetchPendingCount();
+
+    // Optimized refresh: avoid overlapping requests
+    const interval = setInterval(() => {
+      fetchPendingCount();
+    }, 25000);
+
+    return () => clearInterval(interval);
+  }, []);
+
   return (
     <div className="pb-24">
       {/* HEADER */}
@@ -50,8 +80,34 @@ function Dashboard() {
             </p>
           </div>
           <div className="flex gap-3">
-            <button className="btn-icon" style={{ background: "rgba(255,255,255,0.2)", backdropFilter: "blur(10px)" }}>
+            <button 
+              className="btn-icon" 
+              style={{ background: "rgba(255,255,255,0.2)", backdropFilter: "blur(10px)", position: "relative" }}
+              onClick={() => navigate("/admissions")}
+            >
               <Bell size={24} color="white" />
+              {pendingCount > 0 && (
+                <span
+                  style={{
+                    position: "absolute",
+                    top: "-6px",
+                    right: "-6px",
+                    background: "#ef4444",
+                    color: "white",
+                    fontSize: "11px",
+                    fontWeight: "bold",
+                    width: "20px",
+                    height: "20px",
+                    borderRadius: "50%",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    animation: "pulse 2s infinite"
+                  }}
+                >
+                  {pendingCount}
+                </span>
+              )}
             </button>
             <button className="btn-icon" style={{ background: "rgba(255,255,255,0.2)", backdropFilter: "blur(10px)" }} onClick={() => navigate("/profile")}>
               <Settings size={24} color="white" />
