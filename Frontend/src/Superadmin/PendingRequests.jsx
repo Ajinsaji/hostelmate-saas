@@ -139,7 +139,7 @@ await api.put(`/api/admin/reject/${id}`);
               </div>
 
               {item.status === "Pending" && (
-                <div className="flex gap-3 mt-4 pt-4 border-t border-gray-100">
+<div className="flex gap-3 mt-4 pt-4" style={{ borderTop: "1px solid rgba(255,255,255,0.08)" }}>
                   <button
                     disabled={loadingActionId === item._id}
                     onClick={() => approveRequest(item._id)}
@@ -211,11 +211,11 @@ await api.put(`/api/admin/reject/${id}`);
 
               <div className="flex justify-between items-center mb-2">
                 <p className="text-sm"><strong>User:</strong> {approvedData.username}</p>
-                <button onClick={() => handleCopy(approvedData.username)}><Copy size={14} className="text-gray-400" /></button>
+<button onClick={() => handleCopy(approvedData.username)}><Copy size={14} style={{ color: "rgba(255,255,255,0.55)" }} /></button>
               </div>
               <div className="flex justify-between items-center">
                 <p className="text-sm"><strong>Pass:</strong> {approvedData.tempPassword}</p>
-                <button onClick={() => handleCopy(approvedData.tempPassword)}><Copy size={14} className="text-gray-400" /></button>
+<button onClick={() => handleCopy(approvedData.tempPassword)}><Copy size={14} style={{ color: "rgba(255,255,255,0.55)" }} /></button>
               </div>
             </div>
             <button onClick={() => setApprovedData(null)} style={{ marginTop: "20px", background: "var(--primary)", color: "white", padding: "14px", borderRadius: "12px", width: "100%", border: "none", fontWeight: 600 }}>

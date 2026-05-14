@@ -13,6 +13,9 @@ const {
   getAdmissions,
   approveAdmission,
   rejectAdmission,
+  updateHostelSettings,
+  updateOwnerProfile,
+  updateOwnerPassword,
 } = require("../controllers/ownerController");
 
 const ownerAuth = require("../middleware/ownerAuth");
@@ -28,6 +31,33 @@ router.get("/pending-count", ownerAuth, getPendingCount);
 router.get("/admissions", ownerAuth, getAdmissions);
 router.put("/admissions/:id/approve", ownerAuth, approveAdmission);
 router.put("/admissions/:id/reject", ownerAuth, rejectAdmission);
+
+// Owner Settings
+router.put("/hostel/settings", ownerAuth, updateHostelSettings);
+
+// profile update (multipart)
+const multer = require("multer");
+const fs = require("fs");
+const path = require("path");
+
+const uploadsDir = path.join(__dirname, "..", "uploads");
+if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
+
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, "uploads"),
+  filename: (req, file, cb) => cb(null, Date.now() + "-" + file.originalname),
+});
+
+const upload = multer({ storage });
+
+router.put(
+  "/profile/update",
+  ownerAuth,
+  upload.fields([{ name: "profileImage", maxCount: 1 }]),
+  updateOwnerProfile
+);
+router.put("/password/update", ownerAuth, updateOwnerPassword);
+
 
 // Superadmin actions
 router.put("/owners/reset-password", resetOwnerPassword);

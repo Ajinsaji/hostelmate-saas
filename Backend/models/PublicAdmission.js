@@ -14,7 +14,19 @@ const publicAdmissionSchema = new mongoose.Schema({
   roomPreference: String, // "Single", "Double", etc. or ObjectId
   photoFile: String,
   idProofFile: String,
+  // Legacy: uploaded signature file path (keep for backward compatibility)
   signatureFile: String,
+
+  // New immutable rules agreement + signature fields
+  signatureImage: String, // base64 PNG (from react-signature-canvas)
+  signedAt: Date,
+  rulesVersionId: String,
+  rulesVersionNumber: String,
+  acceptedRulesTextSnapshot: String,
+  agreementChecked: {
+    type: Boolean,
+    default: false,
+  },
   paymentStatus: {
     type: String,
     enum: ["pending", "paid", "failed"],

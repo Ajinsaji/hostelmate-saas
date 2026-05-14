@@ -19,6 +19,10 @@ import Payments from "./owner/Payments";
 import Reports from "./owner/Reports";
 import Profile from "./owner/Profile";
 import PendingAdmissions from "./owner/PendingAdmissions";
+import HostelSettings from "./owner/HostelSettings";
+import OwnerProfileEdit from "./owner/OwnerProfileEdit";
+import UpdatePassword from "./owner/UpdatePassword";
+
 import StaffManagement from "./owner/StaffManagement";
 
 import WardenDashboard from "./warden/Dashboard";
@@ -145,6 +149,31 @@ function App() {
             </OwnerProtectedRoute>
           }
         />
+        <Route
+          path="/owner/settings"
+          element={
+            <OwnerProtectedRoute>
+              <HostelSettings />
+            </OwnerProtectedRoute>
+          }
+        />
+        <Route
+          path="/owner/profile"
+          element={
+            <OwnerProtectedRoute>
+              <OwnerProfileEdit />
+            </OwnerProtectedRoute>
+          }
+        />
+        <Route
+          path="/owner/update-password"
+          element={
+            <OwnerProtectedRoute>
+              <UpdatePassword />
+            </OwnerProtectedRoute>
+          }
+        />
+
         <Route
           path="/staff"
           element={

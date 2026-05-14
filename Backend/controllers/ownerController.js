@@ -355,6 +355,14 @@ const approveAdmission = async (req, res) => {
       status: "active",
       aadhaarPhoto: admission.idProofFile,
       userPhoto: admission.photoFile,
+
+      // Immutable consent snapshot copied from PublicAdmission at approval time
+      rulesVersionId: admission.rulesVersionId,
+      rulesVersionNumber: admission.rulesVersionNumber,
+      acceptedRulesTextSnapshot: admission.acceptedRulesTextSnapshot,
+      signatureImage: admission.signatureImage,
+      signedAt: admission.signedAt,
+      agreementChecked: admission.agreementChecked,
     });
 
     admission.status = "Approved";
@@ -427,6 +435,119 @@ const rejectAdmission = async (req, res) => {
   }
 };
 
+const updateHostelSettings = async (req, res) => {
+  try {
+    const { hostelId } = req.owner;
+    const {
+      hostelName,
+      address,
+      district,
+      pincode,
+      phone,
+      whatsapp,
+      amenities,
+      rules,
+      description,
+    } = req.body || {};
+
+    if (!hostelId) {
+      return res.status(401).json({ success: false, message: "Unauthorized" });
+    }
+
+    const updates = {
+      hostelName,
+      address,
+      district,
+      pincode,
+      phone,
+      whatsapp,
+      amenities,
+      rules,
+      description,
+    };
+
+    // Keep only defined keys
+    Object.keys(updates).forEach((k) => updates[k] === undefined && delete updates[k]);
+
+    const updated = await Hostel.findByIdAndUpdate(hostelId, updates, { new: true, runValidators: true });
+    if (!updated) {
+      return res.status(404).json({ success: false, message: "Hostel not found" });
+    }
+
+    res.status(200).json({ success: true, message: "Hostel settings updated", hostel: updated });
+  } catch (e) {
+    console.error("updateHostelSettings error:", e);
+    return res.status(500).json({ success: false, message: "Failed to update hostel settings", data: null });
+  }
+};
+
+const updateOwnerProfile = async (req, res) => {
+  try {
+    const { ownerId } = req.owner;
+    const { ownerName, phone, email } = req.body || {};
+
+    if (!ownerId) return res.status(401).json({ success: false, message: "Unauthorized", data: null });
+
+    if (!ownerName?.toString().trim()) return res.status(400).json({ success: false, message: "ownerName is required", data: null });
+    if (!phone?.toString().trim()) return res.status(400).json({ success: false, message: "phone is required", data: null });
+    if (!email?.toString().trim()) return res.status(400).json({ success: false, message: "email is required", data: null });
+
+    const updates = {
+      ownerName,
+      phone,
+      email,
+      updatedAt: new Date(),
+    };
+
+    if (req.files?.profileImage?.[0]?.filename) {
+      updates.profileImage = req.files.profileImage[0].filename;
+    }
+
+    const updated = await Owner.findByIdAndUpdate(ownerId, updates, { new: true, runValidators: true });
+    if (!updated) return res.status(404).json({ success: false, message: "Owner not found", data: null });
+
+    return res.status(200).json({ success: true, message: "Profile updated", data: { owner: updated } });
+  } catch (e) {
+    console.error("updateOwnerProfile error:", e);
+    return res.status(500).json({ success: false, message: "Failed to update profile", data: null });
+  }
+};
+
+const updateOwnerPassword = async (req, res) => {
+  try {
+    const { ownerId } = req.owner;
+    const { currentPassword, newPassword, confirmPassword } = req.body || {};
+
+    if (!ownerId) return res.status(401).json({ success: false, message: "Unauthorized", data: null });
+
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      return res.status(400).json({ success: false, message: "All fields are required", data: null });
+    }
+    if (newPassword.length < 6) {
+      return res.status(400).json({ success: false, message: "New password must be at least 6 characters", data: null });
+    }
+    if (newPassword !== confirmPassword) {
+      return res.status(400).json({ success: false, message: "Confirm password does not match", data: null });
+    }
+
+    const owner = await Owner.findById(ownerId);
+    if (!owner) return res.status(404).json({ success: false, message: "Owner not found", data: null });
+
+    const ok = await bcrypt.compare(currentPassword, owner.password);
+    if (!ok) return res.status(400).json({ success: false, message: "Current password is incorrect", data: null });
+
+    const salt = await bcrypt.genSalt(10);
+    owner.password = await bcrypt.hash(newPassword, salt);
+    owner.updatedAt = new Date();
+    await owner.save();
+
+    return res.status(200).json({ success: true, message: "Password updated", data: null });
+  } catch (e) {
+    console.error("updateOwnerPassword error:", e);
+    return res.status(500).json({ success: false, message: "Failed to update password", data: null });
+  }
+};
+
 module.exports = {
   loginOwner,
   resetOwnerPassword,
@@ -438,6 +559,12 @@ module.exports = {
   getAdmissions,
   approveAdmission,
   rejectAdmission,
+  updateHostelSettings,
+  updateOwnerProfile,
+  updateOwnerPassword,
 };
+
+
+
 
 

@@ -1,207 +1,207 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
-import { UserPlus, Users, Phone, MapPin, Calendar, BedDouble, FileText, Trash2, Edit2, Search, MessageCircle, PhoneCall, Upload } from "lucide-react";
+import {
+  UserPlus,
+  Users,
+  Phone,
+  MapPin,
+  Calendar,
+  BedDouble,
+  FileText,
+  Trash2,
+  Edit2,
+  Search,
+  MessageCircle,
+  PhoneCall,
+  Upload,
+  Info,
+  CreditCard,
+  ShieldCheck,
+  Map,
+  IdCard,
+  X,
+} from "lucide-react";
 import toast from "react-hot-toast";
 import BottomNav from "../components/BottomNav";
 
 function Residents() {
   const [residents, setResidents] = useState([]);
   const [rooms, setRooms] = useState([]);
+
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingResident, setEditingResident] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
-  
+
   const [formData, setFormData] = useState({
-    name: "", phone: "", address: "", parentsNumber: "", 
-    roomId: "", bedId: "", paymentMode: "Cash", monthlyRent: "", depositAmount: "0", joinDate: "",
+    name: "",
+    phone: "",
+    address: "",
+    parentsNumber: "",
+    roomId: "",
+    bedId: "",
+    paymentMode: "Cash",
+    monthlyRent: "",
+    depositAmount: "0",
+    joinDate: "",
   });
   const [photoFile, setPhotoFile] = useState(null);
   const [idProofFile, setIdProofFile] = useState(null);
 
+  const [payments, setPayments] = useState([]);
+  const [loadingPayments, setLoadingPayments] = useState(false);
+
+  const [viewResident, setViewResident] = useState(null);
+  const [showViewModal, setShowViewModal] = useState(false);
+  const [viewLoadingPayments, setViewLoadingPayments] = useState(false);
+  const [viewPayments, setViewPayments] = useState([]);
+
   const token = localStorage.getItem("token");
+  const photoBaseURL = `${import.meta.env.VITE_API_URL}/uploads/`;
 
-  const fetchResidents = async () => {
-    try {
-      const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/residents/hostel`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setResidents(response.data.residents || []);
-    } catch (error) {
-      console.log(error);
+  const monthToIndex = (monthStr) => {
+    if (!monthStr) return null;
+    const s = String(monthStr).trim();
+
+    const iso = s.match(/^\s*(\d{4})-(\d{1,2})\s*$/);
+    if (iso) return Number(iso[1]) * 12 + (Number(iso[2]) - 1);
+
+    const alt = s.match(/^\s*(\d{4})\/(\d{1,2})/);
+    if (alt) return Number(alt[1]) * 12 + (Number(alt[2]) - 1);
+
+    const m = s.match(/^\s*([A-Za-z]+)\s+(\d{4})\s*$/);
+    if (m) {
+      const monthName = m[1].toLowerCase();
+      const year = Number(m[2]);
+      const map = {
+        january: 0,
+        february: 1,
+        march: 2,
+        april: 3,
+        may: 4,
+        june: 5,
+        july: 6,
+        august: 7,
+        september: 8,
+        october: 9,
+        november: 10,
+        december: 11,
+      };
+      const idx = map[monthName];
+      if (idx !== undefined) return year * 12 + idx;
     }
+
+    return null;
   };
 
-  const fetchRooms = async () => {
-    try {
-      const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/rooms/get-rooms`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setRooms(response.data.rooms || []);
-    } catch (error) {
-      console.log(error);
-    }
+  const formatNextDueDateFromMonth = (monthStr) => {
+    const idx = monthToIndex(monthStr);
+    if (idx === null) return "N/A";
+
+    const year = Math.floor((idx + 1) / 12);
+    const monthIdx = (idx + 1) % 12;
+
+    const dt = new Date(year, monthIdx, 1);
+    return dt.toLocaleDateString();
   };
 
-  useEffect(() => {
-    fetchResidents();
-    fetchRooms();
-  }, []);
-
-  const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    try {
-      const data = new FormData();
-      Object.keys(formData).forEach(key => data.append(key, formData[key]));
-      if (photoFile) data.append("photo", photoFile);
-      if (idProofFile) data.append("idProof", idProofFile);
-
-      if (editingResident) {
-        await axios.put(
-          `${import.meta.env.VITE_API_URL}/api/residents/update/${editingResident._id}`,
-          data,
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
-        toast.success("Resident updated successfully!");
-      } else {
-        await axios.post(
-          `${import.meta.env.VITE_API_URL}/api/residents/create`,
-          data,
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
-        toast.success("Resident added successfully!");
-      }
-      
-      fetchResidents();
-      fetchRooms(); // refresh bed availability
-      setShowAddForm(false);
-      setEditingResident(null);
-      setFormData({
-        name: "", phone: "", address: "", parentsNumber: "", 
-        roomId: "", bedId: "", paymentMode: "Cash", monthlyRent: "", depositAmount: "0", joinDate: "",
-      });
-      setPhotoFile(null);
-      setIdProofFile(null);
-    } catch (error) {
-      toast.error(error.response?.data?.message || "Error saving resident");
-      console.log(error);
-    }
+  const safeParseDate = (d) => {
+    if (!d) return null;
+    const date = new Date(d);
+    return Number.isNaN(date.getTime()) ? null : date;
   };
 
-  const handleDelete = async (id) => {
-    try {
-      await axios.delete(`${import.meta.env.VITE_API_URL}/api/residents/delete/${id}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      toast.success("Resident deleted successfully!");
-      fetchResidents();
-    } catch (error) {
-      toast.error("Error deleting resident");
-      console.log(error);
-    }
+  const formatDate = (d) => {
+    const date = safeParseDate(d);
+    return date ? date.toLocaleDateString() : "N/A";
   };
 
-  const handleEdit = (res) => {
-    setFormData({
-      name: res.name || "",
-      phone: res.phone || "",
-      address: res.address || "",
-      parentsNumber: res.parentsNumber || "",
-      roomId: res.roomId || "",
-      bedId: res.bedId || "",
-      paymentMode: "Cash",
-      monthlyRent: res.monthlyRent || "",
-      depositAmount: res.depositAmount || "0",
-      joinDate: res.joinDate ? new Date(res.joinDate).toISOString().split('T')[0] : "",
+  const paymentsByResident = useMemo(() => {
+    const map = {};
+    for (const p of payments || []) {
+      const rid = p?.residentId?._id || p?.residentId;
+      if (!rid) continue;
+      if (!map[rid]) map[rid] = [];
+      map[rid].push(p);
+    }
+    return map;
+  }, [payments]);
+
+  const computeResidentDue = (resident) => {
+    const rid = resident?._id;
+    const pr = paymentsByResident?.[rid];
+    const list = Array.isArray(pr) ? pr : [];
+
+    const sorted = [...list].sort((a, b) => {
+      const ai = monthToIndex(a.month) ?? -Infinity;
+      const bi = monthToIndex(b.month) ?? -Infinity;
+      return bi - ai;
     });
-    setEditingResident(res);
-    setShowAddForm(true);
-    window.scrollTo({ top: 0, behavior: "smooth" });
+
+    const latest = sorted[0] || null;
+
+    if (!latest) {
+      return {
+        status: "overdue", // no payment found -> treat as overdue/pending visually
+        nextDueDate: "N/A",
+        remainingDays: null,
+        overdueDays: null,
+        totalPaid: 0,
+        balance: 0,
+        lastPaymentMonth: null,
+        latestPayment: null,
+      };
+    }
+
+    const balance = Number(latest.balance ?? 0);
+    const statusFromBackend = String(latest.status || "").toLowerCase();
+
+    let status = "partial";
+    if (balance <= 0 || statusFromBackend === "paid") status = "paid";
+    else if (statusFromBackend === "pending") status = "overdue"; // pending dues treated as overdue if not paid
+    else status = statusFromBackend === "partial" ? "partial" : "partial";
+
+    const nextDueDate = formatNextDueDateFromMonth(latest.month);
+
+    // Remaining days to next due (1st of next month), if nextDueDate can be derived.
+    let remainingDays = null;
+    let overdueDays = null;
+    const now = new Date();
+
+    const latestIdx = monthToIndex(latest.month);
+    if (latestIdx !== null) {
+      const dueYear = Math.floor((latestIdx + 1) / 12);
+      const dueMonth = (latestIdx + 1) % 12;
+      const dueDt = new Date(dueYear, dueMonth, 1);
+      const diffMs = dueDt.getTime() - now.getTime();
+      const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+
+      if (diffDays >= 0) remainingDays = diffDays;
+      else overdueDays = Math.abs(diffDays);
+
+      // Color status logic: overdue when balance still > 0 AND latest month is before current month.
+      const currentIdx = now.getFullYear() * 12 + now.getMonth();
+      if (latestIdx < currentIdx && balance > 0) status = "overdue";
+    }
+
+    const totalPaid = (latest.entries || []).reduce((sum, e) => sum + Number(e?.amount || 0), 0);
+
+    return {
+      status,
+      nextDueDate,
+      remainingDays,
+      overdueDays,
+      totalPaid,
+      balance: balance,
+      lastPaymentMonth: latest.month,
+      latestPayment: latest,
+    };
   };
 
-  const filteredResidents = residents.filter(r => 
-    r.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    r.phone?.includes(searchQuery)
-  );
-
-  const selectedRoom = rooms.find(r => r._id === formData.roomId);
-
-  return (
-    <div className="pb-24" style={{ minHeight: "100vh" }}>
-      {/* HEADER */}
-      <div className="gradient-header mb-6">
-        <h1 className="text-h1 mb-2">Residents</h1>
-        <p style={{ opacity: 0.8 }}>Manage hostel residents & details</p>
-        
-        <div style={{ position: "absolute", bottom: "-20px", right: "20px" }}>
-          <button 
-            className="btn-icon" 
-            style={{ width: "56px", height: "56px", background: "var(--accent)" }}
-            onClick={() => { setShowAddForm(!showAddForm); setEditingResident(null); }}
-          >
-            <UserPlus size={24} color="var(--primary-dark)" />
-          </button>
-        </div>
-      </div>
-
-      <div className="p-4">
-        {/* Search */}
-        {!showAddForm && (
-          <div className="input-group mb-6">
-            <div style={{ position: "relative" }}>
-              <Search size={20} style={{ position: "absolute", left: "16px", top: "16px", color: "var(--text-muted)" }} />
-              <input
-                type="text"
-                placeholder="Search residents by name or phone..."
-                className="input-field"
-                style={{ paddingLeft: "48px" }}
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </div>
-          </div>
-        )}
-
-        {/* ADD / EDIT RESIDENT FORM */}
-        {showAddForm && (
-          <div className="card animate-slide-up mb-6">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-h2">{editingResident ? "Edit Resident" : "Add New Resident"}</h2>
-              <button className="btn-icon" style={{ width: 32, height: 32 }} onClick={() => setShowAddForm(false)}>
-                <Trash2 size={16} />
-              </button>
-            </div>
-            
-            <form onSubmit={handleSubmit}>
-              <div className="input-group">
-                <span className="input-label">Full Name</span>
-                <input name="name" placeholder="e.g. John Doe" className="input-field" value={formData.name} onChange={handleChange} required />
-              </div>
-              
-              <div className="flex gap-4 mb-4">
-                <div className="input-group" style={{ marginBottom: 0 }}>
-                  <span className="input-label">Phone</span>
-                  <input name="phone" placeholder="Mobile Number" className="input-field" value={formData.phone} onChange={handleChange} required />
-                </div>
-                <div className="input-group" style={{ marginBottom: 0 }}>
-                  <span className="input-label">Parents Phone</span>
-                  <input name="parentsNumber" placeholder="Emergency" className="input-field" value={formData.parentsNumber} onChange={handleChange} />
-                </div>
-              </div>
-              
-              <div className="flex gap-4 mb-4">
-                <div className="input-group" style={{ marginBottom: 0 }}>
-                  <span className="input-label">Room</span>
-                  <select name="roomId" className="input-field" value={formData.roomId} onChange={handleChange} required>
-                    <option value="">Select Room</option>
-                    {rooms.map(r => (
-                      <option key={r._id} value={r._id}>Room {r.roomNumber}</option>
-                    ))}
-                  </select>
-                </div>
-                <div className="input-group" style={{ marginBottom: 0 }}>
-                  <span className="input-label">Bed</span>
+  const filteredResidents = useMemo(() => {
+    return residents.filter(
+      (r) =>
+        r.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        r.phone?.includes(searchQuery)
                   <select name="bedId" className="input-field" value={formData.bedId} onChange={handleChange} required>
                     <option value="">Select Bed</option>
                     {selectedRoom?.beds?.map(b => (
@@ -350,3 +350,4 @@ function Residents() {
 }
 
 export default Residents;
+

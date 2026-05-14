@@ -57,6 +57,14 @@ const submitAdmission = async (req, res) => {
       emergencyContact,
       address,
       roomPreference,
+
+      // rules agreement fields (immutable snapshot)
+      rulesVersionId,
+      rulesVersionNumber,
+      acceptedRulesTextSnapshot,
+      agreementChecked,
+      signatureImage,
+      signedAt,
     } = req.body;
 
     // Files
@@ -64,9 +72,31 @@ const submitAdmission = async (req, res) => {
     const idProofFile = req.files?.idProofFile?.[0]?.filename;
     const signatureFile = req.files?.signatureFile?.[0]?.filename;
 
-    if (!photoFile || !idProofFile || !signatureFile) {
+    // Enforce rules agreement + signature for new flow
+    // (Legacy flow keeps working for already-stored uploads)
+    const isNewSignatureFlow = !!signatureImage;
+    if (isNewSignatureFlow) {
+      const checked = agreementChecked === "true" || agreementChecked === true;
+      if (!checked) {
+        return res.status(400).json({ success: false, message: "Please accept the rules agreement." });
+      }
+      if (!signatureImage) {
+        return res.status(400).json({ success: false, message: "Please provide your signature." });
+      }
+      if (!acceptedRulesTextSnapshot || !rulesVersionId || !rulesVersionNumber) {
+        return res.status(400).json({ success: false, message: "Rules agreement snapshot is missing." });
+      }
+    }
+
+    // Backward compatible validation:
+    // - New flow: signatureImage already validated above
+    // - Legacy flow: signatureFile required
+    const isLegacySignature = !!signatureFile;
+    if (!photoFile || !idProofFile || (!isNewSignatureFlow && !isLegacySignature)) {
       return res.status(400).json({ success: false, message: "Please upload photo, ID proof, and signature." });
     }
+
+
 
     const admission = await PublicAdmission.create({
       hostelId: hostel._id,
@@ -79,7 +109,18 @@ const submitAdmission = async (req, res) => {
       roomPreference,
       photoFile,
       idProofFile,
+
+      // legacy upload signature path
       signatureFile,
+
+      // new immutable agreement fields
+      rulesVersionId,
+      rulesVersionNumber,
+      acceptedRulesTextSnapshot,
+      agreementChecked: agreementChecked === "true" || agreementChecked === true,
+      signatureImage,
+      signedAt: signedAt ? new Date(signedAt) : new Date(),
+
       paymentStatus: "pending",
       status: "Pending"
     });

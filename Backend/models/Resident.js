@@ -21,6 +21,17 @@ const residentSchema = new mongoose.Schema({
 
   joinDate: Date,
 
+  // Immutable rules agreement + signature record (copied from PublicAdmission at approval)
+  rulesVersionId: String,
+  rulesVersionNumber: String,
+  acceptedRulesTextSnapshot: String,
+  signatureImage: String, // base64 PNG from signature pad
+  signedAt: Date,
+  agreementChecked: {
+    type: Boolean,
+    default: false,
+  },
+
   status: {
     type: String,
     default: "active",
