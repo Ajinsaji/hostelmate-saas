@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
-import { Plus, Trash2, Users, Edit2, Search, BedDouble, User, Phone, Shield, ArrowLeftRight } from "lucide-react";
+import { Plus, Trash2, Users, Edit2, Search, BedDouble, Phone, ArrowLeftRight } from "lucide-react";
 import toast from "react-hot-toast";
 import BottomNav from "../components/BottomNav";
 
 function Rooms() {
   const token = localStorage.getItem("token");
+
+  const apiBase = import.meta.env.VITE_API_URL;
 
   const [rooms, setRooms] = useState([]);
   const [showAddForm, setShowAddForm] = useState(false);
@@ -137,11 +139,165 @@ function Rooms() {
       .join("");
   };
 
-const handleAssignBed = () => toast("Assign bed action is not wired on this build.");
+  const phoneRegex = /^[0-9]{10}$/;
+
+  const [assignModalOpen, setAssignModalOpen] = useState(false);
+  const [assignLoading, setAssignLoading] = useState(false);
+  const [assignError, setAssignError] = useState("");
+
+  const [checkoutModalOpen, setCheckoutModalOpen] = useState(false);
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
+
+  const [selectedBedCtx, setSelectedBedCtx] = useState(null); // { roomId, bedId, bedNumber }
+  const [checkoutCtx, setCheckoutCtx] = useState(null); // { residentId, residentName, roomNumber, bedNumber }
+
+  const [assignForm, setAssignForm] = useState({
+    name: "",
+    phone: "",
+    monthlyRent: "",
+    depositAmount: "",
+    joinDate: "",
+    photoFile: null,
+    idProofFile: null,
+  });
+
+  const openAssignModal = (room, bed) => {
+    if (!bed?._id || !room?._id) {
+      toast.error("Cannot assign: invalid room/bed.");
+      return;
+    }
+    setAssignError("");
+    setAssignForm((prev) => ({
+      ...prev,
+      name: "",
+      phone: "",
+      monthlyRent: bed?.roomRentPerBed ?? bed?.rentPerBed ?? prev.monthlyRent ?? "",
+      depositAmount: "",
+      joinDate: new Date().toISOString().slice(0, 10),
+      photoFile: null,
+      idProofFile: null,
+    }));
+    setSelectedBedCtx({ roomId: room._id, bedId: bed._id, bedNumber: bed.bedNumber, roomNumber: room.roomNumber });
+    setAssignModalOpen(true);
+  };
+
+  const openCheckoutModal = (room, bed) => {
+    const resident = bed?.resident || bed?.occupant;
+    const residentId = resident?._id || bed?.residentId || resident?.id;
+
+    if (!residentId) {
+      toast.error("Cannot checkout: resident not found on this bed.");
+      return;
+    }
+
+    setCheckoutCtx({
+      residentId,
+      residentName: resident?.name || "Resident",
+      roomNumber: room?.roomNumber,
+      bedNumber: bed?.bedNumber,
+    });
+    setCheckoutModalOpen(true);
+  };
+
+  const closeAssignModal = () => {
+    if (assignLoading) return;
+    setAssignModalOpen(false);
+    setSelectedBedCtx(null);
+  };
+
+  const closeCheckoutModal = () => {
+    if (checkoutLoading) return;
+    setCheckoutModalOpen(false);
+    setCheckoutCtx(null);
+  };
+
+  const validateAssign = () => {
+    if (!assignForm.name?.trim()) return "Resident name is required.";
+    if (!assignForm.phone?.trim()) return "Phone number is required.";
+    if (!phoneRegex.test(assignForm.phone.trim())) return "Phone number must be 10 digits.";
+    if (!assignForm.monthlyRent || Number(assignForm.monthlyRent) <= 0) return "Monthly rent is required.";
+    if (!assignForm.depositAmount && assignForm.depositAmount !== "0") return "Deposit amount is required.";
+    if (!assignForm.joinDate) return "Join date is required.";
+    if (!selectedBedCtx?.roomId || !selectedBedCtx?.bedId) return "Invalid room/bed selected.";
+    return "";
+  };
+
+  const submitAssign = async () => {
+    const err = validateAssign();
+    if (err) {
+      toast.error(err);
+      setAssignError(err);
+      return;
+    }
+
+    setAssignLoading(true);
+    setAssignError("");
+
+    try {
+      const fd = new FormData();
+      fd.append("name", assignForm.name.trim());
+      fd.append("phone", assignForm.phone.trim());
+      fd.append("roomId", selectedBedCtx.roomId);
+      fd.append("bedId", selectedBedCtx.bedId);
+      fd.append("monthlyRent", String(assignForm.monthlyRent));
+      fd.append("depositAmount", String(assignForm.depositAmount || 0));
+      fd.append("joinDate", assignForm.joinDate);
+
+      // Optional uploads (not required)
+      if (assignForm.photoFile) fd.append("photo", assignForm.photoFile);
+      if (assignForm.idProofFile) fd.append("idProof", assignForm.idProofFile);
+
+      await axios.post(
+        `${import.meta.env.VITE_API_URL}/api/residents/create`,
+        fd,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+
+      toast.success("Resident assigned successfully!");
+      closeAssignModal();
+      fetchRooms();
+    } catch (error) {
+      const msg = error?.response?.data?.message || "Failed to assign resident.";
+      setAssignError(msg);
+      toast.error(msg);
+    } finally {
+      setAssignLoading(false);
+    }
+  };
+
+  const submitCheckout = async () => {
+    if (!checkoutCtx?.residentId) {
+      toast.error("Missing resident for checkout.");
+      return;
+    }
+
+    setCheckoutLoading(true);
+    try {
+      await axios.put(
+        `${import.meta.env.VITE_API_URL}/api/residents/checkout/${checkoutCtx.residentId}`,
+        {},
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+
+      toast.success("Checkout successful.");
+      closeCheckoutModal();
+      fetchRooms();
+    } catch (error) {
+      const msg = error?.response?.data?.message || "Failed to checkout resident.";
+      toast.error(msg);
+    } finally {
+      setCheckoutLoading(false);
+    }
+  };
+
   const handleViewResident = (resident) => {
     toast(`View resident: ${resident?.name || resident?._id || "N/A"}`);
   };
-  const handleRemoveBed = () => toast("Remove bed action is not wired on this build.");
+
 
   return (
     <div className="pb-32" style={{ minHeight: "100vh", position: "relative", zIndex: 100, overflowX: "hidden" }}>

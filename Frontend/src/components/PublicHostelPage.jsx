@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import { api } from "../services/api";
 import toast from "../services/toast";
+import SignatureCanvas from "react-signature-canvas";
 import {
   Upload,
   User,
@@ -15,7 +16,10 @@ import {
   Tv,
   ArrowRight,
   ArrowLeft,
+  Save,
+  Trash2,
 } from "lucide-react";
+
 
 function PublicHostelPage() {
   const { hostelCode } = useParams();
@@ -32,15 +36,46 @@ function PublicHostelPage() {
   });
   const [photoFile, setPhotoFile] = useState(null);
   const [idProofFile, setIdProofFile] = useState(null);
+
+  // Legacy signature upload (keep for backward compatibility)
   const [signatureFile, setSignatureFile] = useState(null);
+
+  // New signature pad flow
+  const signaturePadRef = useRef(null);
+  const [signatureImage, setSignatureImage] = useState(null); // base64 PNG
+  const [signatureSavedAt, setSignatureSavedAt] = useState(null);
+
+  // Rules & agreement
+  const [agreementChecked, setAgreementChecked] = useState(false);
+  const [acceptedRulesTextSnapshot, setAcceptedRulesTextSnapshot] = useState("");
+  const [rulesVersionId, setRulesVersionId] = useState("");
+  const [rulesVersionNumber, setRulesVersionNumber] = useState("");
+
+  // If backend does not expose active rules snapshot publicly yet,
+  // we still require the checkbox + signature to be provided.
+  // The immutable snapshot fields will be validated only when using the new signature flow.
+
+
   const [formStep, setFormStep] = useState(0); // 0 = view hostel, 1 = details, 2 = docs, 3 = success
   const [isSubmitting, setIsSubmitting] = useState(false);
+
 
   useEffect(() => {
     const fetchHostel = async () => {
       try {
         const response = await api.get(`/api/public/hostel/${hostelCode}`);
         setHostel(response.data.hostel);
+
+        // If backend starts exposing rules fields in public hostel payload, wire them here.
+        // Otherwise, user can still see generic rules text below.
+        const h = response.data?.hostel;
+        const rvId = h?.rulesVersionId || h?.rulesVersionID || "";
+        const rvNum = h?.rulesVersionNumber || h?.rulesVersionNo || "";
+        const rulesText = h?.activeRulesText || h?.currentActiveRulesText || h?.rulesText || "";
+
+        if (rvId) setRulesVersionId(rvId);
+        if (rvNum) setRulesVersionNumber(rvNum);
+        if (rulesText) setAcceptedRulesTextSnapshot(rulesText);
       } catch (error) {
         toast.error("Hostel not found");
       } finally {
@@ -49,6 +84,7 @@ function PublicHostelPage() {
     };
     fetchHostel();
   }, [hostelCode]);
+
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -59,10 +95,36 @@ function PublicHostelPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!photoFile || !idProofFile || !signatureFile) {
+    // Backward compatibility: legacy flow used signatureFile upload.
+    // New immutable agreement flow requires: agreement checked + signature pad saved.
+    if (!photoFile || !idProofFile) {
       toast.error("Please upload all required documents");
       return;
     }
+
+    const usingNewFlow = !!signatureImage;
+
+    if (usingNewFlow) {
+      if (!agreementChecked) {
+        toast.error("Please accept the rules agreement.");
+        return;
+      }
+      if (!signatureImage) {
+        toast.error("Please provide your signature.");
+        return;
+      }
+      if (!acceptedRulesTextSnapshot || !rulesVersionId || !rulesVersionNumber) {
+        toast.error("Rules agreement snapshot is missing.");
+        return;
+      }
+    } else {
+      // Legacy signatureFile still supported for old admissions.
+      if (!signatureFile) {
+        toast.error("Please upload your signature.");
+        return;
+      }
+    }
+
 
     setIsSubmitting(true);
 
@@ -70,7 +132,23 @@ function PublicHostelPage() {
     Object.keys(formData).forEach((key) => data.append(key, formData[key]));
     data.append("photoFile", photoFile);
     data.append("idProofFile", idProofFile);
-    data.append("signatureFile", signatureFile);
+
+    // Legacy support: signatureFile upload (keep API compatibility)
+    if (signatureFile) {
+      data.append("signatureFile", signatureFile);
+    }
+
+    // New immutable agreement fields (only when using the new signature pad)
+    if (signatureImage) {
+      const signedAt = signatureSavedAt ? new Date(signatureSavedAt) : new Date();
+      data.append("signatureImage", signatureImage);
+      data.append("signedAt", signedAt.toISOString());
+      data.append("rulesVersionId", rulesVersionId);
+      data.append("rulesVersionNumber", rulesVersionNumber);
+      data.append("acceptedRulesTextSnapshot", acceptedRulesTextSnapshot);
+      data.append("agreementChecked", agreementChecked ? "true" : "false");
+    }
+
 
     try {
       const response = await api.post(`/api/public/hostel/${hostelCode}/admission`, data);
@@ -310,7 +388,7 @@ function PublicHostelPage() {
                 <ArrowLeft size={20} />
               </button>
               <h2 className="text-h2" style={{ color: "var(--text-main)", margin: 0 }}>
-                Upload Documents
+                Rules & Signature
               </h2>
             </div>
 
@@ -322,7 +400,134 @@ function PublicHostelPage() {
             <form onSubmit={handleSubmit} className="flex flex-col gap-4">
               <UploadBox label="Upload Your Photo" file={photoFile} setFile={setPhotoFile} />
               <UploadBox label="Upload ID Proof (Aadhaar)" file={idProofFile} setFile={setIdProofFile} />
-              <UploadBox label="Upload Signature" file={signatureFile} setFile={setSignatureFile} />
+
+              {/* Rules & Regulations */}
+              <div className="rounded-2xl p-4" style={{ background: "rgba(11,23,57,0.35)", border: "1px solid rgba(255,255,255,0.08)" }}>
+                <h3 className="text-small" style={{ color: "var(--primary-light)", fontWeight: 800, marginBottom: 8 }}>
+                  Rules & Regulations
+                </h3>
+                <div className="flex flex-col gap-2 mb-3">
+                  <div className="text-xs" style={{ color: "rgba(255,255,255,0.75)" }}>
+                    <strong>Current Rules Version:</strong> {rulesVersionNumber || "N/A"}
+                  </div>
+                  <div className="text-xs" style={{ color: "rgba(255,255,255,0.75)" }}>
+                    <strong>Active Rules Text:</strong>
+                    <span style={{ marginLeft: 6 }}>(immutable snapshot)</span>
+                  </div>
+                </div>
+
+                <div
+                  style={{
+                    maxHeight: 180,
+                    overflowY: "auto",
+                    padding: 12,
+                    borderRadius: 14,
+                    background: "rgba(3,7,18,0.55)",
+                    border: "1px solid rgba(255,255,255,0.08)",
+                  }}
+                  className="no-scrollbar"
+                >
+                  <div className="text-small" style={{ color: "rgba(255,255,255,0.88)", lineHeight: 1.5, whiteSpace: "pre-wrap" }}>
+                    {acceptedRulesTextSnapshot ||
+                      "Rules are currently unavailable. Your submission will require the latest rules snapshot from backend admin."}
+                  </div>
+                </div>
+
+                <label style={{ display: "flex", alignItems: "flex-start", gap: 10, marginTop: 12, cursor: "pointer" }}>
+                  <input
+                    type="checkbox"
+                    checked={agreementChecked}
+                    onChange={(e) => setAgreementChecked(e.target.checked)}
+                    style={{ marginTop: 4, width: 18, height: 18, accentColor: "#22c55e" }}
+                    aria-label="I agree to the hostel rules and regulations"
+                  />
+                  <span className="text-small" style={{ color: "rgba(255,255,255,0.9)" }}>
+                    I have read and agree to the hostel rules and regulations.
+                  </span>
+                </label>
+              </div>
+
+              {/* Signature pad */}
+              <div className="rounded-2xl p-4" style={{ background: "rgba(11,23,57,0.35)", border: "1px solid rgba(255,255,255,0.08)" }}>
+                <h3 className="text-small" style={{ color: "var(--primary-light)", fontWeight: 800, marginBottom: 8 }}>
+                  Digital Signature
+                </h3>
+                <div
+                  style={{
+                    borderRadius: 16,
+                    border: "1px solid rgba(255,255,255,0.10)",
+                    background: "rgba(3,7,18,0.55)",
+                    overflow: "hidden",
+                  }}
+                >
+                  <SignatureCanvas
+                    ref={(ref) => (signaturePadRef.current = ref)}
+                    penColor="#EFFFF8"
+                    canvasProps={{
+                      className: "signature-pad-canvas",
+                      style: {
+                        width: "100%",
+                        height: 180,
+                        touchAction: "none",
+                      },
+                    }}
+                    onEnd={() => {
+                      // no-op; drawing updates are handled on Save
+                    }}
+                    backgroundColor="rgba(0,0,0,0)"
+                    // signature pad uses bitmap; keep ratio stable by forcing redraw on resize via wrapper CSS if needed
+                    clearOnResize={false}
+                  />
+                </div>
+
+                <div className="flex gap-2 mt-3">
+                  <button
+                    type="button"
+                    className="btn-secondary flex-1 py-3"
+                    style={{ borderColor: "rgba(255,255,255,0.10)" }}
+                    onClick={() => {
+                      signaturePadRef.current?.clear?.();
+                      setSignatureImage(null);
+                      setSignatureSavedAt(null);
+                    }}
+                  >
+                    <Trash2 size={16} style={{ marginRight: 6 }} /> Clear
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-primary flex-1 py-3"
+                    style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
+                    onClick={() => {
+                      if (!signaturePadRef.current) return;
+                      const isEmpty = signaturePadRef.current.isEmpty?.() ?? false;
+                      if (isEmpty) {
+                        toast.error("Please draw your signature first.");
+                        return;
+                      }
+                      const dataUrl = signaturePadRef.current.toDataURL("image/png");
+                      setSignatureImage(dataUrl);
+                      setSignatureSavedAt(new Date());
+                      toast.success("Signature saved.");
+                    }}
+                  >
+                    <Save size={16} /> Save Signature
+                  </button>
+                </div>
+
+                {signatureImage && (
+                  <div className="mt-3" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 16, padding: 12 }}>
+                    <div style={{ fontSize: 12, color: "rgba(255,255,255,0.75)", marginBottom: 8 }}>
+                      Saved at: {signatureSavedAt ? new Date(signatureSavedAt).toLocaleString() : ""}
+                    </div>
+                    <img src={signatureImage} alt="Saved signature" style={{ width: "100%", maxHeight: 120, objectFit: "contain" }} />
+                  </div>
+                )}
+              </div>
+
+              {/* Keep legacy signature file support but hide UI unless needed */}
+              <div style={{ display: "none" }}>
+                <UploadBox label="Upload Signature (Legacy)" file={signatureFile} setFile={setSignatureFile} />
+              </div>
 
               <button
                 disabled={isSubmitting}

@@ -20,6 +20,7 @@
     "react-dom": "^19.2.5",
     "react-hot-toast": "^2.6.0",
     "react-router-dom": "^7.15.0",
+    "react-signature-canvas": "^1.1.0-alpha.2",
     "react-toastify": "^11.1.0",
     "recharts": "^3.8.1",
     "tailwindcss": "^3.4.17"
