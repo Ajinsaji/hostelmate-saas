@@ -9,6 +9,7 @@ function Payments() {
   const [residents, setResidents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
+  const [savingPayment, setSavingPayment] = useState(false);
   const [formData, setFormData] = useState({
     residentId: "",
     month: "",
@@ -75,9 +76,29 @@ function Payments() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!formData.residentId || !formData.month || !formData.amount || !formData.totalRent) {
-      return toast.error("Please fill all required fields");
+
+    if (savingPayment) return;
+
+    // Basic validation
+    if (!formData.residentId) return toast.error("Resident is required");
+    if (!formData.month) return toast.error("Month is required");
+    if (!formData.totalRent) return toast.error("Total rent is required");
+
+    const amountNum = Number(formData.amount);
+    const totalRentNum = Number(formData.totalRent);
+    if (!Number.isFinite(amountNum) || amountNum <= 0) return toast.error("Payment amount must be greater than 0");
+    if (!Number.isFinite(totalRentNum) || totalRentNum <= 0) return toast.error("Total rent must be greater than 0");
+
+    // Prevent invalid partial calculations from UI
+    if (formData.paymentMethod === "partial") {
+      const cash = Number(formData.cashAmount || 0);
+      const online = Number(formData.onlineAmount || 0);
+      if (cash <= 0 && online <= 0) return toast.error("Cash/Online amounts must be greater than 0 for partial payments");
+      if (amountNum !== cash + online) return toast.error("Partial amounts do not match total paid");
     }
+
+    // Prevent paid > total due for this month (per record)
+    if (amountNum > totalRentNum) return toast.error("Payment amount cannot be greater than total due");
 
     try {
       const data = new FormData();

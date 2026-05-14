@@ -47,10 +47,27 @@ function NotificationBellHost() {
     user = null;
   }
 
-  // Hide on public/non-auth pages
-  const hideOnPublic = ["/", "/login", "/register"].includes(location.pathname);
+  const role = user?.role;
 
-  const shouldShowBell = !!token && !!user && !hideOnPublic;
+  // Only show bell inside authenticated app areas.
+  // DO NOT show on public/login/register/admission/landing.
+  const publicLikePaths = [
+    "/",
+    "/login",
+    "/register",
+    "/admissions",
+  ];
+
+  const isPublicLike = publicLikePaths.includes(location.pathname);
+
+  const shouldShowBell =
+    !!token &&
+    !!user &&
+    !isPublicLike &&
+    ((role === "owner" && location.pathname.startsWith("/")) ||
+      (role === "admin" && location.pathname.startsWith("/admin")) ||
+      (role === "superadmin" && location.pathname.startsWith("/admin")) ||
+      (role === "warden" && location.pathname.startsWith("/warden")));
 
   if (!shouldShowBell) return null;
 
@@ -68,6 +85,7 @@ function NotificationBellHost() {
     </div>
   );
 }
+
 
 function App() {
   return (

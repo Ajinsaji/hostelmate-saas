@@ -1,20 +1,18 @@
-const HostelRequest = require(
-  "../models/HostelRequest"
-);
+const HostelRequest = require("../models/HostelRequest");
 
-const Hostel = require(
-  "../models/Hostel"
-);
+const Hostel = require("../models/Hostel");
 
-const Subscription = require(
-  "../models/Subscription"
-);
+const Subscription = require("../models/Subscription");
 
-const Owner = require(
-  "../models/Owner"
-);
+const Owner = require("../models/Owner");
 
 const Room = require("../models/Room");
+const Bed = require("../models/Bed");
+const Resident = require("../models/Resident");
+const Payment = require("../models/Payment");
+const Notification = require("../models/Notification");
+const DeviceToken = require("../models/DeviceToken");
+const PublicAdmission = require("../models/PublicAdmission");
 
 const { generateQRCode } = require('../utils/qrCodeService');
 const { sendApprovalMessages } = require('../utils/messageService');
@@ -381,32 +379,62 @@ const resetOwnerTempPassword = async (req, res) => {
 // DELETE HOSTEL
 // ==========================
 
-const deleteHostel =
-  async (req, res) => {
-    try {
+const deleteHostel = async (req, res) => {
+  try {
+    const hostelId = req.params.id;
 
-      await Hostel.findByIdAndDelete(
-        req.params.id
-      );
-
-      await Subscription.deleteMany({
-        hostelId:
-          req.params.id,
-      });
-
-      res.status(200).json({
-        success: true,
-
-        message:
-          "Hostel Deleted",
-      });
-
-    } catch (error) {
-
-      res.status(500).json(error);
-
+    // Delete dependent graph to fully remove hostel data.
+    // NOTE: order matters to avoid dangling refs.
+    const [hostel] = await Hostel.find({ _id: hostelId }).limit(1).lean();
+    if (!hostel) {
+      return res.status(404).json({ success: false, message: "Hostel not found" });
     }
-  };
+
+    const roomIds = await Room.find({ hostelId }).distinct("_id");
+    const bedIds = await Bed.find({ hostelId }).distinct("_id");
+
+    // Beds -> set to vacant/clear refs (optional; then delete)
+    await Bed.deleteMany({ hostelId });
+
+    // Residents
+    await Resident.deleteMany({ hostelId });
+
+    // Rooms
+    await Room.deleteMany({ hostelId });
+
+    // Payments
+    await Payment.deleteMany({ hostelId });
+
+    // Public admission requests
+    await PublicAdmission.deleteMany({ hostelId });
+
+    // Complaints (if you later add a model, keep deletion here)
+    // Notifications + device tokens
+    await DeviceToken.deleteMany({ hostelId });
+    await Notification.deleteMany({ hostelId });
+
+    // Subscription
+    await Subscription.deleteMany({ hostelId });
+
+    // Staff (if model exists, add safely)
+
+    // Finally hostel + owner
+    const owner = await Owner.findOne({ hostelId });
+    if (owner?._id) {
+      await Owner.deleteOne({ _id: owner._id });
+    }
+
+    await Hostel.findByIdAndDelete(hostelId);
+
+    // HostelRequest are global partner applications, delete only if you want.
+    await HostelRequest.deleteMany({ phone: hostel.phone });
+
+    res.status(200).json({ success: true, message: "Hostel Deleted" });
+  } catch (error) {
+    console.error("deleteHostel error:", error);
+    res.status(500).json({ success: false, message: "Failed to delete hostel", error: error?.message || String(error) });
+  }
+};
 
 
 // ==========================

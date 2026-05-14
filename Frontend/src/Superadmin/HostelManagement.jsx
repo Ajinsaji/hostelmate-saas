@@ -72,16 +72,34 @@ const response = await api.get("/api/admin/hostels");
     setConfirmModal({ isOpen: false, title: "", message: "", action: null, ownerId: null });
     setIsResetting(true);
     try {
-const res = await api.put(`/api/admin/hostels/${ownerId}/reset-password`);
+      const res = await api.put(`/api/admin/hostels/${ownerId}/reset-password`);
       toast.success("New temporary password generated!");
-      setHostels(prev => prev.map(h => h.ownerId === ownerId ? { ...h, tempPassword: res.data.tempPassword } : h));
+      setHostels((prev) => prev.map((h) => (h.ownerId === ownerId ? { ...h, tempPassword: res.data.tempPassword } : h)));
       if (selectedHostel?.ownerId === ownerId) {
-        setSelectedHostel(prev => ({ ...prev, tempPassword: res.data.tempPassword }));
+        setSelectedHostel((prev) => ({ ...prev, tempPassword: res.data.tempPassword }));
       }
     } catch (error) {
       toast.error("Failed to reset password");
     } finally {
       setIsResetting(false);
+    }
+  };
+
+  const confirmDeleteHostel = async () => {
+    const hostelId = confirmModal.ownerId;
+    setConfirmModal({ isOpen: false, title: "", message: "", action: null, ownerId: null });
+    setIsDeleting(true);
+    try {
+      await api.delete(`/api/admin/hostels/delete/${hostelId}`);
+      toast.success("Hostel removed successfully");
+      setHostels((prev) => prev.filter((h) => (h.hostelId || h._id) !== hostelId));
+      if (selectedHostel && (selectedHostel.hostelId || selectedHostel._id) === hostelId) {
+        setSelectedHostel(null);
+      }
+    } catch (error) {
+      toast.error("Failed to delete hostel");
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -135,7 +153,9 @@ const res = await api.post(`/api/admin/hostels/${ownerId}/resend-whatsapp`);
             <input
               type="text"
               placeholder="Search hostel or owner phone..."
-              className="w-full bg-gray-50 border-none rounded-xl p-3"
+              className="w-full border-none rounded-xl p-3" 
+              style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}
+
               style={{ paddingLeft: "44px", fontSize: "14px" }}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -172,7 +192,9 @@ const res = await api.post(`/api/admin/hostels/${ownerId}/resend-whatsapp`);
           ) : (
 
             filteredHostels.map(h => (
-              <div key={h.hostelId || h._id} className="bg-white p-5 rounded-2xl shadow-sm relative overflow-hidden">
+              <div key={h.hostelId || h._id} className="glass-card p-5 rounded-2xl shadow-sm relative overflow-hidden" style={{ background: "rgba(11,23,57,0.45)" }}>
+
+
                 <div style={{ position: "absolute", top: 0, left: 0, width: "6px", height: "100%", background: h.isTrial ? "#eab308" : h.subscriptionStatus === "active" ? "#22c55e" : "#ef4444" }} />
                 
                 <div className="flex justify-between items-start mb-3">
@@ -209,7 +231,8 @@ const res = await api.post(`/api/admin/hostels/${ownerId}/resend-whatsapp`);
                   </span>
                 </div>
 
-                <div className="grid grid-cols-2 gap-2 mb-4 bg-gray-50 p-3 rounded-xl">
+              <div className="grid grid-cols-2 gap-2 mb-4 p-3 rounded-xl" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
+
                   <div>
                     <p className="text-[10px] text-muted font-bold uppercase tracking-wider">Occupancy</p>
                     <p className="text-sm font-semibold">{h.occupancy?.occupiedBeds || 0} / {h.occupancy?.totalBeds || 0} Beds</p>
@@ -312,6 +335,30 @@ const res = await api.post(`/api/admin/hostels/${ownerId}/resend-whatsapp`);
                   >
                     <Key size={16} /> View Credentials & QR
                   </button>
+
+                  <button
+                    onClick={() =>
+                      setConfirmModal({
+                        isOpen: true,
+                        title: "Remove hostel?",
+                        message: "This will permanently delete hostel data (rooms/beds/residents/payments/notifications).",
+                        action: "deleteHostel",
+                        ownerId: h.hostelId || h._id,
+                      })
+                    }
+                    className="btn-icon"
+                    style={{
+                      width: 52,
+                      height: 52,
+                      borderRadius: 16,
+                      background: "rgba(239,68,68,0.10)",
+                      border: "1px solid rgba(239,68,68,0.22)",
+                      color: "#fff",
+                    }}
+                    aria-label="Delete hostel"
+                  >
+                    🗑️
+                  </button>
                 </div>
               </div>
             ))
@@ -326,8 +373,10 @@ const res = await api.post(`/api/admin/hostels/${ownerId}/resend-whatsapp`);
           background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)", display: "flex", justifyContent: "center", alignItems: "center",
           zIndex: 1000, padding: "20px"
         }}>
-          <div className="animate-slide-up w-full max-w-[400px] max-h-[90vh] overflow-y-auto bg-white rounded-3xl p-6 shadow-2xl relative">
-            <button onClick={() => setSelectedHostel(null)} className="absolute top-4 right-4 bg-gray-100 p-2 rounded-full text-gray-500 hover:bg-gray-200">
+          <div className="animate-slide-up w-full max-w-[400px] max-h-[90vh] overflow-y-auto rounded-3xl p-6 shadow-2xl relative glass-card" style={{ background: "rgba(11,23,57,0.75)" }}>
+
+            <button onClick={() => setSelectedHostel(null)} className="absolute top-4 right-4 p-2 rounded-full" style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.10)" }}>
+
               <ShieldAlert size={18}/> {/* Close icon proxy */}
             </button>
             
@@ -337,21 +386,24 @@ const res = await api.post(`/api/admin/hostels/${ownerId}/resend-whatsapp`);
 
             {/* QR Section */}
             <div className="mb-6 flex flex-col items-center">
-              <div className="p-2 border border-gray-100 rounded-2xl shadow-sm mb-3">
-<img src={buildQrUrl(selectedHostel.qrCodeUrl)} alt="QR" style={{ width: 150, height: 150, borderRadius: 12 }} />
+              <div className="p-2 border rounded-2xl shadow-sm mb-3" style={{ background: "rgba(255,255,255,0.04)", borderColor: "rgba(255,255,255,0.10)" }}>
+<img src={buildQrUrl(selectedHostel.qrCodeUrl)} alt="QR" style={{ width: 150, height: 150, borderRadius: 12, border: "1px solid rgba(255,255,255,0.10)" }} />
               </div>
+
               <div className="flex gap-2 w-full">
-<a href={buildQrUrl(selectedHostel.qrCodeUrl)} download className="flex-1 bg-gray-50 border border-gray-200 py-2 rounded-xl flex justify-center items-center gap-2 text-xs font-semibold text-gray-700">
+<a href={buildQrUrl(selectedHostel.qrCodeUrl)} download className="flex-1 py-2 rounded-xl flex justify-center items-center gap-2 text-xs font-semibold" style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.10)", color: "#fff" }}>
                   <Download size={14}/> Download QR
                 </a>
-                <button onClick={() => handleCopy(selectedHostel.publicUrl, "Link")} className="flex-1 bg-blue-50 border border-blue-100 text-blue-600 py-2 rounded-xl flex justify-center items-center gap-2 text-xs font-semibold">
+                <button onClick={() => handleCopy(selectedHostel.publicUrl, "Link")} className="flex-1 py-2 rounded-xl flex justify-center items-center gap-2 text-xs font-semibold" style={{ background: "rgba(37,211,102,0.12)", border: "1px solid rgba(37,211,102,0.22)", color: "#EFFFF8" }}>
                   <Copy size={14}/> Copy Link
                 </button>
+
               </div>
             </div>
 
             {/* Credentials Section */}
-            <div className="bg-gray-50 rounded-2xl p-4 mb-4 border border-gray-100">
+              <div className="rounded-2xl p-4 mb-4 border" style={{ background: "rgba(255,255,255,0.04)", borderColor: "rgba(255,255,255,0.10)" }}>
+
               <div className="flex justify-between items-center mb-1">
                 <p className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">Username</p>
                 <button onClick={() => handleCopy(selectedHostel.phone, "Username")}>
@@ -433,7 +485,11 @@ const res = await api.post(`/api/admin/hostels/${ownerId}/resend-whatsapp`);
               </button>
             </div>
 
-            <button onClick={() => setSelectedHostel(null)} className="w-full mt-4 py-3 bg-gray-100 rounded-xl font-semibold text-gray-600">
+            <button
+              onClick={() => setSelectedHostel(null)}
+              className="w-full mt-4 py-3 rounded-xl font-semibold"
+              style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.10)", color: "#fff" }}
+            >
               Close
             </button>
           </div>
@@ -447,22 +503,58 @@ const res = await api.post(`/api/admin/hostels/${ownerId}/resend-whatsapp`);
           background: "rgba(0,0,0,0.5)", backdropFilter: "blur(4px)", display: "flex", justifyContent: "center", alignItems: "center",
           zIndex: 1001, padding: "20px"
         }}>
-          <div className="bg-white rounded-2xl p-6 max-w-[350px] shadow-2xl" style={{ animation: "slideUp 0.3s ease-out" }}>
-            <h2 className="text-lg font-bold text-gray-900 mb-2">{confirmModal.title}</h2>
-            <p className="text-gray-600 text-sm mb-6">{confirmModal.message}</p>
+          <div className="glass-card rounded-2xl p-6 max-w-[350px] shadow-2xl" style={{ animation: "slideUp 0.3s ease-out", background: "rgba(11,23,57,0.78)" }}>
+
+            <h2 className="text-lg font-bold mb-2" style={{ color: "var(--text-main)" }}>{confirmModal.title}</h2>
+            <p className="text-small" style={{ color: "rgba(255,255,255,0.75)" }}>{confirmModal.message}</p>
+
             <div className="flex gap-3">
               <button
                 onClick={() => setConfirmModal({ isOpen: false, title: "", message: "", action: null, ownerId: null })}
-                className="flex-1 py-2 bg-gray-100 text-gray-600 font-semibold rounded-lg hover:bg-gray-200"
+                className="flex-1 py-2 font-semibold rounded-lg"
+                style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.10)" }}
               >
                 Cancel
               </button>
               <button
-                onClick={confirmResetPassword}
-                disabled={isResetting}
-                className="flex-1 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 disabled:opacity-70"
+                onClick={() =>
+                  confirmModal.action === "deleteHostel"
+                    ? confirmDeleteHostel()
+                    : confirmResetPassword()}
+                disabled={confirmModal.action === "deleteHostel" ? isDeleting : isResetting}
+                className="flex-1 py-2 font-semibold rounded-lg"
+                style={{
+                  background:
+                    confirmModal.action === "deleteHostel"
+                      ? "linear-gradient(135deg, rgba(239,68,68,1) 0%, rgba(220,38,38,1) 100%)"
+                      : "linear-gradient(135deg, rgba(15,93,70,1) 0%, rgba(15,122,94,1) 100%)",
+                  color: "#fff",
+                  opacity:
+                    confirmModal.action === "deleteHostel"
+                      ? isDeleting
+                        ? 0.7
+                        : 1
+                      : isResetting
+                        ? 0.7
+                        : 1,
+                  border: "none",
+                  cursor:
+                    confirmModal.action === "deleteHostel"
+                      ? isDeleting
+                        ? "not-allowed"
+                        : "pointer"
+                      : isResetting
+                        ? "not-allowed"
+                        : "pointer",
+                }}
               >
-                {isResetting ? "Processing..." : "Confirm"}
+                {confirmModal.action === "deleteHostel"
+                  ? isDeleting
+                    ? "Deleting..."
+                    : "Delete"
+                  : isResetting
+                    ? "Processing..."
+                    : "Confirm"}
               </button>
             </div>
           </div>

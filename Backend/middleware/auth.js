@@ -15,15 +15,18 @@ const auth = (req, res, next) => {
     const secret = process.env.JWT_SECRET || "change_me_secret";
     const payload = jwt.verify(token, secret);
 
-    if (!payload || !payload.role || !payload.hostelId) {
+    if (!payload || !payload.role) {
       return res.status(401).json({ success: false, message: "Invalid token payload" });
     }
 
+    // hostId is optional depending on role.
+    // For notifications isolation we will scope by hostelId only when present.
     req.user = {
       userId: payload.userId || payload.ownerId,
       role: payload.role,
-      hostelId: payload.hostelId,
+      hostelId: payload.hostelId || null,
     };
+
 
     return next();
   } catch (error) {

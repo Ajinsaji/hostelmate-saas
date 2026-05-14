@@ -68,6 +68,10 @@ const createPayment =
           0
         );
 
+        // Recompute balance using latest totalRent coming from this request.
+        // This keeps UI consistent when owner edits totalRent for same month.
+        payment.balance = Number(totalRent || 0) - totalPaid;
+
         // If this is a split payment, persist split amounts and paidAmount.
         // Otherwise keep existing behavior.
         if (effectivePaymentMethod === "partial") {

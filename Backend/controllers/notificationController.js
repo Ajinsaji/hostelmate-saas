@@ -7,7 +7,7 @@ const { sendPushToUserDevices } = require("../utils/fcmService");
 const registerDeviceToken = async (req, res) => {
   try {
     const { token, platform } = req.body || {};
-    const userId = req.owner?.ownerId;
+    const userId = req.user?.userId;
 
     if (!token) {
       return res.status(400).json({ success: false, message: "token is required" });
@@ -17,16 +17,16 @@ const registerDeviceToken = async (req, res) => {
     }
 
     // SCOPED BY JWT PAYLOAD ONLY (prevents role/hostel spoofing from client)
-    const hostId = req.owner?.hostelId || null;
-    const r = req.owner?.role || "owner";
+    const hostelId = req.user?.hostelId || null;
+    const role = req.user?.role || "owner";
 
     await DeviceToken.findOneAndUpdate(
       { token },
       {
         $set: {
           userId,
-          role: r,
-          hostelId: hostId,
+          role,
+          hostelId,
           platform: platform || "web",
           isActive: true,
           lastSeenAt: new Date(),
@@ -44,16 +44,26 @@ const registerDeviceToken = async (req, res) => {
 
 const getMyNotifications = async (req, res) => {
   try {
-    const userId = req.owner?.ownerId;
-    const hostelId = req.owner?.hostelId || null;
+    const userId = req.user?.userId;
+    const role = req.user?.role;
+    const hostelId = req.user?.hostelId || null;
     if (!userId) return res.status(401).json({ success: false, message: "Unauthorized" });
+
 
     const { limit } = req.query;
     const pageLimit = Math.min(Number(limit || 20), 50);
 
-    // Filter by userId (+ optionally hostelId when present)
+    // Strict isolation: ALWAYS by JWT userId.
+    // Additionally scope by hostelId only when present in JWT.
+    // This prevents cross-hostel leakage for owner/warden.
     const query = { userId };
     if (hostelId) query.hostelId = hostelId;
+
+    // No reliance on client body. Role comes only from JWT.
+    // Publisher must persist matching userId in notifications for admin/owner/warden.
+    if (!role) {
+      return res.status(401).json({ success: false, message: "Invalid token role" });
+    }
 
     const notifications = await Notification.find(query)
       .sort({ createdAt: -1 })
@@ -68,8 +78,8 @@ const getMyNotifications = async (req, res) => {
 
 const getUnreadCount = async (req, res) => {
   try {
-    const userId = req.owner?.ownerId;
-    const hostelId = req.owner?.hostelId || null;
+    const userId = req.user?.userId;
+    const hostelId = req.user?.hostelId || null;
     if (!userId) return res.status(401).json({ success: false, message: "Unauthorized" });
 
     const query = { userId, isRead: false };
@@ -85,11 +95,15 @@ const getUnreadCount = async (req, res) => {
 
 const markNotificationRead = async (req, res) => {
   try {
-    const userId = req.owner?.ownerId;
+    const userId = req.user?.userId;
+    const hostelId = req.user?.hostelId || null;
     const { notificationId } = req.params;
 
+    const filter = { _id: notificationId, userId };
+    if (hostelId) filter.hostelId = hostelId;
+
     const updated = await Notification.findOneAndUpdate(
-      { _id: notificationId, userId },
+      filter,
       { isRead: true, readAt: new Date() },
       { new: true }
     );
@@ -103,6 +117,8 @@ const markNotificationRead = async (req, res) => {
     res.status(500).json({ success: false, message: "Failed to mark read", error: e?.message });
   }
 };
+
+
 
 module.exports = {
   registerDeviceToken,

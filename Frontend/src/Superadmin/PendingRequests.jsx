@@ -73,7 +73,8 @@ await api.put(`/api/admin/reject/${id}`);
   const filteredRequests = requests.filter(r => r.status === activeTab);
 
   return (
-    <div style={{ minHeight: "100vh", background: "#f8fafc", paddingBottom: "100px", fontFamily: "Poppins" }}>
+    <div style={{ minHeight: "100vh", background: "#081028", paddingBottom: "100px", fontFamily: "Poppins" }}>
+
       <div className="gradient-header mb-6" style={{ paddingBottom: "40px", borderBottomLeftRadius: "30px", borderBottomRightRadius: "30px" }}>
         <h1 className="text-h1" style={{ color: "white" }}>Requests</h1>
         <p style={{ color: "rgba(255,255,255,0.8)" }}>Manage hostel partner applications</p>
@@ -81,7 +82,8 @@ await api.put(`/api/admin/reject/${id}`);
 
       <div className="p-4" style={{ marginTop: "-30px" }}>
         {/* TABS */}
-        <div className="flex bg-white rounded-xl p-1 shadow-sm mb-6">
+        <div className="flex rounded-xl p-1 shadow-sm mb-6" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
+
           {["Pending", "Approved", "Rejected"].map(tab => (
             <button
               key={tab}
@@ -99,12 +101,14 @@ await api.put(`/api/admin/reject/${id}`);
 
         {/* REQUEST LIST */}
         {filteredRequests.length === 0 ? (
-          <div className="bg-white p-8 rounded-2xl text-center shadow-sm text-muted">
+        <div className="glass-card p-8 rounded-2xl text-center shadow-sm" style={{ background: "rgba(11,23,57,0.55)" }}>
+
             No {activeTab} Requests Found
           </div>
         ) : (
           filteredRequests.map((item) => (
-            <div key={item._id} className="bg-white rounded-2xl p-5 mb-4 shadow-sm relative overflow-hidden">
+            <div key={item._id} className="glass-card rounded-2xl p-5 mb-4 shadow-sm relative overflow-hidden" style={{ background: "rgba(11,23,57,0.45)" }}>
+
               <div style={{ position: "absolute", top: 0, left: 0, width: "6px", height: "100%", background: item.status === "Approved" ? "#22c55e" : item.status === "Rejected" ? "#ef4444" : "#eab308" }} />
               
               <div className="flex justify-between items-start mb-2">
@@ -126,9 +130,12 @@ await api.put(`/api/admin/reject/${id}`);
               </div>
 
               <div className="flex gap-2 flex-wrap mb-4">
-                {item.aadhaarFile && <a href={`${import.meta.env.VITE_API_URL}/uploads/${item.aadhaarFile}`} target="_blank" rel="noreferrer" className="text-xs text-blue-500 underline bg-blue-50 px-2 py-1 rounded-md">View Aadhaar</a>}
-                {item.ownerPhoto && <a href={`${import.meta.env.VITE_API_URL}/uploads/${item.ownerPhoto}`} target="_blank" rel="noreferrer" className="text-xs text-blue-500 underline bg-blue-50 px-2 py-1 rounded-md">View Photo</a>}
-                {item.licensePhoto && <a href={`${import.meta.env.VITE_API_URL}/uploads/${item.licensePhoto}`} target="_blank" rel="noreferrer" className="text-xs text-blue-500 underline bg-blue-50 px-2 py-1 rounded-md">View License</a>}
+                {item.aadhaarFile && <a href={`${import.meta.env.VITE_API_URL}/uploads/${item.aadhaarFile}`} target="_blank" rel="noreferrer" className="text-xs underline" style={{ color: "rgba(37,211,102,0.95)", background: "rgba(37,211,102,0.10)", border: "1px solid rgba(37,211,102,0.22)", padding: "6px 10px", borderRadius: 12, fontWeight: 800 }}>View Aadhaar</a>}
+
+                {item.ownerPhoto && <a href={`${import.meta.env.VITE_API_URL}/uploads/${item.ownerPhoto}`} target="_blank" rel="noreferrer" className="text-xs underline" style={{ color: "rgba(37,211,102,0.95)", background: "rgba(37,211,102,0.10)", border: "1px solid rgba(37,211,102,0.22)", padding: "6px 10px", borderRadius: 12, fontWeight: 800 }}>View Photo</a>}
+
+                {item.licensePhoto && <a href={`${import.meta.env.VITE_API_URL}/uploads/${item.licensePhoto}`} target="_blank" rel="noreferrer" className="text-xs underline" style={{ color: "rgba(37,211,102,0.95)", background: "rgba(37,211,102,0.10)", border: "1px solid rgba(37,211,102,0.22)", padding: "6px 10px", borderRadius: 12, fontWeight: 800 }}>View License</a>}
+
               </div>
 
               {item.status === "Pending" && (
@@ -136,8 +143,13 @@ await api.put(`/api/admin/reject/${id}`);
                   <button
                     disabled={loadingActionId === item._id}
                     onClick={() => approveRequest(item._id)}
-                    className="flex-1 py-3 bg-green-500 text-white rounded-xl flex justify-center items-center gap-2 font-medium"
-                    style={{ opacity: loadingActionId === item._id ? 0.7 : 1 }}
+                    className="flex-1 py-3 rounded-xl flex justify-center items-center gap-2 font-medium"
+                    style={{
+                      background: "linear-gradient(135deg, rgba(16,185,129,0.95) 0%, rgba(34,197,94,0.85) 100%)",
+                      color: "#fff",
+                      opacity: loadingActionId === item._id ? 0.7 : 1,
+                      border: "none",
+                    }}
                   >
                     {loadingActionId === item._id ? <Loader2 size={18} className="animate-spin" /> : <CheckCircle size={18} />}
                     Approve
@@ -145,9 +157,16 @@ await api.put(`/api/admin/reject/${id}`);
                   <button
                     disabled={loadingActionId === item._id}
                     onClick={() => rejectRequest(item._id)}
-                    className="flex-1 py-3 bg-red-50 text-red-500 rounded-xl flex justify-center items-center gap-2 font-medium border border-red-100"
-                    style={{ opacity: loadingActionId === item._id ? 0.7 : 1 }}
+                    className="flex-1 py-3 rounded-xl flex justify-center items-center gap-2 font-medium"
+                    style={{
+                      background: "rgba(239,68,68,0.10)",
+                      borderColor: "rgba(239,68,68,0.22)",
+                      opacity: loadingActionId === item._id ? 0.7 : 1,
+                      border: "1px solid rgba(239,68,68,0.22)",
+                      color: "#fff",
+                    }}
                   >
+
                     {loadingActionId === item._id ? <Loader2 size={18} className="animate-spin" /> : <XCircle size={18} />}
                     Reject
                   </button>
@@ -165,25 +184,31 @@ await api.put(`/api/admin/reject/${id}`);
           background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)", display: "flex", justifyContent: "center", alignItems: "center",
           zIndex: 1000, padding: "20px"
         }}>
-          <div className="animate-slide-up" style={{ background: "white", padding: "24px", borderRadius: "24px", maxWidth: "400px", width: "100%", textAlign: "center", boxShadow: "0 20px 40px rgba(0,0,0,0.1)" }}>
+          <div className="animate-slide-up" style={{ background: "rgba(11,23,57,0.75)", padding: "24px", borderRadius: "24px", maxWidth: "400px", width: "100%", textAlign: "center", boxShadow: "0 20px 40px rgba(0,0,0,0.35)", border: "1px solid rgba(255,255,255,0.10)" }}>
+
             <div style={{ width: 60, height: 60, borderRadius: "50%", background: "#dcfce7", display: "flex", justifyContent: "center", alignItems: "center", margin: "0 auto 16px" }}>
               <CheckCircle size={32} color="#22c55e" />
             </div>
             <h2 style={{ color: "var(--text-main)", marginBottom: "8px", fontSize: "22px", fontWeight: "bold" }}>Approval Success!</h2>
             <p className="text-small text-muted mb-4">Credentials & QR generated.</p>
             
-            <img src={`${import.meta.env.VITE_API_URL}/uploads/${approvedData.qrCodeUrl}`} alt="QR Code" style={{ width: "180px", height: "180px", margin: "0 auto", borderRadius: "12px", border: "1px solid #f1f5f9" }} />
+              <img src={`${import.meta.env.VITE_API_URL}/uploads/${approvedData.qrCodeUrl}`} alt="QR Code" style={{ width: "180px", height: "180px", margin: "0 auto", borderRadius: "12px", border: "1px solid rgba(255,255,255,0.10)" }} />
+
             
             <div className="flex justify-center gap-2 mt-4">
-              <a href={`${import.meta.env.VITE_API_URL}/uploads/${approvedData.qrCodeUrl}`} download className="flex items-center gap-1 text-xs bg-gray-100 px-3 py-2 rounded-lg text-gray-700 font-medium">
+              <a href={`${import.meta.env.VITE_API_URL}/uploads/${approvedData.qrCodeUrl}`} download className="flex items-center gap-1 text-xs" style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.10)", color: "#fff", padding: "8px 12px", borderRadius: "12px", fontWeight: 800 }}>
+
                 <Download size={14} /> Download QR
               </a>
-              <button onClick={() => handleCopy(approvedData.publicUrl)} className="flex items-center gap-1 text-xs bg-blue-50 text-blue-600 px-3 py-2 rounded-lg font-medium">
+              <button onClick={() => handleCopy(approvedData.publicUrl)} className="flex items-center gap-1 text-xs" style={{ background: "rgba(37,211,102,0.12)", border: "1px solid rgba(37,211,102,0.22)", color: "#EFFFF8", padding: "8px 12px", borderRadius: "12px", fontWeight: 800 }}>
+
                 <Copy size={14} /> Copy Link
+
               </button>
             </div>
 
-            <div style={{ marginTop: "16px", textAlign: "left", background: "#f8fafc", padding: "16px", borderRadius: "12px", border: "1px solid #f1f5f9" }}>
+            <div style={{ marginTop: "16px", textAlign: "left", background: "rgba(255,255,255,0.04)", padding: "16px", borderRadius: "12px", border: "1px solid rgba(255,255,255,0.08)" }}>
+
               <div className="flex justify-between items-center mb-2">
                 <p className="text-sm"><strong>User:</strong> {approvedData.username}</p>
                 <button onClick={() => handleCopy(approvedData.username)}><Copy size={14} className="text-gray-400" /></button>

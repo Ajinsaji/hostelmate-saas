@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 
-const ownerAuth = require("../middleware/ownerAuth");
+const { auth } = require("../middleware/auth");
 
 const {
   registerDeviceToken,
@@ -10,12 +10,12 @@ const {
   getUnreadCount,
 } = require("../controllers/notificationController");
 
-router.post("/device-token", ownerAuth, registerDeviceToken);
-
-router.get("/mine", ownerAuth, getMyNotifications);
-router.get("/unread-count", ownerAuth, getUnreadCount);
-
-router.put("/read/:notificationId", ownerAuth, markNotificationRead);
+// Auth must derive identity strictly from JWT (req.user.userId/role/hostelId)
+router.post("/device-token", auth, registerDeviceToken);
+router.get("/mine", auth, getMyNotifications);
+router.get("/unread-count", auth, getUnreadCount);
+router.put("/read/:notificationId", auth, markNotificationRead);
 
 module.exports = router;
+
 

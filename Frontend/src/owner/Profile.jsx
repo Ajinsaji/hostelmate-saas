@@ -178,8 +178,8 @@ function Profile() {
                 <div className="flex justify-center gap-2 mt-4">
                   <a
                     href={buildQrUrl(hostelData.qrCodeUrl)}
-                    download
-                    className="flex items-center gap-1 text-xs bg-gray-100 px-3 py-2 rounded-lg text-gray-700 font-medium"
+download
+                    className="flex items-center gap-1 text-xs px-3 py-2 rounded-lg font-medium"
                     style={{ background: "rgba(255,255,255,0.08)", color: "var(--text-main)", borderColor: "rgba(255,255,255,0.12)" }}
                   >
                     <Download size={14} /> Download QR
