@@ -1,17 +1,50 @@
 import { useEffect, useMemo, useState } from "react";
-import axios from "axios";
-import { Plus, Trash2, Users, Edit2, Search, BedDouble, Phone, ArrowLeftRight } from "lucide-react";
+import { api } from "../services/api";
+import {
+  Plus,
+  Search,
+  BedDouble,
+  Phone,
+  X,
+  Info,
+  CreditCard,
+  Calendar,
+  Loader2,
+  CheckCircle2,
+  AlertTriangle,
+  Trash2,
+} from "lucide-react";
 import toast from "react-hot-toast";
 import BottomNav from "../components/BottomNav";
 
+const PHONE_REGEX = /^[0-9]{10}$/;
+
 function Rooms() {
-  const token = localStorage.getItem("token");
-
-  const apiBase = import.meta.env.VITE_API_URL;
-
   const [rooms, setRooms] = useState([]);
-  const [showAddForm, setShowAddForm] = useState(false);
-  const [formData, setFormData] = useState({
+  const [residents, setResidents] = useState([]);
+  const [payments, setPayments] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  const [searchRoomNumber, setSearchRoomNumber] = useState("");
+  const [occupancyFilter, setOccupancyFilter] = useState("all");
+  const [roomFormOpen, setRoomFormOpen] = useState(false);
+
+  const [assignModalOpen, setAssignModalOpen] = useState(false);
+  const [residentModalOpen, setResidentModalOpen] = useState(false);
+  const [checkoutModalOpen, setCheckoutModalOpen] = useState(false);
+
+  const [selectedRoom, setSelectedRoom] = useState(null);
+  const [selectedBed, setSelectedBed] = useState(null);
+  const [selectedResidentId, setSelectedResidentId] = useState(null);
+
+  const [residentDetails, setResidentDetails] = useState(null);
+  const [residentPayments, setResidentPayments] = useState([]);
+
+  const [assignLoading, setAssignLoading] = useState(false);
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
+  const [residentLoading, setResidentLoading] = useState(false);
+
+  const [roomForm, setRoomForm] = useState({
     roomNumber: "",
     totalBeds: "",
     floor: "",
@@ -19,654 +52,1309 @@ function Rooms() {
     rentPerBed: "",
   });
   const [editingRoom, setEditingRoom] = useState(null);
-  const [searchQuery, setSearchQuery] = useState("");
-
-  useEffect(() => {
-    fetchRooms();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const fetchRooms = async () => {
-    try {
-      const response = await axios.get(
-        `${import.meta.env.VITE_API_URL}/api/rooms/get-rooms`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-      setRooms(response.data.rooms || []);
-    } catch (error) {
-      console.log(error);
-      toast.error("Failed to load rooms");
-    }
-  };
-
-  const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
-
-  const createRoom = async () => {
-    try {
-      if (editingRoom) {
-        await axios.put(
-          `${import.meta.env.VITE_API_URL}/api/rooms/edit-room/${editingRoom._id}`,
-          { ...formData },
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
-        toast.success("Room updated successfully!");
-      } else {
-        await axios.post(
-          `${import.meta.env.VITE_API_URL}/api/rooms/create-room`,
-          { ...formData },
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
-        toast.success("Room created successfully!");
-      }
-
-      setFormData({
-        roomNumber: "",
-        totalBeds: "",
-        floor: "",
-        roomType: "",
-        rentPerBed: "",
-      });
-      setShowAddForm(false);
-      setEditingRoom(null);
-      fetchRooms();
-    } catch (error) {
-      toast.error(error.response?.data?.message || "Error saving room");
-      console.log(error);
-    }
-  };
-
-  const handleEdit = (room) => {
-    setFormData({
-      roomNumber: room.roomNumber,
-      totalBeds: room.totalBeds,
-      floor: room.floor || "",
-      roomType: room.roomType || "",
-      rentPerBed: room.rentPerBed || "",
-    });
-    setEditingRoom(room);
-    setShowAddForm(true);
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  };
-
-  const deleteRoom = async (roomId) => {
-    try {
-      await axios.delete(`${import.meta.env.VITE_API_URL}/api/rooms/delete-room/${roomId}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      toast.success("Room deleted successfully!");
-      fetchRooms();
-    } catch (error) {
-      toast.error(error.response?.data?.message || "Error deleting room");
-      console.log(error);
-    }
-  };
-
-  const filteredRooms = useMemo(() => {
-    return rooms.filter(
-      (r) =>
-        r.roomNumber?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        r.roomType?.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-  }, [rooms, searchQuery]);
-
-  const bedStatus = (bed) => {
-    const status = bed?.status;
-    if (!status) return "vacant";
-    const s = String(status).toLowerCase();
-    return s.includes("vacant") ? "vacant" : "occupied";
-  };
-
-  const getStats = (room) => {
-    const beds = room?.beds || [];
-    const totalBeds = Number(room.totalBeds ?? beds.length ?? 0) || 0;
-    const occupiedBeds = Number(room.occupiedBeds ?? beds.filter((b) => bedStatus(b) === "occupied").length ?? 0) || 0;
-    const vacantBeds = Math.max(0, totalBeds - occupiedBeds);
-    const pct = totalBeds ? Math.round((occupiedBeds / totalBeds) * 100) : 0;
-    return { totalBeds, occupiedBeds, vacantBeds, pct, beds };
-  };
-
-  const initialsFromName = (name) => {
-    if (!name) return "";
-    return name
-      .split(" ")
-      .filter(Boolean)
-      .slice(0, 2)
-      .map((s) => s[0]?.toUpperCase())
-      .join("");
-  };
-
-  const phoneRegex = /^[0-9]{10}$/;
-
-  const [assignModalOpen, setAssignModalOpen] = useState(false);
-  const [assignLoading, setAssignLoading] = useState(false);
-  const [assignError, setAssignError] = useState("");
-
-  const [checkoutModalOpen, setCheckoutModalOpen] = useState(false);
-  const [checkoutLoading, setCheckoutLoading] = useState(false);
-
-  const [selectedBedCtx, setSelectedBedCtx] = useState(null); // { roomId, bedId, bedNumber }
-  const [checkoutCtx, setCheckoutCtx] = useState(null); // { residentId, residentName, roomNumber, bedNumber }
 
   const [assignForm, setAssignForm] = useState({
     name: "",
     phone: "",
     monthlyRent: "",
     depositAmount: "",
-    joinDate: "",
-    photoFile: null,
-    idProofFile: null,
+    joinDate: new Date().toISOString().slice(0, 10),
   });
+  const [assignError, setAssignError] = useState("");
 
-  const openAssignModal = (room, bed) => {
-    if (!bed?._id || !room?._id) {
-      toast.error("Cannot assign: invalid room/bed.");
-      return;
-    }
-    setAssignError("");
-    setAssignForm((prev) => ({
-      ...prev,
-      name: "",
-      phone: "",
-      monthlyRent: bed?.roomRentPerBed ?? bed?.rentPerBed ?? prev.monthlyRent ?? "",
-      depositAmount: "",
-      joinDate: new Date().toISOString().slice(0, 10),
-      photoFile: null,
-      idProofFile: null,
-    }));
-    setSelectedBedCtx({ roomId: room._id, bedId: bed._id, bedNumber: bed.bedNumber, roomNumber: room.roomNumber });
-    setAssignModalOpen(true);
+  const getRoomStats = (room) => {
+    const beds = room?.beds || [];
+    const totalBeds = Number(room.totalBeds ?? beds.length) || beds.length || 0;
+    const occupiedBeds = Number(room.occupiedBeds ?? beds.filter((bed) => String(bed?.status).toLowerCase() === "occupied").length) || 0;
+    const vacantBeds = Math.max(0, totalBeds - occupiedBeds);
+    const pct = totalBeds ? Math.round((occupiedBeds / totalBeds) * 100) : 0;
+    return { totalBeds, occupiedBeds, vacantBeds, pct, beds };
   };
 
-  const openCheckoutModal = (room, bed) => {
-    const resident = bed?.resident || bed?.occupant;
-    const residentId = resident?._id || bed?.residentId || resident?.id;
+  const residentMapById = useMemo(() => {
+    return residents.reduce((acc, resident) => {
+      if (resident?._id) acc[resident._id] = resident;
+      return acc;
+    }, {});
+  }, [residents]);
 
-    if (!residentId) {
-      toast.error("Cannot checkout: resident not found on this bed.");
+  const residentMapByBedId = useMemo(() => {
+    return residents.reduce((acc, resident) => {
+      if (resident?.bedId) acc[resident.bedId] = resident;
+      return acc;
+    }, {});
+  }, [residents]);
+
+  const roomNumberById = useMemo(() => {
+    return rooms.reduce((acc, room) => {
+      if (room?._id) acc[room._id] = room.roomNumber;
+      return acc;
+    }, {});
+  }, [rooms]);
+
+  const bedNumberById = useMemo(() => {
+    return rooms.reduce((acc, room) => {
+      (room?.beds || []).forEach((bed) => {
+        if (bed?._id) acc[bed._id] = bed.bedNumber;
+      });
+      return acc;
+    }, {});
+  }, [rooms]);
+
+  const parseMonthString = (month) => {
+    if (!month) return null;
+    const cleaned = String(month).trim();
+    if (/^\d{4}-\d{2}$/.test(cleaned)) {
+      return new Date(`${cleaned}-01`);
+    }
+    const parsed = Date.parse(cleaned);
+    return Number.isNaN(parsed) ? null : new Date(parsed);
+  };
+
+  const paymentSummaryByResidentId = useMemo(() => {
+    return payments.reduce((acc, payment) => {
+      const id = payment?.residentId?.toString();
+      if (!id) return acc;
+      const existing = acc[id];
+      const currentDate = parseMonthString(payment?.month) || new Date(payment?.createdAt || payment?.updatedAt || Date.now());
+      if (!existing || currentDate > existing.monthDate) {
+        acc[id] = { ...payment, monthDate: currentDate };
+      }
+      return acc;
+    }, {});
+  }, [payments]);
+
+  const formatMoney = (value) => {
+    const amount = Number(value ?? 0);
+    return `₹${amount.toLocaleString("en-IN")}`;
+  };
+
+  const formatDate = (value) => {
+    if (!value) return "Not available";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "Not available";
+    return date.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+  };
+
+  const getInitials = (name) => {
+    if (!name) return "-";
+    return name
+      .split(" ")
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0]?.toUpperCase())
+      .join("");
+  };
+
+  const getPaymentBadge = (status) => {
+    if (!status) return { label: "Pending", color: "rgba(250,204,21,0.14)", border: "rgba(250,204,21,0.25)" };
+    if (status === "paid") return { label: "Paid", color: "rgba(34,197,94,0.14)", border: "rgba(34,197,94,0.3)" };
+    if (status === "partial") return { label: "Partial", color: "rgba(59,130,246,0.14)", border: "rgba(59,130,246,0.3)" };
+    return { label: "Overdue", color: "rgba(239,68,68,0.14)", border: "rgba(239,68,68,0.3)" };
+  };
+
+  const getOccupancyLabel = (room) => {
+    const { totalBeds, occupiedBeds } = getRoomStats(room);
+    if (occupiedBeds === 0) return "Vacant";
+    if (occupiedBeds === totalBeds) return "Full";
+    return "Partial";
+  };
+
+  const filteredRooms = useMemo(() => {
+    return rooms
+      .filter((room) => {
+        if (!searchRoomNumber.trim()) return true;
+        return String(room.roomNumber).toLowerCase().includes(searchRoomNumber.trim().toLowerCase());
+      })
+      .filter((room) => {
+        if (occupancyFilter === "all") return true;
+        const { totalBeds, occupiedBeds } = getRoomStats(room);
+        if (occupancyFilter === "vacant") return occupiedBeds === 0;
+        if (occupancyFilter === "full") return occupiedBeds === totalBeds;
+        if (occupancyFilter === "partial") return occupiedBeds > 0 && occupiedBeds < totalBeds;
+        return true;
+      });
+  }, [rooms, searchRoomNumber, occupancyFilter]);
+
+  const currentRoomOccupancySummary = useMemo(() => {
+    const totalRooms = rooms.length;
+    const totalBeds = rooms.reduce((sum, room) => sum + (Number(room.totalBeds) || (room.beds?.length || 0)), 0);
+    const totalOccupied = rooms.reduce(
+      (sum, room) => sum + Number(room.occupiedBeds ?? (room.beds?.filter((bed) => String(bed?.status).toLowerCase() === "occupied").length || 0)),
+      0
+    );
+    return { totalRooms, totalBeds, totalOccupied, totalVacant: Math.max(0, totalBeds - totalOccupied) };
+  }, [rooms]);
+
+  const getDueDateLabel = (payment, joinDate) => {
+    const monthDate = parseMonthString(payment?.month);
+    const base = monthDate || (joinDate ? new Date(joinDate) : null);
+    if (!base) return "Not available";
+    const due = new Date(base.getTime());
+    due.setMonth(due.getMonth() + 1);
+    return formatDate(due);
+  };
+
+  const getDaysFromDue = (payment, joinDate) => {
+    const monthDate = parseMonthString(payment?.month);
+    const base = monthDate || (joinDate ? new Date(joinDate) : null);
+    if (!base) return null;
+    const due = new Date(base.getTime());
+    due.setMonth(due.getMonth() + 1);
+    const diff = Math.ceil((due.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+    return diff;
+  };
+
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      const [roomsRes, residentsRes, paymentsRes] = await Promise.all([
+        api.get("/api/rooms/get-rooms"),
+        api.get("/api/residents/hostel"),
+        api.get("/api/payments/hostel"),
+      ]);
+      setRooms(roomsRes.data?.rooms || []);
+      setResidents(residentsRes.data?.residents || []);
+      setPayments(paymentsRes.data?.payments || []);
+    } catch (error) {
+      toast.error(error?.response?.data?.message || "Unable to load room data.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const openAssignModal = (room, bed) => {
+    if (!room?._id || !bed?._id) {
+      toast.error("Invalid room or bed selected.");
       return;
     }
-
-    setCheckoutCtx({
-      residentId,
-      residentName: resident?.name || "Resident",
-      roomNumber: room?.roomNumber,
-      bedNumber: bed?.bedNumber,
+    setSelectedRoom(room);
+    setSelectedBed(bed);
+    setAssignForm({
+      name: "",
+      phone: "",
+      monthlyRent: room.rentPerBed ? String(room.rentPerBed) : "",
+      depositAmount: "",
+      joinDate: new Date().toISOString().slice(0, 10),
     });
-    setCheckoutModalOpen(true);
+    setAssignError("");
+    setAssignModalOpen(true);
   };
 
   const closeAssignModal = () => {
     if (assignLoading) return;
     setAssignModalOpen(false);
-    setSelectedBedCtx(null);
+    setSelectedRoom(null);
+    setSelectedBed(null);
   };
 
-  const closeCheckoutModal = () => {
-    if (checkoutLoading) return;
-    setCheckoutModalOpen(false);
-    setCheckoutCtx(null);
-  };
-
-  const validateAssign = () => {
-    if (!assignForm.name?.trim()) return "Resident name is required.";
-    if (!assignForm.phone?.trim()) return "Phone number is required.";
-    if (!phoneRegex.test(assignForm.phone.trim())) return "Phone number must be 10 digits.";
+  const validateAssignForm = () => {
+    if (!assignForm.name.trim()) return "Resident name is required.";
+    if (!assignForm.phone.trim()) return "Phone number is required.";
+    if (!PHONE_REGEX.test(assignForm.phone.trim())) return "Phone number must be 10 digits.";
     if (!assignForm.monthlyRent || Number(assignForm.monthlyRent) <= 0) return "Monthly rent is required.";
     if (!assignForm.depositAmount && assignForm.depositAmount !== "0") return "Deposit amount is required.";
     if (!assignForm.joinDate) return "Join date is required.";
-    if (!selectedBedCtx?.roomId || !selectedBedCtx?.bedId) return "Invalid room/bed selected.";
+    if (!selectedRoom || !selectedBed) return "Please select a room and bed.";
     return "";
   };
 
   const submitAssign = async () => {
-    const err = validateAssign();
-    if (err) {
-      toast.error(err);
-      setAssignError(err);
+    const validationError = validateAssignForm();
+    if (validationError) {
+      setAssignError(validationError);
+      toast.error(validationError);
       return;
     }
 
     setAssignLoading(true);
-    setAssignError("");
-
     try {
-      const fd = new FormData();
-      fd.append("name", assignForm.name.trim());
-      fd.append("phone", assignForm.phone.trim());
-      fd.append("roomId", selectedBedCtx.roomId);
-      fd.append("bedId", selectedBedCtx.bedId);
-      fd.append("monthlyRent", String(assignForm.monthlyRent));
-      fd.append("depositAmount", String(assignForm.depositAmount || 0));
-      fd.append("joinDate", assignForm.joinDate);
+      const form = new FormData();
+      form.append("name", assignForm.name.trim());
+      form.append("phone", assignForm.phone.trim());
+      form.append("roomId", selectedRoom._id);
+      form.append("bedId", selectedBed._id);
+      form.append("monthlyRent", assignForm.monthlyRent);
+      form.append("depositAmount", assignForm.depositAmount);
+      form.append("joinDate", assignForm.joinDate);
 
-      // Optional uploads (not required)
-      if (assignForm.photoFile) fd.append("photo", assignForm.photoFile);
-      if (assignForm.idProofFile) fd.append("idProof", assignForm.idProofFile);
+      await api.post("/api/residents/create", form, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
 
-      await axios.post(
-        `${import.meta.env.VITE_API_URL}/api/residents/create`,
-        fd,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
-
-      toast.success("Resident assigned successfully!");
+      toast.success("Resident assigned successfully.");
       closeAssignModal();
-      fetchRooms();
+      await loadData();
     } catch (error) {
-      const msg = error?.response?.data?.message || "Failed to assign resident.";
-      setAssignError(msg);
-      toast.error(msg);
+      const message = error?.response?.data?.message || "Failed to assign resident.";
+      setAssignError(message);
+      toast.error(message);
     } finally {
       setAssignLoading(false);
     }
   };
 
+  const openResidentModal = async (residentId) => {
+    if (!residentId) return;
+    setResidentLoading(true);
+    setResidentModalOpen(true);
+    setSelectedResidentId(residentId);
+    setResidentDetails(null);
+    setResidentPayments([]);
+
+    try {
+      const [residentRes, paymentsRes] = await Promise.all([
+        api.get(`/api/residents/single/${residentId}`),
+        api.get(`/api/payments/resident/${residentId}`),
+      ]);
+      setResidentDetails(residentRes.data?.resident ?? null);
+      setResidentPayments(paymentsRes.data?.payments || []);
+    } catch (error) {
+      toast.error(error?.response?.data?.message || "Unable to load resident details.");
+      setResidentModalOpen(false);
+    } finally {
+      setResidentLoading(false);
+    }
+  };
+
+  const closeResidentModal = () => {
+    if (residentLoading) return;
+    setResidentModalOpen(false);
+    setSelectedResidentId(null);
+    setResidentDetails(null);
+    setResidentPayments([]);
+  };
+
+  const openCheckoutModal = (room, bed) => {
+    const residentId = bed?.residentId || residentMapByBedId[bed?._id]?._id || bed?.resident?._id;
+    if (!residentId) {
+      toast.error("Resident information is missing for this bed.");
+      return;
+    }
+    setSelectedRoom(room);
+    setSelectedBed(bed);
+    setSelectedResidentId(residentId);
+    setCheckoutModalOpen(true);
+  };
+
+  const closeCheckoutModal = () => {
+    if (checkoutLoading) return;
+    setCheckoutModalOpen(false);
+    setSelectedResidentId(null);
+    setSelectedBed(null);
+    setSelectedRoom(null);
+  };
+
   const submitCheckout = async () => {
-    if (!checkoutCtx?.residentId) {
-      toast.error("Missing resident for checkout.");
+    if (!selectedResidentId) {
+      toast.error("Checkout resident not selected.");
       return;
     }
 
     setCheckoutLoading(true);
     try {
-      await axios.put(
-        `${import.meta.env.VITE_API_URL}/api/residents/checkout/${checkoutCtx.residentId}`,
-        {},
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
-
-      toast.success("Checkout successful.");
+      await api.put(`/api/residents/checkout/${selectedResidentId}`);
+      toast.success("Resident checked out successfully.");
       closeCheckoutModal();
-      fetchRooms();
+      await loadData();
     } catch (error) {
-      const msg = error?.response?.data?.message || "Failed to checkout resident.";
-      toast.error(msg);
+      toast.error(error?.response?.data?.message || "Failed to checkout resident.");
     } finally {
       setCheckoutLoading(false);
     }
   };
 
-  const handleViewResident = (resident) => {
-    toast(`View resident: ${resident?.name || resident?._id || "N/A"}`);
+  const handleEditRoom = (room) => {
+    setEditingRoom(room);
+    setRoomForm({
+      roomNumber: room.roomNumber || "",
+      totalBeds: room.totalBeds ? String(room.totalBeds) : "",
+      floor: room.floor || "",
+      roomType: room.roomType || "",
+      rentPerBed: room.rentPerBed ? String(room.rentPerBed) : "",
+    });
+    setRoomFormOpen(true);
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
+  const resetRoomForm = () => {
+    setEditingRoom(null);
+    setRoomForm({ roomNumber: "", totalBeds: "", floor: "", roomType: "", rentPerBed: "" });
+  };
+
+  const submitRoom = async () => {
+    if (!roomForm.roomNumber.trim()) {
+      toast.error("Room number is required.");
+      return;
+    }
+    if (!roomForm.rentPerBed || Number(roomForm.rentPerBed) <= 0) {
+      toast.error("Rent per bed is required.");
+      return;
+    }
+
+    try {
+      if (editingRoom) {
+        await api.put(`/api/rooms/edit-room/${editingRoom._id}`, {
+          roomNumber: roomForm.roomNumber.trim(),
+          floor: roomForm.floor.trim(),
+          roomType: roomForm.roomType.trim(),
+          rentPerBed: Number(roomForm.rentPerBed),
+        });
+        toast.success("Room updated successfully.");
+      } else {
+        if (!roomForm.totalBeds || Number(roomForm.totalBeds) <= 0) {
+          toast.error("Total beds is required.");
+          return;
+        }
+        await api.post("/api/rooms/create-room", {
+          roomNumber: roomForm.roomNumber.trim(),
+          totalBeds: Number(roomForm.totalBeds),
+          floor: roomForm.floor.trim(),
+          roomType: roomForm.roomType.trim(),
+          rentPerBed: Number(roomForm.rentPerBed),
+        });
+        toast.success("Room created successfully.");
+      }
+      resetRoomForm();
+      await loadData();
+    } catch (error) {
+      toast.error(error?.response?.data?.message || "Unable to save room.");
+    }
+  };
 
   return (
-    <div className="pb-32" style={{ minHeight: "100vh", position: "relative", zIndex: 100, overflowX: "hidden" }}>
-      <div className="gradient-header mb-6">
-        <h1 className="text-h1 mb-2">Room Management</h1>
-        <p style={{ opacity: 0.85 }}>Manage your hostel rooms & beds</p>
-
-        {!showAddForm && (
-          <div style={{ position: "absolute", bottom: "-20px", right: "20px", zIndex: 5 }}>
-            <button
-              className="btn-icon"
-              style={{ width: 56, height: 56, background: "var(--accent)", borderColor: "rgba(34,197,94,0.35)" }}
-              onClick={() => setShowAddForm(!showAddForm)}
-              aria-label="Add room"
-            >
-              <Plus size={28} color="var(--primary-dark)" />
-            </button>
+    <div style={{ minHeight: "100vh", background: "#081028", overflowX: "hidden", paddingBottom: 160 }}>
+      <div style={{ maxWidth: 1200, margin: "0 auto", padding: "24px 16px" }}>
+        <header style={{ marginBottom: 32 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <h1 style={{ color: "#f8fafc", fontSize: 32, margin: 0 }}>Room & Bed Control</h1>
+            <p style={{ color: "rgba(241,245,249,0.72)", maxWidth: 720, lineHeight: 1.7, margin: 0 }}>
+              Manage hostel occupancy with real room cards, bed assignment, resident profiles and checkout workflows.
+            </p>
           </div>
-        )}
-      </div>
 
-      <div className="p-4" style={{ maxWidth: 480, margin: "0 auto" }}>
-        {!showAddForm && (
-          <div className="input-group mb-6">
-            <div style={{ position: "relative" }}>
-              <Search size={20} style={{ position: "absolute", left: 16, top: 16, color: "var(--text-muted)" }} />
+          <div style={{ marginTop: 24, display: "grid", gridTemplateColumns: "1fr auto", gap: 12, alignItems: "center" }}>
+            <div style={{ position: "relative", width: "100%" }}>
+              <Search size={18} style={{ position: "absolute", left: 16, top: 14, color: "rgba(241,245,249,0.4)" }} />
               <input
-                type="text"
-                placeholder="Search rooms..."
-                className="input-field"
-                style={{ paddingLeft: 48 }}
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                type="search"
+                value={searchRoomNumber}
+                onChange={(event) => setSearchRoomNumber(event.target.value)}
+                placeholder="Search room number"
+                style={{
+                  width: "100%",
+                  borderRadius: 18,
+                  padding: "14px 16px 14px 44px",
+                  background: "rgba(255,255,255,0.04)",
+                  border: "1px solid rgba(255,255,255,0.08)",
+                  color: "#f8fafc",
+                }}
               />
             </div>
+            <button
+              type="button"
+              onClick={() => {
+                setRoomFormOpen((open) => !open);
+                if (!roomFormOpen) resetRoomForm();
+              }}
+              style={{
+                borderRadius: 16,
+                border: "1px solid rgba(34,197,94,0.35)",
+                background: "rgba(34,197,94,0.14)",
+                color: "#f8fafc",
+                padding: "14px 20px",
+                minWidth: 160,
+                cursor: "pointer",
+              }}
+            >
+              <Plus size={16} style={{ marginRight: 8 }} />
+              {roomFormOpen ? "Hide form" : "Add room"}
+            </button>
           </div>
-        )}
+        </header>
 
-        {showAddForm && (
-          <div
-            className="card animate-slide-up mb-6"
+        {roomFormOpen && (
+          <section
             style={{
-              position: "relative",
-              zIndex: 1000,
-              pointerEvents: "auto",
-              borderRadius: 24,
+              marginBottom: 32,
+              borderRadius: 28,
+              padding: 24,
+              background: "rgba(255,255,255,0.03)",
+              border: "1px solid rgba(255,255,255,0.08)",
             }}
           >
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-h2">{editingRoom ? "Edit Room" : "Create New Room"}</h2>
-              <button
-                className="btn-icon"
-                style={{ width: 32, height: 32 }}
-                onClick={() => {
-                  setShowAddForm(false);
-                  setEditingRoom(null);
-                }}
-                aria-label="Close form"
-              >
-                <Trash2 size={16} style={{ opacity: 0 }} />
-                <span style={{ display: "none" }} />
-              </button>
-            </div>
-
-            <div className="input-group">
-              <span className="input-label">Room Number / Name</span>
-              <input
-                name="roomNumber"
-                placeholder="e.g. 101"
-                className="input-field"
-                style={{ pointerEvents: "auto" }}
-                value={formData.roomNumber}
-                onChange={handleChange}
-              />
-            </div>
-
-            <div className="flex gap-4 mb-4">
-              <div className="input-group" style={{ marginBottom: 0 }}>
-                <span className="input-label">Total Beds</span>
-                <input
-                  name="totalBeds"
-                  type="number"
-                  placeholder="e.g. 2"
-                  className="input-field"
-                  style={{ pointerEvents: "auto" }}
-                  value={formData.totalBeds}
-                  onChange={handleChange}
-                />
-              </div>
-              <div className="input-group" style={{ marginBottom: 0 }}>
-                <span className="input-label">Rent/Bed (₹)</span>
-                <input
-                  name="rentPerBed"
-                  type="number"
-                  placeholder="e.g. 5000"
-                  className="input-field"
-                  style={{ pointerEvents: "auto" }}
-                  value={formData.rentPerBed}
-                  onChange={handleChange}
-                />
+            <div style={{ display: "flex", justifyContent: "space-between", gap: 20, flexWrap: "wrap", marginBottom: 24 }}>
+              <div>
+                <p style={{ margin: 0, color: "rgba(241,245,249,0.6)", fontSize: 13 }}>Room configuration</p>
+                <h2 style={{ margin: "10px 0 0", color: "#f8fafc", fontSize: 22 }}>
+                  {editingRoom ? "Edit room details" : "Create a new room"}
+                </h2>
               </div>
             </div>
 
-            <div className="flex gap-4 mb-4">
-              <div className="input-group" style={{ marginBottom: 0 }}>
-                <span className="input-label">Floor</span>
-                <input
-                  name="floor"
-                  placeholder="e.g. Ground"
-                  className="input-field"
-                  style={{ pointerEvents: "auto" }}
-                  value={formData.floor}
-                  onChange={handleChange}
-                />
+            <div style={{ display: "grid", gap: 18 }}>
+              <div style={{ display: "grid", gap: 14, gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))" }}>
+                <label style={{ display: "grid", gap: 8, color: "#f8fafc", fontSize: 13 }}>
+                  Room number
+                  <input
+                    value={roomForm.roomNumber}
+                    onChange={(event) => setRoomForm((prev) => ({ ...prev, roomNumber: event.target.value }))}
+                    placeholder="101"
+                    style={{ borderRadius: 16, border: "1px solid rgba(255,255,255,0.1)", padding: "12px 14px", background: "rgba(255,255,255,0.04)", color: "#f8fafc" }}
+                  />
+                </label>
+                <label style={{ display: "grid", gap: 8, color: "#f8fafc", fontSize: 13 }}>
+                  Rent per bed
+                  <input
+                    type="number"
+                    value={roomForm.rentPerBed}
+                    onChange={(event) => setRoomForm((prev) => ({ ...prev, rentPerBed: event.target.value }))}
+                    placeholder="5000"
+                    style={{ borderRadius: 16, border: "1px solid rgba(255,255,255,0.1)", padding: "12px 14px", background: "rgba(255,255,255,0.04)", color: "#f8fafc" }}
+                  />
+                </label>
               </div>
-              <div className="input-group" style={{ marginBottom: 0 }}>
-                <span className="input-label">Type</span>
-                <input
-                  name="roomType"
-                  placeholder="e.g. AC / Non-AC"
-                  className="input-field"
-                  style={{ pointerEvents: "auto" }}
-                  value={formData.roomType}
-                  onChange={handleChange}
-                />
+              {!editingRoom && (
+                <label style={{ display: "grid", gap: 8, color: "#f8fafc", fontSize: 13 }}>
+                  Total beds
+                  <input
+                    type="number"
+                    value={roomForm.totalBeds}
+                    onChange={(event) => setRoomForm((prev) => ({ ...prev, totalBeds: event.target.value }))}
+                    placeholder="2"
+                    style={{ borderRadius: 16, border: "1px solid rgba(255,255,255,0.1)", padding: "12px 14px", background: "rgba(255,255,255,0.04)", color: "#f8fafc" }}
+                  />
+                </label>
+              )}
+              <div style={{ display: "grid", gap: 14, gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))" }}>
+                <label style={{ display: "grid", gap: 8, color: "#f8fafc", fontSize: 13 }}>
+                  Floor
+                  <input
+                    value={roomForm.floor}
+                    onChange={(event) => setRoomForm((prev) => ({ ...prev, floor: event.target.value }))}
+                    placeholder="First"
+                    style={{ borderRadius: 16, border: "1px solid rgba(255,255,255,0.1)", padding: "12px 14px", background: "rgba(255,255,255,0.04)", color: "#f8fafc" }}
+                  />
+                </label>
+                <label style={{ display: "grid", gap: 8, color: "#f8fafc", fontSize: 13 }}>
+                  Type
+                  <input
+                    value={roomForm.roomType}
+                    onChange={(event) => setRoomForm((prev) => ({ ...prev, roomType: event.target.value }))}
+                    placeholder="AC / Non-AC"
+                    style={{ borderRadius: 16, border: "1px solid rgba(255,255,255,0.1)", padding: "12px 14px", background: "rgba(255,255,255,0.04)", color: "#f8fafc" }}
+                  />
+                </label>
+              </div>
+              <div style={{ display: "flex", gap: 12, flexWrap: "wrap", justifyContent: "flex-end" }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    resetRoomForm();
+                    setRoomFormOpen(false);
+                  }}
+                  style={{
+                    borderRadius: 18,
+                    border: "1px solid rgba(255,255,255,0.18)",
+                    background: "transparent",
+                    color: "#f8fafc",
+                    padding: "12px 18px",
+                    cursor: "pointer",
+                  }}
+                >
+                  Close
+                </button>
+                <button
+                  type="button"
+                  onClick={submitRoom}
+                  style={{
+                    borderRadius: 18,
+                    border: "none",
+                    background: "#22c55e",
+                    color: "#081028",
+                    padding: "12px 18px",
+                    cursor: "pointer",
+                  }}
+                >
+                  {editingRoom ? "Save room" : "Create room"}
+                </button>
               </div>
             </div>
+          </section>
+        )}
 
-            <button className="btn-primary mt-4" onClick={createRoom}>
-              {editingRoom ? "Save Room" : "Create Room"}
-            </button>
+        <section style={{ display: "grid", gap: 16 }}>
+          {loading ? (
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "center",
+                alignItems: "center",
+                minHeight: 220,
+                borderRadius: 24,
+                background: "rgba(255,255,255,0.04)",
+                border: "1px solid rgba(255,255,255,0.08)",
+              }}
+            >
+              <Loader2 size={30} className="spin" color="#22c55e" />
+            </div>
+          ) : filteredRooms.length === 0 ? (
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 12,
+                minHeight: 220,
+                borderRadius: 24,
+                background: "rgba(255,255,255,0.04)",
+                border: "1px solid rgba(255,255,255,0.08)",
+              }}
+            >
+              <BedDouble size={42} color="rgba(241,245,249,0.45)" />
+              <p style={{ color: "rgba(241,245,249,0.7)", margin: 0 }}>No rooms match the current filters.</p>
+            </div>
+          ) : (
+            filteredRooms.map((room) => {
+              const { totalBeds, occupiedBeds, vacantBeds, pct, beds } = getRoomStats(room);
+              const acLike = String(room.roomType || "").toLowerCase().includes("ac");
+
+              return (
+                <div
+                  key={room._id}
+                  style={{
+                    borderRadius: 28,
+                    background: "rgba(11,23,57,0.9)",
+                    border: "1px solid rgba(255,255,255,0.08)",
+                    padding: 24,
+                    boxShadow: "0 20px 50px rgba(0,0,0,0.2)",
+                  }}
+                >
+                  <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", gap: 20, flexWrap: "wrap" }}>
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+                          <h2 style={{ color: "#f8fafc", margin: 0, fontSize: 24 }}>Room {room.roomNumber}</h2>
+                          <span
+                            style={{
+                              borderRadius: 16,
+                              padding: "6px 12px",
+                              fontSize: 12,
+                              fontWeight: 700,
+                              color: "#ffffff",
+                              background: acLike ? "rgba(34,197,94,0.16)" : "rgba(255,255,255,0.06)",
+                              border: acLike ? "1px solid rgba(34,197,94,0.25)" : "1px solid rgba(255,255,255,0.1)",
+                            }}
+                          >
+                            {acLike ? "AC" : room.roomType || "Room"}
+                          </span>
+                        </div>
+                        <p style={{ margin: "12px 0 0", color: "rgba(241,245,249,0.72)", fontSize: 14 }}>
+                          Floor {room.floor || "-"} · {formatMoney(room.rentPerBed)} per bed
+                        </p>
+                      </div>
+                      <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+                        <button
+                          type="button"
+                          onClick={() => handleEditRoom(room)}
+                          style={{
+                            borderRadius: 16,
+                            border: "1px solid rgba(34,197,94,0.35)",
+                            background: "rgba(34,197,94,0.1)",
+                            color: "#f8fafc",
+                            padding: "12px 16px",
+                            cursor: "pointer",
+                          }}
+                        >
+                          Edit
+                        </button>
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            try {
+                              await api.delete(`/api/rooms/delete-room/${room._id}`);
+                              toast.success("Room deleted successfully.");
+                              await loadData();
+                            } catch (error) {
+                              toast.error(error?.response?.data?.message || "Unable to delete room.");
+                            }
+                          }}
+                          style={{
+                            borderRadius: 16,
+                            border: "1px solid rgba(239,68,68,0.35)",
+                            background: "rgba(239,68,68,0.1)",
+                            color: "#f8fafc",
+                            padding: "12px 16px",
+                            cursor: "pointer",
+                          }}
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+
+                    <div style={{ display: "grid", gap: 14 }}>
+                      <div style={{ display: "flex", gap: 14, flexWrap: "wrap" }}>
+                        <div style={{ flex: 1, minWidth: 140, padding: 16, borderRadius: 20, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
+                          <p style={{ margin: 0, color: "rgba(241,245,249,0.6)", fontSize: 12 }}>Total beds</p>
+                          <p style={{ margin: "8px 0 0", color: "#ffffff", fontWeight: 700, fontSize: 18 }}>{totalBeds}</p>
+                        </div>
+                        <div style={{ flex: 1, minWidth: 140, padding: 16, borderRadius: 20, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
+                          <p style={{ margin: 0, color: "rgba(241,245,249,0.6)", fontSize: 12 }}>Occupied</p>
+                          <p style={{ margin: "8px 0 0", color: "#ffffff", fontWeight: 700, fontSize: 18 }}>{occupiedBeds}</p>
+                        </div>
+                        <div style={{ flex: 1, minWidth: 140, padding: 16, borderRadius: 20, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
+                          <p style={{ margin: 0, color: "rgba(241,245,249,0.6)", fontSize: 12 }}>Vacant</p>
+                          <p style={{ margin: "8px 0 0", color: "#ffffff", fontWeight: 700, fontSize: 18 }}>{vacantBeds}</p>
+                        </div>
+                      </div>
+                      <div>
+                        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8, color: "rgba(241,245,249,0.8)", fontSize: 13 }}>
+                          <span>Occupancy</span>
+                          <span>{pct}%</span>
+                        </div>
+                        <div style={{ width: "100%", height: 12, borderRadius: 999, background: "rgba(255,255,255,0.08)" }}>
+                          <div
+                            style={{
+                              width: `${pct}%`,
+                              height: "100%",
+                              borderRadius: 999,
+                              background: "linear-gradient(90deg, rgba(34,197,94,0.95), rgba(20,241,217,0.65))",
+                              boxShadow: "0 0 18px rgba(34,197,94,0.25)",
+                              transition: "width 300ms ease",
+                            }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div
+                      style={{
+                        display: "grid",
+                        gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+                        gap: 14,
+                      }}
+                    >
+                      {beds.map((bed, idx) => {
+                        const status = String(bed?.status || "vacant").toLowerCase();
+                        const isVacant = status !== "occupied";
+                        const resident = residentMapById[bed?.residentId] || residentMapByBedId[bed?._id] || null;
+                        const residentName = resident?.name || "Resident";
+                        const residentPhone = resident?.phone || "";
+                        const residentPhoto = resident?.photo ? `${import.meta.env.VITE_API_URL}/uploads/${resident.photo}` : null;
+                        const initials = getInitials(residentName);
+                        const payment = paymentSummaryByResidentId[resident?._id];
+                        const badge = getPaymentBadge(payment?.status);
+
+                        return (
+                          <div
+                            key={bed?._id || `${room._id}-${idx}`}
+                            style={{
+                              borderRadius: 22,
+                              padding: 18,
+                              minHeight: 200,
+                              display: "flex",
+                              flexDirection: "column",
+                              gap: 12,
+                              border: `1px solid ${isVacant ? "rgba(34,197,94,0.25)" : "rgba(255,255,255,0.08)"}`,
+                              background: isVacant ? "rgba(34,197,94,0.08)" : "rgba(255,255,255,0.04)",
+                            }}
+                          >
+                            <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "flex-start" }}>
+                              <div>
+                                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                                  <BedDouble size={18} color={isVacant ? "#22c55e" : "#f97316"} />
+                                  <h3 style={{ margin: 0, fontSize: 15, color: "#f8fafc" }}>Bed {bed?.bedNumber || idx + 1}</h3>
+                                </div>
+                                <p style={{ margin: "8px 0 0", color: "rgba(241,245,249,0.75)", fontSize: 13, fontWeight: 700 }}>
+                                  {isVacant ? "Available" : residentName}
+                                </p>
+                              </div>
+                              <div
+                                style={{
+                                  width: 44,
+                                  height: 44,
+                                  borderRadius: 16,
+                                  display: "grid",
+                                  placeItems: "center",
+                                  background: isVacant ? "rgba(34,197,94,0.14)" : "rgba(255,255,255,0.08)",
+                                  color: "#f8fafc",
+                                }}
+                              >
+                                {residentPhoto ? (
+                                  <img
+                                    src={residentPhoto}
+                                    alt={residentName}
+                                    style={{ width: 40, height: 40, borderRadius: 14, objectFit: "cover" }}
+                                    onError={(event) => {
+                                      event.currentTarget.onerror = null;
+                                      event.currentTarget.src = "";
+                                    }}
+                                  />
+                                ) : (
+                                  <span style={{ fontWeight: 800 }}>{initials}</span>
+                                )}
+                              </div>
+                            </div>
+
+                            {!isVacant && payment && (
+                              <span
+                                style={{
+                                  alignSelf: "flex-start",
+                                  borderRadius: 999,
+                                  padding: "6px 10px",
+                                  fontSize: 11,
+                                  fontWeight: 700,
+                                  color: "#f8fafc",
+                                  background: badge.color,
+                                  border: `1px solid ${badge.border}`,
+                                }}
+                              >
+                                {badge.label}
+                              </span>
+                            )}
+
+                            {!isVacant && residentPhone && (
+                              <div style={{ display: "flex", alignItems: "center", gap: 8, color: "rgba(241,245,249,0.75)", fontSize: 13 }}>
+                                <Phone size={14} />
+                                <span>{residentPhone}</span>
+                              </div>
+                            )}
+
+                            <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: "auto" }}>
+                              {isVacant ? (
+                                <button
+                                  type="button"
+                                  onClick={() => openAssignModal(room, bed)}
+                                  style={{
+                                    flex: 1,
+                                    borderRadius: 16,
+                                    border: "1px solid rgba(34,197,94,0.3)",
+                                    background: "rgba(34,197,94,0.14)",
+                                    color: "#f8fafc",
+                                    padding: "12px 14px",
+                                    cursor: "pointer",
+                                  }}
+                                >
+                                  Assign
+                                </button>
+                              ) : (
+                                <>
+                                  <button
+                                    type="button"
+                                    onClick={() => openResidentModal(resident?._id || bed?.residentId)}
+                                    style={{
+                                      flex: 1,
+                                      borderRadius: 16,
+                                      border: "1px solid rgba(255,255,255,0.12)",
+                                      background: "rgba(255,255,255,0.06)",
+                                      color: "#f8fafc",
+                                      padding: "12px 14px",
+                                      cursor: "pointer",
+                                    }}
+                                  >
+                                    View
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => openCheckoutModal(room, bed)}
+                                    style={{
+                                      minWidth: 110,
+                                      borderRadius: 16,
+                                      border: "1px solid rgba(239,68,68,0.28)",
+                                      background: "rgba(239,68,68,0.12)",
+                                      color: "#f8fafc",
+                                      padding: "12px 14px",
+                                      cursor: "pointer",
+                                    }}
+                                  >
+                                    Checkout
+                                  </button>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </section>
+
+        {assignModalOpen && selectedRoom && selectedBed && (
+          <div
+            role="dialog"
+            aria-modal="true"
+            style={{
+              position: "fixed",
+              inset: 0,
+              zIndex: 1200,
+              background: "rgba(0,0,0,0.78)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: 20,
+              overflowY: "auto",
+            }}
+          >
+            <div
+              style={{
+                width: "min(760px,100%)",
+                maxHeight: "calc(100vh - 40px)",
+                borderRadius: 28,
+                background: "rgba(11,23,57,0.98)",
+                border: "1px solid rgba(255,255,255,0.08)",
+                padding: 28,
+                overflowY: "auto",
+              }}
+            >
+              <div style={{ display: "flex", justifyContent: "space-between", gap: 16, alignItems: "center", marginBottom: 22 }}>
+                <div>
+                  <p style={{ margin: 0, color: "rgba(241,245,249,0.6)", fontSize: 13 }}>Assign resident to</p>
+                  <h2 style={{ margin: "8px 0 0", color: "#f8fafc", fontSize: 24 }}>
+                    Room {selectedRoom.roomNumber} · Bed {selectedBed.bedNumber}
+                  </h2>
+                </div>
+                <button
+                  type="button"
+                  onClick={closeAssignModal}
+                  style={{ border: "none", background: "transparent", color: "#f8fafc", cursor: "pointer" }}
+                >
+                  <X size={22} />
+                </button>
+              </div>
+
+              <div style={{ display: "grid", gap: 18 }}>
+                <div style={{ display: "grid", gap: 12 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                    <CheckCircle2 color="#22c55e" />
+                    <h3 style={{ margin: 0, color: "#f8fafc", fontSize: 18 }}>Resident information</h3>
+                  </div>
+                  {assignError ? (
+                    <div style={{ color: "#fee2e2", background: "rgba(239,68,68,0.12)", padding: 12, borderRadius: 16, border: "1px solid rgba(239,68,68,0.2)" }}>
+                      {assignError}
+                    </div>
+                  ) : null}
+                  <div style={{ display: "grid", gap: 12 }}>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                      <label style={{ display: "grid", gap: 6, color: "#f8fafc", fontSize: 13 }}>
+                        Full name
+                        <input
+                          type="text"
+                          value={assignForm.name}
+                          onChange={(event) => setAssignForm((prev) => ({ ...prev, name: event.target.value }))}
+                          placeholder="Enter resident name"
+                          style={{ borderRadius: 16, border: "1px solid rgba(255,255,255,0.1)", padding: "12px 14px", background: "rgba(255,255,255,0.04)", color: "#f8fafc" }}
+                        />
+                      </label>
+                      <label style={{ display: "grid", gap: 6, color: "#f8fafc", fontSize: 13 }}>
+                        Phone
+                        <input
+                          type="tel"
+                          value={assignForm.phone}
+                          onChange={(event) => setAssignForm((prev) => ({ ...prev, phone: event.target.value }))}
+                          placeholder="10 digit phone"
+                          style={{ borderRadius: 16, border: "1px solid rgba(255,255,255,0.1)", padding: "12px 14px", background: "rgba(255,255,255,0.04)", color: "#f8fafc" }}
+                        />
+                      </label>
+                    </div>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                      <label style={{ display: "grid", gap: 6, color: "#f8fafc", fontSize: 13 }}>
+                        Monthly rent
+                        <input
+                          type="number"
+                          value={assignForm.monthlyRent}
+                          onChange={(event) => setAssignForm((prev) => ({ ...prev, monthlyRent: event.target.value }))}
+                          placeholder="Monthly rent"
+                          style={{ borderRadius: 16, border: "1px solid rgba(255,255,255,0.1)", padding: "12px 14px", background: "rgba(255,255,255,0.04)", color: "#f8fafc" }}
+                        />
+                      </label>
+                      <label style={{ display: "grid", gap: 6, color: "#f8fafc", fontSize: 13 }}>
+                        Deposit amount
+                        <input
+                          type="number"
+                          value={assignForm.depositAmount}
+                          onChange={(event) => setAssignForm((prev) => ({ ...prev, depositAmount: event.target.value }))}
+                          placeholder="Deposit amount"
+                          style={{ borderRadius: 16, border: "1px solid rgba(255,255,255,0.1)", padding: "12px 14px", background: "rgba(255,255,255,0.04)", color: "#f8fafc" }}
+                        />
+                      </label>
+                    </div>
+                    <label style={{ display: "grid", gap: 6, color: "#f8fafc", fontSize: 13 }}>
+                      Join date
+                      <input
+                        type="date"
+                        value={assignForm.joinDate}
+                        onChange={(event) => setAssignForm((prev) => ({ ...prev, joinDate: event.target.value }))}
+                        style={{ borderRadius: 16, border: "1px solid rgba(255,255,255,0.1)", padding: "12px 14px", background: "rgba(255,255,255,0.04)", color: "#f8fafc" }}
+                      />
+                    </label>
+                  </div>
+                </div>
+
+                <div style={{ display: "flex", gap: 12, flexWrap: "wrap", justifyContent: "flex-end" }}>
+                  <button
+                    type="button"
+                    onClick={closeAssignModal}
+                    style={{
+                      borderRadius: 18,
+                      border: "1px solid rgba(255,255,255,0.18)",
+                      background: "transparent",
+                      color: "#f8fafc",
+                      padding: "12px 18px",
+                      minWidth: 120,
+                      cursor: "pointer",
+                    }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={submitAssign}
+                    disabled={assignLoading}
+                    style={{
+                      borderRadius: 18,
+                      border: "none",
+                      background: "#22c55e",
+                      color: "#081028",
+                      padding: "12px 18px",
+                      minWidth: 150,
+                      cursor: assignLoading ? "not-allowed" : "pointer",
+                    }}
+                  >
+                    {assignLoading ? "Assigning..." : "Assign Resident"}
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
         )}
 
-        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          {filteredRooms.map((room) => {
-            const { totalBeds, occupiedBeds, vacantBeds, pct, beds } = getStats(room);
-            const sharingType = room.roomType || "";
-            const acLike = sharingType.toLowerCase().includes("ac");
-
-            return (
-              <div
-                key={room._id}
-                className="glass-card animate-slide-up"
-                style={{
-                  borderRadius: 24,
-                  borderColor: "rgba(255,255,255,0.08)",
-                  background: "rgba(11,23,57,0.55)",
-                }}
-              >
-                <div className="flex justify-between items-start mb-4" style={{ gap: 12 }}>
-                  <div style={{ minWidth: 0 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-                      <div className="text-h2" style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                        Room {room.roomNumber}
-                      </div>
-                      <span
-                        className="badge"
-                        style={{
-                          background: acLike ? "rgba(34,197,94,0.12)" : "rgba(255,255,255,0.06)",
-                          borderColor: acLike ? "rgba(34,197,94,0.25)" : "rgba(255,255,255,0.10)",
-                          color: "#ffffff",
-                          fontWeight: 900,
-                        }}
-                      >
-                        {acLike ? "AC" : "Non-AC"}
-                      </span>
-                    </div>
-
-                    <p className="text-small" style={{ marginTop: 8 }}>
-                      {room.floor} Floor • ₹{room.rentPerBed}/mo per bed
-                    </p>
-                    <p className="text-small" style={{ marginTop: 4, opacity: 0.95 }}>
-                      Sharing: {sharingType || "—"}
-                    </p>
-                    <p className="text-small" style={{ marginTop: 4, opacity: 0.9 }}>
-                      {occupiedBeds}/{totalBeds} occupied
-                    </p>
-                  </div>
-
-                  <div className="flex gap-2" style={{ flexShrink: 0 }}>
-                    <button
-                      onClick={() => handleEdit(room)}
-                      className="btn-icon"
-                      style={{ background: "rgba(37,211,102,0.10)", borderColor: "rgba(37,211,102,0.25)" }}
-                      aria-label="Edit room"
-                    >
-                      <Edit2 size={18} />
-                    </button>
-                    <button
-                      onClick={() => deleteRoom(room._id)}
-                      className="btn-icon"
-                      style={{ background: "rgba(239,68,68,0.10)", borderColor: "rgba(239,68,68,0.25)" }}
-                      aria-label="Delete room"
-                    >
-                      <Trash2 size={18} />
-                    </button>
-                  </div>
+        {residentModalOpen && (
+          <div
+            role="dialog"
+            aria-modal="true"
+            style={{
+              position: "fixed",
+              inset: 0,
+              zIndex: 1200,
+              background: "rgba(0,0,0,0.8)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: 20,
+              overflowY: "auto",
+            }}
+          >
+            <div
+              style={{
+                width: "min(860px,100%)",
+                maxHeight: "calc(100vh - 40px)",
+                borderRadius: 28,
+                background: "rgba(11,23,57,0.98)",
+                border: "1px solid rgba(255,255,255,0.08)",
+                padding: 28,
+                overflowY: "auto",
+              }}
+            >
+              <div style={{ display: "flex", justifyContent: "space-between", gap: 16, alignItems: "center", marginBottom: 24 }}>
+                <div>
+                  <p style={{ margin: 0, color: "rgba(241,245,249,0.6)", fontSize: 13 }}>Resident profile</p>
+                  <h2 style={{ margin: "8px 0 0", color: "#f8fafc", fontSize: 24 }}>
+                    {residentDetails?.name || "Resident details"}
+                  </h2>
                 </div>
+                <button
+                  type="button"
+                  onClick={closeResidentModal}
+                  style={{ border: "none", background: "transparent", color: "#f8fafc", cursor: "pointer" }}
+                >
+                  <X size={22} />
+                </button>
+              </div>
 
-                {/* progress */}
-                <div style={{ marginBottom: 12 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
-                    <Users size={16} />
-                    <span style={{ fontWeight: 900, color: "#fff" }}>
-                      Filled {occupiedBeds} • Vacant {vacantBeds}
-                    </span>
-                  </div>
-                  <div
+              {residentLoading ? (
+                <div style={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: 240 }}>
+                  <Loader2 size={32} className="spin" color="#22c55e" />
+                </div>
+              ) : (
+                <div style={{ display: "grid", gap: 22 }}>
+                  <section
                     style={{
-                      height: 10,
-                      borderRadius: 999,
-                      background: "rgba(255,255,255,0.06)",
+                      display: "grid",
+                      gap: 12,
+                      borderRadius: 24,
+                      background: "rgba(255,255,255,0.04)",
                       border: "1px solid rgba(255,255,255,0.08)",
-                      overflow: "hidden",
+                      padding: 22,
                     }}
                   >
-                    <div
+                    <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
+                      <div
+                        style={{
+                          width: 74,
+                          height: 74,
+                          borderRadius: 22,
+                          background: "rgba(255,255,255,0.08)",
+                          display: "grid",
+                          placeItems: "center",
+                          overflow: "hidden",
+                        }}
+                      >
+                        {residentDetails?.photo ? (
+                          <img
+                            src={`${import.meta.env.VITE_API_URL}/uploads/${residentDetails.photo}`}
+                            alt={residentDetails.name || "Resident photo"}
+                            style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                          />
+                        ) : (
+                          <span style={{ color: "#f8fafc", fontWeight: 700, fontSize: 20 }}>{getInitials(residentDetails?.name)}</span>
+                        )}
+                      </div>
+                      <div>
+                        <p style={{ margin: 0, color: "rgba(241,245,249,0.7)", fontSize: 13 }}>Personal details</p>
+                        <div style={{ marginTop: 10, display: "grid", gap: 8 }}>
+                          <span style={{ color: "#ffffff", fontWeight: 700 }}>{residentDetails?.name || "-"}</span>
+                          <span style={{ color: "rgba(241,245,249,0.72)", fontSize: 14 }}>Phone: {residentDetails?.phone || "-"}</span>
+                          <span style={{ color: "rgba(241,245,249,0.72)", fontSize: 14 }}>Email: {residentDetails?.email || "Not provided"}</span>
+                          <span style={{ color: "rgba(241,245,249,0.72)", fontSize: 14 }}>Joined on {formatDate(residentDetails?.joinDate)}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </section>
+
+                  <section
+                    style={{
+                      display: "grid",
+                      gap: 12,
+                      borderRadius: 24,
+                      background: "rgba(255,255,255,0.04)",
+                      border: "1px solid rgba(255,255,255,0.08)",
+                      padding: 22,
+                    }}
+                  >
+                    <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                      <Info size={18} color="#22c55e" />
+                      <h3 style={{ margin: 0, color: "#f8fafc", fontSize: 18 }}>Room & bed details</h3>
+                    </div>
+                    <div style={{ display: "grid", gap: 10 }}>
+                      <div style={{ color: "rgba(241,245,249,0.72)", fontSize: 14 }}>Room number: {roomNumberById[residentDetails?.roomId] || residentDetails?.roomId || "-"}</div>
+                      <div style={{ color: "rgba(241,245,249,0.72)", fontSize: 14 }}>Bed number: {bedNumberById[residentDetails?.bedId] || residentDetails?.bedId || "-"}</div>
+                      <div style={{ color: "rgba(241,245,249,0.72)", fontSize: 14 }}>Monthly rent: {formatMoney(residentDetails?.monthlyRent)}</div>
+                      <div style={{ color: "rgba(241,245,249,0.72)", fontSize: 14 }}>Occupancy status: {residentDetails?.status || "active"}</div>
+                    </div>
+                  </section>
+
+                  <section
+                    style={{
+                      display: "grid",
+                      gap: 12,
+                      borderRadius: 24,
+                      background: "rgba(255,255,255,0.04)",
+                      border: "1px solid rgba(255,255,255,0.08)",
+                      padding: 22,
+                    }}
+                  >
+                    <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                      <CreditCard size={18} color="#22c55e" />
+                      <h3 style={{ margin: 0, color: "#f8fafc", fontSize: 18 }}>Payment summary</h3>
+                    </div>
+                    {residentPayments.length === 0 ? (
+                      <p style={{ margin: 0, color: "rgba(241,245,249,0.72)" }}>No payments recorded yet.</p>
+                    ) : (
+                      (() => {
+                        const latest = [...residentPayments].sort((a, b) => new Date(b.createdAt || b.updatedAt).getTime() - new Date(a.createdAt || a.updatedAt).getTime())[0];
+                        const totalPaid = latest.entries?.reduce((sum, entry) => sum + Number(entry.amount || 0), 0) || 0;
+                        const balance = latest.balance ?? Math.max(0, (latest.totalRent || 0) - totalPaid);
+                        const nextDue = getDueDateLabel(latest, residentDetails?.joinDate);
+                        const daysFromDue = getDaysFromDue(latest, residentDetails?.joinDate);
+                        const dueText = daysFromDue === null ? "Not available" : daysFromDue >= 0 ? `${daysFromDue} days remaining` : `${Math.abs(daysFromDue)} days overdue`;
+                        return (
+                          <div style={{ display: "grid", gap: 12 }}>
+                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                              <div style={{ borderRadius: 18, padding: 16, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)" }}>
+                                <p style={{ margin: 0, color: "rgba(241,245,249,0.7)", fontSize: 12 }}>Payment status</p>
+                                <p style={{ margin: "8px 0 0", color: "#f8fafc", fontWeight: 700 }}>{latest.status || "pending"}</p>
+                              </div>
+                              <div style={{ borderRadius: 18, padding: 16, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)" }}>
+                                <p style={{ margin: 0, color: "rgba(241,245,249,0.7)", fontSize: 12 }}>Paid</p>
+                                <p style={{ margin: "8px 0 0", color: "#f8fafc", fontWeight: 700 }}>{formatMoney(totalPaid)}</p>
+                              </div>
+                            </div>
+                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                              <div style={{ borderRadius: 18, padding: 16, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)" }}>
+                                <p style={{ margin: 0, color: "rgba(241,245,249,0.7)", fontSize: 12 }}>Pending balance</p>
+                                <p style={{ margin: "8px 0 0", color: "#f8fafc", fontWeight: 700 }}>{formatMoney(balance)}</p>
+                              </div>
+                              <div style={{ borderRadius: 18, padding: 16, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)" }}>
+                                <p style={{ margin: 0, color: "rgba(241,245,249,0.7)", fontSize: 12 }}>Next due</p>
+                                <p style={{ margin: "8px 0 0", color: "#f8fafc", fontWeight: 700 }}>{nextDue}</p>
+                              </div>
+                            </div>
+                            <p style={{ margin: 0, color: "rgba(241,245,249,0.72)", fontSize: 13 }}>{dueText}</p>
+                          </div>
+                        );
+                      })()
+                    )}
+                  </section>
+
+                  <section
+                    style={{
+                      display: "grid",
+                      gap: 12,
+                      borderRadius: 24,
+                      background: "rgba(255,255,255,0.04)",
+                      border: "1px solid rgba(255,255,255,0.08)",
+                      padding: 22,
+                    }}
+                  >
+                    <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                      <Calendar size={18} color="#22c55e" />
+                      <h3 style={{ margin: 0, color: "#f8fafc", fontSize: 18 }}>Agreement summary</h3>
+                    </div>
+                    <div style={{ display: "grid", gap: 10, color: "rgba(241,245,249,0.72)", fontSize: 14 }}>
+                      <div>Rules version: {residentDetails?.rulesVersionNumber || "Not signed"}</div>
+                      <div>Signed at: {residentDetails?.signedAt ? formatDate(residentDetails.signedAt) : "Not signed"}</div>
+                      <div>Signature recorded: {residentDetails?.signatureImage ? "Yes" : "No"}</div>
+                    </div>
+                  </section>
+
+                  <div style={{ display: "flex", gap: 12, flexWrap: "wrap", justifyContent: "flex-end" }}>
+                    <button
+                      type="button"
+                      onClick={closeResidentModal}
                       style={{
-                        height: "100%",
-                        width: `${pct}%`,
-                        background: "linear-gradient(90deg, rgba(34,197,94,0.95), rgba(20,241,217,0.55))",
-                        boxShadow: "0 0 18px rgba(34,197,94,0.25)",
-                        transition: "width 300ms ease",
+                        borderRadius: 18,
+                        border: "1px solid rgba(255,255,255,0.18)",
+                        background: "transparent",
+                        color: "#f8fafc",
+                        padding: "12px 18px",
+                        cursor: "pointer",
                       }}
-                    />
+                    >
+                      Close
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        closeResidentModal();
+                        setCheckoutModalOpen(true);
+                      }}
+                      style={{
+                        borderRadius: 18,
+                        border: "none",
+                        background: "#ef4444",
+                        color: "#f8fafc",
+                        padding: "12px 18px",
+                        cursor: "pointer",
+                      }}
+                    >
+                      Checkout resident
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {checkoutModalOpen && selectedResidentId && (
+          <div
+            role="dialog"
+            aria-modal="true"
+            style={{
+              position: "fixed",
+              inset: 0,
+              zIndex: 1200,
+              background: "rgba(0,0,0,0.86)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: 20,
+              overflowY: "auto",
+            }}
+          >
+            <div
+              style={{
+                width: "min(560px,100%)",
+                borderRadius: 28,
+                background: "rgba(11,23,57,0.98)",
+                border: "1px solid rgba(255,255,255,0.08)",
+                padding: 28,
+              }}
+            >
+              <div style={{ display: "flex", justifyContent: "space-between", gap: 16, alignItems: "center", marginBottom: 24 }}>
+                <div>
+                  <p style={{ margin: 0, color: "rgba(241,245,249,0.6)", fontSize: 13 }}>Confirm checkout</p>
+                  <h2 style={{ margin: "8px 0 0", color: "#f8fafc", fontSize: 24 }}>Finalize resident checkout</h2>
+                </div>
+                <button
+                  type="button"
+                  onClick={closeCheckoutModal}
+                  style={{ border: "none", background: "transparent", color: "#f8fafc", cursor: "pointer" }}
+                >
+                  <X size={22} />
+                </button>
+              </div>
+              <div style={{ display: "grid", gap: 20 }}>
+                <div style={{ display: "grid", gap: 14 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 12, color: "rgba(241,245,249,0.9)" }}>
+                    <AlertTriangle size={18} color="#f59e0b" />
+                    <span style={{ color: "rgba(241,245,249,0.9)", fontSize: 15 }}>This bed will become vacant after checkout.</span>
+                  </div>
+                  <div style={{ borderRadius: 20, background: "rgba(255,255,255,0.04)", padding: 18, border: "1px solid rgba(255,255,255,0.08)" }}>
+                    <p style={{ margin: 0, color: "rgba(241,245,249,0.75)", fontSize: 14 }}>
+                      Resident: <strong style={{ color: "#f8fafc" }}>{residentDetails?.name || "Resident"}</strong>
+                    </p>
+                    <p style={{ margin: "8px 0 0", color: "rgba(241,245,249,0.75)", fontSize: 14 }}>
+                      Room: <strong style={{ color: "#f8fafc" }}>{selectedRoom?.roomNumber || "-"}</strong> · Bed: <strong style={{ color: "#f8fafc" }}>{selectedBed?.bedNumber || "-"}</strong>
+                    </p>
                   </div>
                 </div>
 
-                {/* beds */}
-                <div
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "repeat(auto-fill, minmax(132px, 1fr))",
-                    gap: 12,
-                  }}
-                >
-                  {beds.map((bed, idx) => {
-                    const status = bedStatus(bed);
-                    const vacant = status === "vacant";
-                    const resident = bed?.resident || bed?.occupant || null;
-                    const residentName = resident?.name || bed?.residentName || "";
-                    const residentPhone = resident?.phone || bed?.residentPhone || "";
-                    const initials = initialsFromName(residentName);
-
-                    return (
-                      <div
-                        key={bed?._id || bed?.bedNumber || idx}
-                        style={{
-                          borderRadius: 18,
-                          padding: 12,
-                          border: `1px solid ${vacant ? "rgba(34,197,94,0.35)" : "rgba(239,68,68,0.35)"}`,
-                          background: vacant ? "rgba(34,197,94,0.10)" : "rgba(239,68,68,0.10)",
-                          minHeight: 150,
-                          display: "flex",
-                          flexDirection: "column",
-                          gap: 10,
-                        }}
-                      >
-                        <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "flex-start" }}>
-                          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                              <BedDouble size={20} color={vacant ? "var(--status-success)" : "var(--status-error)"} />
-                              <div style={{ fontWeight: 900, color: "#fff", fontSize: 13 }}>Bed {bed.bedNumber || idx + 1}</div>
-                            </div>
-                            <div style={{ fontSize: 12, color: "rgba(255,255,255,0.86)", fontWeight: 800 }}>
-                              {vacant ? "Available" : residentName || "Occupied"}
-                            </div>
-                          </div>
-
-                          <div
-                            style={{
-                              width: 40,
-                              height: 40,
-                              borderRadius: 16,
-                              background: vacant ? "rgba(34,197,94,0.18)" : "rgba(239,68,68,0.18)",
-                              border: `1px solid ${vacant ? "rgba(34,197,94,0.35)" : "rgba(239,68,68,0.35)"}`,
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "center",
-                              fontWeight: 900,
-                              color: "#fff",
-                              flexShrink: 0,
-                            }}
-                            aria-label="Resident initials"
-                          >
-                            {initials || "—"}
-                          </div>
-                        </div>
-
-                        {!vacant && (
-                          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                            {residentPhone && (
-                              <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "rgba(255,255,255,0.9)" }}>
-                                <Phone size={14} />
-                                <span style={{ fontWeight: 700 }}>{residentPhone}</span>
-                              </div>
-                            )}
-                          </div>
-                        )}
-
-                        <div style={{ display: "flex", gap: 8, marginTop: "auto" }}>
-                          {vacant ? (
-                            <button
-                              onClick={handleAssignBed}
-                              className="btn-secondary"
-                              style={{
-                                padding: "10px 12px",
-                                borderRadius: 14,
-                                fontSize: 12,
-                                background: "rgba(34,197,94,0.12)",
-                                border: "1px solid rgba(34,197,94,0.25)",
-                                color: "#fff",
-                                flex: 1,
-                              }}
-                            >
-                              Assign
-                            </button>
-                          ) : (
-                            <>
-                              <button
-                                onClick={handleViewResident}
-                                className="btn-secondary"
-                                style={{
-                                  padding: "10px 12px",
-                                  borderRadius: 14,
-                                  fontSize: 12,
-                                  background: "rgba(239,68,68,0.12)",
-                                  border: "1px solid rgba(239,68,68,0.25)",
-                                  color: "#fff",
-                                  flex: 1,
-                                }}
-                              >
-                                View
-                              </button>
-                              <button
-                                onClick={handleRemoveBed}
-                                className="btn-secondary"
-                                style={{
-                                  padding: "10px 10px",
-                                  borderRadius: 14,
-                                  fontSize: 12,
-                                  background: "rgba(239,68,68,0.08)",
-                                  border: "1px solid rgba(239,68,68,0.18)",
-                                  color: "#fff",
-                                  flex: 0.6,
-                                }}
-                                aria-label="Remove bed"
-                              >
-                                <SwapHoriz size={14} />
-                              </button>
-                            </>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
+                <div style={{ display: "flex", gap: 12, flexWrap: "wrap", justifyContent: "flex-end" }}>
+                  <button
+                    type="button"
+                    onClick={closeCheckoutModal}
+                    style={{
+                      borderRadius: 18,
+                      border: "1px solid rgba(255,255,255,0.18)",
+                      background: "transparent",
+                      color: "#f8fafc",
+                      padding: "12px 18px",
+                      cursor: "pointer",
+                    }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={submitCheckout}
+                    disabled={checkoutLoading}
+                    style={{
+                      borderRadius: 18,
+                      border: "none",
+                      background: "#ef4444",
+                      color: "#f8fafc",
+                      padding: "12px 18px",
+                      cursor: checkoutLoading ? "not-allowed" : "pointer",
+                    }}
+                  >
+                    {checkoutLoading ? "Checking out..." : "Confirm Checkout"}
+                  </button>
                 </div>
               </div>
-            );
-          })}
-
-          {filteredRooms.length === 0 && !showAddForm && (
-            <div className="text-center pt-10 pb-10">
-              <BedDouble size={48} color="var(--text-muted)" style={{ opacity: 0.3 }} />
-              <p className="text-body mt-4">No rooms found.</p>
             </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
       <BottomNav />
@@ -675,4 +1363,3 @@ function Rooms() {
 }
 
 export default Rooms;
-

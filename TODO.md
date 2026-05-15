@@ -1,38 +1,20 @@
-# HostelMate — Phase 4 (Residents Upgrade) TODO
+# HostelMate — Phase Tracker
 
-## Status
-- [x] Step: Repo analysis (Residents + Payments + backend controllers/models)
-- [x] Step: Fix corrupted Residents.jsx by restoring baseline
+## Phase: Rooms.jsx FINAL UX Completion & Resident Detail Workflow
 
-## Phase 4 Implementation (in Residents.jsx)
-### Resident Card Upgrade
-- [ ] Show photo/avatar
-- [ ] Show name + phone
-- [ ] Show room + bed
-- [ ] Show monthly rent
-- [ ] Show next due date
-- [ ] Show remaining days
-- [ ] Show payment status badge (paid/partial/overdue with colors)
-- [ ] Add “View More” button
+- [x] Reviewed existing `Frontend/src/owner/Rooms.jsx` to identify missing resident detail and checkout UX.
+- [x] Implement real Resident Detail modal (resident + room/bed + payment summary + agreement summary indicators + quick actions).
 
-### View More (Modal)
-- [ ] Add in-page premium dark-glass modal
-- [ ] Personal details section
-- [ ] Hostel details section
-- [ ] Payment details section
+- [x] Fix occupied bed “View” button to open Resident Detail modal (not checkout).
 
-### Logic
-- [ ] Compute due/remaining/overdue using existing payments (`payment.month`, `payment.balance`, `payment.status`)
-- [ ] Integrate payment history into modal (latest first)
+- [ ] Implement real Checkout confirmation modal UI (Cancel/Confirm) and wire Confirm to existing checkout API.
 
-### UX
-- [ ] Photo fallback avatar (no broken image)
-- [ ] Responsive modal + cards
-- [ ] Dark-glass consistency
-- [ ] Toast-based error handling for residents/payments/image failures
 
-### Verification
-- [ ] `cd Frontend` then `npm run build`
-- [ ] `cd Backend` then `npm start`
-- [ ] QA checklist: cards render, View More works, due calc correct, image fallback works, no console errors
+
+
+- [ ] Bed card UX polish (vacant/occupied accents, resident preview, payment status badge).
+- [ ] Mobile-safe modal behavior (scrolling, dark/glass theme consistency).
+- [ ] Remove remaining placeholders/fake interactions in Rooms.jsx.
+- [ ] Final validation: `cd Frontend` -> `npm run build` ; `cd Backend` -> `npm start` (no chained commands).
+
 
