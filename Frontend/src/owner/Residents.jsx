@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import axios from "axios";
 import {
   Search,
@@ -14,6 +14,9 @@ import {
   Receipt,
   Info,
   Clock,
+  Plus,
+  Upload,
+  Check,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import BottomNav from "../components/BottomNav";
@@ -34,6 +37,46 @@ function Residents() {
   const [showViewModal, setShowViewModal] = useState(false);
   const [viewPayments, setViewPayments] = useState([]);
   const [viewLoading, setViewLoading] = useState(false);
+
+  // Add Resident State
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [addLoading, setAddLoading] = useState(false);
+  const [rooms, setRooms] = useState([]);
+  const [beds, setBeds] = useState([]);
+  const [hostelData, setHostelData] = useState(null);
+  const signatureCanvasRef = useRef(null);
+  
+  const [addForm, setAddForm] = useState({
+    // Personal
+    fullName: "",
+    phone: "",
+    email: "",
+    gender: "",
+    dob: "",
+    address: "",
+    district: "",
+    pincode: "",
+    emergencyContact: "",
+    
+    // Hostel
+    roomId: "",
+    bedId: "",
+    joinDate: new Date().toISOString().split("T")[0],
+    monthlyRent: "",
+    depositAmount: "",
+    
+    // Agreement
+    agreementChecked: false,
+    signatureMode: "digital", // digital | uploaded
+  });
+
+  const [addFiles, setAddFiles] = useState({
+    photo: null,
+    idProof: null,
+    signatureFile: null,
+  });
+
+  const [signatureImage, setSignatureImage] = useState(null);
 
   const monthToIndex = (monthStr) => {
     if (!monthStr) return null;
@@ -246,6 +289,190 @@ function Residents() {
     // (Payments.jsx writes via backend; we refetch on modal close as a safe approximation)
   }, [payments]);
 
+  const openAddModal = async () => {
+    try {
+      // Load hostel data and rooms
+      const dashRes = await axios.get(`${import.meta.env.VITE_API_URL}/api/owner/dashboard`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      
+      setHostelData(dashRes.data?.hostel || null);
+
+      // Load rooms
+      const roomsRes = await axios.get(`${import.meta.env.VITE_API_URL}/api/rooms/hostel`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      
+      setRooms(roomsRes.data?.rooms || []);
+      setShowAddModal(true);
+    } catch (e) {
+      toast.error("Failed to load hostel data");
+    }
+  };
+
+  const closeAddModal = () => {
+    setShowAddModal(false);
+    setAddForm({
+      fullName: "",
+      phone: "",
+      email: "",
+      gender: "",
+      dob: "",
+      address: "",
+      district: "",
+      pincode: "",
+      emergencyContact: "",
+      roomId: "",
+      bedId: "",
+      joinDate: new Date().toISOString().split("T")[0],
+      monthlyRent: "",
+      depositAmount: "",
+      agreementChecked: false,
+      signatureMode: "digital",
+    });
+    setAddFiles({ photo: null, idProof: null, signatureFile: null });
+    setSignatureImage(null);
+    setBeds([]);
+  };
+
+  const handleRoomSelect = async (roomId) => {
+    setAddForm((prev) => ({ ...prev, roomId, bedId: "" }));
+    
+    if (!roomId) {
+      setBeds([]);
+      return;
+    }
+
+    try {
+      const bedsRes = await axios.get(`${import.meta.env.VITE_API_URL}/api/beds/room/${roomId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      
+      const availableBeds = (bedsRes.data?.beds || []).filter((b) => b.status !== "occupied");
+      setBeds(availableBeds);
+    } catch (e) {
+      toast.error("Failed to load beds");
+      setBeds([]);
+    }
+  };
+
+  const handleFileChange = (field, file) => {
+    setAddFiles((prev) => ({ ...prev, [field]: file }));
+  };
+
+  const handleSignatureCapture = (e) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setSignatureImage(reader.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const validateAddForm = () => {
+    const required = [
+      { k: "fullName", msg: "Full name is required" },
+      { k: "phone", msg: "Phone is required" },
+      { k: "email", msg: "Email is required" },
+      { k: "address", msg: "Address is required" },
+      { k: "district", msg: "District is required" },
+      { k: "pincode", msg: "Pincode is required" },
+      { k: "emergencyContact", msg: "Emergency contact is required" },
+      { k: "roomId", msg: "Room selection is required" },
+      { k: "bedId", msg: "Bed selection is required" },
+      { k: "monthlyRent", msg: "Monthly rent is required" },
+      { k: "depositAmount", msg: "Deposit amount is required" },
+    ];
+
+    for (const r of required) {
+      if (!String(addForm[r.k] || "").trim()) {
+        toast.error(r.msg);
+        return false;
+      }
+    }
+
+    if (!addFiles.photo) {
+      toast.error("Resident photo is required");
+      return false;
+    }
+
+    if (!addFiles.idProof) {
+      toast.error("ID proof is required");
+      return false;
+    }
+
+    if (addForm.signatureMode === "digital" && !signatureImage) {
+      toast.error("Please provide your signature");
+      return false;
+    }
+
+    if (addForm.signatureMode === "uploaded" && !addFiles.signatureFile) {
+      toast.error("Please upload signature file");
+      return false;
+    }
+
+    if (!addForm.agreementChecked) {
+      toast.error("Please accept the rules agreement");
+      return false;
+    }
+
+    return true;
+  };
+
+  const submitAddResident = async () => {
+    if (!validateAddForm()) return;
+
+    setAddLoading(true);
+
+    try {
+      const formData = new FormData();
+      
+      // Personal details
+      formData.append("name", addForm.fullName);
+      formData.append("phone", addForm.phone);
+      formData.append("email", addForm.email);
+      formData.append("address", addForm.address);
+      formData.append("roomId", addForm.roomId);
+      formData.append("bedId", addForm.bedId);
+      formData.append("joinDate", addForm.joinDate);
+      formData.append("monthlyRent", addForm.monthlyRent);
+      formData.append("depositAmount", addForm.depositAmount);
+      
+      // Files
+      if (addFiles.photo) formData.append("photo", addFiles.photo);
+      if (addFiles.idProof) formData.append("idProof", addFiles.idProof);
+
+      // Signature
+      if (addForm.signatureMode === "digital" && signatureImage) {
+        formData.append("signatureImage", signatureImage);
+      } else if (addForm.signatureMode === "uploaded" && addFiles.signatureFile) {
+        formData.append("signatureFile", addFiles.signatureFile);
+      }
+
+      const res = await axios.post(`${import.meta.env.VITE_API_URL}/api/residents/create`, formData, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "multipart/form-data",
+        },
+      });
+
+      toast.success("Resident added successfully!");
+      closeAddModal();
+      
+      // Refresh residents list
+      const updatedRes = await axios.get(`${import.meta.env.VITE_API_URL}/api/residents/hostel`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setResidents(updatedRes.data?.residents || []);
+    } catch (e) {
+      toast.error(e?.response?.data?.message || "Failed to add resident");
+    } finally {
+      setAddLoading(false);
+    }
+  };
+
   const statusBadge = (status) => {
     if (status === "paid") return { label: "Paid", className: "badge-paid" };
     if (status === "partial") return { label: "Partial", className: "badge-partial" };
@@ -270,17 +497,41 @@ function Residents() {
 
       <div className="p-4">
         <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 12 }}>
-          <div className="input-group" style={{ marginBottom: 0 }}>
-            <span className="input-label" style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <Search size={16} /> Search
-            </span>
-            <input
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Resident name or phone"
-              className="input-field"
-              style={{ padding: "14px", borderRadius: "16px" }}
-            />
+          <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+            <div className="input-group" style={{ marginBottom: 0, flex: 1 }}>
+              <span className="input-label" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <Search size={16} /> Search
+              </span>
+              <input
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Resident name or phone"
+                className="input-field"
+                style={{ padding: "14px", borderRadius: "16px" }}
+              />
+            </div>
+            <button
+              type="button"
+              onClick={openAddModal}
+              style={{
+                background: "linear-gradient(135deg, rgba(34,197,94,1) 0%, rgba(16,185,129,1) 100%)",
+                color: "#fff",
+                padding: "14px 16px",
+                borderRadius: "16px",
+                fontWeight: 900,
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                border: "none",
+                cursor: "pointer",
+                marginTop: "24px",
+                minWidth: "fit-content",
+                touchAction: "manipulation",
+              }}
+              aria-label="Add new resident"
+            >
+              <Plus size={18} /> Add
+            </button>
           </div>
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
@@ -654,7 +905,587 @@ function Residents() {
           </div>
         </div>
       )}
+      {/* Add Resident Modal */}
+      {showAddModal && (
+        <div
+          onClick={closeAddModal}
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.55)",
+            zIndex: 9998,
+            display: "flex",
+            alignItems: "flex-end",
+            justifyContent: "center",
+            padding: 16,
+            overflowY: "auto",
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              width: "100%",
+              maxWidth: "500px",
+              background: "rgba(8,16,40,0.55)",
+              border: "1px solid rgba(255,255,255,0.08)",
+              backdropFilter: "blur(18px)",
+              borderRadius: 26,
+              maxHeight: "90vh",
+              overflowY: "auto",
+              padding: 20,
+            }}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+              <h2 style={{ fontSize: 20, fontWeight: 900, color: "#fff" }}>Add Resident</h2>
+              <button
+                type="button"
+                onClick={closeAddModal}
+                className="btn-icon"
+                style={{ width: 40, height: 40 }}
+                aria-label="Close"
+              >
+                <X size={18} />
+              </button>
+            </div>
 
+            {/* Personal Details Section */}
+            <div style={{ marginBottom: 20 }}>
+              <h3 style={{ fontSize: 14, fontWeight: 900, marginBottom: 12, color: "#22c55e" }}>Personal Details</h3>
+              
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
+                <div>
+                  <label style={{ fontSize: 12, fontWeight: 700, display: "block", marginBottom: 6, color: "rgba(255,255,255,0.7)" }}>Full Name *</label>
+                  <input
+                    type="text"
+                    value={addForm.fullName}
+                    onChange={(e) => setAddForm((p) => ({ ...p, fullName: e.target.value }))}
+                    placeholder="Full name"
+                    style={{
+                      width: "100%",
+                      padding: "12px 14px",
+                      borderRadius: "12px",
+                      background: "rgba(255,255,255,0.04)",
+                      border: "1px solid rgba(255,255,255,0.10)",
+                      color: "#fff",
+                      fontSize: 14,
+                    }}
+                  />
+                </div>
+                <div>
+                  <label style={{ fontSize: 12, fontWeight: 700, display: "block", marginBottom: 6, color: "rgba(255,255,255,0.7)" }}>Gender *</label>
+                  <select
+                    value={addForm.gender}
+                    onChange={(e) => setAddForm((p) => ({ ...p, gender: e.target.value }))}
+                    style={{
+                      width: "100%",
+                      padding: "12px 14px",
+                      borderRadius: "12px",
+                      background: "rgba(255,255,255,0.04)",
+                      border: "1px solid rgba(255,255,255,0.10)",
+                      color: "#fff",
+                      fontSize: 14,
+                    }}
+                  >
+                    <option value="">Select Gender</option>
+                    <option value="male">Male</option>
+                    <option value="female">Female</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
+                <div>
+                  <label style={{ fontSize: 12, fontWeight: 700, display: "block", marginBottom: 6, color: "rgba(255,255,255,0.7)" }}>Phone *</label>
+                  <input
+                    type="tel"
+                    value={addForm.phone}
+                    onChange={(e) => setAddForm((p) => ({ ...p, phone: e.target.value }))}
+                    placeholder="Phone"
+                    style={{
+                      width: "100%",
+                      padding: "12px 14px",
+                      borderRadius: "12px",
+                      background: "rgba(255,255,255,0.04)",
+                      border: "1px solid rgba(255,255,255,0.10)",
+                      color: "#fff",
+                      fontSize: 14,
+                    }}
+                  />
+                </div>
+                <div>
+                  <label style={{ fontSize: 12, fontWeight: 700, display: "block", marginBottom: 6, color: "rgba(255,255,255,0.7)" }}>Email *</label>
+                  <input
+                    type="email"
+                    value={addForm.email}
+                    onChange={(e) => setAddForm((p) => ({ ...p, email: e.target.value }))}
+                    placeholder="Email"
+                    style={{
+                      width: "100%",
+                      padding: "12px 14px",
+                      borderRadius: "12px",
+                      background: "rgba(255,255,255,0.04)",
+                      border: "1px solid rgba(255,255,255,0.10)",
+                      color: "#fff",
+                      fontSize: 14,
+                    }}
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
+                <div>
+                  <label style={{ fontSize: 12, fontWeight: 700, display: "block", marginBottom: 6, color: "rgba(255,255,255,0.7)" }}>Date of Birth</label>
+                  <input
+                    type="date"
+                    value={addForm.dob}
+                    onChange={(e) => setAddForm((p) => ({ ...p, dob: e.target.value }))}
+                    style={{
+                      width: "100%",
+                      padding: "12px 14px",
+                      borderRadius: "12px",
+                      background: "rgba(255,255,255,0.04)",
+                      border: "1px solid rgba(255,255,255,0.10)",
+                      color: "#fff",
+                      fontSize: 14,
+                    }}
+                  />
+                </div>
+                <div>
+                  <label style={{ fontSize: 12, fontWeight: 700, display: "block", marginBottom: 6, color: "rgba(255,255,255,0.7)" }}>Emergency Contact *</label>
+                  <input
+                    type="tel"
+                    value={addForm.emergencyContact}
+                    onChange={(e) => setAddForm((p) => ({ ...p, emergencyContact: e.target.value }))}
+                    placeholder="Emergency contact"
+                    style={{
+                      width: "100%",
+                      padding: "12px 14px",
+                      borderRadius: "12px",
+                      background: "rgba(255,255,255,0.04)",
+                      border: "1px solid rgba(255,255,255,0.10)",
+                      color: "#fff",
+                      fontSize: 14,
+                    }}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label style={{ fontSize: 12, fontWeight: 700, display: "block", marginBottom: 6, color: "rgba(255,255,255,0.7)" }}>Address *</label>
+                <input
+                  type="text"
+                  value={addForm.address}
+                  onChange={(e) => setAddForm((p) => ({ ...p, address: e.target.value }))}
+                  placeholder="Address"
+                  style={{
+                    width: "100%",
+                    padding: "12px 14px",
+                    borderRadius: "12px",
+                    background: "rgba(255,255,255,0.04)",
+                    border: "1px solid rgba(255,255,255,0.10)",
+                    color: "#fff",
+                    fontSize: 14,
+                    marginBottom: 12,
+                  }}
+                />
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
+                <div>
+                  <label style={{ fontSize: 12, fontWeight: 700, display: "block", marginBottom: 6, color: "rgba(255,255,255,0.7)" }}>District *</label>
+                  <input
+                    type="text"
+                    value={addForm.district}
+                    onChange={(e) => setAddForm((p) => ({ ...p, district: e.target.value }))}
+                    placeholder="District"
+                    style={{
+                      width: "100%",
+                      padding: "12px 14px",
+                      borderRadius: "12px",
+                      background: "rgba(255,255,255,0.04)",
+                      border: "1px solid rgba(255,255,255,0.10)",
+                      color: "#fff",
+                      fontSize: 14,
+                    }}
+                  />
+                </div>
+                <div>
+                  <label style={{ fontSize: 12, fontWeight: 700, display: "block", marginBottom: 6, color: "rgba(255,255,255,0.7)" }}>Pincode *</label>
+                  <input
+                    type="text"
+                    value={addForm.pincode}
+                    onChange={(e) => setAddForm((p) => ({ ...p, pincode: e.target.value }))}
+                    placeholder="Pincode"
+                    style={{
+                      width: "100%",
+                      padding: "12px 14px",
+                      borderRadius: "12px",
+                      background: "rgba(255,255,255,0.04)",
+                      border: "1px solid rgba(255,255,255,0.10)",
+                      color: "#fff",
+                      fontSize: 14,
+                    }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Hostel & Room Selection */}
+            <div style={{ marginBottom: 20 }}>
+              <h3 style={{ fontSize: 14, fontWeight: 900, marginBottom: 12, color: "#22c55e" }}>Hostel & Room</h3>
+              
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
+                <div>
+                  <label style={{ fontSize: 12, fontWeight: 700, display: "block", marginBottom: 6, color: "rgba(255,255,255,0.7)" }}>Room *</label>
+                  <select
+                    value={addForm.roomId}
+                    onChange={(e) => handleRoomSelect(e.target.value)}
+                    style={{
+                      width: "100%",
+                      padding: "12px 14px",
+                      borderRadius: "12px",
+                      background: "rgba(255,255,255,0.04)",
+                      border: "1px solid rgba(255,255,255,0.10)",
+                      color: "#fff",
+                      fontSize: 14,
+                    }}
+                  >
+                    <option value="">Select Room</option>
+                    {rooms.map((r) => (
+                      <option key={r._id} value={r._id}>
+                        Room {r.roomNumber} ({(r.totalBeds || 0) - (r.occupiedBeds || 0)} beds available)
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label style={{ fontSize: 12, fontWeight: 700, display: "block", marginBottom: 6, color: "rgba(255,255,255,0.7)" }}>Bed *</label>
+                  <select
+                    value={addForm.bedId}
+                    onChange={(e) => setAddForm((p) => ({ ...p, bedId: e.target.value }))}
+                    disabled={!addForm.roomId}
+                    style={{
+                      width: "100%",
+                      padding: "12px 14px",
+                      borderRadius: "12px",
+                      background: "rgba(255,255,255,0.04)",
+                      border: "1px solid rgba(255,255,255,0.10)",
+                      color: addForm.roomId ? "#fff" : "rgba(255,255,255,0.5)",
+                      fontSize: 14,
+                      opacity: addForm.roomId ? 1 : 0.6,
+                      cursor: addForm.roomId ? "pointer" : "not-allowed",
+                    }}
+                  >
+                    <option value="">Select Bed</option>
+                    {beds.map((b) => (
+                      <option key={b._id} value={b._id}>
+                        Bed {b.bedNumber}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginBottom: 12 }}>
+                <div>
+                  <label style={{ fontSize: 12, fontWeight: 700, display: "block", marginBottom: 6, color: "rgba(255,255,255,0.7)" }}>Join Date *</label>
+                  <input
+                    type="date"
+                    value={addForm.joinDate}
+                    onChange={(e) => setAddForm((p) => ({ ...p, joinDate: e.target.value }))}
+                    style={{
+                      width: "100%",
+                      padding: "12px 14px",
+                      borderRadius: "12px",
+                      background: "rgba(255,255,255,0.04)",
+                      border: "1px solid rgba(255,255,255,0.10)",
+                      color: "#fff",
+                      fontSize: 14,
+                    }}
+                  />
+                </div>
+                <div>
+                  <label style={{ fontSize: 12, fontWeight: 700, display: "block", marginBottom: 6, color: "rgba(255,255,255,0.7)" }}>Monthly Rent *</label>
+                  <input
+                    type="number"
+                    value={addForm.monthlyRent}
+                    onChange={(e) => setAddForm((p) => ({ ...p, monthlyRent: e.target.value }))}
+                    placeholder="₹"
+                    style={{
+                      width: "100%",
+                      padding: "12px 14px",
+                      borderRadius: "12px",
+                      background: "rgba(255,255,255,0.04)",
+                      border: "1px solid rgba(255,255,255,0.10)",
+                      color: "#fff",
+                      fontSize: 14,
+                    }}
+                  />
+                </div>
+                <div>
+                  <label style={{ fontSize: 12, fontWeight: 700, display: "block", marginBottom: 6, color: "rgba(255,255,255,0.7)" }}>Deposit *</label>
+                  <input
+                    type="number"
+                    value={addForm.depositAmount}
+                    onChange={(e) => setAddForm((p) => ({ ...p, depositAmount: e.target.value }))}
+                    placeholder="₹"
+                    style={{
+                      width: "100%",
+                      padding: "12px 14px",
+                      borderRadius: "12px",
+                      background: "rgba(255,255,255,0.04)",
+                      border: "1px solid rgba(255,255,255,0.10)",
+                      color: "#fff",
+                      fontSize: 14,
+                    }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Document Uploads */}
+            <div style={{ marginBottom: 20 }}>
+              <h3 style={{ fontSize: 14, fontWeight: 900, marginBottom: 12, color: "#22c55e" }}>Documents</h3>
+              
+              <div style={{ marginBottom: 12 }}>
+                <label style={{ fontSize: 12, fontWeight: 700, display: "block", marginBottom: 6, color: "rgba(255,255,255,0.7)" }}>Resident Photo *</label>
+                <div
+                  style={{
+                    padding: 20,
+                    borderRadius: 12,
+                    border: "2px dashed rgba(34,197,94,0.3)",
+                    textAlign: "center",
+                    cursor: "pointer",
+                    background: "rgba(34,197,94,0.05)",
+                  }}
+                  onClick={() => document.getElementById("photoInput").click()}
+                >
+                  <Upload size={20} style={{ margin: "0 auto", marginBottom: 8, color: "#22c55e" }} />
+                  <div style={{ color: "rgba(255,255,255,0.7)", fontSize: 12 }}>
+                    {addFiles.photo ? addFiles.photo.name : "Click to upload photo"}
+                  </div>
+                </div>
+                <input
+                  id="photoInput"
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => handleFileChange("photo", e.target.files?.[0] || null)}
+                  style={{ display: "none" }}
+                />
+              </div>
+
+              <div style={{ marginBottom: 12 }}>
+                <label style={{ fontSize: 12, fontWeight: 700, display: "block", marginBottom: 6, color: "rgba(255,255,255,0.7)" }}>ID Proof *</label>
+                <div
+                  style={{
+                    padding: 20,
+                    borderRadius: 12,
+                    border: "2px dashed rgba(34,197,94,0.3)",
+                    textAlign: "center",
+                    cursor: "pointer",
+                    background: "rgba(34,197,94,0.05)",
+                  }}
+                  onClick={() => document.getElementById("idInput").click()}
+                >
+                  <Upload size={20} style={{ margin: "0 auto", marginBottom: 8, color: "#22c55e" }} />
+                  <div style={{ color: "rgba(255,255,255,0.7)", fontSize: 12 }}>
+                    {addFiles.idProof ? addFiles.idProof.name : "Click to upload ID proof"}
+                  </div>
+                </div>
+                <input
+                  id="idInput"
+                  type="file"
+                  accept="image/*,.pdf"
+                  onChange={(e) => handleFileChange("idProof", e.target.files?.[0] || null)}
+                  style={{ display: "none" }}
+                />
+              </div>
+            </div>
+
+            {/* Signature */}
+            <div style={{ marginBottom: 20 }}>
+              <h3 style={{ fontSize: 14, fontWeight: 900, marginBottom: 12, color: "#22c55e" }}>Signature *</h3>
+              
+              <div style={{ display: "flex", gap: 12, marginBottom: 12 }}>
+                <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", color: "#fff" }}>
+                  <input
+                    type="radio"
+                    name="signatureMode"
+                    value="digital"
+                    checked={addForm.signatureMode === "digital"}
+                    onChange={(e) => setAddForm((p) => ({ ...p, signatureMode: e.target.value }))}
+                    style={{ cursor: "pointer" }}
+                  />
+                  Digital Signature
+                </label>
+                <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", color: "#fff" }}>
+                  <input
+                    type="radio"
+                    name="signatureMode"
+                    value="uploaded"
+                    checked={addForm.signatureMode === "uploaded"}
+                    onChange={(e) => setAddForm((p) => ({ ...p, signatureMode: e.target.value }))}
+                    style={{ cursor: "pointer" }}
+                  />
+                  Upload Signature
+                </label>
+              </div>
+
+              {addForm.signatureMode === "digital" && (
+                <div
+                  style={{
+                    padding: 12,
+                    borderRadius: 12,
+                    border: "1px solid rgba(34,197,94,0.3)",
+                    background: "rgba(34,197,94,0.05)",
+                  }}
+                >
+                  <canvas
+                    ref={signatureCanvasRef}
+                    width={400}
+                    height={120}
+                    style={{
+                      borderRadius: 8,
+                      background: "#fff",
+                      cursor: "crosshair",
+                      display: "block",
+                      width: "100%",
+                      height: "auto",
+                      aspectRatio: "400/120",
+                    }}
+                    onMouseDown={(e) => {
+                      const rect = e.currentTarget.getBoundingClientRect();
+                      const x = (e.clientX - rect.left) * (e.currentTarget.width / rect.width);
+                      const y = (e.clientY - rect.top) * (e.currentTarget.height / rect.height);
+                      const ctx = e.currentTarget.getContext("2d");
+                      ctx.beginPath();
+                      ctx.moveTo(x, y);
+                    }}
+                    onMouseMove={(e) => {
+                      if (e.buttons !== 1) return;
+                      const rect = e.currentTarget.getBoundingClientRect();
+                      const x = (e.clientX - rect.left) * (e.currentTarget.width / rect.width);
+                      const y = (e.clientY - rect.top) * (e.currentTarget.height / rect.height);
+                      const ctx = e.currentTarget.getContext("2d");
+                      ctx.lineTo(x, y);
+                      ctx.stroke();
+                      setSignatureImage(e.currentTarget.toDataURL());
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const canvas = signatureCanvasRef.current;
+                      if (canvas) {
+                        canvas.getContext("2d").clearRect(0, 0, canvas.width, canvas.height);
+                        setSignatureImage(null);
+                      }
+                    }}
+                    style={{
+                      width: "100%",
+                      padding: "8px 12px",
+                      marginTop: 8,
+                      borderRadius: 8,
+                      background: "rgba(255,255,255,0.1)",
+                      border: "1px solid rgba(255,255,255,0.2)",
+                      color: "#fff",
+                      cursor: "pointer",
+                      fontSize: 12,
+                      fontWeight: 700,
+                    }}
+                  >
+                    Clear
+                  </button>
+                </div>
+              )}
+
+              {addForm.signatureMode === "uploaded" && (
+                <div
+                  style={{
+                    padding: 20,
+                    borderRadius: 12,
+                    border: "2px dashed rgba(34,197,94,0.3)",
+                    textAlign: "center",
+                    cursor: "pointer",
+                    background: "rgba(34,197,94,0.05)",
+                  }}
+                  onClick={() => document.getElementById("sigInput").click()}
+                >
+                  <Upload size={20} style={{ margin: "0 auto", marginBottom: 8, color: "#22c55e" }} />
+                  <div style={{ color: "rgba(255,255,255,0.7)", fontSize: 12 }}>
+                    {addFiles.signatureFile ? addFiles.signatureFile.name : "Click to upload signature"}
+                  </div>
+                </div>
+              )}
+              <input
+                id="sigInput"
+                type="file"
+                accept="image/*,.pdf"
+                onChange={handleSignatureCapture}
+                style={{ display: "none" }}
+              />
+            </div>
+
+            {/* Agreement */}
+            <div style={{ marginBottom: 20 }}>
+              <label style={{ display: "flex", alignItems: "flex-start", gap: 12, cursor: "pointer", color: "#fff" }}>
+                <input
+                  type="checkbox"
+                  checked={addForm.agreementChecked}
+                  onChange={(e) => setAddForm((p) => ({ ...p, agreementChecked: e.target.checked }))}
+                  style={{ marginTop: 4, cursor: "pointer", minWidth: "fit-content" }}
+                />
+                <span style={{ fontSize: 13, lineHeight: 1.5 }}>
+                  I accept the hostel rules and regulations. By continuing, you consent to secure storage of your submitted identity documents and agreement signature for hostel management purposes.
+                </span>
+              </label>
+            </div>
+
+            {/* Actions */}
+            <div style={{ display: "flex", gap: 12 }}>
+              <button
+                type="button"
+                onClick={closeAddModal}
+                style={{
+                  flex: 1,
+                  padding: "14px",
+                  borderRadius: 12,
+                  background: "rgba(255,255,255,0.06)",
+                  border: "1px solid rgba(255,255,255,0.10)",
+                  color: "#fff",
+                  fontWeight: 700,
+                  cursor: "pointer",
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={submitAddResident}
+                disabled={addLoading}
+                style={{
+                  flex: 1,
+                  padding: "14px",
+                  borderRadius: 12,
+                  background: "linear-gradient(135deg, rgba(34,197,94,1) 0%, rgba(16,185,129,1) 100%)",
+                  border: "none",
+                  color: "#fff",
+                  fontWeight: 700,
+                  cursor: addLoading ? "not-allowed" : "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 8,
+                  opacity: addLoading ? 0.7 : 1,
+                }}
+              >
+                {addLoading ? "Adding..." : <><Check size={16} /> Add Resident</>}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <BottomNav />
     </div>
   );

@@ -13,6 +13,7 @@ import {
   Key,
   MessageCircle,
   RefreshCw,
+  Trash2,
 } from "lucide-react";
 
 import SuperadminBottomNav from "../components/SuperadminBottomNav";
@@ -398,9 +399,11 @@ function HostelManagement() {
                       })
                     }
                     className="btn-icon"
-                    style={{ width: 52, height: 52, borderRadius: 16, background: "rgba(239,68,68,0.10)", border: "1px solid rgba(239,68,68,0.22)", color: "#fff" }}
+                    style={{ width: 52, height: 52, borderRadius: 16, background: "rgba(239,68,68,0.10)", border: "1px solid rgba(239,68,68,0.22)", color: "#ef4444" }}
                     aria-label="Delete hostel"
-                  />
+                  >
+                    <Trash2 size={18} />
+                  </button>
 
                 </div>
               </div>
