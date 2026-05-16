@@ -38,7 +38,7 @@ const verifySession = async (req, res) => {
       payload = jwt.verify(token, secret);
     } catch (error) {
       console.error("[verify-session] VERIFY ERROR:", error);
-      return res.status(401).json(getError(401, "Invalid/expired token"));
+      return res.status(401).json(getError(401, `Invalid/expired token: ${error?.message || String(error)}`));
     }
 
     if (!payload?.role) {
@@ -80,6 +80,12 @@ const verifySession = async (req, res) => {
         return res.status(401).json(getError(401, "Hostel not found for account"));
       }
     } else if (role === "admin") {
+      userDoc = await Admin.findById(userId);
+      if (!userDoc) {
+        return res.status(401).json(getError(401, "Admin no longer exists"));
+      }
+    } else if (role === "super_admin") {
+      // super-admin is treated as admin account for session verification
       userDoc = await Admin.findById(userId);
       if (!userDoc) {
         return res.status(401).json(getError(401, "Admin no longer exists"));
