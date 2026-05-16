@@ -13,19 +13,19 @@ export default function useSessionVerification() {
 
     const run = async () => {
       try {
-        const token = localStorage.getItem("token");
-        const adminToken = localStorage.getItem("adminToken");
+        const { getAuthToken } = await import("../utils/authToken");
+        // Debug (temporary)
+        console.log("[Auth] Token exists:", !!getAuthToken());
+
+        const authToken = getAuthToken();
+
 
         // If no token exists, immediately stop verifying.
-        if (!token && !adminToken) {
+        if (!authToken) {
           if (!mounted) return;
           setVerifying(false);
           return;
         }
-
-        // Backend verify-session currently validates the same JWT secret.
-        // For admin/staff, frontend should still send Authorization: Bearer <token>.
-        const authToken = token || adminToken;
 
         const res = await fetch(verifyBase, {
           method: "GET",
@@ -48,9 +48,8 @@ export default function useSessionVerification() {
             toast.error("Session expired. Please login again.");
           }
 
-          localStorage.removeItem("token");
-          localStorage.removeItem("adminToken");
-          localStorage.removeItem("user");
+          const { clearAuth } = await import("../utils/authToken");
+          clearAuth();
 
           if (!mounted) return;
           navigate("/login", { replace: true });
