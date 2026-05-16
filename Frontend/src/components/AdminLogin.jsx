@@ -35,8 +35,8 @@ function AdminLogin() {
         localStorage.setItem("adminToken", response.data.token);
         localStorage.setItem("token", response.data.token);
         localStorage.setItem("user", JSON.stringify({ role: "admin" }));
-        console.log("[AdminLogin] Stored token.", { hasToken: !!response.data.token });
         navigate("/admin");
+
         return;
       }
 

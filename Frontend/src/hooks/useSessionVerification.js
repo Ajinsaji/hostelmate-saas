@@ -14,10 +14,9 @@ export default function useSessionVerification() {
     const run = async () => {
       try {
         const { getAuthToken } = await import("../utils/authToken");
-        // Debug (temporary)
-        console.log("[Auth] Token exists:", !!getAuthToken());
 
         const authToken = getAuthToken();
+
 
 
         // If no token exists, immediately stop verifying.

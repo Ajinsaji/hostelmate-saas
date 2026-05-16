@@ -11,23 +11,12 @@ const getBearerToken = (req) => {
   return authHeader.startsWith("Bearer ") ? authHeader.slice("Bearer ".length) : null;
 };
 
-// Debug helpers (safe to keep temporarily)
-const debugAuth = (req, token) => {
-  try {
-    console.log("[verify-session] AUTH HEADER:", req.headers.authorization);
-    console.log("[verify-session] TOKEN:", token ? token.slice(0, 12) + "..." : token);
-    console.log("[verify-session] JWT_SECRET EXISTS:", !!process.env.JWT_SECRET);
-  } catch (_) {
-    // ignore
-  }
-};
-
 const getError = (status, message) => ({ success: false, message });
+
 
 const verifySession = async (req, res) => {
   try {
     const token = getBearerToken(req);
-    debugAuth(req, token);
     if (!token) {
       return res.status(401).json(getError(401, "Missing token"));
     }
@@ -37,9 +26,9 @@ const verifySession = async (req, res) => {
     try {
       payload = jwt.verify(token, secret);
     } catch (error) {
-      console.error("[verify-session] VERIFY ERROR:", error);
-      return res.status(401).json(getError(401, `Invalid/expired token: ${error?.message || String(error)}`));
+      return res.status(401).json(getError(401, "Invalid/expired token"));
     }
+
 
     if (!payload?.role) {
       return res.status(401).json(getError(401, "Invalid token payload"));
