@@ -28,3 +28,4 @@ export default function RoleProtectedRoute({ children, allowedRoles = [] }) {
 
   return children;
 }
+

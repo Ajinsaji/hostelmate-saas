@@ -93,14 +93,23 @@ function NotificationBellHost() {
 }
 
 
+import useSessionVerification from "./hooks/useSessionVerification";
+
+function SessionGateWrapper() {
+  const { verifying } = useSessionVerification();
+  return verifying ? <div style={{ minHeight: "100vh" }} /> : null;
+}
+
 function App() {
   return (
     <ServerLoadingWrapper>
       <BrowserRouter>
-        <NotificationBellHost />
+        <SessionGateWrapper />
 
       <Routes>
+
         <Route path="/" element={<LandingPage />} />
+
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
 

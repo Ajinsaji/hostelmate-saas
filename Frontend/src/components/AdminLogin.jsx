@@ -10,27 +10,45 @@ function AdminLogin() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [passwordVisible, setPasswordVisible] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const handleLogin = async () => {
+    if (!username?.trim()) {
+      toast.error("Enter admin username");
+      return;
+    }
+    if (!password) {
+      toast.error("Enter password");
+      return;
+    }
+
+    if (loading) return;
+    setLoading(true);
     try {
-      const response = await axios.post(`${import.meta.env.VITE_API_URL}/api/auth/login`, {
-        username,
-        password,
-      });
+      const response = await axios.post(
+        `${import.meta.env.VITE_API_URL}/api/auth/login`,
+        { username, password }
+      );
 
       if (response.data?.success && response.data?.token) {
-        toast.success("Admin Login Successful!");
+        toast.success("Login successful. Welcome back!");
         localStorage.setItem("adminToken", response.data.token);
         navigate("/admin");
         return;
       }
-      toast.error(response.data?.message || "Invalid Username or Password");
 
-      toast.error(response.data?.message || "Invalid Username or Password");
+      toast.error(response.data?.message || "Invalid credentials");
     } catch (error) {
-      toast.error(error?.response?.data?.message || "Invalid Username or Password");
+      const msg =
+        error?.response?.data?.message ||
+        error?.response?.data?.details ||
+        "Invalid credentials";
+      toast.error(msg);
+    } finally {
+      setLoading(false);
     }
   };
+
 
   return (
     <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
