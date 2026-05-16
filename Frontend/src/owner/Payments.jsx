@@ -45,8 +45,9 @@ function Payments() {
       });
       setResidents(res.data?.residents || []);
     } catch (err) {
-      console.log(err);
+      // noop
     }
+
   };
 
   useEffect(() => {

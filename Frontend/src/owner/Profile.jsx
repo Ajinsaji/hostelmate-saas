@@ -69,7 +69,7 @@ function Profile() {
         title: hostelData?.hostelName,
         text: text,
         url: publicUrl,
-      }).catch(err => console.log("Share failed:", err));
+      }).catch(() => {});
     } else {
       navigator.clipboard.writeText(text);
       toast.success("Link and text copied to clipboard!");

@@ -460,29 +460,6 @@ function Residents() {
 
     try {
       const formData = new FormData();
-      // Helpful debugging (avoid leaking file contents)
-      console.log("[Add Resident] payload snapshot:", {
-        name: addForm.fullName,
-        phone: addForm.phone,
-        email: addForm.email,
-        gender: addForm.gender,
-        dob: addForm.dob,
-        address: addForm.address,
-        district: addForm.district,
-        pincode: addForm.pincode,
-        emergencyContact: addForm.emergencyContact,
-        roomId: addForm.roomId,
-        bedId: addForm.bedId,
-        monthlyRent: addForm.monthlyRent,
-        depositAmount: addForm.depositAmount,
-        joinDate: addForm.joinDate,
-        agreementChecked: addForm.agreementChecked,
-        signatureMode: addForm.signatureMode,
-        hasPhoto: !!addFiles.photo,
-        hasIdProof: !!addFiles.idProof,
-        hasSignatureImage: !!signatureImage,
-        hasSignatureFile: !!addFiles.signatureFile,
-      });
 
       // Personal details
       formData.append("name", addForm.fullName);
@@ -499,6 +476,7 @@ function Residents() {
       formData.append("joinDate", addForm.joinDate);
       formData.append("monthlyRent", addForm.monthlyRent);
       formData.append("depositAmount", addForm.depositAmount);
+
 
       // Agreement (backend expects boolean true OR string "true")
       formData.append("agreementChecked", addForm.agreementChecked ? "true" : "false");
@@ -546,12 +524,10 @@ function Residents() {
       setPayments(payRes.data?.payments || []);
 
     } catch (e) {
-      console.error("[Add Resident] failed:", {
-        status: e?.response?.status,
-        data: e?.response?.data,
-        message: e?.message,
-      });
+      // Keep console clean in production
       toast.error(e?.response?.data?.message || e?.response?.data?.error || "Failed to add resident");
+
+
     } finally {
       setAddLoading(false);
     }

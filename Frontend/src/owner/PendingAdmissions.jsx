@@ -16,8 +16,9 @@ function PendingAdmissions() {
       });
       setAdmissions(response.data.admissions);
     } catch (error) {
-      console.log(error);
+      // noop
     }
+
   };
 
   useEffect(() => {
