@@ -101,6 +101,11 @@ app.use(
   authRoutes
 );
 
+// SESSION VERIFY
+const verifyRoutes = require("./routes/verifyRoutes");
+app.use("/api/auth", verifyRoutes);
+
+
 // HOSTEL REQUEST
 app.use(
   "/api/request",
