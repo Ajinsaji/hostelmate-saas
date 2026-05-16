@@ -460,7 +460,30 @@ function Residents() {
 
     try {
       const formData = new FormData();
-      
+      // Helpful debugging (avoid leaking file contents)
+      console.log("[Add Resident] payload snapshot:", {
+        name: addForm.fullName,
+        phone: addForm.phone,
+        email: addForm.email,
+        gender: addForm.gender,
+        dob: addForm.dob,
+        address: addForm.address,
+        district: addForm.district,
+        pincode: addForm.pincode,
+        emergencyContact: addForm.emergencyContact,
+        roomId: addForm.roomId,
+        bedId: addForm.bedId,
+        monthlyRent: addForm.monthlyRent,
+        depositAmount: addForm.depositAmount,
+        joinDate: addForm.joinDate,
+        agreementChecked: addForm.agreementChecked,
+        signatureMode: addForm.signatureMode,
+        hasPhoto: !!addFiles.photo,
+        hasIdProof: !!addFiles.idProof,
+        hasSignatureImage: !!signatureImage,
+        hasSignatureFile: !!addFiles.signatureFile,
+      });
+
       // Personal details
       formData.append("name", addForm.fullName);
       formData.append("phone", addForm.phone);
@@ -476,10 +499,14 @@ function Residents() {
       formData.append("joinDate", addForm.joinDate);
       formData.append("monthlyRent", addForm.monthlyRent);
       formData.append("depositAmount", addForm.depositAmount);
-      
+
+      // Agreement (backend expects boolean true OR string "true")
+      formData.append("agreementChecked", addForm.agreementChecked ? "true" : "false");
+
       // Files
       if (addFiles.photo) formData.append("photo", addFiles.photo);
       if (addFiles.idProof) formData.append("idProof", addFiles.idProof);
+
 
 
       // Signature
@@ -493,7 +520,7 @@ function Residents() {
       if (addForm.acceptedRulesTextSnapshot) formData.append("acceptedRulesTextSnapshot", addForm.acceptedRulesTextSnapshot);
       if (addForm.rulesVersionId) formData.append("rulesVersionId", addForm.rulesVersionId);
       if (addForm.rulesVersionNumber) formData.append("rulesVersionNumber", addForm.rulesVersionNumber);
-      formData.append("agreementChecked", addForm.agreementChecked ? "true" : "false");
+
 
       const res = await axios.post(`${import.meta.env.VITE_API_URL}/api/residents/create`, formData, {
         headers: {
@@ -519,10 +546,16 @@ function Residents() {
       setPayments(payRes.data?.payments || []);
 
     } catch (e) {
-      toast.error(e?.response?.data?.message || "Failed to add resident");
+      console.error("[Add Resident] failed:", {
+        status: e?.response?.status,
+        data: e?.response?.data,
+        message: e?.message,
+      });
+      toast.error(e?.response?.data?.message || e?.response?.data?.error || "Failed to add resident");
     } finally {
       setAddLoading(false);
     }
+
   };
 
   const statusBadge = (status) => {
