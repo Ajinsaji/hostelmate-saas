@@ -1,41 +1,42 @@
 import { ArrowRight, CheckCircle2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { useRef, useState } from "react";
+import { useRef } from "react";
 
 function LandingPage() {
   const navigate = useNavigate();
-  const [tapCount, setTapCount] = useState(0);
+  const tapCountRef = useRef(0);
   const tapTimeoutRef = useRef(null);
   const lastTapTimeRef = useRef(0);
 
   const handleBetaMindClick = () => {
     const now = Date.now();
-    
-    // Reset tap counter if more than 3 seconds have passed since last tap
-    if (now - lastTapTimeRef.current > 3000) {
-      setTapCount(1);
+    const elapsed = now - lastTapTimeRef.current;
+
+    if (elapsed > 3000) {
+      tapCountRef.current = 1;
     } else {
-      setTapCount((prev) => prev + 1);
+      tapCountRef.current += 1;
     }
-    
+
     lastTapTimeRef.current = now;
 
-    // Clear existing timeout
     if (tapTimeoutRef.current) {
       clearTimeout(tapTimeoutRef.current);
     }
 
-    // Set new timeout to reset counter after 3 seconds
     tapTimeoutRef.current = setTimeout(() => {
-      setTapCount(0);
+      tapCountRef.current = 0;
+      tapTimeoutRef.current = null;
+      lastTapTimeRef.current = 0;
     }, 3000);
 
-    // If 5 taps detected within 3 seconds, navigate to admin
-    if (tapCount + 1 === 5) {
-      setTapCount(0);
+    if (tapCountRef.current === 5) {
+      tapCountRef.current = 0;
       if (tapTimeoutRef.current) {
         clearTimeout(tapTimeoutRef.current);
+        tapTimeoutRef.current = null;
       }
+      lastTapTimeRef.current = 0;
       navigate("/admin/login");
     }
   };
