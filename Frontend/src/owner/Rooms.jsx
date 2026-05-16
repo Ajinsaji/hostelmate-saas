@@ -16,6 +16,9 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 import BottomNav from "../components/BottomNav";
+import { getOccupancyStyle, getOccupancyState } from "../utils/occupancyStyles";
+import { subscribeOccupancyRefresh, triggerOccupancyRefresh } from "../utils/occupancyRefresh";
+
 
 const PHONE_REGEX = /^[0-9]{10}$/;
 
@@ -43,6 +46,8 @@ function Rooms() {
   const [assignLoading, setAssignLoading] = useState(false);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [residentLoading, setResidentLoading] = useState(false);
+  const [roomSaving, setRoomSaving] = useState(false);
+
 
   const [roomForm, setRoomForm] = useState({
     roomNumber: "",
@@ -153,12 +158,16 @@ function Rooms() {
     return { label: "Overdue", color: "rgba(239,68,68,0.14)", border: "rgba(239,68,68,0.3)" };
   };
 
-  const getOccupancyLabel = (room) => {
-    const { totalBeds, occupiedBeds } = getRoomStats(room);
-    if (occupiedBeds === 0) return "Vacant";
-    if (occupiedBeds === totalBeds) return "Full";
-    return "Partial";
+  const occupancyStyleForBed = (bed) => {
+    return getOccupancyStyle(bed?.status);
   };
+
+  // Normalize occupied/vacant handling for all bed UI
+  const isBedVacant = (bed) => {
+    return getOccupancyState(bed?.status) === "vacant";
+  };
+
+
 
   const filteredRooms = useMemo(() => {
     return rooms
@@ -206,6 +215,7 @@ function Rooms() {
   };
 
   const loadData = async () => {
+    // keep UI responsive and avoid stale occupancy state
     setLoading(true);
     try {
       const [roomsRes, residentsRes, paymentsRes] = await Promise.all([
@@ -220,6 +230,25 @@ function Rooms() {
       toast.error(error?.response?.data?.message || "Unable to load room data.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const refreshOccupancyUI = async () => {
+    // used after assign/checkout for immediate consistency
+    try {
+      const [roomsRes, residentsRes, paymentsRes] = await Promise.all([
+        api.get("/api/rooms/get-rooms"),
+        api.get("/api/residents/hostel"),
+        api.get("/api/payments/hostel"),
+      ]);
+      setRooms(roomsRes.data?.rooms || []);
+      setResidents(residentsRes.data?.residents || []);
+      setPayments(paymentsRes.data?.payments || []);
+
+      // Broadcast after any local occupancy refresh so other screens sync immediately.
+      triggerOccupancyRefresh("rooms-screen-refresh");
+    } catch (error) {
+      toast.error(error?.response?.data?.message || "Failed to refresh occupancy.");
     }
   };
 
@@ -282,13 +311,12 @@ function Rooms() {
       form.append("depositAmount", assignForm.depositAmount);
       form.append("joinDate", assignForm.joinDate);
 
-      await api.post("/api/residents/create", form, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
+      await api.post("/api/residents/create", form);
 
+      triggerOccupancyRefresh("resident-assigned");
       toast.success("Resident assigned successfully.");
       closeAssignModal();
-      await loadData();
+      await refreshOccupancyUI();
     } catch (error) {
       const message = error?.response?.data?.message || "Failed to assign resident.";
       setAssignError(message);
@@ -359,8 +387,9 @@ function Rooms() {
     try {
       await api.put(`/api/residents/checkout/${selectedResidentId}`);
       toast.success("Resident checked out successfully.");
+      triggerOccupancyRefresh("resident-checkout");
       closeCheckoutModal();
-      await loadData();
+      await refreshOccupancyUI();
     } catch (error) {
       toast.error(error?.response?.data?.message || "Failed to checkout resident.");
     } finally {
@@ -387,42 +416,67 @@ function Rooms() {
   };
 
   const submitRoom = async () => {
-    if (!roomForm.roomNumber.trim()) {
+    if (roomSaving) return;
+
+    const roomNumberRaw = roomForm.roomNumber;
+    const roomNumber = String(roomNumberRaw ?? "").trim();
+
+    if (!roomNumber) {
       toast.error("Room number is required.");
       return;
     }
-    if (!roomForm.rentPerBed || Number(roomForm.rentPerBed) <= 0) {
-      toast.error("Rent per bed is required.");
+
+    const rentPerBedNum = Number(roomForm.rentPerBed);
+    if (!Number.isFinite(rentPerBedNum) || rentPerBedNum < 0) {
+      toast.error("Rent per bed must be >= 0.");
       return;
     }
 
+    if (!editingRoom) {
+      const totalBedsNum = Number(roomForm.totalBeds);
+      if (!Number.isFinite(totalBedsNum) || totalBedsNum <= 0) {
+        toast.error("Total beds must be greater than 0.");
+        return;
+      }
+    }
+
+    setRoomSaving(true);
     try {
       if (editingRoom) {
         await api.put(`/api/rooms/edit-room/${editingRoom._id}`, {
-          roomNumber: roomForm.roomNumber.trim(),
-          floor: roomForm.floor.trim(),
-          roomType: roomForm.roomType.trim(),
-          rentPerBed: Number(roomForm.rentPerBed),
+          roomNumber: roomNumber,
+          floor: String(roomForm.floor ?? "").trim(),
+          roomType: String(roomForm.roomType ?? "").trim(),
+          rentPerBed: rentPerBedNum,
         });
         toast.success("Room updated successfully.");
+        triggerOccupancyRefresh("room-updated");
       } else {
-        if (!roomForm.totalBeds || Number(roomForm.totalBeds) <= 0) {
-          toast.error("Total beds is required.");
-          return;
-        }
+        const totalBedsNum = Number(roomForm.totalBeds);
         await api.post("/api/rooms/create-room", {
-          roomNumber: roomForm.roomNumber.trim(),
-          totalBeds: Number(roomForm.totalBeds),
-          floor: roomForm.floor.trim(),
-          roomType: roomForm.roomType.trim(),
-          rentPerBed: Number(roomForm.rentPerBed),
+          roomNumber: roomNumber,
+          totalBeds: totalBedsNum,
+          floor: String(roomForm.floor ?? "").trim(),
+          roomType: String(roomForm.roomType ?? "").trim(),
+          rentPerBed: rentPerBedNum,
         });
         toast.success("Room created successfully.");
+        triggerOccupancyRefresh("room-created");
       }
+
       resetRoomForm();
+      setRoomFormOpen(false);
       await loadData();
     } catch (error) {
-      toast.error(error?.response?.data?.message || "Unable to save room.");
+      const msg = error?.response?.data?.message || "Unable to save room.";
+      if (String(msg).toLowerCase().includes("room number already exists")) {
+        toast.error("Room number already exists.");
+      } else {
+        toast.error(msg);
+      }
+      // preserve modal values by NOT resetting
+    } finally {
+      setRoomSaving(false);
     }
   };
 
@@ -571,16 +625,18 @@ function Rooms() {
                 <button
                   type="button"
                   onClick={submitRoom}
+                  disabled={roomSaving}
                   style={{
                     borderRadius: 18,
                     border: "none",
                     background: "#22c55e",
                     color: "#081028",
                     padding: "12px 18px",
-                    cursor: "pointer",
+                    cursor: roomSaving ? "not-allowed" : "pointer",
+                    opacity: roomSaving ? 0.7 : 1,
                   }}
                 >
-                  {editingRoom ? "Save room" : "Create room"}
+                  {roomSaving ? "Creating..." : editingRoom ? "Save room" : "Create room"}
                 </button>
               </div>
             </div>
@@ -678,6 +734,7 @@ function Rooms() {
                           onClick={async () => {
                             try {
                               await api.delete(`/api/rooms/delete-room/${room._id}`);
+                              triggerOccupancyRefresh("room-deleted");
                               toast.success("Room deleted successfully.");
                               await loadData();
                             } catch (error) {
@@ -743,6 +800,8 @@ function Rooms() {
                       {beds.map((bed, idx) => {
                         const status = String(bed?.status || "vacant").toLowerCase();
                         const isVacant = status !== "occupied";
+
+                        const occ = occupancyStyleForBed(bed);
                         const resident = residentMapById[bed?.residentId] || residentMapByBedId[bed?._id] || null;
                         const residentName = resident?.name || "Resident";
                         const residentPhone = resident?.phone || "";
@@ -750,6 +809,9 @@ function Rooms() {
                         const initials = getInitials(residentName);
                         const payment = paymentSummaryByResidentId[resident?._id];
                         const badge = getPaymentBadge(payment?.status);
+
+                        // const isVacant = isBedVacant(bed);
+
 
                         return (
                           <div
@@ -761,18 +823,26 @@ function Rooms() {
                               display: "flex",
                               flexDirection: "column",
                               gap: 12,
-                              border: `1px solid ${isVacant ? "rgba(34,197,94,0.25)" : "rgba(255,255,255,0.08)"}`,
-                              background: isVacant ? "rgba(34,197,94,0.08)" : "rgba(255,255,255,0.04)",
+                              border: `1px solid ${occ.border}`,
+                              background: isVacant ? "rgba(239,68,68,0.12)" : "rgba(34,197,94,0.10)",
                             }}
                           >
+
                             <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "flex-start" }}>
                               <div>
                                 <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                                  <BedDouble size={18} color={isVacant ? "#22c55e" : "#f97316"} />
+                                  <BedDouble size={18} color={isVacant ? "#ef4444" : "#22c55e"} />
                                   <h3 style={{ margin: 0, fontSize: 15, color: "#f8fafc" }}>Bed {bed?.bedNumber || idx + 1}</h3>
                                 </div>
-                                <p style={{ margin: "8px 0 0", color: "rgba(241,245,249,0.75)", fontSize: 13, fontWeight: 700 }}>
-                                  {isVacant ? "Available" : residentName}
+                                <p
+                                  style={{
+                                    margin: "8px 0 0",
+                                    fontSize: 13,
+                                    fontWeight: 800,
+                                    color: isVacant ? "rgba(254,202,202,0.95)" : "rgba(187,247,208,0.95)",
+                                  }}
+                                >
+                                  {occ.label}
                                 </p>
                               </div>
                               <div
@@ -782,7 +852,7 @@ function Rooms() {
                                   borderRadius: 16,
                                   display: "grid",
                                   placeItems: "center",
-                                  background: isVacant ? "rgba(34,197,94,0.14)" : "rgba(255,255,255,0.08)",
+                                background: isVacant ? "rgba(239,68,68,0.14)" : "rgba(34,197,94,0.14)",
                                   color: "#f8fafc",
                                 }}
                               >
@@ -834,8 +904,8 @@ function Rooms() {
                                   style={{
                                     flex: 1,
                                     borderRadius: 16,
-                                    border: "1px solid rgba(34,197,94,0.3)",
-                                    background: "rgba(34,197,94,0.14)",
+                                    border: "1px solid rgba(239,68,68,0.35)",
+                                    background: "rgba(239,68,68,0.12)",
                                     color: "#f8fafc",
                                     padding: "12px 14px",
                                     cursor: "pointer",

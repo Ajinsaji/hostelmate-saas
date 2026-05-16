@@ -1,20 +1,42 @@
-# HostelMate — Phase Tracker
+# HostelMate Stabilization — Remaining Work
 
-## Phase: Rooms.jsx FINAL UX Completion & Resident Detail Workflow
+## Phase 1 — Propagate occupancy visuals
+- [ ] Apply same Occupied/Vacant visual system to:
+  - [ ] resident assignment modal
+  - [ ] bed dropdowns/lists
+  - [ ] dashboard occupancy widgets (owner dashboard + warden dashboard if bed-related)
+  - [ ] resident allocation screens
+  - [ ] any remaining bed-related UI
+- [ ] Remove orange/yellow occupancy styles (Occupied/Vacant only)
 
-- [x] Reviewed existing `Frontend/src/owner/Rooms.jsx` to identify missing resident detail and checkout UX.
-- [x] Implement real Resident Detail modal (resident + room/bed + payment summary + agreement summary indicators + quick actions).
+## Phase 2 — Occupancy state synchronization
+- [x] Ensure assign resident => bed status immediately becomes Occupied (via refresh)
+- [x] Ensure dashboard counts refresh immediately after assign/checkout (via refresh)
+- [x] Ensure checkout => bed status immediately becomes Vacant (via refresh)
+- [x] Remove stale UI state by re-fetching canonical bed data after operations (Rooms.jsx refresh)
+- [x] Fix any missing re-fetches / mismatched available-bed counts (canonical re-fetch)
 
-- [x] Fix occupied bed “View” button to open Resident Detail modal (not checkout).
+## Phase 3 — Auto-bed generation validation
+- [x] Verify roomController create-room creates B1..Bn exactly once (idempotent create)
+- [ ] Prevent duplicates when editing room
+- [x] Ensure correct roomId + hostelId linkage (kept)
+- [x] Ensure room deletion cleans beds if supported (already present in controller)
 
-- [ ] Implement real Checkout confirmation modal UI (Cancel/Confirm) and wire Confirm to existing checkout API.
+## Phase 4 — Profile update UX fix
+- [x] OwnerProfileEdit: loading spinner/state
+- [x] Disable Save button during request
+- [x] Success toast
+- [x] Error toast
+- [x] Refresh owner data after update (best-effort)
+- [x] Immediate UI update after success (localStorage snapshot refresh)
 
+## Phase 5 — Global async UX standardization
+- [ ] Audit owner actions: room actions, resident actions, assignments, uploads, profile updates, password updates, payment actions
+- [ ] Ensure every async action shows loading state + disables buttons + success/error toasts
+- [ ] Remove silent failures (empty catch blocks)
 
-
-
-- [ ] Bed card UX polish (vacant/occupied accents, resident preview, payment status badge).
-- [ ] Mobile-safe modal behavior (scrolling, dark/glass theme consistency).
-- [ ] Remove remaining placeholders/fake interactions in Rooms.jsx.
-- [ ] Final validation: `cd Frontend` -> `npm run build` ; `cd Backend` -> `npm start` (no chained commands).
-
+## Phase 6 — Cleanup pass
+- [ ] Remove dead code / duplicate helpers / silent catch blocks / leftover debug
+- [ ] Ensure frontend build passes
+- [ ] Ensure backend starts cleanly
 

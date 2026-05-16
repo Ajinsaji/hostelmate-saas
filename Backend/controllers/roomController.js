@@ -13,7 +13,6 @@ const createRoom =
   async (req, res) => {
 
     try {
-
       const {
         roomNumber,
         totalBeds,
@@ -24,6 +23,11 @@ const createRoom =
 
       const hostelId = req.owner?.hostelId;
 
+      const normalizedRoomNumber = String(roomNumber ?? "").trim();
+
+      const totalBedsNum = Number(totalBeds);
+      const rentPerBedNum = Number(rentPerBed);
+
       if (!hostelId) {
         return res.status(401).json({
           success: false,
@@ -31,71 +35,83 @@ const createRoom =
         });
       }
 
-
-      // CHECK ROOM
-      const existingRoom =
-        await Room.findOne({
-
-          hostelId,
-
-          roomNumber,
-        });
-
-      if (existingRoom) {
-
+      // Validation
+      if (!normalizedRoomNumber) {
         return res.status(400).json({
-
           success: false,
-
-          message:
-            "Room already exists",
+          message: "Room number is required",
         });
       }
+      if (!Number.isFinite(totalBedsNum) || totalBedsNum <= 0) {
+        return res.status(400).json({
+          success: false,
+          message: "Total beds must be greater than 0",
+        });
+      }
+      if (!Number.isFinite(rentPerBedNum) || rentPerBedNum < 0) {
+        return res.status(400).json({
+          success: false,
+          message: "Rent per bed must be >= 0",
+        });
+      }
+
+      // CHECK DUPLICATE ROOM NUMBER (hostel-scoped)
+      // Case-insensitive match + trim normalization
+      const existingRoom = await Room.findOne({
+        hostelId,
+        roomNumber: { $regex: `^${normalizedRoomNumber}$`, $options: "i" },
+      });
+
+      if (existingRoom) {
+        return res.status(400).json({
+          success: false,
+          message: "Room number already exists",
+        });
+      }
+
+
 
       // CREATE ROOM
       const room =
         await Room.create({
-
           hostelId,
-
-          roomNumber,
-
-          totalBeds,
-
+          roomNumber: normalizedRoomNumber,
+          totalBeds: totalBedsNum,
           floor,
-
           roomType,
-
-          rentPerBed,
+          rentPerBed: rentPerBedNum,
         });
 
-      // AUTO CREATE BEDS
-      const beds = [];
 
+      // AUTO CREATE BEDS (idempotent for this create action)
+      const beds = [];
       for (
         let i = 1;
-        i <= totalBeds;
+        i <= totalBedsNum;
         i++
       ) {
-
         beds.push({
-
           hostelId,
-
-          roomId:
-            room._id,
-
-          bedNumber:
-            `B${i}`,
-
-          status:
-            "vacant",
+          roomId: room._id,
+          bedNumber: `B${i}`,
+          status: "vacant",
         });
       }
 
-      await Bed.insertMany(
-        beds
-      );
+      // Avoid duplicates if inserts happen twice for any reason
+      const existingCount = await Bed.countDocuments({ roomId: room._id });
+      if (existingCount === 0) {
+        await Bed.insertMany(beds);
+      } else {
+        // ensure exactly B1..Bn exist for this room
+        await Bed.deleteMany({ roomId: room._id, bedNumber: { $nin: beds.map((b) => b.bedNumber) } });
+        await Promise.all(
+          beds.map(async (b) => {
+            const doc = await Bed.findOne({ roomId: room._id, bedNumber: b.bedNumber });
+            if (!doc) await Bed.create(b);
+          })
+        );
+      }
 
       res.status(201).json({
 
@@ -109,9 +125,8 @@ const createRoom =
 
     } catch (error) {
 
-      console.log(error);
-
       res.status(500).json(error);
+
 
     }
   };
@@ -221,22 +236,37 @@ const editRoom = async (req, res) => {
     const roomId = req.params.roomId;
     const { roomNumber, roomType, rentPerBed, floor } = req.body;
 
+    const normalizedRoomNumber = roomNumber === undefined ? undefined : String(roomNumber ?? "").trim();
+
+    const rentPerBedNum = rentPerBed === undefined ? undefined : Number(rentPerBed);
+
+    if (rentPerBedNum !== undefined && (!Number.isFinite(rentPerBedNum) || rentPerBedNum < 0)) {
+      return res.status(400).json({ success: false, message: "Rent per bed must be >= 0" });
+    }
+
+
     const room = await Room.findById(roomId);
     if (!room) {
       return res.status(404).json({ success: false, message: "Room not found" });
     }
 
-    if (roomNumber && roomNumber !== room.roomNumber) {
-      const existing = await Room.findOne({ hostelId: req.owner.hostelId, roomNumber });
+    if (normalizedRoomNumber && normalizedRoomNumber !== room.roomNumber) {
+      const existing = await Room.findOne({
+        hostelId: req.owner.hostelId,
+        _id: { $ne: roomId },
+        roomNumber: { $regex: `^${normalizedRoomNumber}$`, $options: "i" },
+      });
       if (existing) {
         return res.status(400).json({ success: false, message: "Room number already exists" });
       }
-      room.roomNumber = roomNumber;
+      room.roomNumber = normalizedRoomNumber;
     }
 
+
     if (roomType) room.roomType = roomType;
-    if (rentPerBed) room.rentPerBed = rentPerBed;
+    if (rentPerBedNum !== undefined) room.rentPerBed = rentPerBedNum;
     if (floor) room.floor = floor;
+
 
     await room.save();
 

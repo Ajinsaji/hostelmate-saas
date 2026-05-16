@@ -16,9 +16,19 @@ const PublicAdmission = require("../models/PublicAdmission");
 // ==========================
 const loginOwner = async (req, res) => {
   try {
-    console.log("LOGIN BODY:", req.body);
-
     const { email, phone, password, username } = req.body || {};
+
+    const looksLikeBcryptHash = (val) => typeof val === "string" && /^\$2[aby]\$\d{2}\$/.test(val);
+
+    const safePasswordCompare = async (plain, stored) => {
+      if (!stored) return false;
+      if (looksLikeBcryptHash(stored)) return bcrypt.compare(plain, stored);
+      return plain === stored;
+    };
+
+
+
+
 
     if (!password) {
       return res.status(400).json({
@@ -46,18 +56,23 @@ const loginOwner = async (req, res) => {
     }
 
     if (!staff && (phone || email)) {
-      owner = await Owner.findOne({
-        password,
+      const query = {
         status: { $ne: "disabled" },
-        $or: [
-          ...(email ? [{ email }] : []),
-          ...(phone ? [{ phone }] : []),
-        ],
-      });
+        ...(email ? { email } : {}),
+        ...(phone ? { phone } : {}),
+      };
+
+      const ownerCandidate = await Owner.findOne(query);
+
+      if (ownerCandidate) {
+        const ok = await safePasswordCompare(password, ownerCandidate.password);
+        if (ok) owner = ownerCandidate;
+      }
 
       if (!owner) {
         staff = await Staff.findOne({
-          phone,
+          ...(phone ? { phone } : {}),
+          ...(email ? { email } : {}),
           isActive: true,
         });
       }
@@ -140,9 +155,9 @@ const loginOwner = async (req, res) => {
       user: userResponse,
     });
   } catch (error) {
-    console.error("OWNER LOGIN ERROR:", error);
     return res.status(500).json({
       success: false,
+
       message: "Internal Server Error",
       details: error?.message,
     });
@@ -186,6 +201,7 @@ const resetOwnerPassword = async (req, res) => {
     res.status(500).json(error);
   }
 };
+
 
 // ==========================
 // SUPERADMIN: DISABLE/SUSPEND OWNER
@@ -305,8 +321,8 @@ const getPendingCount = async (req, res) => {
       pendingAdmissions: pendingAdmissions || 0
     });
   } catch (error) {
-    console.error("Pending Count Error:", error);
     res.status(500).json({
+
       success: false,
       error: error.message
     });
@@ -392,10 +408,10 @@ const approveAdmission = async (req, res) => {
 
     res.status(200).json({ success: true, message: "Admission approved & Resident created", resident });
   } catch (error) {
-    console.log(error);
     res.status(500).json(error);
   }
 };
+
 
 // ==========================
 // OWNER: REJECT ADMISSION
@@ -577,7 +593,20 @@ const updateOwnerProfile = async (req, res) => {
 const updateOwnerPassword = async (req, res) => {
   try {
     const { ownerId } = req.owner;
+
+    const looksLikeBcryptHash = (val) => typeof val === "string" && /^\$2[aby]\$\d{2}\$/.test(val);
+
+    // bcrypt hash => bcrypt.compare
+    // else => plaintext fallback (legacy records)
+    const safePasswordCompare = async (plain, stored) => {
+      if (!stored) return false;
+      if (looksLikeBcryptHash(stored)) return bcrypt.compare(plain, stored);
+      return plain === stored;
+    };
+
     const { currentPassword, newPassword, confirmPassword } = req.body || {};
+
+
 
     if (!ownerId) return res.status(401).json({ success: false, message: "Unauthorized", data: null });
 
@@ -594,7 +623,7 @@ const updateOwnerPassword = async (req, res) => {
     const owner = await Owner.findById(ownerId);
     if (!owner) return res.status(404).json({ success: false, message: "Owner not found", data: null });
 
-    const ok = await bcrypt.compare(currentPassword, owner.password);
+    const ok = await safePasswordCompare(currentPassword, owner.password);
     if (!ok) return res.status(400).json({ success: false, message: "Current password is incorrect", data: null });
 
     const salt = await bcrypt.genSalt(10);

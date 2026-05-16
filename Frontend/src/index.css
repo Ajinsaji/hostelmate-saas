@@ -347,6 +347,14 @@ select {
   color: #ffffff;
 }
 
+/* Dropdown readability (dark theme) */
+select,
+option {
+  background-color: #0f172a;
+  color: white;
+}
+
+
 textarea.input-field {
   resize: vertical;
 }

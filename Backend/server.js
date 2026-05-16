@@ -21,6 +21,9 @@ const requestRoutes =
 const roomRoutes =
   require("./routes/roomRoutes");
 
+const bedRoutes = require("./routes/bedRoutes");
+
+
 const residentRoutes =
   require("./routes/residentRoutes");
 
@@ -117,6 +120,13 @@ app.use(
   "/api/rooms",
   roomRoutes
 );
+
+// BEDS
+app.use(
+  "/api/beds",
+  bedRoutes
+);
+
 
 // RESIDENTS
 app.use(

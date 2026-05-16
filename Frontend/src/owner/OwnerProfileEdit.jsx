@@ -72,6 +72,7 @@ function OwnerProfileEdit() {
 
   const handleSave = async () => {
     if (!validate()) return;
+
     try {
       setSaving(true);
 
@@ -85,26 +86,39 @@ function OwnerProfileEdit() {
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      if (res.data?.success) {
-        toast.success(res.data?.message || "Profile updated");
+      if (!res.data?.success) {
+        toast.error(res.data?.message || "Failed to update profile");
+        return;
+      }
 
-        // refresh localStorage user snapshot so UI remains consistent
+      toast.success(res.data?.message || "Profile updated");
+
+      // Refresh owner snapshot (best-effort) so next screens show updated data
+      try {
+        const dash = await axios.get(`${import.meta.env.VITE_API_URL}/api/owner/dashboard`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
         const current = JSON.parse(localStorage.getItem("user") || "null") || {};
+        const owner = dash.data?.owner || dash.data?.user || dash.data?.data?.owner || null;
+
         const next = {
           ...current,
-          ownerName: res.data?.owner?.ownerName || form.ownerName,
-          phone: res.data?.owner?.phone || form.phone,
-          email: res.data?.owner?.email || form.email,
+          ownerName: owner?.ownerName || res.data?.owner?.ownerName || form.ownerName,
+          phone: owner?.phone || res.data?.owner?.phone || form.phone,
+          email: owner?.email || res.data?.owner?.email || form.email,
         };
-        if (res.data?.owner?.profileImage) next.profileImage = res.data.owner.profileImage;
-        localStorage.setItem("user", JSON.stringify(next));
+        if (owner?.profileImage || res.data?.owner?.profileImage) {
+          next.profileImage = owner?.profileImage || res.data.owner.profileImage;
+        }
 
-        window.history.back();
-      } else {
-        toast.error(res.data?.message || "Failed to update profile");
+        localStorage.setItem("user", JSON.stringify(next));
+      } catch (e) {
+        // non-fatal; user already got success toast
       }
+
+      window.history.back();
     } catch (e) {
-      console.error("Owner profile update error:", e?.response?.data || e);
       toast.error(e?.response?.data?.message || "Failed to update profile");
     } finally {
       setSaving(false);
@@ -186,7 +200,12 @@ function OwnerProfileEdit() {
               <input className="input-field" value={form.email} onChange={(e) => update("email", e.target.value)} inputMode="email" />
             </div>
 
-            <button className="btn-primary mt-4" onClick={handleSave} disabled={saving} style={{ opacity: saving ? 0.7 : 1 }}>
+            <button
+              className="btn-primary mt-4"
+              onClick={handleSave}
+              disabled={saving}
+              style={{ opacity: saving ? 0.7 : 1, cursor: saving ? "not-allowed" : "pointer" }}
+            >
               <Save size={18} /> {saving ? "Saving..." : "Save Profile"}
             </button>
           </div>

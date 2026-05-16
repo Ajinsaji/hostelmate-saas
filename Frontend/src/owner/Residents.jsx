@@ -20,6 +20,9 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 import BottomNav from "../components/BottomNav";
+import { getOccupancyChipInline, getOccupancyState } from "../utils/occupancyStyles";
+import { triggerOccupancyRefresh } from "../utils/occupancyRefresh";
+
 
 function Residents() {
   const token = localStorage.getItem("token");
@@ -373,8 +376,9 @@ function Residents() {
         headers: { Authorization: `Bearer ${token}` },
       });
       
-      const availableBeds = (bedsRes.data?.beds || []).filter((b) => b.status !== "occupied");
+      const availableBeds = (bedsRes.data?.beds || []).filter((b) => getOccupancyState(b?.status) !== "occupied");
       setBeds(availableBeds);
+
     } catch (e) {
       toast.error("Failed to load beds");
       setBeds([]);
@@ -503,7 +507,6 @@ function Residents() {
       const res = await axios.post(`${import.meta.env.VITE_API_URL}/api/residents/create`, formData, {
         headers: {
           Authorization: `Bearer ${token}`,
-          "Content-Type": "multipart/form-data",
         },
       });
 

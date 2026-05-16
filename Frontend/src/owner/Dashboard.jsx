@@ -3,6 +3,9 @@ import { useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import axios from "axios";
 import BottomNav from "../components/BottomNav";
+import { subscribeOccupancyRefresh } from "../utils/occupancyRefresh";
+
+
 
 function Dashboard() {
   const navigate = useNavigate();
@@ -31,11 +34,20 @@ function Dashboard() {
           }
         }
       } catch (error) {
-        console.error("Failed to fetch dashboard stats", error);
+        // Avoid console spam; dashboard will retry on next refresh event.
       }
     };
+
     fetchStats();
+
+    // Real-time sync: re-fetch stats whenever occupancy changes from other screens.
+    const unsubscribe = subscribeOccupancyRefresh(() => {
+      fetchStats();
+    });
+
+    return unsubscribe;
   }, []);
+
 
   // Fetch pending admission count with auto-refresh every 20 seconds
   useEffect(() => {
