@@ -440,7 +440,22 @@ function Residents() {
   const submitAddResident = async () => {
     if (!validateAddForm()) return;
 
+    // Extra reliability: validate agreement/rules snapshot for production-safe behavior
+    if (!addForm?.acceptedRulesTextSnapshot?.trim()) {
+      toast.error("Rules snapshot is not available. Save hostel rules in settings before adding a resident.");
+      return;
+    }
+    if (!addForm?.rulesVersionId?.trim() || !addForm?.rulesVersionNumber?.trim()) {
+      toast.error("Rules version info is missing. Save hostel rules in settings before adding a resident.");
+      return;
+    }
+    if (!addForm?.agreementChecked) {
+      toast.error("Please accept the rules agreement");
+      return;
+    }
+
     setAddLoading(true);
+
 
     try {
       const formData = new FormData();

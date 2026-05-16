@@ -31,15 +31,62 @@ const createResident =
         agreementChecked,
       } = req.body;
 
+      // Basic required-field validation (production-safe)
+      const missing = [];
+      const mustHave = [
+        { k: "name", v: name },
+        { k: "phone", v: phone },
+        { k: "email", v: email },
+        { k: "address", v: address },
+        { k: "district", v: district },
+        { k: "pincode", v: pincode },
+        { k: "emergencyContact", v: emergencyContact },
+        { k: "roomId", v: roomId },
+        { k: "bedId", v: bedId },
+        { k: "monthlyRent", v: monthlyRent },
+        { k: "depositAmount", v: depositAmount },
+        { k: "joinDate", v: joinDate },
+        { k: "agreementChecked", v: agreementChecked },
+      ];
+
+      for (const item of mustHave) {
+        if (item.v === undefined || item.v === null || String(item.v).trim() === "") {
+          missing.push(item.k);
+        }
+      }
+
+      if (missing.length) {
+        return res.status(400).json({
+          success: false,
+          message: `Missing required fields: ${missing.join(", ")}`,
+        });
+      }
+
+      if (!(agreementChecked === true || agreementChecked === "true")) {
+        return res.status(400).json({
+          success: false,
+          message: "Please accept the rules agreement",
+        });
+      }
+
+
       const hostelId = req.owner?.hostelId;
 
+      if (!hostelId) {
+        return res.status(401).json({
+          success: false,
+          message: "Unauthorized: missing hostelId from token",
+        });
+      }
 
-      // CHECK EXISTING RESIDENT
+      // CHECK EXISTING RESIDENT (same hostel)
       const existingResident =
         await Resident.findOne({
+          hostelId,
           phone,
           status: "active",
         });
+
 
       if (existingResident) {
         return res.status(400).json({
