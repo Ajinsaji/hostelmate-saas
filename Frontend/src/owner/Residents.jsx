@@ -68,6 +68,9 @@ function Residents() {
     // Agreement
     agreementChecked: false,
     signatureMode: "digital", // digital | uploaded
+    acceptedRulesTextSnapshot: "",
+    rulesVersionId: "",
+    rulesVersionNumber: "",
   });
 
   const [addFiles, setAddFiles] = useState({
@@ -296,7 +299,26 @@ function Residents() {
         headers: { Authorization: `Bearer ${token}` },
       });
       
-      setHostelData(dashRes.data?.hostel || null);
+      const hostel = dashRes.data?.hostel || null;
+      setHostelData(hostel);
+
+      let acceptedRulesTextSnapshot = "";
+      let rulesVersionId = "";
+      let rulesVersionNumber = "";
+      if (hostel) {
+        acceptedRulesTextSnapshot = hostel.rulesText || hostel.activeRulesText || hostel.currentActiveRulesText || hostel.rules || "";
+        rulesVersionId = hostel.currentRulesVersion || hostel.rulesVersionId || "";
+        rulesVersionNumber = hostel.rulesVersionHistory?.find((entry) => entry.versionId === rulesVersionId)?.versionNumber?.toString() ||
+          hostel.rulesVersionNumber?.toString() ||
+          hostel.rulesVersionHistory?.[hostel.rulesVersionHistory.length - 1]?.versionNumber?.toString() || "";
+      }
+
+      setAddForm((prev) => ({
+        ...prev,
+        acceptedRulesTextSnapshot,
+        rulesVersionId,
+        rulesVersionNumber,
+      }));
 
       // Load rooms
       const roomsRes = await axios.get(`${import.meta.env.VITE_API_URL}/api/rooms/hostel`, {
@@ -329,6 +351,9 @@ function Residents() {
       depositAmount: "",
       agreementChecked: false,
       signatureMode: "digital",
+      acceptedRulesTextSnapshot: "",
+      rulesVersionId: "",
+      rulesVersionNumber: "",
     });
     setAddFiles({ photo: null, idProof: null, signatureFile: null });
     setSignatureImage(null);
@@ -384,19 +409,10 @@ function Residents() {
       { k: "bedId", msg: "Bed selection is required" },
       { k: "monthlyRent", msg: "Monthly rent is required" },
       { k: "depositAmount", msg: "Deposit amount is required" },
+      { k: "acceptedRulesTextSnapshot", msg: "Rules snapshot is required" },
+      { k: "rulesVersionId", msg: "Rules version ID is required" },
+      { k: "rulesVersionNumber", msg: "Rules version number is required" },
     ];
-
-    for (const r of required) {
-      if (!String(addForm[r.k] || "").trim()) {
-        toast.error(r.msg);
-        return false;
-      }
-    }
-
-    if (!addFiles.photo) {
-      toast.error("Resident photo is required");
-      return false;
-    }
 
     if (!addFiles.idProof) {
       toast.error("ID proof is required");
@@ -450,6 +466,12 @@ function Residents() {
       } else if (addForm.signatureMode === "uploaded" && addFiles.signatureFile) {
         formData.append("signatureFile", addFiles.signatureFile);
       }
+
+      // Agreement snapshot and rule versioning
+      if (addForm.acceptedRulesTextSnapshot) formData.append("acceptedRulesTextSnapshot", addForm.acceptedRulesTextSnapshot);
+      if (addForm.rulesVersionId) formData.append("rulesVersionId", addForm.rulesVersionId);
+      if (addForm.rulesVersionNumber) formData.append("rulesVersionNumber", addForm.rulesVersionNumber);
+      formData.append("agreementChecked", addForm.agreementChecked ? "true" : "false");
 
       const res = await axios.post(`${import.meta.env.VITE_API_URL}/api/residents/create`, formData, {
         headers: {
@@ -516,7 +538,7 @@ function Residents() {
               style={{
                 background: "linear-gradient(135deg, rgba(34,197,94,1) 0%, rgba(16,185,129,1) 100%)",
                 color: "#fff",
-                padding: "14px 16px",
+                padding: "14px 18px",
                 borderRadius: "16px",
                 fontWeight: 900,
                 display: "flex",
@@ -528,9 +550,9 @@ function Residents() {
                 minWidth: "fit-content",
                 touchAction: "manipulation",
               }}
-              aria-label="Add new resident"
+              aria-label="Add resident"
             >
-              <Plus size={18} /> Add
+              <Plus size={18} /> Add Resident
             </button>
           </div>
 
@@ -1244,6 +1266,45 @@ function Residents() {
               </div>
             </div>
 
+            {/* Rules Agreement Preview */}
+            <div style={{ marginBottom: 20 }}>
+              <h3 style={{ fontSize: 14, fontWeight: 900, marginBottom: 12, color: "#22c55e" }}>Rules Agreement</h3>
+              <div
+                style={{
+                  padding: 14,
+                  borderRadius: 16,
+                  background: "rgba(255,255,255,0.04)",
+                  border: "1px solid rgba(255,255,255,0.10)",
+                }}
+              >
+                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 10, gap: 12 }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: "rgba(255,255,255,0.85)" }}>
+                    {addForm.rulesVersionNumber ? `Rules Version ${addForm.rulesVersionNumber}` : "Current Hostel Rules"}
+                  </div>
+                  {hostelData?.rulesConfig?.requireSignature === false && (
+                    <div style={{ fontSize: 12, color: "rgba(255,255,255,0.65)" }}>
+                      Signature optional for this hostel.
+                    </div>
+                  )}
+                </div>
+                <div
+                  style={{
+                    maxHeight: 180,
+                    overflowY: "auto",
+                    whiteSpace: "pre-wrap",
+                    color: "rgba(255,255,255,0.92)",
+                    fontSize: 13,
+                    lineHeight: 1.7,
+                  }}
+                >
+                  {addForm.acceptedRulesTextSnapshot || "Rules are currently unavailable. Please save hostel rules in settings before adding a resident."}
+                </div>
+                <div style={{ marginTop: 12, fontSize: 12, color: "rgba(255,255,255,0.65)", lineHeight: 1.5 }}>
+                  {hostelData?.rulesConfig?.consentText || "By continuing, you consent to secure storage of your submitted identity documents and agreement signature for hostel management purposes."}
+                </div>
+              </div>
+            </div>
+
             {/* Document Uploads */}
             <div style={{ marginBottom: 20 }}>
               <h3 style={{ fontSize: 14, fontWeight: 900, marginBottom: 12, color: "#22c55e" }}>Documents</h3>
@@ -1437,7 +1498,7 @@ function Residents() {
                   style={{ marginTop: 4, cursor: "pointer", minWidth: "fit-content" }}
                 />
                 <span style={{ fontSize: 13, lineHeight: 1.5 }}>
-                  I accept the hostel rules and regulations. By continuing, you consent to secure storage of your submitted identity documents and agreement signature for hostel management purposes.
+                  I accept the hostel rules and regulations. {hostelData?.rulesConfig?.consentText || "By continuing, you consent to secure storage of your submitted identity documents and agreement signature for hostel management purposes."}
                 </span>
               </label>
             </div>

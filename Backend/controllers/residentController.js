@@ -15,11 +15,20 @@ const createResident =
       const {
         name,
         phone,
+        email,
+        gender,
+        dob,
+        address,
+        district,
+        pincode,
+        emergencyContact,
         roomId,
         bedId,
         monthlyRent,
         depositAmount,
         joinDate,
+        signatureImage,
+        agreementChecked,
       } = req.body;
 
       const hostelId = req.owner?.hostelId;
@@ -84,6 +93,20 @@ const createResident =
 
           phone,
 
+          email,
+
+          gender,
+
+          dob: dob ? new Date(dob) : null,
+
+          address,
+
+          district,
+
+          pincode,
+
+          emergencyContact,
+
           roomId,
 
           bedId,
@@ -92,7 +115,7 @@ const createResident =
 
           depositAmount,
 
-          joinDate,
+          joinDate: new Date(joinDate),
 
           photo:
             req.files.photo?.[0]
@@ -101,6 +124,16 @@ const createResident =
           idProof:
             req.files.idProof?.[0]
               ?.filename || "",
+
+          signatureImage: signatureImage || "",
+
+          signatureFile:
+            req.files.signatureFile?.[0]
+              ?.filename || "",
+
+          agreementChecked: agreementChecked === "true" || agreementChecked === true,
+
+          signedAt: new Date(),
         });
 
       // UPDATE BED

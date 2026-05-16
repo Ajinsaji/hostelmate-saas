@@ -1,8 +1,44 @@
 import { ArrowRight, CheckCircle2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useRef, useState } from "react";
 
 function LandingPage() {
   const navigate = useNavigate();
+  const [tapCount, setTapCount] = useState(0);
+  const tapTimeoutRef = useRef(null);
+  const lastTapTimeRef = useRef(0);
+
+  const handleBetaMindClick = () => {
+    const now = Date.now();
+    
+    // Reset tap counter if more than 3 seconds have passed since last tap
+    if (now - lastTapTimeRef.current > 3000) {
+      setTapCount(1);
+    } else {
+      setTapCount((prev) => prev + 1);
+    }
+    
+    lastTapTimeRef.current = now;
+
+    // Clear existing timeout
+    if (tapTimeoutRef.current) {
+      clearTimeout(tapTimeoutRef.current);
+    }
+
+    // Set new timeout to reset counter after 3 seconds
+    tapTimeoutRef.current = setTimeout(() => {
+      setTapCount(0);
+    }, 3000);
+
+    // If 5 taps detected within 3 seconds, navigate to admin
+    if (tapCount + 1 === 5) {
+      setTapCount(0);
+      if (tapTimeoutRef.current) {
+        clearTimeout(tapTimeoutRef.current);
+      }
+      navigate("/admin/login");
+    }
+  };
 
   return (
     <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
@@ -44,7 +80,7 @@ function LandingPage() {
 
         <div style={{ marginTop: 24, textAlign: "center", color: "rgba(255,255,255,0.75)", fontSize: 13 }}>
           HostelMate © 2026 <span
-            onClick={() => navigate("/admin/login")}
+            onClick={handleBetaMindClick}
             style={{ color: "rgba(167,243,208,1)", fontWeight: 700, cursor: "pointer" }}
           >
             BetaMind

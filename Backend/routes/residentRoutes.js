@@ -66,6 +66,11 @@ router.post(
       name: "idProof",
       maxCount: 1,
     },
+
+    {
+      name: "signatureFile",
+      maxCount: 1,
+    },
   ]),
 
   createResident

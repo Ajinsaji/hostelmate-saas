@@ -42,6 +42,7 @@ function HostelManagement() {
     message: "",
     action: null,
     ownerId: null,
+    hostelName: "",
   });
 
   const fetchHostels = async () => {
@@ -392,17 +393,31 @@ function HostelManagement() {
                     onClick={() =>
                       setConfirmModal({
                         isOpen: true,
-                        title: "Remove hostel?",
-                        message: "This will permanently delete hostel data (rooms/beds/residents/payments/notifications).",
+                        title: "Remove Hostel",
+                        message: `Remove "${h.hostelName}" permanently? This will delete related rooms, beds, residents, payments, and notifications.
+
+This action cannot be undone.
+`,
                         action: "deleteHostel",
                         ownerId: h.hostelId || h._id,
+                        hostelName: h.hostelName || "hostel",
                       })
                     }
-                    className="btn-icon"
-                    style={{ width: 52, height: 52, borderRadius: 16, background: "rgba(239,68,68,0.10)", border: "1px solid rgba(239,68,68,0.22)", color: "#ef4444" }}
-                    aria-label="Delete hostel"
+                    className="flex items-center justify-center gap-2"
+                    style={{
+                      flex: 1,
+                      minWidth: 160,
+                      padding: "14px 16px",
+                      borderRadius: 16,
+                      background: "rgba(239,68,68,0.10)",
+                      border: "1px solid rgba(239,68,68,0.22)",
+                      color: "#ef4444",
+                      fontWeight: 900,
+                      cursor: "pointer",
+                    }}
+                    aria-label="Remove Hostel"
                   >
-                    <Trash2 size={18} />
+                    <Trash2 size={18} /> Remove Hostel
                   </button>
 
                 </div>
@@ -581,6 +596,11 @@ className="w-full py-3 rounded-xl font-medium text-sm flex justify-center items-
         >
           <div className="glass-card rounded-2xl p-6 max-w-[350px] shadow-2xl" style={{ animation: "slideUp 0.3s ease-out", background: "rgba(11,23,57,0.78)" }}>
             <h2 className="text-lg font-bold mb-2" style={{ color: "var(--text-main)" }}>{confirmModal.title}</h2>
+            {confirmModal.hostelName && (
+              <p className="text-small font-semibold" style={{ color: "rgba(255,255,255,0.88)", marginBottom: 10 }}>
+                {confirmModal.hostelName}
+              </p>
+            )}
             <p className="text-small" style={{ color: "rgba(255,255,255,0.75)" }}>{confirmModal.message}</p>
 
             <div className="flex gap-3">
@@ -623,8 +643,8 @@ className="w-full py-3 rounded-xl font-medium text-sm flex justify-center items-
               >
                 {confirmModal.action === "deleteHostel"
                   ? isDeleting
-                    ? "Deleting..."
-                    : "Delete"
+                    ? "Removing..."
+                    : "Remove Hostel"
                   : isResetting
                     ? "Processing..."
                     : "Confirm"}

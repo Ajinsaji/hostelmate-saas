@@ -9,6 +9,10 @@ const hostelSchema = new mongoose.Schema({
 
   address: String,
 
+  district: String,
+
+  pincode: String,
+
   qrImage: String,
 
   planType: {
@@ -19,11 +23,6 @@ const hostelSchema = new mongoose.Schema({
   subscriptionStatus: {
     type: String,
     default: "trial",
-  },
-
-  planType: {
-    type: String,
-    default: "Basic",
   },
 
   isPublic: {
@@ -50,9 +49,37 @@ const hostelSchema = new mongoose.Schema({
 
   qrCodeUrl: String,
 
-  isPublic: {
-    type: Boolean,
-    default: true,
+  // Rules & Regulations (with versioning)
+  currentRulesVersion: String,
+  rulesText: String, // current rules text
+  rulesVersionHistory: [
+    {
+      versionId: String,
+      versionNumber: Number,
+      rulesText: String,
+      createdAt: {
+        type: Date,
+        default: Date.now,
+      },
+    },
+  ],
+
+  // Rules configuration
+  rulesConfig: {
+    requireAadhaar: {
+      type: Boolean,
+      default: false,
+    },
+    requireSignature: {
+      type: Boolean,
+      default: true,
+    },
+    signatureOptions: {
+      type: [String],
+      enum: ["digital", "uploaded"],
+      default: ["digital"],
+    },
+    consentText: String,
   },
 });
 
