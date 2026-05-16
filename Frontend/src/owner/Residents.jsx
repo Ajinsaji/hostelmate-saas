@@ -321,7 +321,7 @@ function Residents() {
       }));
 
       // Load rooms
-      const roomsRes = await axios.get(`${import.meta.env.VITE_API_URL}/api/rooms/hostel`, {
+      const roomsRes = await axios.get(`${import.meta.env.VITE_API_URL}/api/rooms/get-rooms`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       
@@ -440,6 +440,7 @@ function Residents() {
   const submitAddResident = async () => {
     if (!validateAddForm()) return;
 
+
     // Extra reliability: validate agreement/rules snapshot for production-safe behavior
     if (!addForm?.acceptedRulesTextSnapshot?.trim()) {
       toast.error("Rules snapshot is not available. Save hostel rules in settings before adding a resident.");
@@ -464,6 +465,11 @@ function Residents() {
       formData.append("name", addForm.fullName);
       formData.append("phone", addForm.phone);
       formData.append("email", addForm.email);
+      formData.append("gender", addForm.gender);
+      formData.append("dob", addForm.dob || "");
+      formData.append("district", addForm.district);
+      formData.append("pincode", addForm.pincode);
+      formData.append("emergencyContact", addForm.emergencyContact);
       formData.append("address", addForm.address);
       formData.append("roomId", addForm.roomId);
       formData.append("bedId", addForm.bedId);
@@ -474,6 +480,7 @@ function Residents() {
       // Files
       if (addFiles.photo) formData.append("photo", addFiles.photo);
       if (addFiles.idProof) formData.append("idProof", addFiles.idProof);
+
 
       // Signature
       if (addForm.signatureMode === "digital" && signatureImage) {
@@ -497,12 +504,20 @@ function Residents() {
 
       toast.success("Resident added successfully!");
       closeAddModal();
-      
+
       // Refresh residents list
       const updatedRes = await axios.get(`${import.meta.env.VITE_API_URL}/api/residents/hostel`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setResidents(updatedRes.data?.residents || []);
+
+      // Force refresh of payments badge/status by clearing payments cache and refetching
+      // (without redesigning UI)
+      const payRes = await axios.get(`${import.meta.env.VITE_API_URL}/api/payments/hostel`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setPayments(payRes.data?.payments || []);
+
     } catch (e) {
       toast.error(e?.response?.data?.message || "Failed to add resident");
     } finally {

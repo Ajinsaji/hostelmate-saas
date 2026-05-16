@@ -27,9 +27,21 @@ const createResident =
         monthlyRent,
         depositAmount,
         joinDate,
+        // NOTE: frontend sends signatureImage as base64 data url
         signatureImage,
         agreementChecked,
+        // Optional (newer UI may send rules agreement fields)
+        rulesVersionId,
+        rulesVersionNumber,
+        acceptedRulesTextSnapshot,
       } = req.body;
+
+      // The backend Resident schema does not include these fields today,
+      // but we accept them to keep payload validation consistent.
+      // ensure we accept boolean or string 'true' from multipart/form-data
+      const safeAgreementChecked =
+        agreementChecked === true || agreementChecked === "true";
+
 
       // Basic required-field validation (production-safe)
       const missing = [];
@@ -62,7 +74,7 @@ const createResident =
         });
       }
 
-      if (!(agreementChecked === true || agreementChecked === "true")) {
+      if (!(safeAgreementChecked)) {
         return res.status(400).json({
           success: false,
           message: "Please accept the rules agreement",

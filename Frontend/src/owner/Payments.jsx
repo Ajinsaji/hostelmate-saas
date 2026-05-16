@@ -58,12 +58,13 @@ function Payments() {
     const { name, value } = e.target;
     setFormData(prev => {
       const updated = { ...prev, [name]: value };
-      // Auto-calculate paidAmount if partial payment method
-      if (updated.paymentMethod === "partial") {
-        const cash = parseInt(updated.cashAmount || 0);
-        const online = parseInt(updated.onlineAmount || 0);
-        updated.amount = cash + online;
-      }
+        // Auto-calculate amount if partial payment method
+        if (updated.paymentMethod === "partial") {
+          const cash = parseInt(updated.cashAmount || 0, 10);
+          const online = parseInt(updated.onlineAmount || 0, 10);
+          updated.amount = cash + online;
+        }
+
       return updated;
     });
   };
