@@ -2,6 +2,10 @@ const express = require("express");
 
 const router = express.Router();
 
+const { requireRole } = require("../middleware/auth");
+
+router.use(requireRole(["super_admin", "admin"]));
+
 const {
 
   getDashboardStats,

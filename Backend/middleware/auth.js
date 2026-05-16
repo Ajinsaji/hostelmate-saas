@@ -22,6 +22,7 @@ const auth = (req, res, next) => {
     // hostId is optional depending on role.
     // For notifications isolation we will scope by hostelId only when present.
     req.user = {
+      id: payload.userId || payload.ownerId,
       userId: payload.userId || payload.ownerId,
       role: payload.role,
       hostelId: payload.hostelId || null,

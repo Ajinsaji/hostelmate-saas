@@ -1,3 +1,4 @@
+const jwt = require("jsonwebtoken");
 const Admin = require("../models/Admin");
 
 const loginAdmin = async (req, res) => {
@@ -19,10 +20,23 @@ const loginAdmin = async (req, res) => {
       });
     }
 
+    const secret = process.env.JWT_SECRET || "change_me_secret";
+    const token = jwt.sign(
+      {
+        userId: admin._id,
+        role: admin.role,
+      },
+      secret,
+      { expiresIn: "7d" }
+    );
+
+    const { password: _, ...adminData } = admin.toObject();
+
     res.status(200).json({
       success: true,
       message: "Login Success",
-      admin,
+      token,
+      admin: adminData,
     });
   } catch (error) {
     console.log(error);

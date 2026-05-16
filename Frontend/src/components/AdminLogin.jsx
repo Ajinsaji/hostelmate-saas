@@ -18,16 +18,13 @@ function AdminLogin() {
         password,
       });
 
-      if (response.data?.success) {
+      if (response.data?.success && response.data?.token) {
         toast.success("Admin Login Successful!");
-        if (response.data.token) {
-          localStorage.setItem("adminToken", response.data.token);
-        } else {
-          localStorage.setItem("adminToken", "logged-in");
-        }
+        localStorage.setItem("adminToken", response.data.token);
         navigate("/admin");
         return;
       }
+      toast.error(response.data?.message || "Invalid Username or Password");
 
       toast.error(response.data?.message || "Invalid Username or Password");
     } catch (error) {
