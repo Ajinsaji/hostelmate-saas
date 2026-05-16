@@ -36,7 +36,8 @@ const verifySession = async (req, res) => {
     let payload;
     try {
       payload = jwt.verify(token, secret);
-    } catch (e) {
+    } catch (error) {
+      console.error("[verify-session] VERIFY ERROR:", error);
       return res.status(401).json(getError(401, "Invalid/expired token"));
     }
 
