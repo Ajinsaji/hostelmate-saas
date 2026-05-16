@@ -446,13 +446,21 @@ const updateHostelSettings = async (req, res) => {
       phone,
       whatsapp,
       amenities,
+      rulesText,
       rules,
       description,
+      rulesConfig,
+      currentRulesVersion,
+      rulesVersionNumber,
     } = req.body || {};
 
     if (!hostelId) {
       return res.status(401).json({ success: false, message: "Unauthorized" });
     }
+
+    // Get current hostel to check rules change
+    const currentHostel = await Hostel.findById(hostelId);
+    const rulesChanged = (rulesText || rules) && (rulesText || rules) !== (currentHostel?.rulesText || "");
 
     const updates = {
       hostelName,
@@ -461,10 +469,55 @@ const updateHostelSettings = async (req, res) => {
       pincode,
       phone,
       whatsapp,
-      amenities,
-      rules,
       description,
     };
+
+    // Handle amenities - convert string to array if needed
+    if (amenities) {
+      if (typeof amenities === "string") {
+        updates.amenities = amenities.split(",").map((a) => a.trim()).filter((a) => a);
+      } else if (Array.isArray(amenities)) {
+        updates.amenities = amenities;
+      }
+    }
+
+    // Handle rules and versioning
+    if (rulesText || rules) {
+      const ruleContent = rulesText || rules;
+      updates.rulesText = ruleContent;
+
+      // Create new version if rules changed
+      if (rulesChanged) {
+        const newVersionNumber = rulesVersionNumber || (currentHostel?.rulesVersionNumber || 0) + 1;
+        const newVersionId = `v${newVersionNumber}-${Date.now()}`;
+
+        updates.currentRulesVersion = newVersionId;
+        updates.rulesVersionNumber = newVersionNumber;
+
+        // Add to history
+        const historyEntry = {
+          versionId: newVersionId,
+          versionNumber: newVersionNumber,
+          rulesText: ruleContent,
+          createdAt: new Date(),
+        };
+
+        const currentHistory = currentHostel?.rulesVersionHistory || [];
+        updates.rulesVersionHistory = [...currentHistory, historyEntry];
+      }
+    }
+
+    // Handle rules configuration
+    if (rulesConfig) {
+      updates.rulesConfig = {
+        requireAadhaar: rulesConfig.requireAadhaar ?? false,
+        requireSignature: rulesConfig.requireSignature ?? true,
+        signatureOptions: rulesConfig.signatureOptions || ["digital"],
+        consentText: rulesConfig.consentText,
+        enableAadhaar: rulesConfig.enableAadhaar ?? false,
+        enableSignature: rulesConfig.enableSignature ?? true,
+      };
+    }
 
     // Keep only defined keys
     Object.keys(updates).forEach((k) => updates[k] === undefined && delete updates[k]);
@@ -474,10 +527,18 @@ const updateHostelSettings = async (req, res) => {
       return res.status(404).json({ success: false, message: "Hostel not found" });
     }
 
-    res.status(200).json({ success: true, message: "Hostel settings updated", hostel: updated });
+    res.status(200).json({
+      success: true,
+      message: "Hostel settings saved successfully",
+      hostel: updated,
+    });
   } catch (e) {
     console.error("updateHostelSettings error:", e);
-    return res.status(500).json({ success: false, message: "Failed to update hostel settings", data: null });
+    return res.status(500).json({
+      success: false,
+      message: "Failed to update hostel settings",
+      error: e.message,
+    });
   }
 };
 

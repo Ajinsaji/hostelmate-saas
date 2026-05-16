@@ -49,9 +49,15 @@ const hostelSchema = new mongoose.Schema({
 
   qrCodeUrl: String,
 
+  // Hostel Details
+  whatsapp: String,
+  description: String,
+  amenities: [String], // Array of amenities
+
   // Rules & Regulations (with versioning)
   currentRulesVersion: String,
   rulesText: String, // current rules text
+  rulesVersionNumber: Number, // current version number
   rulesVersionHistory: [
     {
       versionId: String,
@@ -80,6 +86,27 @@ const hostelSchema = new mongoose.Schema({
       default: ["digital"],
     },
     consentText: String,
+    enableAadhaar: {
+      type: Boolean,
+      default: false,
+    },
+    enableSignature: {
+      type: Boolean,
+      default: true,
+    },
+  },
+
+  // Privacy & Consent
+  privacyConsentText: String,
+  documentRequirements: [String],
+  signatureMode: String, // 'digital', 'uploaded', 'both'
+  signatureSettings: {
+    enabled: {
+      type: Boolean,
+      default: true,
+    },
+    requireDigital: Boolean,
+    requireUploaded: Boolean,
   },
 });
 

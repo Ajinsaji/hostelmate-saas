@@ -206,42 +206,70 @@ function PublicHostelPage() {
               </div>
 
               <div className="grid grid-cols-2 gap-3 mb-6">
-                <div
-                  className="glass-card p-3 rounded-2xl flex items-center gap-2"
-                  style={{ background: "rgba(11,23,57,0.55)", borderColor: "rgba(255,255,255,0.08)" }}
-                >
-                  <Wifi size={18} className="text-blue-300" />
-                  <span className="text-sm font-medium" style={{ color: "rgba(255,255,255,0.92)" }}>
-                    Free WiFi
-                  </span>
-                </div>
-                <div
-                  className="glass-card p-3 rounded-2xl flex items-center gap-2"
-                  style={{ background: "rgba(11,23,57,0.55)", borderColor: "rgba(255,255,255,0.08)" }}
-                >
-                  <Shield size={18} className="text-green-300" />
-                  <span className="text-sm font-medium" style={{ color: "rgba(255,255,255,0.92)" }}>
-                    24/7 Security
-                  </span>
-                </div>
-                <div
-                  className="glass-card p-3 rounded-2xl flex items-center gap-2"
-                  style={{ background: "rgba(11,23,57,0.55)", borderColor: "rgba(255,255,255,0.08)" }}
-                >
-                  <Coffee size={18} className="text-orange-300" />
-                  <span className="text-sm font-medium" style={{ color: "rgba(255,255,255,0.92)" }}>
-                    Mess/Food
-                  </span>
-                </div>
-                <div
-                  className="glass-card p-3 rounded-2xl flex items-center gap-2"
-                  style={{ background: "rgba(11,23,57,0.55)", borderColor: "rgba(255,255,255,0.08)" }}
-                >
-                  <Tv size={18} className="text-purple-300" />
-                  <span className="text-sm font-medium" style={{ color: "rgba(255,255,255,0.92)" }}>
-                    Lounge Area
-                  </span>
-                </div>
+                {hostel.amenities && hostel.amenities.length > 0 ? (
+                  hostel.amenities.map((amenity, idx) => {
+                    // Map common amenities to icons
+                    const amenityLower = amenity.toLowerCase();
+                    let icon = null;
+                    if (amenityLower.includes("wifi")) icon = <Wifi size={18} className="text-blue-300" />;
+                    else if (amenityLower.includes("security")) icon = <Shield size={18} className="text-green-300" />;
+                    else if (amenityLower.includes("food") || amenityLower.includes("mess")) icon = <Coffee size={18} className="text-orange-300" />;
+                    else if (amenityLower.includes("tv") || amenityLower.includes("lounge")) icon = <Tv size={18} className="text-purple-300" />;
+                    else icon = <CheckCircle2 size={18} className="text-green-300" />;
+
+                    return (
+                      <div
+                        key={idx}
+                        className="glass-card p-3 rounded-2xl flex items-center gap-2"
+                        style={{ background: "rgba(11,23,57,0.55)", borderColor: "rgba(255,255,255,0.08)" }}
+                      >
+                        {icon}
+                        <span className="text-sm font-medium" style={{ color: "rgba(255,255,255,0.92)" }}>
+                          {amenity}
+                        </span>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <>
+                    <div
+                      className="glass-card p-3 rounded-2xl flex items-center gap-2"
+                      style={{ background: "rgba(11,23,57,0.55)", borderColor: "rgba(255,255,255,0.08)" }}
+                    >
+                      <Wifi size={18} className="text-blue-300" />
+                      <span className="text-sm font-medium" style={{ color: "rgba(255,255,255,0.92)" }}>
+                        Free WiFi
+                      </span>
+                    </div>
+                    <div
+                      className="glass-card p-3 rounded-2xl flex items-center gap-2"
+                      style={{ background: "rgba(11,23,57,0.55)", borderColor: "rgba(255,255,255,0.08)" }}
+                    >
+                      <Shield size={18} className="text-green-300" />
+                      <span className="text-sm font-medium" style={{ color: "rgba(255,255,255,0.92)" }}>
+                        24/7 Security
+                      </span>
+                    </div>
+                    <div
+                      className="glass-card p-3 rounded-2xl flex items-center gap-2"
+                      style={{ background: "rgba(11,23,57,0.55)", borderColor: "rgba(255,255,255,0.08)" }}
+                    >
+                      <Coffee size={18} className="text-orange-300" />
+                      <span className="text-sm font-medium" style={{ color: "rgba(255,255,255,0.92)" }}>
+                        Mess/Food
+                      </span>
+                    </div>
+                    <div
+                      className="glass-card p-3 rounded-2xl flex items-center gap-2"
+                      style={{ background: "rgba(11,23,57,0.55)", borderColor: "rgba(255,255,255,0.08)" }}
+                    >
+                      <Tv size={18} className="text-purple-300" />
+                      <span className="text-sm font-medium" style={{ color: "rgba(255,255,255,0.92)" }}>
+                        Lounge Area
+                      </span>
+                    </div>
+                  </>
+                )}
               </div>
 
               <h3 className="text-h3 mb-3" style={{ color: "var(--text-main)" }}>

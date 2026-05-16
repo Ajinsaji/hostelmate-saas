@@ -33,8 +33,6 @@ function AddHostel() {
   const [licensePhoto, setLicensePhoto] = useState(null);
   const [errors, setErrors] = useState({});
 
-  const token = localStorage.getItem("adminToken");
-
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
     setFormData({ ...formData, [name]: type === 'checkbox' ? checked : value });
@@ -100,9 +98,7 @@ function AddHostel() {
       if (ownerPhoto) data.append("ownerPhoto", ownerPhoto);
       if (licensePhoto) data.append("licensePhoto", licensePhoto);
 
-const response = await api.post("/api/admin/hostels/add", data, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+const response = await api.post("/api/admin/hostels/add", data);
 
       if (response.data.success) {
         toast.success("Hostel Added Successfully");

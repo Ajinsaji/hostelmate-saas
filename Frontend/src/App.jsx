@@ -38,7 +38,9 @@ import HostelManagement from "./Superadmin/HostelManagement";
 import OwnerProtectedRoute from "./components/OwnerProtectedRoute";
 import WardenProtectedRoute from "./components/WardenProtectedRoute";
 import CookProtectedRoute from "./components/CookProtectedRoute";
+import AdminProtectedRoute from "./components/AdminProtectedRoute";
 import NotificationBell from "./components/NotificationBell";
+import ServerLoadingWrapper from "./components/ServerLoadingWrapper";
 
 function NotificationBellHost() {
   const location = useLocation();
@@ -93,8 +95,9 @@ function NotificationBellHost() {
 
 function App() {
   return (
-    <BrowserRouter>
-      <NotificationBellHost />
+    <ServerLoadingWrapper>
+      <BrowserRouter>
+        <NotificationBellHost />
 
       <Routes>
         <Route path="/" element={<LandingPage />} />
@@ -211,17 +214,67 @@ function App() {
         <Route path="/h/:hostelCode" element={<PublicHostelPage />} />
 
         <Route path="/admin/login" element={<AdminLogin />} />
-        <Route path="/admin" element={<AdminDashboard />} />
-        <Route path="/admin/profile" element={<AdminProfile />} />
-        <Route path="/admin/reports" element={<Reports />} />
-        <Route path="/admin/pending-requests" element={<PendingRequests />} />
-        <Route path="/admin/subscriptions" element={<SubscriptionControl />} />
-        <Route path="/admin/add-hostel" element={<AddHostel />} />
-        <Route path="/admin/hostels" element={<HostelManagement />} />
+        <Route
+          path="/admin"
+          element={
+            <AdminProtectedRoute>
+              <AdminDashboard />
+            </AdminProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/profile"
+          element={
+            <AdminProtectedRoute>
+              <AdminProfile />
+            </AdminProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/reports"
+          element={
+            <AdminProtectedRoute>
+              <Reports />
+            </AdminProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/pending-requests"
+          element={
+            <AdminProtectedRoute>
+              <PendingRequests />
+            </AdminProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/subscriptions"
+          element={
+            <AdminProtectedRoute>
+              <SubscriptionControl />
+            </AdminProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/add-hostel"
+          element={
+            <AdminProtectedRoute>
+              <AddHostel />
+            </AdminProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/hostels"
+          element={
+            <AdminProtectedRoute>
+              <HostelManagement />
+            </AdminProtectedRoute>
+          }
+        />
 
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
     </BrowserRouter>
+    </ServerLoadingWrapper>
   );
 }
 

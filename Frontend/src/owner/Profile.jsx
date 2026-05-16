@@ -1,4 +1,4 @@
-import { ArrowLeft, User, Building, Lock, LogOut } from "lucide-react";
+import { ArrowLeft, User, Building, Lock, LogOut, QrCode, Copy, Download, Share2, X } from "lucide-react";
 
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
@@ -13,6 +13,9 @@ function Profile() {
   const [ownerData, setOwnerData] = useState({
     ownerName: "", phone: "", email: ""
   });
+  const [hostelData, setHostelData] = useState(null);
+  const [showQRModal, setShowQRModal] = useState(false);
+
   useEffect(() => {
     const user = JSON.parse(localStorage.getItem("user") || "{}");
 
@@ -43,6 +46,34 @@ function Profile() {
   const handleCopy = (text) => {
     navigator.clipboard.writeText(text);
     toast.success("Copied to clipboard!");
+  };
+
+  const handleDownloadQR = () => {
+    if (!hostelData?.qrCodeUrl) {
+      toast.error("QR code not available");
+      return;
+    }
+    const link = document.createElement("a");
+    link.href = `${import.meta.env.VITE_API_URL}${hostelData.qrCodeUrl}`;
+    link.download = `${hostelData.hostelName}-qr.png`;
+    link.click();
+    toast.success("QR code downloaded!");
+  };
+
+  const handleShareQR = () => {
+    const publicUrl = hostelData?.publicUrl || `${window.location.origin}/public/hostel/${hostelData?.uniqueCode}`;
+    const text = `Join ${hostelData?.hostelName}! Click here to apply: ${publicUrl}`;
+    
+    if (navigator.share) {
+      navigator.share({
+        title: hostelData?.hostelName,
+        text: text,
+        url: publicUrl,
+      }).catch(err => console.log("Share failed:", err));
+    } else {
+      navigator.clipboard.writeText(text);
+      toast.success("Link and text copied to clipboard!");
+    }
   };
 
   const handleLogout = () => {
@@ -87,6 +118,14 @@ function Profile() {
           <div style={{ borderBottom: "1px solid var(--border-color)" }}></div>
 
           <MenuItem
+            icon={<QrCode size={20} color="var(--primary)" />}
+            title="View Public QR"
+            subtitle="Share hostel admission link"
+            onClick={() => setShowQRModal(true)}
+          />
+          <div style={{ borderBottom: "1px solid var(--border-color)" }}></div>
+
+          <MenuItem
             icon={<User size={20} color="var(--primary)" />}
             title="Owner Profile"
             subtitle="Manage personal information"
@@ -110,6 +149,123 @@ function Profile() {
           <LogOut size={20} /> Logout
         </button>
       </div>
+
+      {/* QR Modal */}
+      {showQRModal && hostelData && (
+        <div style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: "rgba(0,0,0,0.7)",
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          zIndex: 1000,
+          padding: "20px"
+        }}>
+          <div className="card glass-card" style={{
+            background: "rgba(11, 23, 57, 0.95)",
+            maxWidth: "400px",
+            width: "100%",
+            borderRadius: "20px",
+            padding: "24px"
+          }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
+              <h2 className="text-h2">Admission Link</h2>
+              <button className="btn-icon" onClick={() => setShowQRModal(false)} style={{ background: "rgba(255,255,255,0.1)" }}>
+                <X size={20} />
+              </button>
+            </div>
+
+            <div style={{ textAlign: "center", marginBottom: "20px" }}>
+              <p style={{ fontSize: "14px", color: "rgba(255,255,255,0.8)", marginBottom: "12px" }}>{hostelData.hostelName}</p>
+              {hostelData.qrCodeUrl && (
+                <img 
+                  src={`${import.meta.env.VITE_API_URL}${hostelData.qrCodeUrl}`}
+                  alt="Hostel QR Code" 
+                  style={{ width: "240px", height: "240px", borderRadius: "12px", marginBottom: "16px" }}
+                />
+              )}
+            </div>
+
+            <div style={{
+              background: "rgba(255,255,255,0.05)",
+              borderRadius: "12px",
+              padding: "12px",
+              marginBottom: "16px",
+              wordBreak: "break-all",
+              fontSize: "12px",
+              color: "rgba(255,255,255,0.7)"
+            }}>
+              {hostelData.publicUrl || `${window.location.origin}/public/hostel/${hostelData.uniqueCode}`}
+            </div>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+              <button
+                onClick={() => {
+                  const url = hostelData.publicUrl || `${window.location.origin}/public/hostel/${hostelData.uniqueCode}`;
+                  handleCopy(url);
+                }}
+                style={{
+                  padding: "12px",
+                  borderRadius: "12px",
+                  background: "rgba(34, 197, 94, 0.1)",
+                  border: "1px solid rgba(34, 197, 94, 0.3)",
+                  color: "#22c55e",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: "8px",
+                  fontWeight: "600"
+                }}
+              >
+                <Copy size={16} /> Copy Link
+              </button>
+
+              <button
+                onClick={handleDownloadQR}
+                style={{
+                  padding: "12px",
+                  borderRadius: "12px",
+                  background: "rgba(59, 130, 246, 0.1)",
+                  border: "1px solid rgba(59, 130, 246, 0.3)",
+                  color: "#3b82f6",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: "8px",
+                  fontWeight: "600"
+                }}
+              >
+                <Download size={16} /> Download QR
+              </button>
+
+              <button
+                onClick={handleShareQR}
+                style={{
+                  padding: "12px",
+                  borderRadius: "12px",
+                  background: "rgba(168, 85, 247, 0.1)",
+                  border: "1px solid rgba(168, 85, 247, 0.3)",
+                  color: "#a855f7",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: "8px",
+                  fontWeight: "600"
+                }}
+              >
+                <Share2 size={16} /> Share
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -148,4 +304,3 @@ function MenuItem({ icon, title, subtitle, onClick }) {
 }
 
 export default Profile;
-

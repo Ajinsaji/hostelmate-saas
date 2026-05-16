@@ -35,7 +35,7 @@ const response = await api.get("/api/admin/requests");
       // Optimistic update
       setRequests(prev => prev.map(r => r._id === id ? { ...r, status: "Approved" } : r));
       
-const response = await api.put(`/api/admin/approve/${id}`);
+const response = await api.put(`/api/admin/approve/${id}`, {});
       toast.success("✅ Hostel Approved");
       
       if (response.data.success && response.data.qrCodeUrl) {
@@ -54,7 +54,7 @@ const response = await api.put(`/api/admin/approve/${id}`);
     setLoadingActionId(id);
     try {
       setRequests(prev => prev.map(r => r._id === id ? { ...r, status: "Rejected" } : r));
-await api.put(`/api/admin/reject/${id}`);
+await api.put(`/api/admin/reject/${id}`, {});
       toast.success("✅ Request Rejected");
       fetchRequests();
     } catch (error) {

@@ -11,13 +11,9 @@ function SubscriptionControl() {
   const [editingSub, setEditingSub] = useState(null);
   const [formData, setFormData] = useState({});
 
-  const token = localStorage.getItem("adminToken");
-
 const fetchSubscriptions = async () => {
     try {
-      const response = await api.get("/api/admin/subscriptions", {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const response = await api.get("/api/admin/subscriptions");
       setSubscriptions(response.data.subscriptions || []);
     } catch (error) {
       toast.error("Failed to load subscriptions");
@@ -43,9 +39,7 @@ const fetchSubscriptions = async () => {
 
   const handleUpdate = async () => {
     try {
-await api.put(`/api/admin/subscription/update/${editingSub._id}`, formData, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      await api.put(`/api/admin/subscription/update/${editingSub._id}`, formData);
       toast.success("Subscription updated successfully");
       setEditingSub(null);
       fetchSubscriptions();

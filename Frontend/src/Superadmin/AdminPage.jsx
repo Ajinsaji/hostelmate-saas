@@ -1,7 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { LogOut, Edit2, Mail, Phone, Lock, Loader2 } from "lucide-react";
 import { useState, useEffect } from "react";
-import axios from "axios";
+import { api } from "../services/api";
 import toast from "react-hot-toast";
 import SuperadminBottomNav from "../components/SuperadminBottomNav";
 
@@ -34,13 +34,7 @@ function AdminPage() {
   const fetchProfile = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem("adminToken");
-      const response = await axios.get(
-        `${import.meta.env.VITE_API_URL}/api/admin/profile`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
+      const response = await api.get("/api/admin/profile");
       setProfile(response.data.admin);
       setFormData({
         fullName: response.data.admin.fullName || "",
@@ -48,7 +42,7 @@ function AdminPage() {
         phone: response.data.admin.phone || "",
       });
     } catch (error) {
-      toast.error("Failed to load profile");
+      toast.error(error?.response?.data?.message || "Failed to load profile");
       console.error(error);
     } finally {
       setLoading(false);
@@ -60,14 +54,7 @@ function AdminPage() {
     setIsSubmitting(true);
 
     try {
-      const token = localStorage.getItem("adminToken");
-      const response = await axios.put(
-        `${import.meta.env.VITE_API_URL}/api/admin/profile/update`,
-        formData,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
+      const response = await api.put("/api/admin/profile/update", formData);
       setProfile(response.data.admin);
       setEditMode(false);
       toast.success("Profile updated successfully!");
@@ -93,14 +80,7 @@ function AdminPage() {
 
     setIsSubmitting(true);
     try {
-      const token = localStorage.getItem("adminToken");
-      await axios.put(
-        `${import.meta.env.VITE_API_URL}/api/admin/profile/change-password`,
-        passwordData,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
+      await api.put("/api/admin/profile/change-password", passwordData);
       setShowPasswordModal(false);
       setPasswordData({
         oldPassword: "",

@@ -170,6 +170,19 @@ app.get("/", (req, res) => {
 
 });
 
+// ==========================
+// HEALTH CHECK ENDPOINT
+// ==========================
+// Used by frontend loading screen to detect server availability
+
+app.get("/api/health", (req, res) => {
+  res.status(200).json({
+    status: "ok",
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+  });
+});
+
 
 // ==========================
 // SERVER

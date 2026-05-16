@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import axios from "axios";
+import { api } from "../services/api";
 import { Download, TrendingUp, TrendingDown, IndianRupee } from "lucide-react";
 
 import SuperadminBottomNav from "../components/SuperadminBottomNav";
@@ -15,10 +15,7 @@ function Reports() {
 
   const fetchStats = async () => {
     try {
-      // NOTE: Backend endpoint not present in this repo snapshot.
-      // Keep a safe fallback so UI works without backend integration.
-      // Replace this URL once you create the real endpoint.
-      const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/admin/reports/stats`);
+      const res = await api.get("/api/admin/reports/stats");
 
       setStats({
         totalCollection: res.data?.totalCollection ?? 0,
