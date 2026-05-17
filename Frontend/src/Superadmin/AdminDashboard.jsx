@@ -1,8 +1,9 @@
 import { BedDouble, Users, Wallet, FileText, Bell, ArrowRight, IndianRupee, ShieldCheck, TrendingUp, CheckCircle2, Building } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { api } from "../services/api";
 import toast from "react-hot-toast";
+import useGlobalPolling from "../hooks/useGlobalPolling";
 
 import SuperadminBottomNav from "../components/SuperadminBottomNav";
 
@@ -10,34 +11,18 @@ function AdminDashboard() {
   const navigate = useNavigate();
   const [stats, setStats] = useState({ pendingHostels: 0, activeHostels: 0, revenue: 0 });
 
-  useEffect(() => {
-    let mounted = true;
-    let firstFetch = true;
-
-    const fetchStats = async () => {
-      try {
-        const response = await api.get("/api/admin/dashboard");
-        if (mounted && response.data.success) {
-          setStats(response.data);
-        }
-      } catch (error) {
-        if (firstFetch) {
-          toast.error(error?.response?.data?.message || "Failed to load admin statistics.");
-        } else {
-          console.warn("Admin dashboard refresh failed:", error?.message || error);
-        }
-      } finally {
-        firstFetch = false;
+  const fetchStats = async () => {
+    try {
+      const response = await api.get("/api/admin/dashboard");
+      if (response.data.success) {
+        setStats(response.data);
       }
-    };
+    } catch (error) {
+      toast.error(error?.response?.data?.message || "Failed to load admin statistics.");
+    }
+  };
 
-    fetchStats();
-    const interval = setInterval(fetchStats, 9000);
-    return () => {
-      mounted = false;
-      clearInterval(interval);
-    };
-  }, []);
+  useGlobalPolling(fetchStats, { interval: 9000 });
 
   return (
     <div className="pb-24" style={{ minHeight: "100vh" }}>

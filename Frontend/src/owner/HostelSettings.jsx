@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { api } from "../services/api";
 import toast from "react-hot-toast";
 import { Save, X, MapPin, Phone, MessageCircle, Building, ShieldCheck, Eye, Plus, Trash2, Clock, Loader2 } from "lucide-react";
-import { subscribeOccupancyRefresh } from "../utils/occupancyRefresh";
+import useGlobalPolling from "../hooks/useGlobalPolling";
 
 function HostelSettings() {
   const [hostel, setHostel] = useState(null);
@@ -67,21 +67,19 @@ function HostelSettings() {
     }
   };
 
+  const safeRefreshProps = {
+    isEditing: showRulesPreview,
+    isSubmitting: saving,
+    showModal: showRulesPreview,
+    isUploading: false,
+  };
+
   useEffect(() => {
     fetchHostel();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  useEffect(() => {
-    const unsubscribe = subscribeOccupancyRefresh(() => {
-      toast("New updates available. Please refresh when done.", {
-        icon: "🔄",
-        duration: 4000,
-        style: { background: "rgba(59,130,246,0.9)", color: "#fff" }
-      });
-    });
-    return unsubscribe;
-  }, []);
+  useGlobalPolling(fetchHostel, { interval: 9000, safeProps: safeRefreshProps });
 
   const update = (key, value) => setForm((p) => ({ ...p, [key]: value }));
 

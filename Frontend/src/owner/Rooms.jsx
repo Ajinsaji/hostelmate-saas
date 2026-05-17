@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { api } from "../services/api";
 import buildFileUrl from "../utils/buildFileUrl";
+import useGlobalPolling from "../hooks/useGlobalPolling";
 import {
   Plus,
   Search,
@@ -18,7 +19,7 @@ import {
 import toast from "react-hot-toast";
 import BottomNav from "../components/BottomNav";
 import { getOccupancyChipInline, getOccupancyStyle, getOccupancyState } from "../utils/occupancyStyles";
-import { subscribeOccupancyRefresh, triggerOccupancyRefresh } from "../utils/occupancyRefresh";
+import { triggerOccupancyRefresh } from "../utils/occupancyRefresh";
 
 
 const PHONE_REGEX = /^[0-9]{10}$/;
@@ -268,26 +269,14 @@ function Rooms() {
     }
   };
 
-  useEffect(() => {
-    loadData();
-  }, []);
+  const safeRefreshProps = {
+    isEditing: roomFormOpen || assignModalOpen || residentModalOpen || checkoutModalOpen,
+    isSubmitting: assignLoading || checkoutLoading || residentLoading || roomSaving,
+    showModal: roomFormOpen || assignModalOpen || residentModalOpen || checkoutModalOpen,
+    isUploading: false,
+  };
 
-  useEffect(() => {
-    const isEditing = roomFormOpen || assignModalOpen || residentModalOpen || checkoutModalOpen;
-    const unsubscribe = subscribeOccupancyRefresh((payload) => {
-      // Avoid self-triggered refreshes if possible, but safe to just check editing state
-      if (!isEditing) {
-        loadData();
-      } else {
-        toast("New updates available. Please refresh when done.", {
-          icon: "🔄",
-          duration: 4000,
-          style: { background: "rgba(59,130,246,0.9)", color: "#fff" }
-        });
-      }
-    });
-    return unsubscribe;
-  }, [roomFormOpen, assignModalOpen, residentModalOpen, checkoutModalOpen]);
+  useGlobalPolling(loadData, { interval: 9000, safeProps: safeRefreshProps });
 
   const openAssignModal = (room, bed) => {
     if (!room?._id || !bed?._id) {

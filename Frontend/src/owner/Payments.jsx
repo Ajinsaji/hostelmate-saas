@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import api from "../utils/apiClient";
 import BottomNav from "../components/BottomNav";
-import { subscribeOccupancyRefresh } from "../utils/occupancyRefresh";
+import useGlobalPolling from "../hooks/useGlobalPolling";
 
 function Payments() {
   const [payments, setPayments] = useState([]);
@@ -58,26 +58,16 @@ function Payments() {
 
   };
 
-  useEffect(() => {
-    fetchPayments();
-    fetchResidents();
-  }, []);
+  const safeRefreshProps = {
+    isEditing: showAddForm,
+    isSubmitting: savingPayment,
+    showModal: showAddForm,
+    isUploading: Boolean(proofFile),
+  };
 
-  useEffect(() => {
-    const isEditing = showAddForm;
-    const unsubscribe = subscribeOccupancyRefresh(() => {
-      if (!isEditing) {
-        fetchPayments();
-      } else {
-        toast("New updates available. Please refresh when done.", {
-          icon: "🔄",
-          duration: 4000,
-          style: { background: "rgba(59,130,246,0.9)", color: "#fff" }
-        });
-      }
-    });
-    return unsubscribe;
-  }, [showAddForm]);
+  useGlobalPolling(async () => {
+    await Promise.all([fetchPayments(), fetchResidents()]);
+  }, { interval: 9000, safeProps: safeRefreshProps });
 
   const handleChange = (e) => {
     const { name, value } = e.target;

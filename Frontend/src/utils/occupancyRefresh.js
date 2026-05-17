@@ -1,3 +1,5 @@
+import { triggerGlobalRefresh } from "./globalRefresh";
+
 // Centralized refresh event for owner occupancy lifecycle.
 // Any mutation that changes beds/rooms/residents should trigger this.
 
@@ -10,6 +12,9 @@ export function triggerOccupancyRefresh(reason = "mutation") {
   } catch {
     // no-op: eventing must never break the UI
   }
+
+  // Also forward occupancy mutations into the global refresh bus.
+  triggerGlobalRefresh(reason);
 }
 
 export function subscribeOccupancyRefresh(handler) {

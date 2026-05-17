@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { api } from "../services/api";
-
+import { api } from "../services/api";import useGlobalPolling from "../hooks/useGlobalPolling";
 import {
   Copy,
   Download,
@@ -45,45 +44,6 @@ function HostelManagement() {
     hostelName: "",
   });
 
-  const refreshIntervalRef = useRef(null);
-  const latestStateRef = useRef({
-    selectedHostel: null,
-    confirmModalOpen: false,
-    isResetting: false,
-    isResending: false,
-    isDeleting: false,
-    isLoading: true,
-  });
-
-  latestStateRef.current = {
-    selectedHostel,
-    confirmModalOpen: confirmModal.isOpen,
-    isResetting,
-    isResending,
-    isDeleting,
-    isLoading,
-  };
-
-  const shouldRefreshHostels = () => {
-    const state = latestStateRef.current;
-    if (
-      state.selectedHostel ||
-      state.confirmModalOpen ||
-      state.isResetting ||
-      state.isResending ||
-      state.isDeleting ||
-      state.isLoading
-    ) {
-      return false;
-    }
-
-    if (typeof document !== "undefined" && document.activeElement?.matches("input, textarea, select")) {
-      return false;
-    }
-
-    return true;
-  };
-
   const fetchHostels = async ({ silent = false } = {}) => {
     if (!silent) setIsLoading(true);
 
@@ -101,19 +61,14 @@ function HostelManagement() {
     }
   };
 
-  useEffect(() => {
-    fetchHostels();
+  const safeRefreshProps = {
+    isEditing: !!selectedHostel,
+    showModal: confirmModal.isOpen,
+    isSubmitting: isResetting || isResending || isDeleting,
+    isUploading: false,
+  };
 
-    refreshIntervalRef.current = setInterval(() => {
-      if (shouldRefreshHostels()) {
-        fetchHostels({ silent: true });
-      }
-    }, 9000);
-
-    return () => {
-      clearInterval(refreshIntervalRef.current);
-    };
-  }, []);
+  useGlobalPolling(fetchHostels, { interval: 9000, safeProps: safeRefreshProps });
 
   const handleCopy = (text, type = "Copied") => {
     if (!text) return;

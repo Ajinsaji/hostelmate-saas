@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import toast from "react-hot-toast";
 import api from "../utils/apiClient";
 import BottomNav from "../components/BottomNav";
-import { subscribeOccupancyRefresh } from "../utils/occupancyRefresh";
+import useGlobalPolling from "../hooks/useGlobalPolling";
 
 
 
@@ -20,31 +20,24 @@ function Dashboard() {
     if (user?.ownerName) {
       setOwnerName(user.ownerName);
     }
-
-    const fetchStats = async () => {
-      try {
-        const response = await api.get("/api/owner/dashboard");
-        if (response.data.success) {
-          setStats(response.data.stats);
-          setHostel(response.data.hostel || null);
-          if (response.data.hostel?.hostelName) {
-            setHostel(response.data.hostel);
-          }
-        }
-      } catch (error) {
-        toast.error(error?.response?.data?.message || "Unable to load dashboard.");
-      }
-    };
-
-    fetchStats();
-
-    // Real-time sync: re-fetch stats whenever occupancy changes from other screens.
-    const unsubscribe = subscribeOccupancyRefresh(() => {
-      fetchStats();
-    });
-
-    return unsubscribe;
   }, []);
+
+  const fetchStats = async () => {
+    try {
+      const response = await api.get("/api/owner/dashboard");
+      if (response.data.success) {
+        setStats(response.data.stats);
+        setHostel(response.data.hostel || null);
+        if (response.data.hostel?.hostelName) {
+          setHostel(response.data.hostel);
+        }
+      }
+    } catch (error) {
+      toast.error(error?.response?.data?.message || "Unable to load dashboard.");
+    }
+  };
+
+  useGlobalPolling(fetchStats, { interval: 9000 });
 
 
   // Fetch pending admission count with auto-refresh every 20 seconds

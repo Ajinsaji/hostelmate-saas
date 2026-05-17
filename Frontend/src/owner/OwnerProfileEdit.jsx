@@ -3,7 +3,7 @@ import api from "../utils/apiClient";
 import toast from "react-hot-toast";
 import buildFileUrl from "../utils/buildFileUrl";
 import { Save, X, User, Phone, Mail, Image as ImageIcon, Loader2 } from "lucide-react";
-import { subscribeOccupancyRefresh } from "../utils/occupancyRefresh";
+import useGlobalPolling from "../hooks/useGlobalPolling";
 
 function OwnerProfileEdit() {
   const [loading, setLoading] = useState(true);
@@ -44,21 +44,19 @@ function OwnerProfileEdit() {
     }
   };
 
+  const safeRefreshProps = {
+    isEditing: Boolean(profileFile),
+    isSubmitting: saving,
+    showModal: Boolean(profileFile),
+    isUploading: Boolean(profileFile),
+  };
+
   useEffect(() => {
     fetchOwner();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  useEffect(() => {
-    const unsubscribe = subscribeOccupancyRefresh(() => {
-      toast("New updates available. Please refresh when done.", {
-        icon: "🔄",
-        duration: 4000,
-        style: { background: "rgba(59,130,246,0.9)", color: "#fff" }
-      });
-    });
-    return unsubscribe;
-  }, []);
+  useGlobalPolling(fetchOwner, { interval: 9000, safeProps: safeRefreshProps });
 
   const update = (k, v) => setForm((p) => ({ ...p, [k]: v }));
 

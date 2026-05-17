@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, useRef } from "react";
 import api from "../utils/apiClient";
 import buildFileUrl from "../utils/buildFileUrl";
+import useGlobalPolling from "../hooks/useGlobalPolling";
 import {
   Search,
   X,
@@ -23,7 +24,7 @@ import {
 import toast from "react-hot-toast";
 import BottomNav from "../components/BottomNav";
 import { getOccupancyChipInline, getOccupancyState } from "../utils/occupancyStyles";
-import { subscribeOccupancyRefresh, triggerOccupancyRefresh } from "../utils/occupancyRefresh";
+import { triggerOccupancyRefresh } from "../utils/occupancyRefresh";
 
 
 function Residents() {
@@ -287,25 +288,18 @@ function Residents() {
     }
   };
 
+  const safeRefreshProps = {
+    isEditing: showAddModal || showViewModal,
+    isSubmitting: addLoading,
+    showModal: showAddModal || showViewModal,
+    isUploading: false,
+  };
+
   useEffect(() => {
     loadData();
   }, []);
 
-  useEffect(() => {
-    const isEditing = showAddModal || showViewModal;
-    const unsubscribe = subscribeOccupancyRefresh(() => {
-      if (!isEditing) {
-        loadData();
-      } else {
-        toast("New updates available. Please refresh when done.", {
-          icon: "🔄",
-          duration: 4000,
-          style: { background: "rgba(59,130,246,0.9)", color: "#fff" }
-        });
-      }
-    });
-    return unsubscribe;
-  }, [showAddModal, showViewModal]);
+  useGlobalPolling(loadData, { interval: 9000, safeProps: safeRefreshProps });
 
   useEffect(() => {
     // auto-refresh dues whenever payments list changes elsewhere
