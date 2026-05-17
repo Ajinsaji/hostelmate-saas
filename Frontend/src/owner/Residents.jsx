@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, useRef } from "react";
-import axios from "axios";
+import api from "../utils/apiClient";
 import {
   Search,
   X,
@@ -25,7 +25,6 @@ import { triggerOccupancyRefresh } from "../utils/occupancyRefresh";
 
 
 function Residents() {
-  const token = localStorage.getItem("token");
   const photoBaseURL = `${import.meta.env.VITE_API_URL}/uploads/`;
 
   const [residents, setResidents] = useState([]);
@@ -225,9 +224,15 @@ function Residents() {
     return (residents || []).filter((r) => {
       const name = (r?.name || "").toLowerCase();
       const phone = String(r?.phone || "");
-      const roomNum = String(r?.roomId?.roomNumber || "");
+      const roomNum = String(r?.roomId?.roomNumber || "").toLowerCase();
+      const bedNum = String(r?.bedId?.bedNumber || "").toLowerCase();
 
-      const matchesSearch = !q || name.includes(q) || phone.includes(q);
+      const matchesSearch =
+        !q ||
+        name.includes(q) ||
+        phone.includes(q) ||
+        roomNum.includes(q) ||
+        bedNum.includes(q);
       const due = computeResidentDueFromPayments(r);
       const matchesStatus = filterStatus === "all" ? true : due.status === filterStatus;
       const matchesRoom = filterRoom === "all" ? true : roomNum === filterRoom;
@@ -253,9 +258,7 @@ function Residents() {
       const rid = resident?._id;
       if (!rid) return;
 
-      const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/payments/resident/${rid}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await api.get(`/api/payments/resident/${rid}`);
 
       setViewPayments(res.data?.payments || res.data?.payment || res.data?.paymentsByResident || []);
     } catch (e) {
@@ -270,12 +273,8 @@ function Residents() {
       try {
         setLoading(true);
         const [resRes, payRes] = await Promise.all([
-          axios.get(`${import.meta.env.VITE_API_URL}/api/residents/hostel`, {
-            headers: { Authorization: `Bearer ${token}` },
-          }),
-          axios.get(`${import.meta.env.VITE_API_URL}/api/payments/hostel`, {
-            headers: { Authorization: `Bearer ${token}` },
-          }),
+          api.get("/api/residents/hostel"),
+          api.get("/api/payments/hostel"),
         ]);
 
         setResidents(resRes.data?.residents || []);
@@ -298,9 +297,7 @@ function Residents() {
   const openAddModal = async () => {
     try {
       // Load hostel data and rooms
-      const dashRes = await axios.get(`${import.meta.env.VITE_API_URL}/api/owner/dashboard`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const dashRes = await api.get("/api/owner/dashboard");
       
       const hostel = dashRes.data?.hostel || null;
       setHostelData(hostel);
@@ -324,9 +321,7 @@ function Residents() {
       }));
 
       // Load rooms
-      const roomsRes = await axios.get(`${import.meta.env.VITE_API_URL}/api/rooms/get-rooms`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const roomsRes = await api.get("/api/rooms/get-rooms");
       
       setRooms(roomsRes.data?.rooms || []);
       setShowAddModal(true);
@@ -372,26 +367,44 @@ function Residents() {
     }
 
     try {
-      const bedsRes = await axios.get(`${import.meta.env.VITE_API_URL}/api/beds/room/${roomId}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      
+      const bedsRes = await api.get(`/api/beds/room/${roomId}`);
       const availableBeds = (bedsRes.data?.beds || []).filter((b) => getOccupancyState(b?.status) !== "occupied");
       setBeds(availableBeds);
-
     } catch (e) {
-      toast.error("Failed to load beds");
+      toast.error(e?.response?.data?.message || "Failed to load beds");
       setBeds([]);
     }
   };
 
+  const validateUploadFile = (file, allowedTypes, maxBytes) => {
+    if (!file) return true;
+    if (maxBytes && file.size > maxBytes) {
+      toast.error(`File must be smaller than ${Math.round(maxBytes / 1024 / 1024)} MB`);
+      return false;
+    }
+    const lowerName = file.name.toLowerCase();
+    if (allowedTypes && !allowedTypes.some((type) => file.type === type || lowerName.endsWith(type))) {
+      toast.error("Unsupported file type. Use JPG, PNG, or PDF.");
+      return false;
+    }
+    return true;
+  };
+
   const handleFileChange = (field, file) => {
-    setAddFiles((prev) => ({ ...prev, [field]: file }));
+    if (!file) {
+      setAddFiles((prev) => ({ ...prev, [field]: null }));
+      return;
+    }
+    const valid = validateUploadFile(file, ["image/png", "image/jpeg", "image/jpg", ".pdf"], 5 * 1024 * 1024);
+    if (valid) {
+      setAddFiles((prev) => ({ ...prev, [field]: file }));
+    }
   };
 
   const handleSignatureCapture = (e) => {
     const file = e.target.files?.[0];
-    if (file) {
+    if (file && validateUploadFile(file, ["image/png", "image/jpeg", "image/jpg", ".pdf"], 5 * 1024 * 1024)) {
+      setAddFiles((prev) => ({ ...prev, signatureFile: file }));
       const reader = new FileReader();
       reader.onloadend = () => {
         setSignatureImage(reader.result);
@@ -504,26 +517,18 @@ function Residents() {
       if (addForm.rulesVersionNumber) formData.append("rulesVersionNumber", addForm.rulesVersionNumber);
 
 
-      const res = await axios.post(`${import.meta.env.VITE_API_URL}/api/residents/create`, formData, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      const res = await api.post("/api/residents/create", formData);
 
       toast.success("Resident added successfully!");
       closeAddModal();
 
       // Refresh residents list
-      const updatedRes = await axios.get(`${import.meta.env.VITE_API_URL}/api/residents/hostel`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const updatedRes = await api.get("/api/residents/hostel");
       setResidents(updatedRes.data?.residents || []);
 
       // Force refresh of payments badge/status by clearing payments cache and refetching
       // (without redesigning UI)
-      const payRes = await axios.get(`${import.meta.env.VITE_API_URL}/api/payments/hostel`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const payRes = await api.get("/api/payments/hostel");
       setPayments(payRes.data?.payments || []);
 
     } catch (e) {
@@ -569,7 +574,7 @@ function Residents() {
               <input
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Resident name or phone"
+                placeholder="Search name, phone, room or bed"
                 className="input-field"
                 style={{ padding: "14px", borderRadius: "16px" }}
               />
@@ -750,7 +755,33 @@ function Residents() {
                 <div className="text-h2" style={{ fontSize: 18, marginBottom: 4 }}>{viewResident?.name || "Resident"}</div>
                 <div className="text-small" style={{ color: "rgba(255,255,255,0.82)" }}>{viewResident?.phone || "N/A"}</div>
               </div>
-              <button className="btn-icon" style={{ width: 40, height: 40 }} onClick={closeModal} aria-label="Close">
+              <button
+                className="btn-icon"
+                style={{
+                  width: 40,
+                  height: 40,
+                  background: "rgba(255,255,255,0.08)",
+                  border: "1px solid rgba(255,255,255,0.10)",
+                  color: "white",
+                  display: "grid",
+                  placeItems: "center",
+                }}
+                onClick={closeModal}
+                aria-label="Close"
+              
+                className="btn-icon"
+                style={{
+                  width: 40,
+                  height: 40,
+                  background: "rgba(255,255,255,0.08)",
+                  border: "1px solid rgba(255,255,255,0.10)",
+                  color: "white",
+                  display: "grid",
+                  placeItems: "center",
+                }}
+                onClick={closeModal}
+                aria-label="Close"
+              >
                 <X size={18} />
               </button>
             </div>
@@ -1005,7 +1036,13 @@ function Residents() {
                 type="button"
                 onClick={closeAddModal}
                 className="btn-icon"
-                style={{ width: 40, height: 40 }}
+                style={{
+                  width: 40,
+                  height: 40,
+                  background: "rgba(255,255,255,0.08)",
+                  border: "1px solid rgba(255,255,255,0.10)",
+                  color: "white",
+                }}
                 aria-label="Close"
               >
                 <X size={18} />

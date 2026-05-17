@@ -16,7 +16,7 @@ function PendingRequests() {
 const response = await api.get("/api/admin/requests");
       setRequests(response.data.requests);
     } catch (error) {
-      console.log(error);
+      toast.error(error?.response?.data?.message || "Failed to load requests.");
     }
   };
 

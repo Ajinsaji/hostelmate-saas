@@ -144,43 +144,33 @@ const getRoomsByHostel =
       const rooms =
         await Room.find({
           hostelId: req.owner?.hostelId,
-        });
+        }).sort({ roomNumber: 1 });
 
       const roomsWithBeds =
         await Promise.all(
+          rooms.map(async (room) => {
+            const beds = await Bed.find({ roomId: room._id });
+            const occupiedBeds = beds.filter((bed) => String(bed?.status).toLowerCase() === "occupied").length;
+            const totalBeds = Number(room.totalBeds) || beds.length;
+            const vacantBeds = Math.max(0, totalBeds - occupiedBeds);
 
-          rooms.map(
-            async (room) => {
-
-              const beds =
-                await Bed.find({
-
-                  roomId:
-                    room._id,
-                });
-
-              return {
-
-                ...room._doc,
-
-                beds,
-              };
-            }
-          )
+            return {
+              ...room._doc,
+              beds,
+              totalBeds,
+              occupiedBeds,
+              vacantBeds,
+            };
+          })
         );
 
       res.status(200).json({
-
         success: true,
-
-        rooms:
-          roomsWithBeds,
+        rooms: roomsWithBeds,
       });
 
     } catch (error) {
-
       res.status(500).json(error);
-
     }
   };
 

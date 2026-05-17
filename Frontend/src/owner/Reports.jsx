@@ -1,7 +1,7 @@
 import { Download, TrendingUp, TrendingDown, IndianRupee, BarChart3, Users, BedDouble } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import BottomNav from "../components/BottomNav";
-import axios from "axios";
+import api from "../utils/apiClient";
 import toast from "react-hot-toast";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 
@@ -11,20 +11,18 @@ function Reports() {
   const [loading, setLoading] = useState(true);
   const [dateFilter, setDateFilter] = useState("all");
 
-  const token = localStorage.getItem("token");
-
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
         const [paymentRes, statsRes] = await Promise.all([
-          axios.get(`${import.meta.env.VITE_API_URL}/api/payments/hostel`, { headers: { Authorization: `Bearer ${token}` } }),
-          axios.get(`${import.meta.env.VITE_API_URL}/api/owner/dashboard`, { headers: { Authorization: `Bearer ${token}` } })
+          api.get("/api/payments/hostel"),
+          api.get("/api/owner/dashboard")
         ]);
         setPayments(paymentRes.data?.payments || []);
         setDashboardStats(statsRes.data?.stats || {});
       } catch (e) {
-        toast.error("Failed to load reports");
+        toast.error(e?.response?.data?.message || "Failed to load reports");
       } finally {
         setLoading(false);
       }
@@ -72,13 +70,17 @@ function Reports() {
 
   const exportToCSV = () => {
     let csvContent = "data:text/csv;charset=utf-8,";
-    csvContent += "Resident,Month,Total Rent,Paid,Balance,Status\n";
+    csvContent += "Resident,Room,Bed,Month,Total Rent,Paid,Balance,Method,Status\n";
     
-    payments.forEach(p => {
+    payments.forEach((p) => {
       const name = p.residentId?.name || "Unknown";
-      const paid = p.entries?.reduce((s,e)=>s+e.amount, 0) || 0;
-      const balance = p.totalRent - paid;
-      csvContent += `${name},${p.month},${p.totalRent},${paid},${balance},${p.status}\n`;
+      const room = p.residentId?.roomId?.roomNumber || p.room || "N/A";
+      const bed = p.residentId?.bedId?.bedNumber || p.bed || "N/A";
+      const paid = Array.isArray(p.entries) ? p.entries.reduce((s, e) => s + Number(e.amount || 0), 0) : 0;
+      const balance = Number(p.totalRent || 0) - paid;
+      const method = p.paymentMethod || p.method || "N/A";
+      const status = p.status || (balance <= 0 ? "paid" : paid > 0 ? "partial" : "pending");
+      csvContent += `${name},${room},${bed},${p.month || "N/A"},${p.totalRent || 0},${paid},${balance},${method},${status}\n`;
     });
 
     const encodedUri = encodeURI(csvContent);

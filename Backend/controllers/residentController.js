@@ -30,29 +30,21 @@ const createResident =
         // NOTE: frontend sends signatureImage as base64 data url
         signatureImage,
         agreementChecked,
+        quickAssign,
         // Optional (newer UI may send rules agreement fields)
         rulesVersionId,
         rulesVersionNumber,
         acceptedRulesTextSnapshot,
       } = req.body;
 
-      // The backend Resident schema does not include these fields today,
-      // but we accept them to keep payload validation consistent.
-      // ensure we accept boolean or string 'true' from multipart/form-data
+      const isQuickAssign = quickAssign === true || quickAssign === "true";
       const safeAgreementChecked =
         agreementChecked === true || agreementChecked === "true";
 
-
-      // Basic required-field validation (production-safe)
       const missing = [];
       const mustHave = [
         { k: "name", v: name },
         { k: "phone", v: phone },
-        { k: "email", v: email },
-        { k: "address", v: address },
-        { k: "district", v: district },
-        { k: "pincode", v: pincode },
-        { k: "emergencyContact", v: emergencyContact },
         { k: "roomId", v: roomId },
         { k: "bedId", v: bedId },
         { k: "monthlyRent", v: monthlyRent },
@@ -60,6 +52,16 @@ const createResident =
         { k: "joinDate", v: joinDate },
         { k: "agreementChecked", v: agreementChecked },
       ];
+
+      if (!isQuickAssign) {
+        mustHave.push(
+          { k: "email", v: email },
+          { k: "address", v: address },
+          { k: "district", v: district },
+          { k: "pincode", v: pincode },
+          { k: "emergencyContact", v: emergencyContact }
+        );
+      }
 
       for (const item of mustHave) {
         if (item.v === undefined || item.v === null || String(item.v).trim() === "") {
@@ -74,12 +76,18 @@ const createResident =
         });
       }
 
-      if (!(safeAgreementChecked)) {
+      if (!safeAgreementChecked) {
         return res.status(400).json({
           success: false,
           message: "Please accept the rules agreement",
         });
       }
+
+      const safeEmail = String(email || "").trim();
+      const safeAddress = String(address || "Not provided").trim() || "Not provided";
+      const safeDistrict = String(district || "Not provided").trim() || "Not provided";
+      const safePincode = String(pincode || "").trim() || "000000";
+      const safeEmergencyContact = String(emergencyContact || "N/A").trim() || "N/A";
 
 
       const hostelId = req.owner?.hostelId;
@@ -152,19 +160,19 @@ const createResident =
 
           phone,
 
-          email,
+          email: safeEmail,
 
           gender,
 
           dob: dob ? new Date(dob) : null,
 
-          address,
+          address: safeAddress,
 
-          district,
+          district: safeDistrict,
 
-          pincode,
+          pincode: safePincode,
 
-          emergencyContact,
+          emergencyContact: safeEmergencyContact,
 
           roomId,
 
@@ -190,7 +198,7 @@ const createResident =
             req.files.signatureFile?.[0]
               ?.filename || "",
 
-          agreementChecked: agreementChecked === "true" || agreementChecked === true,
+          agreementChecked: safeAgreementChecked,
 
           signedAt: new Date(),
         });
@@ -238,7 +246,9 @@ const getResidentsByHostel =
       const residents =
         await Resident.find({
           hostelId: req.owner?.hostelId,
-        });
+        })
+        .populate({ path: "roomId", select: "roomNumber floor roomType rentPerBed" })
+        .populate({ path: "bedId", select: "bedNumber status" });
 
       res.status(200).json({
         success: true,
@@ -260,7 +270,9 @@ const getSingleResident =
       const resident =
         await Resident.findById(
           req.params.residentId
-        );
+        )
+        .populate({ path: "roomId", select: "roomNumber floor roomType rentPerBed" })
+        .populate({ path: "bedId", select: "bedNumber status" });
 
       res.status(200).json({
         success: true,

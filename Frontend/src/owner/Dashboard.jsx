@@ -1,7 +1,8 @@
 import { BedDouble, Users, Wallet, FileText, Bell, ArrowRight, IndianRupee, QrCode, ShieldCheck, Settings } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
-import axios from "axios";
+import toast from "react-hot-toast";
+import api from "../utils/apiClient";
 import BottomNav from "../components/BottomNav";
 import { subscribeOccupancyRefresh } from "../utils/occupancyRefresh";
 
@@ -22,10 +23,7 @@ function Dashboard() {
 
     const fetchStats = async () => {
       try {
-        const token = localStorage.getItem("token");
-        const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/owner/dashboard`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
+        const response = await api.get("/api/owner/dashboard");
         if (response.data.success) {
           setStats(response.data.stats);
           setHostel(response.data.hostel || null);
@@ -34,7 +32,7 @@ function Dashboard() {
           }
         }
       } catch (error) {
-        // Avoid console spam; dashboard will retry on next refresh event.
+        toast.error(error?.response?.data?.message || "Unable to load dashboard.");
       }
     };
 
@@ -53,18 +51,12 @@ function Dashboard() {
   useEffect(() => {
     const fetchPendingCount = async () => {
       try {
-        const token = localStorage.getItem("token");
-        const response = await axios.get(
-          `${import.meta.env.VITE_API_URL}/api/owner/pending-count`,
-          {
-            headers: { Authorization: `Bearer ${token}` }
-          }
-        );
+        const response = await api.get("/api/owner/pending-count");
         if (response.data.success) {
           setPendingCount(response.data.pendingAdmissions || 0);
         }
       } catch (error) {
-        console.error("Failed to fetch pending count", error);
+        toast.error(error?.response?.data?.message || "Unable to load pending count.");
       }
     };
 

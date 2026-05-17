@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import axios from "axios";
+import { api } from "../services/api";
 import toast from "react-hot-toast";
 import { Save, X, MapPin, Phone, MessageCircle, Building, ShieldCheck, Eye, Plus, Trash2, Clock } from "lucide-react";
 
@@ -30,14 +30,10 @@ function HostelSettings() {
     consentText: "By continuing, you consent to secure storage of your submitted identity documents and agreement signature for hostel management purposes.",
   });
 
-  const token = localStorage.getItem("token");
-
   const fetchHostel = async () => {
     try {
       setLoading(true);
-      const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/owner/dashboard`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await api.get("/api/owner/dashboard");
 
       const h = res.data?.hostel || null;
       setHostel(h);
@@ -64,8 +60,7 @@ function HostelSettings() {
         });
       }
     } catch (e) {
-      console.error(e);
-      toast.error("Failed to load hostel details");
+      toast.error(e?.response?.data?.message || "Failed to load hostel details");
     } finally {
       setLoading(false);
     }
@@ -133,9 +128,7 @@ function HostelSettings() {
         rulesConfig: rulesConfig,
       };
 
-      const res = await axios.put(`${import.meta.env.VITE_API_URL}/api/owner/hostel/settings`, payload, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await api.put("/api/owner/hostel/settings", payload);
 
       if (res.data?.success) {
         toast.success(res.data?.message || "Hostel settings saved. Rules version created.");
@@ -144,7 +137,6 @@ function HostelSettings() {
         toast.error(res.data?.message || "Failed to save hostel settings");
       }
     } catch (e) {
-      console.error("Hostel Settings Save Error:", e?.response?.data || e);
       toast.error(e?.response?.data?.message || "Failed to save hostel settings");
     } finally {
       setSaving(false);

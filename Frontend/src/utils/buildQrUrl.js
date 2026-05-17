@@ -8,6 +8,9 @@ export default function buildQrUrl(qrCodeUrl) {
     return qrCodeUrl;
   }
 
-  return `${import.meta.env.VITE_API_URL}/uploads/${qrCodeUrl}`;
+  const baseUrl = String(import.meta.env.VITE_API_URL || "").replace(/\/$/, "");
+  const path = String(qrCodeUrl || "").replace(/^\//, "");
+
+  return `${baseUrl}/uploads/${path}`;
 }
 

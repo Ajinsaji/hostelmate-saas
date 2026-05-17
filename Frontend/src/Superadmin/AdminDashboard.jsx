@@ -17,7 +17,7 @@ const response = await api.get("/api/admin/dashboard");
           setStats(response.data);
         }
       } catch (error) {
-        console.error("Error fetching stats", error);
+        toast.error(error?.response?.data?.message || "Failed to load admin statistics.");
       }
     };
     fetchStats();

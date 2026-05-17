@@ -1,24 +1,24 @@
 import { useEffect, useState } from "react";
-import axios from "axios";
+import { api } from "../services/api";
 import { CheckCircle, XCircle } from "lucide-react";
 import BottomNav from "../components/BottomNav";
 import toast from "react-hot-toast";
 
 function PendingAdmissions() {
   const [admissions, setAdmissions] = useState([]);
-
+  const [loading, setLoading] = useState(false);
   const [loadingActionId, setLoadingActionId] = useState(null);
 
   const fetchAdmissions = async () => {
+    setLoading(true);
     try {
-      const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/owner/admissions`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
-      });
-      setAdmissions(response.data.admissions);
+      const response = await api.get("/api/owner/admissions");
+      setAdmissions(response.data.admissions || []);
     } catch (error) {
-      // noop
+      toast.error(error?.response?.data?.message || "Unable to load pending admissions.");
+    } finally {
+      setLoading(false);
     }
-
   };
 
   useEffect(() => {
@@ -28,15 +28,13 @@ function PendingAdmissions() {
   const handleApprove = async (id) => {
     setLoadingActionId(id);
     try {
-      setAdmissions(prev => prev.map(a => a._id === id ? { ...a, status: "Approved" } : a));
-      await axios.put(`${import.meta.env.VITE_API_URL}/api/owner/admissions/${id}/approve`, {}, {
-        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
-      });
-      toast.success("Admission Approved! Resident created.");
-      fetchAdmissions();
+      setAdmissions((prev) => prev.map((a) => (a._id === id ? { ...a, status: "Approved" } : a)));
+      await api.put(`/api/owner/admissions/${id}/approve`);
+      toast.success("Admission approved successfully.");
+      await fetchAdmissions();
     } catch (error) {
-      toast.error("Failed to approve admission");
-      fetchAdmissions();
+      toast.error(error?.response?.data?.message || "Failed to approve admission.");
+      await fetchAdmissions();
     } finally {
       setLoadingActionId(null);
     }
@@ -45,15 +43,13 @@ function PendingAdmissions() {
   const handleReject = async (id) => {
     setLoadingActionId(id);
     try {
-      setAdmissions(prev => prev.map(a => a._id === id ? { ...a, status: "Rejected" } : a));
-      await axios.put(`${import.meta.env.VITE_API_URL}/api/owner/admissions/${id}/reject`, {}, {
-        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
-      });
-      toast.success("Admission Rejected");
-      fetchAdmissions();
+      setAdmissions((prev) => prev.map((a) => (a._id === id ? { ...a, status: "Rejected" } : a)));
+      await api.put(`/api/owner/admissions/${id}/reject`);
+      toast.success("Admission rejected successfully.");
+      await fetchAdmissions();
     } catch (error) {
-      toast.error("Failed to reject admission");
-      fetchAdmissions();
+      toast.error(error?.response?.data?.message || "Failed to reject admission.");
+      await fetchAdmissions();
     } finally {
       setLoadingActionId(null);
     }
@@ -68,7 +64,11 @@ function PendingAdmissions() {
       </div>
 
       <div className="p-4 flex-col gap-4">
-        {admissions.length === 0 ? (
+        {loading ? (
+          <div className="text-center p-8 text-muted glass-card rounded-2xl shadow-sm" style={{ background: 'rgba(11,23,57,0.55)', borderColor: 'rgba(255,255,255,0.08)' }}>
+            Loading admissions...
+          </div>
+        ) : admissions.length === 0 ? (
           <div className="text-center p-8 text-muted glass-card rounded-2xl shadow-sm" style={{ background: 'rgba(11,23,57,0.55)', borderColor: 'rgba(255,255,255,0.08)' }}>
             No pending admissions
           </div>

@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 import BottomNav from "../components/BottomNav";
-import { getOccupancyStyle, getOccupancyState } from "../utils/occupancyStyles";
+import { getOccupancyChipInline, getOccupancyStyle, getOccupancyState } from "../utils/occupancyStyles";
 import { subscribeOccupancyRefresh, triggerOccupancyRefresh } from "../utils/occupancyRefresh";
 
 
@@ -325,6 +325,8 @@ function Rooms() {
       form.append("monthlyRent", assignForm.monthlyRent);
       form.append("depositAmount", assignForm.depositAmount);
       form.append("joinDate", assignForm.joinDate);
+      form.append("agreementChecked", "true");
+      form.append("quickAssign", "true");
 
       await api.post("/api/residents/create", form);
 
@@ -817,6 +819,7 @@ function Rooms() {
                         const isVacant = status !== "occupied";
 
                         const occ = occupancyStyleForBed(bed);
+                        const occInline = getOccupancyChipInline(bed?.status);
                         const resident = residentMapById[bed?.residentId] || residentMapByBedId[bed?._id] || null;
                         const residentName = resident?.name || "Resident";
                         const residentPhone = resident?.phone || "";
@@ -838,8 +841,8 @@ function Rooms() {
                               display: "flex",
                               flexDirection: "column",
                               gap: 12,
-                              border: `1px solid ${occ.border}`,
-                              background: isVacant ? "rgba(239,68,68,0.12)" : "rgba(34,197,94,0.10)",
+                              border: `1px solid ${occInline.borderColor}`,
+                              background: occInline.backgroundColor,
                             }}
                           >
 
@@ -854,7 +857,7 @@ function Rooms() {
                                     margin: "8px 0 0",
                                     fontSize: 13,
                                     fontWeight: 800,
-                                    color: isVacant ? "rgba(254,202,202,0.95)" : "rgba(187,247,208,0.95)",
+                                    color: occInline.color,
                                   }}
                                 >
                                   {occ.label}
@@ -867,7 +870,7 @@ function Rooms() {
                                   borderRadius: 16,
                                   display: "grid",
                                   placeItems: "center",
-                                background: isVacant ? "rgba(239,68,68,0.14)" : "rgba(34,197,94,0.14)",
+                                  background: occInline.backgroundColor,
                                   color: "#f8fafc",
                                 }}
                               >
@@ -1011,7 +1014,17 @@ function Rooms() {
                 <button
                   type="button"
                   onClick={closeAssignModal}
-                  style={{ border: "none", background: "transparent", color: "#f8fafc", cursor: "pointer" }}
+                  style={{
+                    border: "1px solid rgba(255,255,255,0.10)",
+                    background: "rgba(255,255,255,0.05)",
+                    color: "white",
+                    borderRadius: 14,
+                    width: 42,
+                    height: 42,
+                    display: "grid",
+                    placeItems: "center",
+                    cursor: "pointer",
+                  }}
                 >
                   <X size={22} />
                 </button>

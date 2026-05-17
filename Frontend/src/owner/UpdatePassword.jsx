@@ -1,11 +1,9 @@
 import { useState } from "react";
-import axios from "axios";
+import api from "../utils/apiClient";
 import toast from "react-hot-toast";
 import { Save, X, Lock } from "lucide-react";
 
 function UpdatePassword() {
-  const token = localStorage.getItem("token");
-
   const [form, setForm] = useState({
     currentPassword: "",
     newPassword: "",
@@ -46,9 +44,7 @@ function UpdatePassword() {
         confirmPassword: form.confirmPassword,
       };
 
-      const res = await axios.put(`${import.meta.env.VITE_API_URL}/api/owner/password/update`, payload, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await api.put("/api/owner/password/update", payload);
 
       if (res.data?.success) {
         toast.success(res.data?.message || "Password updated successfully");
@@ -57,7 +53,6 @@ function UpdatePassword() {
         toast.error(res.data?.message || "Failed to update password");
       }
     } catch (e) {
-      console.error("Update password error:", e?.response?.data || e);
       toast.error(e?.response?.data?.message || "Failed to update password");
     } finally {
       setSaving(false);

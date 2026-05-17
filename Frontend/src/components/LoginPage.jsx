@@ -54,6 +54,8 @@ function LoginPage() {
         } else {
           navigate("/dashboard");
         }
+      } else {
+        toast.error(response.data?.message || "Invalid username or password");
       }
     } catch (error) {
       const msg =

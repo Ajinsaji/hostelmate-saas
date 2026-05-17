@@ -105,7 +105,6 @@ const response = await api.post("/api/admin/hostels/add", data);
         navigate("/admin/subscriptions");
       }
     } catch (error) {
-      console.log(error);
       toast.error(error?.response?.data?.message || "Failed to add hostel");
     }
   };

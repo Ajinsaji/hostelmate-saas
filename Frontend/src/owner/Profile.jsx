@@ -2,8 +2,8 @@ import { ArrowLeft, User, Building, Lock, LogOut, QrCode, Copy, Download, Share2
 
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import axios from "axios";
 import toast from "react-hot-toast";
+import { api } from "../services/api";
 
 import buildQrUrl from "../utils/buildQrUrl";
 
@@ -15,6 +15,7 @@ function Profile() {
   });
   const [hostelData, setHostelData] = useState(null);
   const [showQRModal, setShowQRModal] = useState(false);
+  const [loadingHostel, setLoadingHostel] = useState(false);
 
   useEffect(() => {
     const user = JSON.parse(localStorage.getItem("user") || "{}");
@@ -28,16 +29,18 @@ function Profile() {
     }
 
     const fetchHostelData = async () => {
+      setLoadingHostel(true);
       try {
-        const token = localStorage.getItem("token");
-        const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/owner/dashboard`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        if (response.data.success && response.data.hostel) {
+        const response = await api.get("/api/owner/dashboard");
+        if (response.data?.success && response.data.hostel) {
           setHostelData(response.data.hostel);
+        } else {
+          toast.error(response.data?.message || "Unable to load hostel details.");
         }
       } catch (error) {
-        console.error("Error fetching hostel data", error);
+        toast.error(error?.response?.data?.message || "Unable to load hostel details.");
+      } finally {
+        setLoadingHostel(false);
       }
     };
     fetchHostelData();
@@ -54,7 +57,7 @@ function Profile() {
       return;
     }
     const link = document.createElement("a");
-    link.href = `${import.meta.env.VITE_API_URL}${hostelData.qrCodeUrl}`;
+    link.href = buildQrUrl(hostelData.qrCodeUrl);
     link.download = `${hostelData.hostelName}-qr.png`;
     link.click();
     toast.success("QR code downloaded!");
@@ -174,7 +177,19 @@ function Profile() {
           }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
               <h2 className="text-h2">Admission Link</h2>
-              <button className="btn-icon" onClick={() => setShowQRModal(false)} style={{ background: "rgba(255,255,255,0.1)" }}>
+              <button
+                className="btn-icon"
+                onClick={() => setShowQRModal(false)}
+                style={{
+                  width: 40,
+                  height: 40,
+                  background: "rgba(255,255,255,0.08)",
+                  border: "1px solid rgba(255,255,255,0.10)",
+                  color: "white",
+                  display: "grid",
+                  placeItems: "center",
+                }}
+              >
                 <X size={20} />
               </button>
             </div>
@@ -183,7 +198,7 @@ function Profile() {
               <p style={{ fontSize: "14px", color: "rgba(255,255,255,0.8)", marginBottom: "12px" }}>{hostelData.hostelName}</p>
               {hostelData.qrCodeUrl && (
                 <img 
-                  src={`${import.meta.env.VITE_API_URL}${hostelData.qrCodeUrl}`}
+                  src={buildQrUrl(hostelData.qrCodeUrl)}
                   alt="Hostel QR Code" 
                   style={{ width: "240px", height: "240px", borderRadius: "12px", marginBottom: "16px" }}
                 />

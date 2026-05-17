@@ -1,11 +1,9 @@
 import { useEffect, useState } from "react";
-import axios from "axios";
+import api from "../utils/apiClient";
 import toast from "react-hot-toast";
 import { Save, X, User, Phone, Mail, Image as ImageIcon } from "lucide-react";
 
 function OwnerProfileEdit() {
-  const token = localStorage.getItem("token");
-
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -21,9 +19,7 @@ function OwnerProfileEdit() {
   const fetchOwner = async () => {
     try {
       setLoading(true);
-      const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/owner/dashboard`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      await api.get("/api/owner/dashboard");
 
       // dashboard returns { hostel, stats } currently; owner details may only exist in localStorage
       // fallback to localStorage.
@@ -40,8 +36,7 @@ function OwnerProfileEdit() {
         setPreviewUrl(`${import.meta.env.VITE_API_URL}/uploads/${user.profileImage}`);
       }
     } catch (e) {
-      console.error("Owner profile load error:", e);
-      toast.error("Failed to load owner profile");
+      toast.error(e?.response?.data?.message || "Failed to load owner profile");
     } finally {
       setLoading(false);
     }
@@ -82,9 +77,7 @@ function OwnerProfileEdit() {
       data.append("email", form.email);
       if (profileFile) data.append("profileImage", profileFile);
 
-      const res = await axios.put(`${import.meta.env.VITE_API_URL}/api/owner/profile/update`, data, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await api.put("/api/owner/profile/update", data);
 
       if (!res.data?.success) {
         toast.error(res.data?.message || "Failed to update profile");
@@ -95,9 +88,7 @@ function OwnerProfileEdit() {
 
       // Refresh owner snapshot (best-effort) so next screens show updated data
       try {
-        const dash = await axios.get(`${import.meta.env.VITE_API_URL}/api/owner/dashboard`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const dash = await api.get("/api/owner/dashboard");
 
         const current = JSON.parse(localStorage.getItem("user") || "null") || {};
         const owner = dash.data?.owner || dash.data?.user || dash.data?.data?.owner || null;
@@ -149,7 +140,17 @@ function OwnerProfileEdit() {
           <div className="card animate-slide-up" style={{ background: "rgba(11,23,57,0.55)" }}>
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-h2">Account Details</h2>
-              <button className="btn-icon" style={{ width: 40, height: 40 }} onClick={() => window.history.back()}>
+              <button
+                className="btn-icon"
+                style={{
+                  width: 40,
+                  height: 40,
+                  background: "rgba(255,255,255,0.08)",
+                  border: "1px solid rgba(255,255,255,0.10)",
+                  color: "white",
+                }}
+                onClick={() => window.history.back()}
+              >
                 <X size={18} />
               </button>
             </div>

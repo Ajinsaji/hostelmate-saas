@@ -23,8 +23,7 @@ function StaffManagement() {
         setStaff(response.data.staff);
       }
     } catch (error) {
-      console.error(error);
-      toast.error("Unable to load staff members");
+      toast.error(error?.response?.data?.message || "Unable to load staff members");
     } finally {
       setLoading(false);
     }

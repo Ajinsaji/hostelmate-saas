@@ -43,7 +43,6 @@ function AdminPage() {
       });
     } catch (error) {
       toast.error(error?.response?.data?.message || "Failed to load profile");
-      console.error(error);
     } finally {
       setLoading(false);
     }

@@ -42,9 +42,6 @@ const redirectToLogin = (path) => {
 api.interceptors.request.use(
   (config) => {
     config.headers = config.headers || {};
-    if (config.headers.Authorization) {
-      return config;
-    }
 
     const requestUrl = config.url || "";
     const isAdminRequest = requestUrl.includes("/api/admin");

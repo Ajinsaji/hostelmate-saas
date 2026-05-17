@@ -25,9 +25,15 @@ const residentSchema = new mongoose.Schema({
 
   idProof: String,
 
-  roomId: mongoose.Schema.Types.ObjectId,
+  roomId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Room",
+  },
 
-  bedId: mongoose.Schema.Types.ObjectId,
+  bedId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Bed",
+  },
 
   monthlyRent: Number,
 

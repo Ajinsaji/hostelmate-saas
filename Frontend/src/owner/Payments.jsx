@@ -1,7 +1,7 @@
 import { CheckCircle2, AlertCircle, Clock, Plus, Trash2, Upload, Receipt, Info, FileText } from "lucide-react";
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
-import axios from "axios";
+import api from "../utils/apiClient";
 import BottomNav from "../components/BottomNav";
 
 function Payments() {
@@ -22,14 +22,23 @@ function Payments() {
   });
   const [proofFile, setProofFile] = useState(null);
 
-  const token = localStorage.getItem("token");
+  const validateUploadFile = (file, allowedTypes, maxBytes) => {
+    if (!file) return true;
+    if (maxBytes && file.size > maxBytes) {
+      toast.error(`File must be smaller than ${Math.round(maxBytes / 1024 / 1024)} MB`);
+      return false;
+    }
+    if (allowedTypes && !allowedTypes.some((type) => file.type === type || file.name.toLowerCase().endsWith(type))) {
+      toast.error("Unsupported file type. Use PNG, JPG, JPEG, or PDF.");
+      return false;
+    }
+    return true;
+  };
 
   const fetchPayments = async () => {
     try {
       setLoading(true);
-      const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/payments/hostel`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const res = await api.get("/api/payments/hostel");
       setPayments(res.data?.payments || []);
     } catch (err) {
       toast.error(err?.response?.data?.message || "Failed to load payments");
@@ -40,12 +49,10 @@ function Payments() {
 
   const fetchResidents = async () => {
     try {
-      const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/residents/hostel`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const res = await api.get("/api/residents/hostel");
       setResidents(res.data?.residents || []);
     } catch (err) {
-      // noop
+      toast.error(err?.response?.data?.message || "Failed to load residents");
     }
 
   };
@@ -103,44 +110,45 @@ function Payments() {
     if (amountNum > totalRentNum) return toast.error("Payment amount cannot be greater than total due");
 
     try {
+      setSavingPayment(true);
+      if (proofFile && !validateUploadFile(proofFile, ["image/png", "image/jpeg", "image/jpg", ".pdf"], 5 * 1024 * 1024)) {
+        return;
+      }
+
       const data = new FormData();
-      Object.keys(formData).forEach(key => data.append(key, formData[key]));
+      Object.keys(formData).forEach((key) => data.append(key, formData[key]));
       if (proofFile) data.append("proof", proofFile);
 
-      await axios.post(`${import.meta.env.VITE_API_URL}/api/payments/create`, data, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      await api.post("/api/payments/create", data);
       toast.success("Payment added successfully");
       setShowAddForm(false);
-      setFormData({ residentId: "", month: "", amount: "", method: "UPI", totalRent: "" });
+      setFormData({ residentId: "", month: "", amount: "", method: "UPI", totalRent: "", paymentMethod: "cash", cashAmount: "", onlineAmount: "" });
       setProofFile(null);
       fetchPayments();
     } catch (error) {
-      toast.error(error.response?.data?.message || "Error adding payment");
+      toast.error(error?.response?.data?.message || "Error adding payment");
+    } finally {
+      setSavingPayment(false);
     }
   };
 
   const verifyEntry = async (paymentId, entryId) => {
     try {
-      await axios.put(`${import.meta.env.VITE_API_URL}/api/payments/verify/${paymentId}/${entryId}`, {}, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      await api.put(`/api/payments/verify/${paymentId}/${entryId}`);
       toast.success("Payment Verified");
       fetchPayments();
     } catch (error) {
-      toast.error("Verification failed");
+      toast.error(error?.response?.data?.message || "Verification failed");
     }
   };
 
   const deletePayment = async (paymentId) => {
     try {
-      await axios.delete(`${import.meta.env.VITE_API_URL}/api/payments/delete/${paymentId}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      await api.delete(`/api/payments/delete/${paymentId}`);
       toast.success("Payment deleted");
       fetchPayments();
     } catch (error) {
-      toast.error("Error deleting payment");
+      toast.error(error?.response?.data?.message || "Error deleting payment");
     }
   };
 
@@ -258,11 +266,20 @@ function Payments() {
               <label className="input-group mb-6 hover:border-primary" style={{ padding: "16px", border: "2px dashed rgba(0,0,0,0.1)", borderRadius: "12px", textAlign: "center", cursor: "pointer" }}>
                 <Upload size={20} color="var(--primary)" style={{ margin: "0 auto 8px" }} />
                 <span className="text-small">{proofFile ? proofFile.name : "Upload Payment Proof (Optional)"}</span>
-                <input type="file" style={{ display: "none" }} onChange={(e) => setProofFile(e.target.files[0])} />
+                <input
+                  type="file"
+                  style={{ display: "none" }}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file && validateUploadFile(file, ["image/png", "image/jpeg", "image/jpg", ".pdf"], 5 * 1024 * 1024)) {
+                      setProofFile(file);
+                    }
+                  }}
+                />
               </label>
 
-              <button type="submit" className="btn-primary">
-                Add Payment Record
+              <button type="submit" className="btn-primary" disabled={savingPayment} style={{ cursor: savingPayment ? "not-allowed" : "pointer" }}>
+                {savingPayment ? "Processing..." : "Add Payment Record"}
               </button>
             </form>
           </div>
