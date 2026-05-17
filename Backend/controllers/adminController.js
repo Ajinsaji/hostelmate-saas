@@ -543,10 +543,12 @@ const addHostel = async (req, res) => {
       });
     }
 
-    // Uploads
-    const aadhaarFileName = req.files?.aadhaarFile?.[0]?.filename;
-    const ownerPhotoFileName = req.files?.ownerPhoto?.[0]?.filename;
-    const licensePhotoFileName = req.files?.licensePhoto?.[0]?.filename;
+    const getUploadedFileUrl = require("../utils/getUploadedFileUrl");
+
+    // Uploads (support Cloudinary secure URLs or legacy filenames)
+    const aadhaarFileName = getUploadedFileUrl(req.files?.aadhaarFile?.[0]) || req.files?.aadhaarFile?.[0]?.filename;
+    const ownerPhotoFileName = getUploadedFileUrl(req.files?.ownerPhoto?.[0]) || req.files?.ownerPhoto?.[0]?.filename;
+    const licensePhotoFileName = getUploadedFileUrl(req.files?.licensePhoto?.[0]) || req.files?.licensePhoto?.[0]?.filename;
 
     const subPayload =
       typeof subscription === "string"

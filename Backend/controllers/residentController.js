@@ -152,6 +152,8 @@ const createResident =
       }
 
       // CREATE RESIDENT
+      const getUploadedFileUrl = require("../utils/getUploadedFileUrl");
+
       const resident =
         await Resident.create({
           hostelId,
@@ -184,19 +186,13 @@ const createResident =
 
           joinDate: new Date(joinDate),
 
-          photo:
-            req.files.photo?.[0]
-              ?.filename || "",
+          photo: getUploadedFileUrl(req.files.photo?.[0]) || "",
 
-          idProof:
-            req.files.idProof?.[0]
-              ?.filename || "",
+          idProof: getUploadedFileUrl(req.files.idProof?.[0]) || "",
 
           signatureImage: signatureImage || "",
 
-          signatureFile:
-            req.files.signatureFile?.[0]
-              ?.filename || "",
+          signatureFile: getUploadedFileUrl(req.files.signatureFile?.[0]) || "",
 
           agreementChecked: safeAgreementChecked,
 
@@ -298,14 +294,9 @@ const updateResident =
           {
             ...req.body,
 
-            photo:
-              req.files.photo?.[0]
-                ?.filename,
+            photo: getUploadedFileUrl(req.files.photo?.[0]) || undefined,
 
-            idProof:
-              req.files
-                .idProof?.[0]
-                ?.filename,
+            idProof: getUploadedFileUrl(req.files.idProof?.[0]) || undefined,
           },
 
           { new: true }

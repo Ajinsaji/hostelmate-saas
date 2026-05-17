@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api } from "../services/api";
+import buildFileUrl from "../utils/buildFileUrl";
 
 import { CheckCircle, XCircle, Copy, Download, Share2, Loader2 } from "lucide-react";
 import SuperadminBottomNav from "../components/SuperadminBottomNav";
@@ -130,11 +131,11 @@ await api.put(`/api/admin/reject/${id}`, {});
               </div>
 
               <div className="flex gap-2 flex-wrap mb-4">
-                {item.aadhaarFile && <a href={`${import.meta.env.VITE_API_URL}/uploads/${item.aadhaarFile}`} target="_blank" rel="noreferrer" className="text-xs underline" style={{ color: "rgba(37,211,102,0.95)", background: "rgba(37,211,102,0.10)", border: "1px solid rgba(37,211,102,0.22)", padding: "6px 10px", borderRadius: 12, fontWeight: 800 }}>View Aadhaar</a>}
+                {item.aadhaarFile && <a href={buildFileUrl(item.aadhaarFile)} target="_blank" rel="noreferrer" className="text-xs underline" style={{ color: "rgba(37,211,102,0.95)", background: "rgba(37,211,102,0.10)", border: "1px solid rgba(37,211,102,0.22)", padding: "6px 10px", borderRadius: 12, fontWeight: 800 }}>View Aadhaar</a>}
 
-                {item.ownerPhoto && <a href={`${import.meta.env.VITE_API_URL}/uploads/${item.ownerPhoto}`} target="_blank" rel="noreferrer" className="text-xs underline" style={{ color: "rgba(37,211,102,0.95)", background: "rgba(37,211,102,0.10)", border: "1px solid rgba(37,211,102,0.22)", padding: "6px 10px", borderRadius: 12, fontWeight: 800 }}>View Photo</a>}
+                {item.ownerPhoto && <a href={buildFileUrl(item.ownerPhoto)} target="_blank" rel="noreferrer" className="text-xs underline" style={{ color: "rgba(37,211,102,0.95)", background: "rgba(37,211,102,0.10)", border: "1px solid rgba(37,211,102,0.22)", padding: "6px 10px", borderRadius: 12, fontWeight: 800 }}>View Photo</a>}
 
-                {item.licensePhoto && <a href={`${import.meta.env.VITE_API_URL}/uploads/${item.licensePhoto}`} target="_blank" rel="noreferrer" className="text-xs underline" style={{ color: "rgba(37,211,102,0.95)", background: "rgba(37,211,102,0.10)", border: "1px solid rgba(37,211,102,0.22)", padding: "6px 10px", borderRadius: 12, fontWeight: 800 }}>View License</a>}
+                {item.licensePhoto && <a href={buildFileUrl(item.licensePhoto)} target="_blank" rel="noreferrer" className="text-xs underline" style={{ color: "rgba(37,211,102,0.95)", background: "rgba(37,211,102,0.10)", border: "1px solid rgba(37,211,102,0.22)", padding: "6px 10px", borderRadius: 12, fontWeight: 800 }}>View License</a>}
 
               </div>
 
@@ -192,11 +193,11 @@ await api.put(`/api/admin/reject/${id}`, {});
             <h2 style={{ color: "var(--text-main)", marginBottom: "8px", fontSize: "22px", fontWeight: "bold" }}>Approval Success!</h2>
             <p className="text-small text-muted mb-4">Credentials & QR generated.</p>
             
-              <img src={`${import.meta.env.VITE_API_URL}/uploads/${approvedData.qrCodeUrl}`} alt="QR Code" style={{ width: "180px", height: "180px", margin: "0 auto", borderRadius: "12px", border: "1px solid rgba(255,255,255,0.10)" }} />
+              <img src={buildFileUrl(approvedData.qrCodeUrl)} alt="QR Code" style={{ width: "180px", height: "180px", margin: "0 auto", borderRadius: "12px", border: "1px solid rgba(255,255,255,0.10)" }} />
 
             
             <div className="flex justify-center gap-2 mt-4">
-              <a href={`${import.meta.env.VITE_API_URL}/uploads/${approvedData.qrCodeUrl}`} download className="flex items-center gap-1 text-xs" style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.10)", color: "#fff", padding: "8px 12px", borderRadius: "12px", fontWeight: 800 }}>
+              <a href={buildFileUrl(approvedData.qrCodeUrl)} download className="flex items-center gap-1 text-xs" style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.10)", color: "#fff", padding: "8px 12px", borderRadius: "12px", fontWeight: 800 }}>
 
                 <Download size={14} /> Download QR
               </a>

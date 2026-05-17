@@ -19,6 +19,7 @@ const {
 } = require("../controllers/ownerController");
 
 const ownerAuth = require("../middleware/ownerAuth");
+const { uploadSingle } = require("../middleware/cloudinaryUpload");
 
 // Owner login
 router.post("/login", loginOwner);
@@ -35,25 +36,11 @@ router.put("/admissions/:id/reject", ownerAuth, rejectAdmission);
 // Owner Settings
 router.put("/hostel/settings", ownerAuth, updateHostelSettings);
 
-// profile update (multipart)
-const multer = require("multer");
-const fs = require("fs");
-const path = require("path");
-
-const uploadsDir = path.join(__dirname, "..", "uploads");
-if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
-
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, "uploads"),
-  filename: (req, file, cb) => cb(null, Date.now() + "-" + file.originalname),
-});
-
-const upload = multer({ storage });
-
+// Owner profile update (Cloudinary opt-in)
 router.put(
   "/profile/update",
   ownerAuth,
-  upload.fields([{ name: "profileImage", maxCount: 1 }]),
+  uploadSingle("profileImage"),
   updateOwnerProfile
 );
 router.put("/password/update", ownerAuth, updateOwnerPassword);

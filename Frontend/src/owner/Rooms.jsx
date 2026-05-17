@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { api } from "../services/api";
+import buildFileUrl from "../utils/buildFileUrl";
 import {
   Plus,
   Search,
@@ -845,7 +846,7 @@ function Rooms() {
                         const resident = residentMapById[bed?.residentId] || residentMapByBedId[bed?._id] || null;
                         const residentName = resident?.name || "Resident";
                         const residentPhone = resident?.phone || "";
-                        const residentPhoto = resident?.photo ? `${import.meta.env.VITE_API_URL}/uploads/${resident.photo}` : null;
+                        const residentPhoto = resident?.photo ? buildFileUrl(resident.photo) : null;
                         const initials = getInitials(residentName);
                         const payment = paymentSummaryByResidentId[resident?._id];
                         const badge = getPaymentBadge(payment?.status);
@@ -1236,7 +1237,7 @@ function Rooms() {
                       >
                         {residentDetails?.photo ? (
                           <img
-                            src={`${import.meta.env.VITE_API_URL}/uploads/${residentDetails.photo}`}
+                            src={buildFileUrl(residentDetails.photo)}
                             alt={residentDetails.name || "Resident photo"}
                             style={{ width: "100%", height: "100%", objectFit: "cover" }}
                           />

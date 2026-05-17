@@ -19,10 +19,10 @@ import {
 import SuperadminBottomNav from "../components/SuperadminBottomNav";
 import toast from "react-hot-toast";
 
+import buildFileUrl from "../utils/buildFileUrl";
+
 const buildQrUrl = (qrCodeUrl) => {
-  if (!qrCodeUrl) return "";
-  if (qrCodeUrl.startsWith("http://") || qrCodeUrl.startsWith("https://")) return qrCodeUrl;
-  return `${import.meta.env.VITE_API_URL}/uploads/${qrCodeUrl}`;
+  return buildFileUrl(qrCodeUrl);
 };
 
 function HostelManagement() {

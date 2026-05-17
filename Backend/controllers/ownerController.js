@@ -576,8 +576,9 @@ const updateOwnerProfile = async (req, res) => {
       updatedAt: new Date(),
     };
 
-    if (req.files?.profileImage?.[0]?.filename) {
-      updates.profileImage = req.files.profileImage[0].filename;
+    const getUploadedFileUrl = require("../utils/getUploadedFileUrl");
+    if (req.files?.profileImage?.[0]) {
+      updates.profileImage = getUploadedFileUrl(req.files.profileImage[0]) || req.files.profileImage[0].filename;
     }
 
     const updated = await Owner.findByIdAndUpdate(ownerId, updates, { new: true, runValidators: true });

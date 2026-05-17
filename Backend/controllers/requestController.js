@@ -39,12 +39,11 @@ const createRequest = async (req, res) => {
     // If your client didn't send expected multipart fields,
     // req.files will be missing and multer won't write files.
     // Avoid any further path usage by validating here.
-    const aadhaarFileName =
-      req.files?.aadhaarFile?.[0]?.filename;
-    const ownerPhotoFileName =
-      req.files?.ownerPhoto?.[0]?.filename;
-    const licensePhotoFileName =
-      req.files?.licensePhoto?.[0]?.filename;
+    const getUploadedFileUrl = require("../utils/getUploadedFileUrl");
+
+    const aadhaarFileName = getUploadedFileUrl(req.files?.aadhaarFile?.[0]) || req.files?.aadhaarFile?.[0]?.filename;
+    const ownerPhotoFileName = getUploadedFileUrl(req.files?.ownerPhoto?.[0]) || req.files?.ownerPhoto?.[0]?.filename;
+    const licensePhotoFileName = getUploadedFileUrl(req.files?.licensePhoto?.[0]) || req.files?.licensePhoto?.[0]?.filename;
 
     // Fail fast with a useful error instead of saving nulls.
     if (!aadhaarFileName || !ownerPhotoFileName || !licensePhotoFileName) {

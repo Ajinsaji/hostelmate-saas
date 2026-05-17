@@ -42,10 +42,12 @@ const createPayment =
       // Extend split fields on entry when method is partial
       const effectivePaymentMethod = paymentMethod || method;
 
+      const getUploadedFileUrl = require("../utils/getUploadedFileUrl");
+
       const paymentEntry = {
         amount,
         method: effectivePaymentMethod,
-        proof: req.file?.filename || "",
+        proof: getUploadedFileUrl(req.file) || "",
         verified: false,
         createdAt: new Date(),
 

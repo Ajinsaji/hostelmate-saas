@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, useRef } from "react";
 import api from "../utils/apiClient";
+import buildFileUrl from "../utils/buildFileUrl";
 import {
   Search,
   X,
@@ -26,7 +27,7 @@ import { subscribeOccupancyRefresh, triggerOccupancyRefresh } from "../utils/occ
 
 
 function Residents() {
-  const photoBaseURL = `${import.meta.env.VITE_API_URL}/uploads/`;
+  const photoBaseURL = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/uploads/` : "/uploads/";
 
   const [residents, setResidents] = useState([]);
   const [payments, setPayments] = useState([]);
@@ -669,7 +670,7 @@ function Residents() {
 
               const roomNumber = item?.roomId?.roomNumber || "N/A";
               const bedNumber = item?.bedId?.bedNumber || "N/A";
-              const avatarUrl = item?.photo ? `${photoBaseURL}${item.photo}` : null;
+              const avatarUrl = item?.photo ? buildFileUrl(item.photo) : null;
 
               return (
                 <div
@@ -840,7 +841,7 @@ function Residents() {
                 <div style={{ marginTop: 10, display: "flex", gap: 12, alignItems: "center" }}>
                   <div style={{ width: 64, height: 64, borderRadius: 22, overflow: "hidden", border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.06)" }}>
                     {viewResident?.photo ? (
-                      <img src={`${photoBaseURL}${viewResident.photo}`} alt="Resident" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                      <img src={buildFileUrl(viewResident.photo)} alt="Resident" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                     ) : (
                       <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
                         <User size={18} color="rgba(34,197,94,0.95)" />
@@ -948,9 +949,9 @@ function Residents() {
                         alt="Signature"
                         style={{ width: "100%", height: 130, objectFit: "contain", borderRadius: 14, background: "rgba(255,255,255,0.04)" }}
                       />
-                    ) : viewResident?.signatureFile ? (
+                      ) : viewResident?.signatureFile ? (
                       <img
-                        src={`${photoBaseURL}${viewResident.signatureFile}`}
+                        src={buildFileUrl(viewResident.signatureFile)}
                         alt="Signature"
                         style={{ width: "100%", height: 130, objectFit: "contain", borderRadius: 14, background: "rgba(255,255,255,0.04)" }}
                       />

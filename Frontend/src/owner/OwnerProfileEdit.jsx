@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import api from "../utils/apiClient";
 import toast from "react-hot-toast";
+import buildFileUrl from "../utils/buildFileUrl";
 import { Save, X, User, Phone, Mail, Image as ImageIcon, Loader2 } from "lucide-react";
 import { subscribeOccupancyRefresh } from "../utils/occupancyRefresh";
 
@@ -34,7 +35,7 @@ function OwnerProfileEdit() {
 
       // optional: if backend sends profileImage in owner endpoint; keep best-effort.
       if (user.profileImage) {
-        setPreviewUrl(`${import.meta.env.VITE_API_URL}/uploads/${user.profileImage}`);
+        setPreviewUrl(buildFileUrl(user.profileImage));
       }
     } catch (e) {
       toast.error(e?.response?.data?.message || "Failed to load owner profile");

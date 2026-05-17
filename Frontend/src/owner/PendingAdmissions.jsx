@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api } from "../services/api";
+import buildFileUrl from "../utils/buildFileUrl";
 import { CheckCircle, XCircle } from "lucide-react";
 import BottomNav from "../components/BottomNav";
 import toast from "react-hot-toast";
@@ -83,9 +84,9 @@ function PendingAdmissions() {
               <p className="text-small mb-3"><strong>Status:</strong> <span style={{ color: item.status === "Pending" ? "var(--status-pending)" : "var(--primary)" }}>{item.status}</span></p>
 
               <div className="flex gap-2 mb-4">
-                {item.idProofFile && <a href={`${import.meta.env.VITE_API_URL}/uploads/${item.idProofFile}`} target="_blank" className="text-xs text-blue-500 underline">ID Proof</a>}
-                {item.photoFile && <a href={`${import.meta.env.VITE_API_URL}/uploads/${item.photoFile}`} target="_blank" className="text-xs text-blue-500 underline">Photo</a>}
-                {item.signatureFile && <a href={`${import.meta.env.VITE_API_URL}/uploads/${item.signatureFile}`} target="_blank" className="text-xs text-blue-500 underline">Signature</a>}
+                {item.idProofFile && <a href={buildFileUrl(item.idProofFile)} target="_blank" className="text-xs text-blue-500 underline">ID Proof</a>}
+                {item.photoFile && <a href={buildFileUrl(item.photoFile)} target="_blank" className="text-xs text-blue-500 underline">Photo</a>}
+                {item.signatureFile && <a href={buildFileUrl(item.signatureFile)} target="_blank" className="text-xs text-blue-500 underline">Signature</a>}
               </div>
 
               {item.status === "Pending" && (
