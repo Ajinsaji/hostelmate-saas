@@ -163,6 +163,30 @@ function HostelManagement() {
   }, [hostels, searchQuery, filter]);
 
   const selectedHostelQrUrl = selectedHostel?.qrCodeUrl ? buildQrUrl(selectedHostel.qrCodeUrl) : "";
+  const selectedHostelOwnerImage = selectedHostel
+    ? buildFileUrl(
+        selectedHostel?.owner?.profileImage ||
+        selectedHostel?.owner?.photo ||
+        selectedHostel?.ownerPhoto ||
+        selectedHostel?.ownerImage ||
+        selectedHostel?.profileImage ||
+        ""
+      )
+    : "";
+  const selectedHostelOwnerEmail = selectedHostel?.owner?.email || selectedHostel?.ownerEmail || selectedHostel?.email || "N/A";
+  const selectedHostelUsername = selectedHostel?.owner?.username || selectedHostel?.username || selectedHostel?.phone || "N/A";
+  const selectedHostelType = selectedHostel?.hostelType || selectedHostel?.type || selectedHostel?.category || "N/A";
+  const selectedHostelPlace = selectedHostel?.city || selectedHostel?.place || selectedHostel?.location || "N/A";
+  const selectedHostelStatus = selectedHostel?.approvalStatus || selectedHostel?.status || (selectedHostel?.isApproved ? "approved" : "pending") || "Unknown";
+  const selectedHostelSubscription = selectedHostel?.isTrial ? "trial" : selectedHostel?.subscriptionStatus || "Unknown";
+  const selectedHostelCreatedDate = selectedHostel?.createdAt || selectedHostel?.createdOn || selectedHostel?.createdDate || "";
+  const selectedHostelCreatedLabel = selectedHostelCreatedDate ? new Date(selectedHostelCreatedDate).toLocaleDateString() : "N/A";
+  const selectedHostelOccupancy = selectedHostel?.occupancy || {};
+  const selectedHostelTotalRooms = selectedHostelOccupancy.totalRooms ?? selectedHostel?.totalRooms ?? 0;
+  const selectedHostelTotalBeds = selectedHostelOccupancy.totalBeds ?? selectedHostel?.totalBeds ?? 0;
+  const selectedHostelOccupiedBeds = selectedHostelOccupancy.occupiedBeds ?? selectedHostel?.occupiedBeds ?? 0;
+  const selectedHostelVacantBeds = selectedHostelOccupancy.vacantBeds ?? (typeof selectedHostelTotalBeds === "number" && typeof selectedHostelOccupiedBeds === "number" ? selectedHostelTotalBeds - selectedHostelOccupiedBeds : null);
+  const selectedHostelActiveResidents = selectedHostelOccupancy.activeResidents ?? selectedHostel?.activeResidents ?? 0;
 
   return (
     <div style={{ minHeight: "100vh", background: "#081028", paddingBottom: "100px", fontFamily: "Poppins" }}>
@@ -437,7 +461,7 @@ This action cannot be undone.
         </div>
       </div>
 
-      {/* Credentials Modal */}
+      {/* Hostel Details Modal */}
       {selectedHostel && (
         <div
           style={{
@@ -446,127 +470,230 @@ This action cannot be undone.
             left: 0,
             right: 0,
             bottom: 0,
-            background: "rgba(0,0,0,0.6)",
-            backdropFilter: "blur(4px)",
+            background: "rgba(0,0,0,0.7)",
+            backdropFilter: "blur(6px)",
             display: "flex",
             justifyContent: "center",
             alignItems: "center",
             zIndex: 1000,
-            padding: "20px",
+            padding: "18px",
           }}
         >
           <div
-            className="animate-slide-up w-full max-w-[400px] max-h-[90vh] overflow-y-auto rounded-3xl p-6 shadow-2xl relative glass-card"
-            style={{ background: "rgba(11,23,57,0.75)" }}
+            className="animate-slide-up w-full max-w-[820px] max-h-[92vh] overflow-y-auto rounded-3xl p-5 md:p-6 shadow-2xl relative glass-card"
+            style={{ background: "rgba(11,23,57,0.92)" }}
           >
             <button
               type="button"
               onClick={() => setSelectedHostel(null)}
-              className="absolute top-4 right-4 p-2 rounded-full"
-              style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.10)" }}
-              aria-label="Close"
+              className="absolute top-4 right-4 p-3 rounded-full"
+              style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.14)", color: "#fff" }}
+              aria-label="Close details modal"
             >
               <ShieldAlert size={18} />
             </button>
 
-            <h2 className="text-xl font-bold mb-1 text-center">{selectedHostel.hostelName}</h2>
-            <p className="text-xs text-center text-muted mb-2">Owner: {selectedHostel.ownerName}</p>
-            <div className="flex flex-wrap justify-center gap-2 mb-6">
-              <span className="text-[11px] uppercase font-semibold px-3 py-1 rounded-full" style={{ background: "rgba(255,255,255,0.06)", color: "#fff", border: "1px solid rgba(255,255,255,0.10)" }}>
-                Status: {selectedHostel.subscriptionStatus || "trial"}
-              </span>
-              <span className="text-[11px] uppercase font-semibold px-3 py-1 rounded-full" style={{ background: "rgba(255,255,255,0.06)", color: "#fff", border: "1px solid rgba(255,255,255,0.10)" }}>
-                Beds: {selectedHostel.occupancy?.occupiedBeds || 0}/{selectedHostel.occupancy?.totalBeds || 0}
-              </span>
-            </div>
+            <div className="flex flex-col gap-4 mb-4 text-white">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div>
+                  <h2 className="text-2xl font-bold">{selectedHostel.hostelName || "Hostel Details"}</h2>
+                  <p className="text-sm text-muted mt-1">{selectedHostel.description || "No description provided."}</p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <span className="px-3 py-1 rounded-full text-[11px] uppercase font-semibold" style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.10)", color: "#fff" }}>
+                    Approval: {selectedHostelStatus}
+                  </span>
+                  <span className="px-3 py-1 rounded-full text-[11px] uppercase font-semibold" style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.10)", color: "#fff" }}>
+                    Subscription: {selectedHostelSubscription}
+                  </span>
+                </div>
+              </div>
 
-            {/* QR Section */}
-            <div className="mb-6 flex flex-col items-center">
-              <div className="p-2 border rounded-2xl shadow-sm mb-3" style={{ background: "rgba(255,255,255,0.04)", borderColor: "rgba(255,255,255,0.10)" }}>
-                {selectedHostelQrUrl ? (
-                  <img
-                    src={selectedHostelQrUrl}
-                    alt="QR"
-                    style={{ width: 150, height: 150, borderRadius: 12, border: "1px solid rgba(255,255,255,0.10)" }}
-                  />
-                ) : (
-                  <div style={{ width: 150, height: 150, display: "flex", alignItems: "center", justifyContent: "center", color: "rgba(255,255,255,0.65)", fontSize: 12 }}>
-                    No QR code available
+              <div className="grid grid-cols-1 md:grid-cols-[120px_minmax(0,1fr)] gap-4 items-center">
+                <div className="w-full h-[120px] rounded-3xl overflow-hidden border" style={{ background: "rgba(255,255,255,0.06)", borderColor: "rgba(255,255,255,0.08)" }}>
+                  {selectedHostelOwnerImage ? (
+                    <img src={selectedHostelOwnerImage} alt="Owner" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                  ) : (
+                    <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(255,255,255,0.04)", color: "rgba(255,255,255,0.72)", fontSize: 14, fontWeight: 700 }}>
+                      NO AVATAR
+                    </div>
+                  )}
+                </div>
+
+                <div className="grid gap-2">
+                  <div>
+                    <p className="text-[10px] uppercase tracking-[0.24em] text-muted">Owner Name</p>
+                    <p className="font-semibold">{selectedHostel.ownerName || selectedHostel?.owner?.name || "N/A"}</p>
                   </div>
-                )}
-              </div>
-
-              <div className="flex gap-2 w-full">
-                <a
-                  href={selectedHostelQrUrl || selectedHostel.publicUrl}
-                  download={!!selectedHostelQrUrl}
-                  className="flex-1 py-2 rounded-xl flex justify-center items-center gap-2 text-xs font-semibold"
-                  style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.10)", color: "#fff" }}
-                >
-                  <Download size={14} /> {selectedHostelQrUrl ? "Download QR" : "Open Public Page"}
-                </a>
-                <button
-                  type="button"
-                  onClick={() => handleCopy(selectedHostel.publicUrl, "Link")}
-                  className="flex-1 py-2 rounded-xl flex justify-center items-center gap-2 text-xs font-semibold"
-                  style={{ background: "rgba(37,211,102,0.12)", border: "1px solid rgba(37,211,102,0.22)", color: "#EFFFF8" }}
-                >
-                  <Copy size={14} /> Copy Link
-                </button>
+                  <div>
+                    <p className="text-[10px] uppercase tracking-[0.24em] text-muted">Owner Email</p>
+                    <p className="font-semibold">{selectedHostelOwnerEmail}</p>
+                  </div>
+                  <div className="grid sm:grid-cols-2 gap-2">
+                    <div>
+                      <p className="text-[10px] uppercase tracking-[0.24em] text-muted">Phone</p>
+                      <p className="font-semibold">{selectedHostel.phone || "N/A"}</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] uppercase tracking-[0.24em] text-muted">Username</p>
+                      <p className="font-semibold">{selectedHostelUsername}</p>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
 
-            {/* Credentials Section */}
-            <div className="rounded-2xl p-4 mb-4 border" style={{ background: "rgba(255,255,255,0.04)", borderColor: "rgba(255,255,255,0.10)" }}>
+            <div className="grid gap-3 md:grid-cols-2 mb-4">
+              <div className="rounded-3xl p-4" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
+                <p className="text-[10px] uppercase tracking-[0.24em] text-muted mb-3">Hostel Information</p>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between gap-2">
+                    <span className="text-muted">Type</span>
+                    <span>{selectedHostelType}</span>
+                  </div>
+                  <div className="flex justify-between gap-2">
+                    <span className="text-muted">District</span>
+                    <span>{selectedHostel.district || "N/A"}</span>
+                  </div>
+                  <div className="flex justify-between gap-2">
+                    <span className="text-muted">City / Place</span>
+                    <span>{selectedHostelPlace}</span>
+                  </div>
+                  <div className="flex justify-between gap-2">
+                    <span className="text-muted">Pincode</span>
+                    <span>{selectedHostel.pincode || "N/A"}</span>
+                  </div>
+                  <div className="flex justify-between gap-2">
+                    <span className="text-muted">Created</span>
+                    <span>{selectedHostelCreatedLabel}</span>
+                  </div>
+                </div>
+              </div>
+              <div className="rounded-3xl p-4" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
+                <p className="text-[10px] uppercase tracking-[0.24em] text-muted mb-3">Address</p>
+                <p className="text-sm leading-6">{selectedHostel.address || "No address provided."}</p>
+                <p className="mt-3 text-[10px] uppercase tracking-[0.24em] text-muted">Description</p>
+                <p className="text-sm leading-6">{selectedHostel.description || "No additional notes available."}</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 mb-4">
+              {[
+                { label: "Total Rooms", value: selectedHostelTotalRooms },
+                { label: "Total Beds", value: selectedHostelTotalBeds },
+                { label: "Occupied Beds", value: selectedHostelOccupiedBeds },
+                { label: "Vacant Beds", value: selectedHostelVacantBeds ?? "N/A" },
+                { label: "Active Residents", value: selectedHostelActiveResidents },
+              ].map((item) => (
+                <div key={item.label} className="rounded-3xl p-4" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
+                  <p className="text-[10px] uppercase tracking-[0.24em] text-muted mb-2">{item.label}</p>
+                  <p className="text-xl font-semibold">{item.value}</p>
+                </div>
+              ))}
+            </div>
+
+            <div className="mb-6 rounded-3xl p-4" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
+              <p className="text-[10px] uppercase tracking-[0.24em] text-muted mb-4">QR & Public Access</p>
+              <div className="flex flex-col md:flex-row gap-4 items-center">
+                <div className="flex-1 min-w-[150px] rounded-3xl p-3" style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.08)" }}>
+                  {selectedHostelQrUrl ? (
+                    <img
+                      src={selectedHostelQrUrl}
+                      alt="Hostel QR"
+                      style={{ width: "100%", minHeight: 180, objectFit: "contain", borderRadius: 18 }}
+                    />
+                  ) : (
+                    <div style={{ width: "100%", minHeight: 180, display: "flex", alignItems: "center", justifyContent: "center", color: "rgba(255,255,255,0.65)", fontSize: 13, textAlign: "center", padding: 14, lineHeight: 1.4 }}>
+                      No QR generated yet
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex-1 flex flex-col gap-3 w-full">
+                  <div className="rounded-3xl p-3" style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}>
+                    <p className="text-[10px] uppercase tracking-[0.24em] text-muted mb-2">Public Hostel Link</p>
+                    <p className="text-sm break-all">{selectedHostel.publicUrl || "Not available"}</p>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => selectedHostel.publicUrl && window.open(selectedHostel.publicUrl, "_blank")}
+                      disabled={!selectedHostel.publicUrl}
+                      className="py-3 rounded-2xl text-sm font-semibold"
+                      style={{ background: "rgba(37,211,102,0.12)", color: "#EFFFF8", border: "1px solid rgba(37,211,102,0.22)" }}
+                    >
+                      Open Public Page
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => selectedHostelQrUrl && window.open(selectedHostelQrUrl, "_blank")}
+                      disabled={!selectedHostelQrUrl}
+                      className="py-3 rounded-2xl text-sm font-semibold"
+                      style={{ background: "rgba(255,255,255,0.06)", color: "#fff", border: "1px solid rgba(255,255,255,0.12)" }}
+                    >
+                      {selectedHostelQrUrl ? "View QR" : "No QR"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (selectedHostelQrUrl) {
+                          const link = document.createElement("a");
+                          link.href = selectedHostelQrUrl;
+                          link.download = `${selectedHostel.hostelName || "hostel"}-qr.png`;
+                          document.body.appendChild(link);
+                          link.click();
+                          document.body.removeChild(link);
+                        }
+                      }}
+                      disabled={!selectedHostelQrUrl}
+                      className="py-3 rounded-2xl text-sm font-semibold"
+                      style={{ background: "rgba(255,255,255,0.06)", color: "#fff", border: "1px solid rgba(255,255,255,0.12)" }}
+                    >
+                      Download QR
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-3xl p-4 mb-4 border" style={{ background: "rgba(255,255,255,0.04)", borderColor: "rgba(255,255,255,0.10)" }}>
               <div className="flex justify-between items-center mb-1">
                 <p className="text-[10px] uppercase font-bold text-muted tracking-wider">Username</p>
-                <button type="button" onClick={() => handleCopy(selectedHostel.phone, "Username")} style={{ background: "transparent", border: "none", padding: 0, cursor: "pointer" }}>
+                <button type="button" onClick={() => handleCopy(selectedHostelUsername, "Username")} style={{ background: "transparent", border: "none", padding: 0, cursor: "pointer", color: "#fff" }}>
                   <Copy size={12} />
                 </button>
               </div>
 
               <div className="flex items-center justify-between gap-2 mb-3">
+                <span className="font-semibold" style={{ color: "#fff" }}>{selectedHostelUsername}</span>
                 <a
                   href={`tel:${selectedHostel.phone}`}
-                  className="font-semibold"
-                  style={{ textDecoration: "none", color: "var(--primary-dark)", padding: "10px 12px", borderRadius: 14, background: "rgba(15, 93, 70, 0.08)", border: "1px solid rgba(15, 93, 70, 0.12)" }}
+                  className="inline-flex items-center justify-center px-3 py-2 rounded-2xl"
+                  style={{ background: "rgba(15, 93, 70, 0.08)", border: "1px solid rgba(15, 93, 70, 0.12)", color: "var(--primary-dark)", textDecoration: "none" }}
                 >
-                  {selectedHostel.phone}
-                </a>
-
-                <a
-                  href={`https://wa.me/91${String(selectedHostel.phone || "").replace(/\D/g, "")}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 42, height: 42, borderRadius: 14, background: "rgba(37, 211, 102, 0.10)", border: "1px solid rgba(37, 211, 102, 0.15)", color: "#25D366", textDecoration: "none", flex: "0 0 auto" }}
-                  aria-label="WhatsApp owner"
-                  
-                >
-                  <MessageCircle size={18} />
+                  <Phone size={14} />
                 </a>
               </div>
 
               <div className="flex justify-between items-center mb-1">
                 <p className="text-[10px] uppercase font-bold text-muted tracking-wider">Temporary Password</p>
-                <button type="button" onClick={() => handleCopy(selectedHostel.tempPassword, "Password")} style={{ background: "transparent", border: "none", padding: 0, cursor: "pointer" }}>
+                <button type="button" onClick={() => handleCopy(selectedHostel.tempPassword, "Password")} style={{ background: "transparent", border: "none", padding: 0, cursor: "pointer", color: "#fff" }}>
                   <Copy size={12} />
                 </button>
               </div>
 
-              <p className="font-semibold" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", color: "#fff" }}>
-                {selectedHostel.tempPassword || "N/A"}
-              </p>
+              <p className="font-semibold" style={{ color: "#fff" }}>{selectedHostel.tempPassword || "N/A"}</p>
             </div>
 
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-3 mb-3">
               <button
                 type="button"
                 onClick={() => handleCopyAll(selectedHostel)}
-className="w-full py-3 rounded-xl font-medium text-sm flex justify-center items-center gap-2" style={{ background: "linear-gradient(135deg, rgba(15,93,70,1) 0%, rgba(15,122,94,1) 100%)" , color: "#fff"}}
+                className="w-full py-3 rounded-xl font-medium text-sm flex justify-center items-center gap-2"
+                style={{ background: "linear-gradient(135deg, rgba(15,93,70,1) 0%, rgba(15,122,94,1) 100%)", color: "#fff" }}
               >
                 <Copy size={16} /> Copy All Credentials
               </button>
-
               <button
                 type="button"
                 disabled={isResending}
@@ -576,7 +703,6 @@ className="w-full py-3 rounded-xl font-medium text-sm flex justify-center items-
               >
                 <MessageCircle size={16} /> Resend Credentials via WhatsApp
               </button>
-
               <button
                 type="button"
                 disabled={isResetting}
@@ -586,19 +712,20 @@ className="w-full py-3 rounded-xl font-medium text-sm flex justify-center items-
               >
                 {isResetting ? <RefreshCw size={16} className="animate-spin" /> : <RefreshCw size={16} />} Generate New Temporary Password
               </button>
+              <button
+                type="button"
+                onClick={() => setSelectedHostel(null)}
+                className="w-full mt-1 py-3 rounded-xl font-semibold"
+                style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.10)", color: "#fff" }}
+              >
+                Close
+              </button>
             </div>
-
-            <button
-              type="button"
-              onClick={() => setSelectedHostel(null)}
-              className="w-full mt-4 py-3 rounded-xl font-semibold"
-              style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.10)", color: "#fff" }}
-            >
-              Close
-            </button>
           </div>
         </div>
       )}
+
+      {/* Confirmation Modal */}
 
       {/* Confirmation Modal */}
       {confirmModal.isOpen && (
