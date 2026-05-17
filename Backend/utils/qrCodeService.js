@@ -14,14 +14,9 @@ const generateQRCode = async (data, filename) => {
     const uploadsDir = path.join(__dirname, '..', 'uploads');
     if (!fs.existsSync(uploadsDir)) {
       fs.mkdirSync(uploadsDir, { recursive: true });
-      console.log("✓ Created uploads directory:", uploadsDir);
     }
 
     const qrPath = path.join(uploadsDir, filename);
-
-    // Requested debug logs for production (Render/Vercel)
-    console.log("QR FILE:", filename);
-    console.log("QR PATH:", qrPath);
 
     // Generate QR code
     await QRCode.toFile(qrPath, data, {
@@ -37,12 +32,7 @@ const generateQRCode = async (data, filename) => {
     });
 
     // Verify file was created
-    if (fs.existsSync(qrPath)) {
-      console.log("✓ QR file created successfully");
-      console.log("  Filename:", filename);
-      console.log("  Path:", qrPath);
-      console.log("  Size:", fs.statSync(qrPath).size, "bytes");
-    } else {
+    if (!fs.existsSync(qrPath)) {
       console.error("✗ QR file not found after generation:", qrPath);
     }
 
@@ -55,8 +45,6 @@ const generateQRCode = async (data, filename) => {
       'http://localhost:5000';
 
     const fullUrl = `${backendUrl}/uploads/${filename}`;
-
-    console.log("✓ QR URL:", fullUrl);
 
     return {
       success: true,

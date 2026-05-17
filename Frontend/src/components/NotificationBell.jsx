@@ -2,10 +2,10 @@ import { useEffect, useMemo, useState } from "react";
 
 import { Bell, CheckCheck, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import axios from "axios";
 import toast from "react-hot-toast";
 import useFcmNotifications from "../hooks/useFcmNotifications";
 import { playNotificationSound } from "../utils/notificationSound";
+import { api } from "../services/api";
 
 
 
@@ -74,17 +74,9 @@ export default function NotificationBell() {
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  const token = localStorage.getItem("token");
-
-  const axiosAuth = useMemo(() => {
-    return axios.create({
-      headers: { Authorization: `Bearer ${token}` },
-    });
-  }, [token]);
-
   const fetchUnread = async () => {
     try {
-      const res = await axiosAuth.get(`${import.meta.env.VITE_API_URL}/api/notifications/unread-count`);
+      const res = await api.get(`/api/notifications/unread-count`);
       if (res.data?.success) setUnreadCount(res.data.unreadCount || 0);
     } catch (e) {
       // silent
@@ -94,7 +86,7 @@ export default function NotificationBell() {
   const fetchNotifications = async () => {
     try {
       setLoading(true);
-      const res = await axiosAuth.get(`${import.meta.env.VITE_API_URL}/api/notifications/mine?limit=30`);
+      const res = await api.get(`/api/notifications/mine?limit=30`);
       if (res.data?.success) setNotifications(res.data.notifications || []);
     } catch (e) {
       // silent
@@ -127,7 +119,7 @@ export default function NotificationBell() {
     try {
       const unread = notifications.filter((n) => !n.isRead);
       for (const n of unread) {
-        await axiosAuth.put(`${import.meta.env.VITE_API_URL}/api/notifications/read/${n._id}`);
+        await api.put(`/api/notifications/read/${n._id}`);
       }
       setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
       setUnreadCount(0);
@@ -140,7 +132,7 @@ export default function NotificationBell() {
   const handleNavigate = async (n) => {
     try {
       if (!n.isRead) {
-        await axiosAuth.put(`${import.meta.env.VITE_API_URL}/api/notifications/read/${n._id}`);
+        await api.put(`/api/notifications/read/${n._id}`);
         setNotifications((prev) => prev.map((x) => (x._id === n._id ? { ...x, isRead: true } : x)));
         setUnreadCount((c) => Math.max(0, c - 1));
       }

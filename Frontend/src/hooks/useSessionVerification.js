@@ -13,51 +13,14 @@ export default function useSessionVerification() {
 
     const run = async () => {
       try {
-        const { getAuthToken } = await import("../utils/authToken");
-
-        const authToken = getAuthToken();
-
-
-
-        // If no token exists, immediately stop verifying.
-        if (!authToken) {
-          if (!mounted) return;
-          setVerifying(false);
-          return;
-        }
-
-        const res = await fetch(verifyBase, {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${authToken}`,
-          },
-        });
-
-        if (!res.ok) {
-          let data = null;
-          try {
-            data = await res.json();
-          } catch {
-            // ignore
-          }
-
-          if (data?.message) {
-            toast.error(data.message);
-          } else {
-            toast.error("Session expired. Please login again.");
-          }
-
-          const { clearAuth } = await import("../utils/authToken");
-          clearAuth();
-
-          if (!mounted) return;
-          navigate("/login", { replace: true });
-          return;
-        }
-
+        const { api } = await import("../services/api");
+        
+        // The api interceptor already checks token existence and handles redirects.
+        const res = await api.get('/api/auth/verify-session');
+        
         if (mounted) setVerifying(false);
       } catch (e) {
-        // Network/server error: do not log out aggressively.
+        // Interceptor handles 401 redirects, we just gracefully stop verifying here
         if (mounted) {
           setVerifying(false);
         }

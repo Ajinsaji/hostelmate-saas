@@ -271,6 +271,23 @@ function Rooms() {
     loadData();
   }, []);
 
+  useEffect(() => {
+    const isEditing = roomFormOpen || assignModalOpen || residentModalOpen || checkoutModalOpen;
+    const unsubscribe = subscribeOccupancyRefresh((payload) => {
+      // Avoid self-triggered refreshes if possible, but safe to just check editing state
+      if (!isEditing) {
+        loadData();
+      } else {
+        toast("New updates available. Please refresh when done.", {
+          icon: "🔄",
+          duration: 4000,
+          style: { background: "rgba(59,130,246,0.9)", color: "#fff" }
+        });
+      }
+    });
+    return unsubscribe;
+  }, [roomFormOpen, assignModalOpen, residentModalOpen, checkoutModalOpen]);
+
   const openAssignModal = (room, bed) => {
     if (!room?._id || !bed?._id) {
       toast.error("Invalid room or bed selected.");
@@ -650,10 +667,15 @@ function Rooms() {
                     color: "#081028",
                     padding: "12px 18px",
                     cursor: roomSaving ? "not-allowed" : "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: "8px",
                     opacity: roomSaving ? 0.7 : 1,
                   }}
                 >
-                  {roomSaving ? "Creating..." : editingRoom ? "Save room" : "Create room"}
+                  {roomSaving ? <Loader2 size={18} className="animate-spin" /> : null}
+                  {roomSaving ? "Saving..." : editingRoom ? "Save room" : "Create room"}
                 </button>
               </div>
             </div>
@@ -1126,9 +1148,14 @@ function Rooms() {
                       padding: "12px 18px",
                       minWidth: 150,
                       cursor: assignLoading ? "not-allowed" : "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: "8px",
                     }}
                   >
-                    {assignLoading ? "Assigning..." : "Assign Resident"}
+                    {assignLoading ? <Loader2 size={18} className="animate-spin" /> : null}
+                    {assignLoading ? "Saving..." : "Assign Resident"}
                   </button>
                 </div>
               </div>
@@ -1444,9 +1471,14 @@ function Rooms() {
                       color: "#f8fafc",
                       padding: "12px 18px",
                       cursor: checkoutLoading ? "not-allowed" : "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: "8px",
                     }}
                   >
-                    {checkoutLoading ? "Checking out..." : "Confirm Checkout"}
+                    {checkoutLoading ? <Loader2 size={18} className="animate-spin" /> : null}
+                    {checkoutLoading ? "Saving..." : "Confirm Checkout"}
                   </button>
                 </div>
               </div>

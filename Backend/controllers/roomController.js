@@ -83,13 +83,9 @@ const createRoom =
         });
 
 
-      // AUTO CREATE BEDS (idempotent for this create action)
+      // AUTO CREATE BEDS
       const beds = [];
-      for (
-        let i = 1;
-        i <= totalBedsNum;
-        i++
-      ) {
+      for (let i = 1; i <= totalBedsNum; i++) {
         beds.push({
           hostelId,
           roomId: room._id,
@@ -98,29 +94,27 @@ const createRoom =
         });
       }
 
-      // Avoid duplicates if inserts happen twice for any reason
-      const existingCount = await Bed.countDocuments({ roomId: room._id });
-      if (existingCount === 0) {
-        await Bed.insertMany(beds);
-      } else {
-        // ensure exactly B1..Bn exist for this room
-        await Bed.deleteMany({ roomId: room._id, bedNumber: { $nin: beds.map((b) => b.bedNumber) } });
-        await Promise.all(
-          beds.map(async (b) => {
-            const doc = await Bed.findOne({ roomId: room._id, bedNumber: b.bedNumber });
-            if (!doc) await Bed.create(b);
-          })
-        );
+      // 1. Clear any mismatched beds first (just in case of a retry)
+      await Bed.deleteMany({ roomId: room._id, bedNumber: { $nin: beds.map((b) => b.bedNumber) } });
+
+      // 2. Sequential await loop for reliable insertions (avoids Promise.all race conditions or connection pool exhaustion)
+      for (const b of beds) {
+        const doc = await Bed.findOne({ roomId: room._id, bedNumber: b.bedNumber });
+        if (!doc) {
+          await Bed.create(b);
+        }
       }
 
+      // 3. Re-fetch actual count to verify
+      const finalBedCount = await Bed.countDocuments({ roomId: room._id });
+
       res.status(201).json({
-
         success: true,
-
-        message:
-          "Room Created Successfully",
-
-        room,
+        message: "Room Created Successfully",
+        room: {
+          ...room.toObject(),
+          bedsCreated: finalBedCount
+        },
       });
 
     } catch (error) {

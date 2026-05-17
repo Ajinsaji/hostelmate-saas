@@ -17,11 +17,12 @@ import {
   Plus,
   Upload,
   Check,
+  Loader2,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import BottomNav from "../components/BottomNav";
 import { getOccupancyChipInline, getOccupancyState } from "../utils/occupancyStyles";
-import { triggerOccupancyRefresh } from "../utils/occupancyRefresh";
+import { subscribeOccupancyRefresh, triggerOccupancyRefresh } from "../utils/occupancyRefresh";
 
 
 function Residents() {
@@ -268,26 +269,42 @@ function Residents() {
     }
   };
 
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      const [resRes, payRes] = await Promise.all([
+        api.get("/api/residents/hostel"),
+        api.get("/api/payments/hostel"),
+      ]);
+
+      setResidents(resRes.data?.residents || []);
+      setPayments(payRes.data?.payments || []);
+    } catch (e) {
+      toast.error(e?.response?.data?.message || "Failed to load residents");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const load = async () => {
-      try {
-        setLoading(true);
-        const [resRes, payRes] = await Promise.all([
-          api.get("/api/residents/hostel"),
-          api.get("/api/payments/hostel"),
-        ]);
+    loadData();
+  }, []);
 
-        setResidents(resRes.data?.residents || []);
-        setPayments(payRes.data?.payments || []);
-      } catch (e) {
-        toast.error(e?.response?.data?.message || "Failed to load residents");
-      } finally {
-        setLoading(false);
+  useEffect(() => {
+    const isEditing = showAddModal || showViewModal;
+    const unsubscribe = subscribeOccupancyRefresh(() => {
+      if (!isEditing) {
+        loadData();
+      } else {
+        toast("New updates available. Please refresh when done.", {
+          icon: "🔄",
+          duration: 4000,
+          style: { background: "rgba(59,130,246,0.9)", color: "#fff" }
+        });
       }
-    };
-
-    if (token) load();
-  }, [token]);
+    });
+    return unsubscribe;
+  }, [showAddModal, showViewModal]);
 
   useEffect(() => {
     // auto-refresh dues whenever payments list changes elsewhere
@@ -414,6 +431,8 @@ function Residents() {
   };
 
   const validateAddForm = () => {
+    const hasRules = !!(hostelData?.rulesText || hostelData?.rules || hostelData?.activeRulesText);
+
     const required = [
       { k: "fullName", msg: "Full name is required" },
       { k: "phone", msg: "Phone is required" },
@@ -426,27 +445,39 @@ function Residents() {
       { k: "bedId", msg: "Bed selection is required" },
       { k: "monthlyRent", msg: "Monthly rent is required" },
       { k: "depositAmount", msg: "Deposit amount is required" },
-      { k: "acceptedRulesTextSnapshot", msg: "Rules snapshot is required" },
-      { k: "rulesVersionId", msg: "Rules version ID is required" },
-      { k: "rulesVersionNumber", msg: "Rules version number is required" },
     ];
+
+    if (hasRules) {
+      required.push(
+        { k: "acceptedRulesTextSnapshot", msg: "Rules snapshot is required" },
+        { k: "rulesVersionId", msg: "Rules version ID is required" },
+        { k: "rulesVersionNumber", msg: "Rules version number is required" }
+      );
+    }
+
+    for (const r of required) {
+      if (!String(addForm[r.k] || "").trim()) {
+        toast.error(r.msg);
+        return false;
+      }
+    }
 
     if (!addFiles.idProof) {
       toast.error("ID proof is required");
       return false;
     }
 
-    if (addForm.signatureMode === "digital" && !signatureImage) {
+    if (hasRules && addForm.signatureMode === "digital" && !signatureImage) {
       toast.error("Please provide your signature");
       return false;
     }
 
-    if (addForm.signatureMode === "uploaded" && !addFiles.signatureFile) {
+    if (hasRules && addForm.signatureMode === "uploaded" && !addFiles.signatureFile) {
       toast.error("Please upload signature file");
       return false;
     }
 
-    if (!addForm.agreementChecked) {
+    if (hasRules && !addForm.agreementChecked) {
       toast.error("Please accept the rules agreement");
       return false;
     }
@@ -457,19 +488,22 @@ function Residents() {
   const submitAddResident = async () => {
     if (!validateAddForm()) return;
 
+    const hasRules = !!(hostelData?.rulesText || hostelData?.rules || hostelData?.activeRulesText);
 
     // Extra reliability: validate agreement/rules snapshot for production-safe behavior
-    if (!addForm?.acceptedRulesTextSnapshot?.trim()) {
-      toast.error("Rules snapshot is not available. Save hostel rules in settings before adding a resident.");
-      return;
-    }
-    if (!addForm?.rulesVersionId?.trim() || !addForm?.rulesVersionNumber?.trim()) {
-      toast.error("Rules version info is missing. Save hostel rules in settings before adding a resident.");
-      return;
-    }
-    if (!addForm?.agreementChecked) {
-      toast.error("Please accept the rules agreement");
-      return;
+    if (hasRules) {
+      if (!addForm?.acceptedRulesTextSnapshot?.trim()) {
+        toast.error("Rules snapshot is not available. Save hostel rules in settings before adding a resident.");
+        return;
+      }
+      if (!addForm?.rulesVersionId?.trim() || !addForm?.rulesVersionNumber?.trim()) {
+        toast.error("Rules version info is missing. Save hostel rules in settings before adding a resident.");
+        return;
+      }
+      if (!addForm?.agreementChecked) {
+        toast.error("Please accept the rules agreement");
+        return;
+      }
     }
 
     setAddLoading(true);
@@ -1620,7 +1654,8 @@ function Residents() {
                   opacity: addLoading ? 0.7 : 1,
                 }}
               >
-                {addLoading ? "Adding..." : <><Check size={16} /> Add Resident</>}
+                {addLoading ? <Loader2 size={18} className="animate-spin" /> : <Check size={18} />}
+                {addLoading ? "Saving..." : "Add Resident"}
               </button>
             </div>
           </div>

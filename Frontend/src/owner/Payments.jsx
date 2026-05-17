@@ -1,8 +1,9 @@
-import { CheckCircle2, AlertCircle, Clock, Plus, Trash2, Upload, Receipt, Info, FileText } from "lucide-react";
+import { CheckCircle2, AlertCircle, Clock, Plus, Trash2, Upload, Receipt, Info, FileText, Save, Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import api from "../utils/apiClient";
 import BottomNav from "../components/BottomNav";
+import { subscribeOccupancyRefresh } from "../utils/occupancyRefresh";
 
 function Payments() {
   const [payments, setPayments] = useState([]);
@@ -61,6 +62,22 @@ function Payments() {
     fetchPayments();
     fetchResidents();
   }, []);
+
+  useEffect(() => {
+    const isEditing = showAddForm;
+    const unsubscribe = subscribeOccupancyRefresh(() => {
+      if (!isEditing) {
+        fetchPayments();
+      } else {
+        toast("New updates available. Please refresh when done.", {
+          icon: "🔄",
+          duration: 4000,
+          style: { background: "rgba(59,130,246,0.9)", color: "#fff" }
+        });
+      }
+    });
+    return unsubscribe;
+  }, [showAddForm]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -278,8 +295,9 @@ function Payments() {
                 />
               </label>
 
-              <button type="submit" className="btn-primary" disabled={savingPayment} style={{ cursor: savingPayment ? "not-allowed" : "pointer" }}>
-                {savingPayment ? "Processing..." : "Add Payment Record"}
+              <button type="submit" className="btn-primary" disabled={savingPayment} style={{ cursor: savingPayment ? "not-allowed" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", opacity: savingPayment ? 0.7 : 1 }}>
+                {savingPayment ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
+                {savingPayment ? "Saving..." : "Add Payment Record"}
               </button>
             </form>
           </div>

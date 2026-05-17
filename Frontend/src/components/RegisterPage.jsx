@@ -70,7 +70,6 @@ function RegisterPage() {
         setStep(1);
       }
     } catch (error) {
-      console.log(error);
       toast.error("Application already submitted or error occurred");
     }
   };

@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import api from "../utils/apiClient";
 import toast from "react-hot-toast";
-import { Save, X, User, Phone, Mail, Image as ImageIcon } from "lucide-react";
+import { Save, X, User, Phone, Mail, Image as ImageIcon, Loader2 } from "lucide-react";
+import { subscribeOccupancyRefresh } from "../utils/occupancyRefresh";
 
 function OwnerProfileEdit() {
   const [loading, setLoading] = useState(true);
@@ -45,6 +46,17 @@ function OwnerProfileEdit() {
   useEffect(() => {
     fetchOwner();
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    const unsubscribe = subscribeOccupancyRefresh(() => {
+      toast("New updates available. Please refresh when done.", {
+        icon: "🔄",
+        duration: 4000,
+        style: { background: "rgba(59,130,246,0.9)", color: "#fff" }
+      });
+    });
+    return unsubscribe;
   }, []);
 
   const update = (k, v) => setForm((p) => ({ ...p, [k]: v }));
@@ -205,9 +217,10 @@ function OwnerProfileEdit() {
               className="btn-primary mt-4"
               onClick={handleSave}
               disabled={saving}
-              style={{ opacity: saving ? 0.7 : 1, cursor: saving ? "not-allowed" : "pointer" }}
+              style={{ opacity: saving ? 0.7 : 1, cursor: saving ? "not-allowed" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}
             >
-              <Save size={18} /> {saving ? "Saving..." : "Save Profile"}
+              {saving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
+              {saving ? "Saving..." : "Save Profile"}
             </button>
           </div>
         )}

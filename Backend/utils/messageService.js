@@ -77,19 +77,19 @@ const generateWhatsAppURL = (phone, message) => {
  */
 const sendApprovalMessages = async (phone, ownerName, hostelName, ownerEmail, tempPassword, publicUrl) => {
   try {
-    console.log("=========================================");
-    console.log("📨 MESSAGE SERVICE - APPROVAL");
-    console.log("=========================================");
+    
+    
+    
     
     const formattedPhone = formatPhoneNumber(phone);
     const message = generateWhatsAppMessage(hostelName, ownerEmail, tempPassword, publicUrl);
     const whatsappURL = generateWhatsAppURL(phone, message);
     
-    console.log(`✅ Phone: ${formattedPhone}`);
-    console.log(`📱 WhatsApp URL generated`);
-    console.log(`✉️ Message: ${message}`);
-    console.log(`🔗 WhatsApp Link: ${whatsappURL}`);
-    console.log("=========================================");
+    
+    
+    
+    
+    
     
     // TODO: Integrate actual Twilio / MSG91 API for production
     // const twilioClient = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);

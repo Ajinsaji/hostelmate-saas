@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import axios from "axios";
+import { api } from "../services/api";
 import { useNavigate } from "react-router-dom";
 import { Users, Wallet, BedDouble, Clock } from "lucide-react";
 
@@ -10,10 +10,7 @@ function WardenDashboard() {
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const token = localStorage.getItem("token");
-        const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/staff/dashboard`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const response = await api.get(`/api/staff/dashboard`);
         if (response.data.success) {
           setStats(response.data.stats || {});
         }

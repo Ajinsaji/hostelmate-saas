@@ -17,23 +17,12 @@ export default function useFcmNotifications({ enabled = true, onIncoming } = {})
 
       // Register device token with backend (endpoint is assumed to exist)
       try {
-        const backend = import.meta.env.VITE_API_URL;
-        const authToken = localStorage.getItem("token");
-        const user = JSON.parse(localStorage.getItem("user") || "null");
-
-        await fetch(`${backend}/api/notifications/device-token`, {
-
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${authToken}`,
-          },
-          body: JSON.stringify({
-            token,
-            platform: "web",
-            role: user?.role || "owner",
-            hostelId: user?.hostelId || null,
-          }),
+        const { api } = await import("../services/api");
+        await api.post(`/api/notifications/device-token`, {
+          token,
+          platform: "web",
+          role: user?.role || "owner",
+          hostelId: user?.hostelId || null,
         });
       } catch (e) {
         // ignore until wired

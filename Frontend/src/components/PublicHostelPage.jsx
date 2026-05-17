@@ -18,6 +18,7 @@ import {
   ArrowLeft,
   Save,
   Trash2,
+  Loader2,
 } from "lucide-react";
 
 
@@ -103,18 +104,21 @@ function PublicHostelPage() {
     }
 
     const usingNewFlow = !!signatureImage;
+    const hasRules = !!(hostel?.rulesText || hostel?.activeRulesText || hostel?.currentActiveRulesText || hostel?.rules);
 
     if (usingNewFlow) {
-      if (!agreementChecked) {
-        toast.error("Please accept the rules agreement.");
-        return;
+      if (hasRules) {
+        if (!agreementChecked) {
+          toast.error("Please accept the rules agreement.");
+          return;
+        }
+        if (!acceptedRulesTextSnapshot || !rulesVersionId || !rulesVersionNumber) {
+          toast.error("Rules agreement snapshot is missing.");
+          return;
+        }
       }
       if (!signatureImage) {
         toast.error("Please provide your signature.");
-        return;
-      }
-      if (!acceptedRulesTextSnapshot || !rulesVersionId || !rulesVersionNumber) {
-        toast.error("Rules agreement snapshot is missing.");
         return;
       }
     } else {
@@ -430,50 +434,57 @@ function PublicHostelPage() {
               <UploadBox label="Upload ID Proof (Aadhaar)" file={idProofFile} setFile={setIdProofFile} />
 
               {/* Rules & Regulations */}
-              <div className="rounded-2xl p-4" style={{ background: "rgba(11,23,57,0.35)", border: "1px solid rgba(255,255,255,0.08)" }}>
-                <h3 className="text-small" style={{ color: "var(--primary-light)", fontWeight: 800, marginBottom: 8 }}>
-                  Rules & Regulations
-                </h3>
-                <div className="flex flex-col gap-2 mb-3">
-                  <div className="text-xs" style={{ color: "rgba(255,255,255,0.75)" }}>
-                    <strong>Current Rules Version:</strong> {rulesVersionNumber || "N/A"}
-                  </div>
-                  <div className="text-xs" style={{ color: "rgba(255,255,255,0.75)" }}>
-                    <strong>Active Rules Text:</strong>
-                    <span style={{ marginLeft: 6 }}>(immutable snapshot)</span>
-                  </div>
-                </div>
+              {(() => {
+                const hasRules = !!(hostel?.rulesText || hostel?.activeRulesText || hostel?.currentActiveRulesText || hostel?.rules);
+                if (!hasRules) return null;
 
-                <div
-                  style={{
-                    maxHeight: 180,
-                    overflowY: "auto",
-                    padding: 12,
-                    borderRadius: 14,
-                    background: "rgba(3,7,18,0.55)",
-                    border: "1px solid rgba(255,255,255,0.08)",
-                  }}
-                  className="no-scrollbar"
-                >
-                  <div className="text-small" style={{ color: "rgba(255,255,255,0.88)", lineHeight: 1.5, whiteSpace: "pre-wrap" }}>
-                    {acceptedRulesTextSnapshot ||
-                      "Rules are currently unavailable. Your submission will require the latest rules snapshot from backend admin."}
-                  </div>
-                </div>
+                return (
+                  <div className="rounded-2xl p-4" style={{ background: "rgba(11,23,57,0.35)", border: "1px solid rgba(255,255,255,0.08)" }}>
+                    <h3 className="text-small" style={{ color: "var(--primary-light)", fontWeight: 800, marginBottom: 8 }}>
+                      Rules & Regulations
+                    </h3>
+                    <div className="flex flex-col gap-2 mb-3">
+                      <div className="text-xs" style={{ color: "rgba(255,255,255,0.75)" }}>
+                        <strong>Current Rules Version:</strong> {rulesVersionNumber || "N/A"}
+                      </div>
+                      <div className="text-xs" style={{ color: "rgba(255,255,255,0.75)" }}>
+                        <strong>Active Rules Text:</strong>
+                        <span style={{ marginLeft: 6 }}>(immutable snapshot)</span>
+                      </div>
+                    </div>
 
-                <label style={{ display: "flex", alignItems: "flex-start", gap: 10, marginTop: 12, cursor: "pointer" }}>
-                  <input
-                    type="checkbox"
-                    checked={agreementChecked}
-                    onChange={(e) => setAgreementChecked(e.target.checked)}
-                    style={{ marginTop: 4, width: 18, height: 18, accentColor: "#22c55e" }}
-                    aria-label="I agree to the hostel rules and regulations"
-                  />
-                  <span className="text-small" style={{ color: "rgba(255,255,255,0.9)" }}>
-                    I have read and agree to the hostel rules and regulations.
-                  </span>
-                </label>
-              </div>
+                    <div
+                      style={{
+                        maxHeight: 180,
+                        overflowY: "auto",
+                        padding: 12,
+                        borderRadius: 14,
+                        background: "rgba(3,7,18,0.55)",
+                        border: "1px solid rgba(255,255,255,0.08)",
+                      }}
+                      className="no-scrollbar"
+                    >
+                      <div className="text-small" style={{ color: "rgba(255,255,255,0.88)", lineHeight: 1.5, whiteSpace: "pre-wrap" }}>
+                        {acceptedRulesTextSnapshot ||
+                          "Rules are currently unavailable. Your submission will require the latest rules snapshot from backend admin."}
+                      </div>
+                    </div>
+
+                    <label style={{ display: "flex", alignItems: "flex-start", gap: 10, marginTop: 12, cursor: "pointer" }}>
+                      <input
+                        type="checkbox"
+                        checked={agreementChecked}
+                        onChange={(e) => setAgreementChecked(e.target.checked)}
+                        style={{ marginTop: 4, width: 18, height: 18, accentColor: "#22c55e" }}
+                        aria-label="I agree to the hostel rules and regulations"
+                      />
+                      <span className="text-small" style={{ color: "rgba(255,255,255,0.9)" }}>
+                        I have read and agree to the hostel rules and regulations.
+                      </span>
+                    </label>
+                  </div>
+                );
+              })()}
 
               {/* Signature pad */}
               <div className="rounded-2xl p-4" style={{ background: "rgba(11,23,57,0.35)", border: "1px solid rgba(255,255,255,0.08)" }}>
@@ -561,9 +572,10 @@ function PublicHostelPage() {
                 disabled={isSubmitting}
                 type="submit"
                 className="btn-primary mt-4 py-4 w-full flex justify-center items-center gap-2"
-                style={{ opacity: isSubmitting ? 0.7 : 1 }}
+                style={{ opacity: isSubmitting ? 0.7 : 1, cursor: isSubmitting ? "not-allowed" : "pointer" }}
               >
-                {isSubmitting ? "Submitting..." : "Complete Admission"}
+                {isSubmitting ? <Loader2 size={18} className="animate-spin" /> : null}
+                {isSubmitting ? "Saving..." : "Complete Admission"}
               </button>
             </form>
           </div>

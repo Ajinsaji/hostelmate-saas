@@ -1,7 +1,7 @@
 import { useState } from "react";
 import api from "../utils/apiClient";
 import toast from "react-hot-toast";
-import { Save, X, Lock } from "lucide-react";
+import { Save, X, Lock, Loader2 } from "lucide-react";
 
 function UpdatePassword() {
   const [form, setForm] = useState({
@@ -93,8 +93,9 @@ function UpdatePassword() {
             <input className="input-field" type="password" value={form.confirmPassword} onChange={(e) => update("confirmPassword", e.target.value)} />
           </div>
 
-          <button className="btn-primary mt-4" onClick={handleSave} disabled={saving} style={{ opacity: saving ? 0.7 : 1 }}>
-            <Save size={18} /> {saving ? "Saving..." : "Update Password"}
+          <button className="btn-primary mt-4" onClick={handleSave} disabled={saving} style={{ opacity: saving ? 0.7 : 1, cursor: saving ? "not-allowed" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}>
+            {saving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
+            {saving ? "Saving..." : "Update Password"}
           </button>
         </div>
       </div>
