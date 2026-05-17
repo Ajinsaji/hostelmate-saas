@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../services/api";
 
 import {
@@ -45,21 +45,74 @@ function HostelManagement() {
     hostelName: "",
   });
 
-  const fetchHostels = async () => {
-    setIsLoading(true);
+  const refreshIntervalRef = useRef(null);
+  const latestStateRef = useRef({
+    selectedHostel: null,
+    confirmModalOpen: false,
+    isResetting: false,
+    isResending: false,
+    isDeleting: false,
+    isLoading: true,
+  });
+
+  latestStateRef.current = {
+    selectedHostel,
+    confirmModalOpen: confirmModal.isOpen,
+    isResetting,
+    isResending,
+    isDeleting,
+    isLoading,
+  };
+
+  const shouldRefreshHostels = () => {
+    const state = latestStateRef.current;
+    if (
+      state.selectedHostel ||
+      state.confirmModalOpen ||
+      state.isResetting ||
+      state.isResending ||
+      state.isDeleting ||
+      state.isLoading
+    ) {
+      return false;
+    }
+
+    if (typeof document !== "undefined" && document.activeElement?.matches("input, textarea, select")) {
+      return false;
+    }
+
+    return true;
+  };
+
+  const fetchHostels = async ({ silent = false } = {}) => {
+    if (!silent) setIsLoading(true);
+
     try {
       const response = await api.get("/api/admin/hostels");
       setHostels(response.data.hostels || []);
     } catch (error) {
-      toast.error("Failed to load hostels");
+      if (!silent) {
+        toast.error("Failed to load hostels");
+      } else {
+        console.warn("Hostel list refresh skipped or failed", error?.message || error);
+      }
     } finally {
-      setIsLoading(false);
+      if (!silent) setIsLoading(false);
     }
   };
 
   useEffect(() => {
     fetchHostels();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
+    refreshIntervalRef.current = setInterval(() => {
+      if (shouldRefreshHostels()) {
+        fetchHostels({ silent: true });
+      }
+    }, 9000);
+
+    return () => {
+      clearInterval(refreshIntervalRef.current);
+    };
   }, []);
 
   const handleCopy = (text, type = "Copied") => {

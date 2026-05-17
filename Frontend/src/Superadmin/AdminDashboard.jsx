@@ -2,6 +2,7 @@ import { BedDouble, Users, Wallet, FileText, Bell, ArrowRight, IndianRupee, Shie
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { api } from "../services/api";
+import toast from "react-hot-toast";
 
 import SuperadminBottomNav from "../components/SuperadminBottomNav";
 
@@ -10,17 +11,32 @@ function AdminDashboard() {
   const [stats, setStats] = useState({ pendingHostels: 0, activeHostels: 0, revenue: 0 });
 
   useEffect(() => {
+    let mounted = true;
+    let firstFetch = true;
+
     const fetchStats = async () => {
       try {
-const response = await api.get("/api/admin/dashboard");
-        if (response.data.success) {
+        const response = await api.get("/api/admin/dashboard");
+        if (mounted && response.data.success) {
           setStats(response.data);
         }
       } catch (error) {
-        toast.error(error?.response?.data?.message || "Failed to load admin statistics.");
+        if (firstFetch) {
+          toast.error(error?.response?.data?.message || "Failed to load admin statistics.");
+        } else {
+          console.warn("Admin dashboard refresh failed:", error?.message || error);
+        }
+      } finally {
+        firstFetch = false;
       }
     };
+
     fetchStats();
+    const interval = setInterval(fetchStats, 9000);
+    return () => {
+      mounted = false;
+      clearInterval(interval);
+    };
   }, []);
 
   return (
@@ -29,7 +45,7 @@ const response = await api.get("/api/admin/dashboard");
       <div className="gradient-header mb-6">
         <div className="flex justify-between items-center mb-6">
           <div>
-            <p className="text-small" style={{ color: "rgba(255,255,255,0.8)" }}>Welcome Back 👋</p>
+            <p className="text-small" style={{ color: "rgba(255,255,255,0.8)" }}>Welcome Admin</p>
             <h1 className="text-h1" style={{ color: "white" }}>HostelMate</h1>
           </div>
           <button className="btn-icon" style={{ background: "rgba(255,255,255,0.2)", backdropFilter: "blur(10px)" }}>
