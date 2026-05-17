@@ -41,6 +41,33 @@ function LandingPage() {
     }
   };
 
+  const handleEnterDashboard = () => {
+    const adminToken = localStorage.getItem("adminToken");
+    const token = localStorage.getItem("token");
+    const user = JSON.parse(localStorage.getItem("user") || "null");
+
+    if (adminToken) {
+      navigate("/admin");
+      return;
+    }
+
+    if (token) {
+      const role = user?.role;
+      if (role === "warden") {
+        navigate("/warden");
+        return;
+      }
+      if (role === "cook") {
+        navigate("/cook");
+        return;
+      }
+      navigate("/dashboard");
+      return;
+    }
+
+    navigate("/login");
+  };
+
   return (
     <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
       <div className="gradient-header" style={{ paddingBottom: "120px", borderBottomLeftRadius: "40px", borderBottomRightRadius: "40px" }}>
@@ -63,7 +90,7 @@ function LandingPage() {
           Manage rooms, residents, payments, and food right from your phone.
         </p>
 
-        <button className="btn-primary" style={{ background: "white", color: "var(--primary-dark)", padding: "18px" }} onClick={() => navigate("/dashboard")}>
+        <button className="btn-primary" style={{ background: "white", color: "var(--primary-dark)", padding: "18px" }} onClick={handleEnterDashboard}> 
           Enter Dashboard <ArrowRight size={20} />
         </button>
       </div>

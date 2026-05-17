@@ -10,13 +10,19 @@ export default function useSessionVerification() {
 
   useEffect(() => {
     let mounted = true;
+    const token = localStorage.getItem("token") || localStorage.getItem("adminToken");
+
+    if (!token) {
+      if (mounted) setVerifying(false);
+      return;
+    }
 
     const run = async () => {
       try {
         const { api } = await import("../services/api");
         
         // The api interceptor already checks token existence and handles redirects.
-        const res = await api.get('/api/auth/verify-session');
+        await api.get('/api/auth/verify-session');
         
         if (mounted) setVerifying(false);
       } catch (e) {

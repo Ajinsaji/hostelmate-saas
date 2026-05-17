@@ -154,6 +154,8 @@ function HostelManagement() {
     });
   }, [hostels, searchQuery, filter]);
 
+  const selectedHostelQrUrl = selectedHostel?.qrCodeUrl ? buildQrUrl(selectedHostel.qrCodeUrl) : "";
+
   return (
     <div style={{ minHeight: "100vh", background: "#081028", paddingBottom: "100px", fontFamily: "Poppins" }}>
       <div className="gradient-header mb-6" style={{ paddingBottom: "40px", borderBottomLeftRadius: "30px", borderBottomRightRadius: "30px" }}>
@@ -460,26 +462,40 @@ This action cannot be undone.
             </button>
 
             <h2 className="text-xl font-bold mb-1 text-center">{selectedHostel.hostelName}</h2>
-            <p className="text-xs text-center text-muted mb-6">Owner: {selectedHostel.ownerName}</p>
+            <p className="text-xs text-center text-muted mb-2">Owner: {selectedHostel.ownerName}</p>
+            <div className="flex flex-wrap justify-center gap-2 mb-6">
+              <span className="text-[11px] uppercase font-semibold px-3 py-1 rounded-full" style={{ background: "rgba(255,255,255,0.06)", color: "#fff", border: "1px solid rgba(255,255,255,0.10)" }}>
+                Status: {selectedHostel.subscriptionStatus || "trial"}
+              </span>
+              <span className="text-[11px] uppercase font-semibold px-3 py-1 rounded-full" style={{ background: "rgba(255,255,255,0.06)", color: "#fff", border: "1px solid rgba(255,255,255,0.10)" }}>
+                Beds: {selectedHostel.occupancy?.occupiedBeds || 0}/{selectedHostel.occupancy?.totalBeds || 0}
+              </span>
+            </div>
 
             {/* QR Section */}
             <div className="mb-6 flex flex-col items-center">
               <div className="p-2 border rounded-2xl shadow-sm mb-3" style={{ background: "rgba(255,255,255,0.04)", borderColor: "rgba(255,255,255,0.10)" }}>
-                <img
-                  src={buildQrUrl(selectedHostel.qrCodeUrl)}
-                  alt="QR"
-                  style={{ width: 150, height: 150, borderRadius: 12, border: "1px solid rgba(255,255,255,0.10)" }}
-                />
+                {selectedHostelQrUrl ? (
+                  <img
+                    src={selectedHostelQrUrl}
+                    alt="QR"
+                    style={{ width: 150, height: 150, borderRadius: 12, border: "1px solid rgba(255,255,255,0.10)" }}
+                  />
+                ) : (
+                  <div style={{ width: 150, height: 150, display: "flex", alignItems: "center", justifyContent: "center", color: "rgba(255,255,255,0.65)", fontSize: 12 }}>
+                    No QR code available
+                  </div>
+                )}
               </div>
 
               <div className="flex gap-2 w-full">
                 <a
-                  href={buildQrUrl(selectedHostel.qrCodeUrl)}
-                  download
+                  href={selectedHostelQrUrl || selectedHostel.publicUrl}
+                  download={!!selectedHostelQrUrl}
                   className="flex-1 py-2 rounded-xl flex justify-center items-center gap-2 text-xs font-semibold"
                   style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.10)", color: "#fff" }}
                 >
-                  <Download size={14} /> Download QR
+                  <Download size={14} /> {selectedHostelQrUrl ? "Download QR" : "Open Public Page"}
                 </a>
                 <button
                   type="button"
