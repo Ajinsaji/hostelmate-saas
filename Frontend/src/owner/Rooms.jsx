@@ -158,6 +158,21 @@ function Rooms() {
     return { label: "Overdue", color: "rgba(239,68,68,0.14)", border: "rgba(239,68,68,0.3)" };
   };
 
+  const getOccupancyTextColor = (status) => {
+    const s = getOccupancyState(status);
+    return s === "occupied" ? "rgba(187,247,208,0.95)" : "rgba(254,202,202,0.95)";
+  };
+
+  const getOccupancyCardBackground = (status) => {
+    const s = getOccupancyState(status);
+    return s === "occupied" ? "rgba(34,197,94,0.10)" : "rgba(239,68,68,0.12)";
+  };
+
+  const getOccupancyAvatarBg = (status) => {
+    const s = getOccupancyState(status);
+    return s === "occupied" ? "rgba(34,197,94,0.14)" : "rgba(239,68,68,0.14)";
+  };
+
   const occupancyStyleForBed = (bed) => {
     return getOccupancyStyle(bed?.status);
   };
