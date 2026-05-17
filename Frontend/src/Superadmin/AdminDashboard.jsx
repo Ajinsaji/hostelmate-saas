@@ -22,7 +22,7 @@ function AdminDashboard() {
     }
   };
 
-  useGlobalPolling(fetchStats, { interval: 9000 });
+  useGlobalPolling(fetchStats, { interval: 8000 });
 
   return (
     <div className="pb-24" style={{ minHeight: "100vh" }}>

@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import { api } from "../services/api";
+import useOwnerRealtimeSync from "../hooks/useOwnerRealtimeSync";
 
 import buildQrUrl from "../utils/buildQrUrl";
 
@@ -45,6 +46,23 @@ function Profile() {
     };
     fetchHostelData();
   }, []);
+
+  useOwnerRealtimeSync({
+    onSnapshotChange: (snapshot) => {
+      setOwnerData((prev) => ({
+        ownerName: snapshot.ownerName || prev.ownerName,
+        phone: snapshot.phone || prev.phone,
+        email: snapshot.email || prev.email,
+      }));
+
+      if (snapshot.hostel && snapshot.hostel.hostelName) {
+        setHostelData((prev) => ({
+          ...prev,
+          ...snapshot.hostel,
+        }));
+      }
+    },
+  });
 
   const handleCopy = (text) => {
     navigator.clipboard.writeText(text);

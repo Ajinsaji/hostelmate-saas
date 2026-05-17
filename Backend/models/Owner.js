@@ -34,6 +34,16 @@ const ownerSchema = new mongoose.Schema(
       type: String,
     },
 
+    username: {
+      type: String,
+      trim: true,
+    },
+
+    profileImage: {
+      type: String,
+      default: "",
+    },
+
     role: {
       type: String,
       default: "owner",

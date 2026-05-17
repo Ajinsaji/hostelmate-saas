@@ -118,6 +118,8 @@ const loginOwner = async (req, res) => {
         email: owner.email,
         status: owner.status,
         hostelId: hostel._id,
+        username: owner.username,
+        profileImage: owner.profileImage || "",
       };
     }
 
@@ -285,6 +287,7 @@ const getDashboardStats = async (req, res) => {
     });
 
     const hostel = await Hostel.findById(hostelId);
+    const owner = await Owner.findById(ownerId);
 
     res.status(200).json({
       success: true,
@@ -294,9 +297,21 @@ const getDashboardStats = async (req, res) => {
         totalBeds,
         occupancyRate: totalBeds > 0 ? Math.round((residentsCount / totalBeds) * 100) : 0,
         pendingRent,
-        todayCollection
+        todayCollection,
       },
-      hostel
+      hostel,
+      owner: owner
+        ? {
+            _id: owner._id,
+            ownerName: owner.ownerName,
+            phone: owner.phone,
+            email: owner.email,
+            username: owner.username,
+            profileImage: owner.profileImage || "",
+            status: owner.status,
+            hostelId: owner.hostelId,
+          }
+        : null,
     });
 
   } catch (error) {
@@ -578,7 +593,13 @@ const updateOwnerProfile = async (req, res) => {
 
     const getUploadedFileUrl = require("../utils/getUploadedFileUrl");
     if (req.files?.profileImage?.[0]) {
-      updates.profileImage = getUploadedFileUrl(req.files.profileImage[0]) || req.files.profileImage[0].filename;
+      if (process.env.NODE_ENV !== "production") {
+        console.log("profileImage upload:", req.files.profileImage[0]?.path, req.files.profileImage[0]?.secure_url);
+      }
+      updates.profileImage =
+        req.files.profileImage[0]?.secure_url ||
+        getUploadedFileUrl(req.files.profileImage[0]) ||
+        req.files.profileImage[0].filename;
     }
 
     const updated = await Owner.findByIdAndUpdate(ownerId, updates, { new: true, runValidators: true });

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { api } from "../services/api";import useGlobalPolling from "../hooks/useGlobalPolling";
+import { api } from "../services/api";
+import useGlobalPolling from "../hooks/useGlobalPolling";
 import {
   Copy,
   Download,
@@ -18,15 +19,12 @@ import {
 import SuperadminBottomNav from "../components/SuperadminBottomNav";
 import toast from "react-hot-toast";
 
-import buildFileUrl from "../utils/buildFileUrl";
-
-const buildQrUrl = (qrCodeUrl) => {
-  return buildFileUrl(qrCodeUrl);
-};
+import buildQrUrl from "../utils/buildQrUrl";
 
 function HostelManagement() {
   const [hostels, setHostels] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [searchFocused, setSearchFocused] = useState(false);
   const [filter, setFilter] = useState("all");
   const [selectedHostel, setSelectedHostel] = useState(null);
 
@@ -66,9 +64,10 @@ function HostelManagement() {
     showModal: confirmModal.isOpen,
     isSubmitting: isResetting || isResending || isDeleting,
     isUploading: false,
+    isTypingSearch: searchFocused,
   };
 
-  useGlobalPolling(fetchHostels, { interval: 9000, safeProps: safeRefreshProps });
+  useGlobalPolling(fetchHostels, { interval: 8000, safeProps: safeRefreshProps });
 
   const handleCopy = (text, type = "Copied") => {
     if (!text) return;
@@ -210,6 +209,8 @@ function HostelManagement() {
               className="w-full border-none rounded-xl p-3"
               style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", paddingLeft: "44px", fontSize: "14px" }}
               value={searchQuery}
+              onFocus={() => setSearchFocused(true)}
+              onBlur={() => setSearchFocused(false)}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>

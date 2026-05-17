@@ -5,6 +5,7 @@ import toast from "react-hot-toast";
 import api from "../utils/apiClient";
 import BottomNav from "../components/BottomNav";
 import useGlobalPolling from "../hooks/useGlobalPolling";
+import useOwnerRealtimeSync from "../hooks/useOwnerRealtimeSync";
 
 
 
@@ -39,6 +40,17 @@ function Dashboard() {
 
   useGlobalPolling(fetchStats, { interval: 9000 });
 
+  useOwnerRealtimeSync({
+    onSnapshotChange: (snapshot) => {
+      if (snapshot.ownerName) setOwnerName(snapshot.ownerName);
+      if (snapshot.hostel && snapshot.hostel.hostelName) {
+        setHostel((prev) => ({ ...prev, ...snapshot.hostel }));
+      }
+      if (snapshot.stats) {
+        setStats((prev) => ({ ...prev, ...snapshot.stats }));
+      }
+    },
+  });
 
   // Fetch pending admission count with auto-refresh every 20 seconds
   useEffect(() => {

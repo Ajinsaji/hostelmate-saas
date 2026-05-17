@@ -3,6 +3,7 @@ import { api } from "../services/api";
 import toast from "react-hot-toast";
 import { Save, X, MapPin, Phone, MessageCircle, Building, ShieldCheck, Eye, Plus, Trash2, Clock, Loader2 } from "lucide-react";
 import useGlobalPolling from "../hooks/useGlobalPolling";
+import useOwnerRealtimeSync from "../hooks/useOwnerRealtimeSync";
 
 function HostelSettings() {
   const [hostel, setHostel] = useState(null);
@@ -73,6 +74,27 @@ function HostelSettings() {
     showModal: showRulesPreview,
     isUploading: false,
   };
+
+  useOwnerRealtimeSync({
+    onSnapshotChange: (snapshot) => {
+      if (saving || showRulesPreview) return;
+      if (snapshot.hostel?.hostelName) {
+        setForm((prev) => ({
+          ...prev,
+          hostelName: snapshot.hostel.hostelName || prev.hostelName,
+          address: snapshot.hostel.address || prev.address,
+          district: snapshot.hostel.district || prev.district,
+          pincode: snapshot.hostel.pincode || prev.pincode,
+          phone: snapshot.hostel.phone || prev.phone,
+          whatsapp: snapshot.hostel.whatsapp || prev.whatsapp,
+          description: snapshot.hostel.description || prev.description,
+          rules: snapshot.hostel.rulesText || snapshot.hostel.rules || prev.rules,
+        }));
+        setHostel((prev) => ({ ...prev, ...snapshot.hostel }));
+      }
+    },
+    safeProps: safeRefreshProps,
+  });
 
   useEffect(() => {
     fetchHostel();

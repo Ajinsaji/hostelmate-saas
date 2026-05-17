@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import api from "../utils/apiClient";
 import toast from "react-hot-toast";
 import buildFileUrl from "../utils/buildFileUrl";
+import useOwnerRealtimeSync, { dispatchOwnerSnapshotUpdated } from "../hooks/useOwnerRealtimeSync";
 import { Save, X, User, Phone, Mail, Image as ImageIcon, Loader2 } from "lucide-react";
 import useGlobalPolling from "../hooks/useGlobalPolling";
 
@@ -21,21 +22,25 @@ function OwnerProfileEdit() {
   const fetchOwner = async () => {
     try {
       setLoading(true);
-      await api.get("/api/owner/dashboard");
-
-      // dashboard returns { hostel, stats } currently; owner details may only exist in localStorage
-      // fallback to localStorage.
-      const user = JSON.parse(localStorage.getItem("user") || "null") || {};
+      const res = await api.get("/api/owner/dashboard");
+      const payload = res.data || {};
+      const owner = payload.owner || JSON.parse(localStorage.getItem("user") || "null") || {};
 
       setForm({
-        ownerName: user.ownerName || "",
-        phone: user.phone || "",
-        email: user.email || "",
+        ownerName: owner.ownerName || "",
+        phone: owner.phone || "",
+        email: owner.email || "",
       });
 
-      // optional: if backend sends profileImage in owner endpoint; keep best-effort.
-      if (user.profileImage) {
-        setPreviewUrl(buildFileUrl(user.profileImage));
+      if (owner.profileImage) {
+        setPreviewUrl(buildFileUrl(owner.profileImage));
+      }
+
+      if (payload.owner) {
+        localStorage.setItem("user", JSON.stringify({
+          ...JSON.parse(localStorage.getItem("user") || "{}"),
+          ...payload.owner,
+        }));
       }
     } catch (e) {
       toast.error(e?.response?.data?.message || "Failed to load owner profile");
@@ -50,6 +55,21 @@ function OwnerProfileEdit() {
     showModal: Boolean(profileFile),
     isUploading: Boolean(profileFile),
   };
+
+  useOwnerRealtimeSync({
+    onSnapshotChange: (snapshot) => {
+      if (profileFile || saving) return;
+      setForm((prev) => ({
+        ownerName: snapshot.ownerName || prev.ownerName,
+        phone: snapshot.phone || prev.phone,
+        email: snapshot.email || prev.email,
+      }));
+      if (snapshot.profileImage) {
+        setPreviewUrl(buildFileUrl(snapshot.profileImage));
+      }
+    },
+    safeProps: safeRefreshProps,
+  });
 
   useEffect(() => {
     fetchOwner();
@@ -97,27 +117,26 @@ function OwnerProfileEdit() {
 
       toast.success(res.data?.message || "Profile updated");
 
-      // Refresh owner snapshot (best-effort) so next screens show updated data
-      try {
-        const dash = await api.get("/api/owner/dashboard");
-
-        const current = JSON.parse(localStorage.getItem("user") || "null") || {};
-        const owner = dash.data?.owner || dash.data?.user || dash.data?.data?.owner || null;
-
-        const next = {
-          ...current,
-          ownerName: owner?.ownerName || res.data?.owner?.ownerName || form.ownerName,
-          phone: owner?.phone || res.data?.owner?.phone || form.phone,
-          email: owner?.email || res.data?.owner?.email || form.email,
-        };
-        if (owner?.profileImage || res.data?.owner?.profileImage) {
-          next.profileImage = owner?.profileImage || res.data.owner.profileImage;
-        }
-
-        localStorage.setItem("user", JSON.stringify(next));
-      } catch (e) {
-        // non-fatal; user already got success toast
+      const updatedOwner = res.data?.data?.owner || res.data?.owner || {};
+      const current = JSON.parse(localStorage.getItem("user") || "null") || {};
+      const next = {
+        ...current,
+        ownerName: updatedOwner.ownerName || form.ownerName,
+        phone: updatedOwner.phone || form.phone,
+        email: updatedOwner.email || form.email,
+        username: updatedOwner.username || current.username,
+      };
+      if (updatedOwner.profileImage) {
+        next.profileImage = updatedOwner.profileImage;
       }
+      localStorage.setItem("user", JSON.stringify(next));
+      dispatchOwnerSnapshotUpdated({
+        ownerName: next.ownerName,
+        profileImage: next.profileImage,
+        email: next.email,
+        phone: next.phone,
+        username: next.username,
+      });
 
       window.history.back();
     } catch (e) {

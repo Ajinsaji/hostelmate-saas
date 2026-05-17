@@ -1,7 +1,7 @@
 import { useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, User, Phone, Home, MapPin, Upload } from "lucide-react";
+import { ArrowLeft, User, Phone, Home, MapPin, Upload, Loader2 } from "lucide-react";
 import toast from "react-hot-toast";
 
 function RegisterPage() {
@@ -37,8 +37,15 @@ function RegisterPage() {
   };
 
   const handleContinue = () => {
-    if (validateStep1()) setStep(2);
+    if (validateStep1()) {
+      setErrors({});
+      setStep(2);
+    } else {
+      toast.error("Please fill all required fields");
+    }
   };
+
+  const [loading, setLoading] = useState(false);
 
   const handleSubmit = async () => {
     let newErrors = {};
@@ -46,8 +53,12 @@ function RegisterPage() {
     if (!licensePhoto) newErrors.licensePhoto = "Upload Hostel License";
 
     setErrors(newErrors);
-    if (Object.keys(newErrors).length > 0) return;
+    if (Object.keys(newErrors).length > 0) {
+      toast.error("Please fill all required fields");
+      return;
+    }
 
+    setLoading(true);
     try {
       const data = new FormData();
       data.append("ownerName", formData.ownerName);
@@ -62,7 +73,7 @@ function RegisterPage() {
       const response = await axios.post(`${import.meta.env.VITE_API_URL}/api/request/register`, data);
 
       if (response.data.success) {
-        toast.success("Application Submitted Successfully");
+        toast.success("Registration submitted");
         setFormData({ ownerName: "", phone: "", hostelName: "", ownerAddress: "", hostelAddress: "" });
         setAadhaarFile(null);
         setOwnerPhoto(null);
@@ -70,7 +81,14 @@ function RegisterPage() {
         setStep(1);
       }
     } catch (error) {
-      toast.error("Application already submitted or error occurred");
+      const message = error?.response?.data?.message || "Application already submitted or error occurred";
+      if (/already submitted|exists|duplicate/i.test(message)) {
+        toast.error("Account already exists");
+      } else {
+        toast.error(message || "Unable to submit registration");
+      }
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -123,7 +141,9 @@ function RegisterPage() {
               
               <UploadBox label="Upload Hostel License" file={licensePhoto} setFile={setLicensePhoto} error={errors.licensePhoto} />
               
-              <button className="btn-primary mt-6" onClick={handleSubmit}>Submit Application</button>
+              <button className="btn-primary mt-6" onClick={handleSubmit} disabled={loading}>
+                {loading ? <><Loader2 size={16} className="animate-spin" /> Creating Account...</> : "Submit Application"}
+              </button>
             </>
           )}
 

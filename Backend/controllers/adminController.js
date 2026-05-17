@@ -278,24 +278,49 @@ const getAllHostels = async (req, res) => {
     const result = [];
 
     for (const hostel of safeHostels) {
-      const owner = await Owner.findOne({ hostelId: hostel._id });
-      const subscription = await Subscription.findOne({ hostelId: hostel._id });
+      const owner = await Owner.findOne({ hostelId: hostel._id }).lean();
+      const subscription = await Subscription.findOne({ hostelId: hostel._id }).lean();
 
+      const rooms = await Room.find({ hostelId: hostel._id }).lean();
       let totalBeds = 0;
       let occupiedBeds = 0;
-      const rooms = await Room.find({ hostelId: hostel._id });
-      (rooms || []).forEach((r) => {
-        totalBeds += r.totalBeds || 0;
-        occupiedBeds += r.occupiedBeds || 0;
+      rooms.forEach((r) => {
+        totalBeds += Number(r.totalBeds || 0);
+        occupiedBeds += Number(r.occupiedBeds || 0);
       });
+
+      const bedRecords = await Bed.find({ hostelId: hostel._id }).lean();
+      const bedTotal = bedRecords.length;
+      const bedOccupied = bedRecords.filter((b) => String(b.status).toLowerCase() === "occupied").length;
+      if (!totalBeds && bedTotal) totalBeds = bedTotal;
+      if (!occupiedBeds && bedOccupied) occupiedBeds = bedOccupied;
+
+      const activeResidents = await Resident.countDocuments({ hostelId: hostel._id, status: "active" });
+      const totalRooms = rooms.length;
+      const vacantBeds = Math.max(0, totalBeds - occupiedBeds);
 
       result.push({
         ...hostel,
         hostelId: hostel._id,
-        ownerId: owner && owner._id ? owner._id : undefined,
-        ownerName: owner && owner.ownerName ? owner.ownerName : undefined,
-        phone: owner && owner.phone ? owner.phone : undefined,
-        tempPassword: owner && owner.tempPassword ? owner.tempPassword : "Temp@123",
+        owner: {
+          name: owner?.ownerName || hostel.ownerName || "N/A",
+          email: owner?.email || "",
+          phone: owner?.phone || hostel.phone || "",
+          username: owner?.username || owner?.phone || owner?.email || hostel.phone || "",
+          profileImage: owner?.profileImage || "",
+        },
+        ownerId: owner?._id || undefined,
+        phone: owner?.phone || hostel.phone || "",
+        tempPassword: owner?.tempPassword || "Temp@123",
+        hostelName: hostel.hostelName || "",
+        hostelType: hostel.hostelType || hostel.type || hostel.category || "",
+        address: hostel.address || "",
+        district: hostel.district || "",
+        city: hostel.city || hostel.place || hostel.location || "",
+        pincode: hostel.pincode || "",
+        description: hostel.description || "",
+        createdAt: hostel.createdAt || null,
+        approvalStatus: hostel.approvalStatus || hostel.status || "approved",
         subscriptionStatus:
           (subscription && subscription.subscriptionStatus) ||
           hostel.subscriptionStatus ||
@@ -306,7 +331,16 @@ const getAllHostels = async (req, res) => {
             : (((subscription && subscription.subscriptionStatus) ||
                 hostel.subscriptionStatus ||
                 "trial") === "trial"),
-        occupancy: { totalBeds, occupiedBeds },
+        qrCode: hostel.qrCodeUrl || "",
+        publicLink: hostel.publicUrl || "",
+        qrCodeUrl: hostel.qrCodeUrl || "",
+        publicUrl: hostel.publicUrl || "",
+        totalRooms,
+        totalBeds,
+        occupiedBeds,
+        vacantBeds,
+        activeResidents,
+        occupancy: { totalBeds, occupiedBeds, vacantBeds },
       });
     }
 

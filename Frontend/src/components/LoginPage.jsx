@@ -1,7 +1,7 @@
 import { useState } from "react";
 
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, User, Lock, Eye, EyeOff } from "lucide-react";
+import { ArrowLeft, User, Lock, Eye, EyeOff, Loader2 } from "lucide-react";
 
 import axios from "axios";
 import toast from "react-hot-toast";
@@ -41,7 +41,7 @@ function LoginPage() {
       );
 
       if (response.data.success) {
-        toast.success("Login Successful!");
+        toast.success("Login successful");
         localStorage.setItem("token", response.data.token);
         const userData = response.data.owner || response.data.user || {};
         localStorage.setItem("user", JSON.stringify(userData));
@@ -55,14 +55,24 @@ function LoginPage() {
           navigate("/dashboard");
         }
       } else {
-        toast.error(response.data?.message || "Invalid username or password");
+        const serverMessage = response.data?.message || "";
+        if (/owner not found|account not found|provide email|provide phone|provide username/i.test(serverMessage)) {
+          toast.error("Account not found");
+        } else if (/invalid credentials|password/i.test(serverMessage)) {
+          toast.error("Invalid password");
+        } else {
+          toast.error("Unable to login");
+        }
       }
     } catch (error) {
-      const msg =
-        error?.response?.data?.message ||
-        error?.response?.data?.details ||
-        "Invalid Username or Password";
-      toast.error(msg);
+      const message = error?.response?.data?.message || error?.response?.data?.details || "Unable to login";
+      if (/owner not found|account not found/i.test(message)) {
+        toast.error("Account not found");
+      } else if (/invalid credentials|password/i.test(message)) {
+        toast.error("Invalid password");
+      } else {
+        toast.error("Unable to login");
+      }
     } finally {
       setLoading(false);
     }
@@ -136,7 +146,7 @@ function LoginPage() {
           </div>
 
           <button className="btn-primary mb-6" onClick={handleLogin} disabled={loading}>
-            {loading ? "Logging in..." : "Login to Dashboard"}
+            {loading ? <><Loader2 size={16} className="animate-spin" /> Signing In...</> : "Login to Dashboard"}
           </button>
 
           <p className="text-center text-body">

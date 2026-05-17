@@ -20,8 +20,15 @@ export function isSafeToRefresh({
   isSubmitting = false,
   showModal = false,
   isUploading = false,
+  ...otherProps
 } = {}) {
   if (isEditing || isSubmitting || showModal || isUploading) return false;
+
+  for (const value of Object.values(otherProps)) {
+    if (value === true) {
+      return false;
+    }
+  }
 
   if (
     typeof document !== "undefined" &&
