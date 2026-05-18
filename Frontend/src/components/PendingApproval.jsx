@@ -150,10 +150,13 @@ function PendingApproval() {
           <CheckCircle2 size={24} style={{ transform: "rotate(0deg)" }} />
         </button>
 
-        <h1 style={{ fontSize: 32, fontWeight: 800, marginBottom: 8 }}>Request Submitted</h1>
+        <h1 style={{ fontSize: 32, fontWeight: 800, marginBottom: 8 }}>
+          Request Already Submitted
+        </h1>
         <p style={{ color: "rgba(255,255,255,0.8)", fontSize: 16 }}>
-          {shouldShowWaiting ? "Waiting for admin approval" : ""}
+          Our admin team is reviewing your application.
         </p>
+
       </div>
 
       <div className="p-4" style={{ marginTop: "-60px", paddingBottom: "80px" }}>
@@ -177,16 +180,24 @@ function PendingApproval() {
                 <CheckCircle2 size={22} color="var(--success, #10b981)" />
               </div>
               <h2 style={{ fontSize: 22, fontWeight: 800, margin: 0, color: "var(--text)" }}>
-                Request Submitted Successfully
+                Request Already Submitted
               </h2>
+
             </div>
 
             <p style={{ color: "var(--text-body)", fontSize: 15, lineHeight: 1.6, margin: "0 0 10px" }}>
-              Your hostel registration request has been sent to the admin team.
+              You have already submitted your hostel registration request.
             </p>
             <p style={{ color: "var(--text-body)", fontSize: 15, lineHeight: 1.6, margin: "0 0 18px" }}>
-              Our team will review your request and contact you within 3 hours.
+              Our admin team is reviewing your application.
+              <br />
+              You will be able to login only after admin approval.
             </p>
+
+            <p style={{ color: "var(--text-body)", fontSize: 15, lineHeight: 1.6, margin: "0 0 18px" }}>
+              Expected response time: Within 3 hours.
+            </p>
+
 
             <div style={{ padding: 14, borderRadius: 14, background: "rgba(16,185,129,0.08)" }}>
               <div style={{ fontWeight: 900, marginBottom: 6 }}>Status</div>
@@ -223,9 +234,10 @@ function PendingApproval() {
                 Contact Admin
               </button>
 
-              <button className="btn-secondary" onClick={() => navigate("/")}>Back to Intro</button>
+
 
             </div>
+
           </div>
         </div>
       </div>

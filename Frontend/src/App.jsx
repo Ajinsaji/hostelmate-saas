@@ -103,10 +103,10 @@ function SessionGateWrapper() {
 }
 
 function App() {
-  // Lightweight startup redirect for pending admin approval UX.
-  // Safety: only redirect when user has NOT authenticated (no token).
-  // Avoid redirect loops by allowing access to /pending-approval itself.
+  // Pending approval UX: if user is not authenticated yet but has a pending request,
+  // always open /pending-approval (except when user is already on that route).
   const token = localStorage.getItem("token") || localStorage.getItem("adminToken");
+
   const pending = (() => {
     try {
       return JSON.parse(localStorage.getItem("pendingApproval") || "null");
@@ -124,17 +124,22 @@ function App() {
 
         <Routes>
 
+          {/* Pending approval enforcement (no login/register) */}
+          <Route
+            path="/pending-approval"
+            element={<PendingApproval />}
+          />
 
-        <Route path="/" element={<LandingPage />} />
+        {shouldRedirectPending ? (
+          <Route path="*" element={<Navigate to="/pending-approval" replace />} />
+        ) : (
+          <>
+            <Route path="/" element={<LandingPage />} />
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/register" element={<RegisterPage />} />
+          </>
+        )}
 
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/register" element={<RegisterPage />} />
-        <Route
-          path="/pending-approval"
-          element={
-            <PendingApproval />
-          }
-        />
 
 
         <Route

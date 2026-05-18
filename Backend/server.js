@@ -104,16 +104,21 @@ app.use(
   authRoutes
 );
 
+// APPROVAL STATUS (UX persistence)
+const approvalRoutes = require("./routes/approvalRoutes");
+app.use("/api/auth", approvalRoutes);
+
+
 // SESSION VERIFY
 const verifyRoutes = require("./routes/verifyRoutes");
 app.use("/api/auth", verifyRoutes);
-
 
 // HOSTEL REQUEST
 app.use(
   "/api/request",
   requestRoutes
 );
+
 
 // ROOMS
 app.use(

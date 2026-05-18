@@ -1,9 +1,6 @@
-# Hostelmate - Work Tracker
+# TODO - Pending Approval UX Patch
 
-## SAFE IMPORT FIX FOR buildFileUrl ReferenceError
-
-- [x] Searched for all usage of `buildFileUrl(` across Frontend.
-- [ ] Add missing `buildFileUrl` imports to every file that uses `buildFileUrl(...)`.
-- [ ] Verify no remaining `buildFileUrl(` usages without corresponding import.
-- [ ] Run Frontend build/lint/tests to confirm production-safe fix.
+- [ ] Update Frontend/src/App.jsx to redirect to /pending-approval on app reopen when localStorage.pendingApproval exists and no auth token exists.
+- [ ] Update Frontend/src/components/PendingApproval.jsx to ensure Login/Register are never shown while pending; keep existing approved logic clearing pendingApproval and navigating to /login.
+- [ ] Run frontend lint/build/tests if available.
 
