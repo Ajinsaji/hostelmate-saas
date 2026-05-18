@@ -20,6 +20,7 @@ import SuperadminBottomNav from "../components/SuperadminBottomNav";
 import toast from "react-hot-toast";
 
 import buildQrUrl from "../utils/buildQrUrl";
+import buildFileUrl from "../utils/buildFileUrl";
 
 function HostelManagement() {
   const [hostels, setHostels] = useState([]);

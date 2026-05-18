@@ -7,6 +7,7 @@ export default function buildFileUrl(path) {
   const cleaned = String(path).replace(/^\//, "").replace(/^uploads\//, "uploads/");
 
   const base = import.meta.env.VITE_API_URL || "";
+
   if (!base) return `/${cleaned}`;
   return `${base.replace(/\/$/, "")}/${cleaned}`;
 }
