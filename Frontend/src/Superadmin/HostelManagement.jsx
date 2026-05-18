@@ -29,6 +29,72 @@ function HostelManagement() {
   const [filter, setFilter] = useState("all");
   const [selectedHostel, setSelectedHostel] = useState(null);
 
+  const normalizeHostel = (raw) => {
+    const subscriptionStatusRaw = raw?.subscriptionStatus ?? raw?.planStatus ?? raw?.status;
+    const subscriptionStatus = typeof subscriptionStatusRaw === "string" ? subscriptionStatusRaw.toLowerCase() : "";
+
+    const isTrial = !!raw?.isTrial || subscriptionStatus === "trial" || raw?.subscriptionType === "trial";
+
+    const hostelId = raw?.hostelId || raw?._id || raw?.id || null;
+
+    const phone = raw?.phone ?? raw?.owner?.phone ?? raw?.ownerPhone ?? raw?.mobile ?? "";
+
+    const ownerName =
+      raw?.ownerName ??
+      raw?.owner?.name ??
+      raw?.owner?.fullName ??
+      raw?.owner?.username ??
+      raw?.owner?.ownerName ??
+      raw?.owner?.owner_id ??
+      "";
+
+    const publicUrl = raw?.publicUrl ?? raw?.publicLink ?? raw?.publicUrlPath ?? raw?.link ?? "";
+
+    const qrCodeUrl = raw?.qrCodeUrl ?? raw?.qrUrl ?? raw?.qr ?? raw?.qrCode ?? "";
+
+    const tempPassword = raw?.tempPassword ?? raw?.temporaryPassword ?? raw?.password ?? "";
+
+    const occupancy = raw?.occupancy ?? {};
+    const totalRooms = occupancy?.totalRooms ?? raw?.totalRooms ?? 0;
+    const totalBeds = occupancy?.totalBeds ?? raw?.totalBeds ?? 0;
+    const occupiedBeds = occupancy?.occupiedBeds ?? raw?.occupiedBeds ?? 0;
+    const vacantBeds =
+      occupancy?.vacantBeds ??
+      raw?.vacantBeds ??
+      (typeof totalBeds === "number" && typeof occupiedBeds === "number" ? totalBeds - occupiedBeds : 0);
+    const activeResidents = occupancy?.activeResidents ?? raw?.activeResidents ?? 0;
+
+    const approvalStatus = raw?.approvalStatus ?? raw?.approval ?? raw?.status ?? (raw?.isApproved ? "approved" : "pending") ?? "pending";
+
+    const owner = raw?.owner;
+    const ownerEmail = owner?.email ?? raw?.ownerEmail ?? raw?.email ?? "N/A";
+    const ownerUsername = owner?.username ?? raw?.username ?? (phone || "N/A");
+
+    return {
+      ...raw,
+      hostelId,
+      phone,
+      ownerName,
+      publicUrl,
+      qrCodeUrl,
+      tempPassword,
+      subscriptionStatus: isTrial ? "trial" : subscriptionStatus || (raw?.subscriptionStatus ?? raw?.planStatus ?? "Unknown"),
+      isTrial,
+      occupancy: {
+        totalRooms,
+        totalBeds,
+        occupiedBeds,
+        vacantBeds,
+        activeResidents,
+      },
+      approvalStatus,
+      ownerEmail,
+      username: ownerUsername,
+      owner: raw?.owner ?? owner,
+    };
+  };
+
+
   const [isResetting, setIsResetting] = useState(false);
   const [isResending, setIsResending] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -48,8 +114,9 @@ function HostelManagement() {
 
     try {
       const response = await api.get("/api/admin/hostels");
-      setHostels(response.data.hostels || []);
+      setHostels((response.data.hostels || []).map(normalizeHostel));
     } catch (error) {
+
       if (!silent) {
         toast.error("Failed to load hostels");
       } else {
@@ -391,7 +458,7 @@ function HostelManagement() {
 
                   <button
                     type="button"
-                    onClick={() => setSelectedHostel(h)}
+                    onClick={() => setSelectedHostel(normalizeHostel(h))}
                     className="btn-icon"
                     style={{ width: "100%", height: 44, borderRadius: 14, background: "rgba(212, 175, 55, 0.10)", border: "1px solid rgba(212, 175, 55, 0.18)", color: "#D4AF37" }}
                     aria-label="View QR"
@@ -403,7 +470,7 @@ function HostelManagement() {
                 <div className="flex gap-2">
                   <button
                     type="button"
-                    onClick={() => setSelectedHostel(h)}
+                    onClick={() => setSelectedHostel(normalizeHostel(h))}
                     className="flex-1"
                     style={{
                       background: "rgba(34,197,94,0.10)",
