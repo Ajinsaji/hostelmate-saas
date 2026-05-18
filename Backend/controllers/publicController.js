@@ -70,9 +70,10 @@ const submitAdmission = async (req, res) => {
     const getUploadedFileUrl = require("../utils/getUploadedFileUrl");
 
     // Files (support Cloudinary objects or legacy filename)
-    const photoFile = getUploadedFileUrl(req.files?.photoFile?.[0]) || req.files?.photoFile?.[0]?.filename;
-    const idProofFile = getUploadedFileUrl(req.files?.idProofFile?.[0]) || req.files?.idProofFile?.[0]?.filename;
-    const signatureFile = getUploadedFileUrl(req.files?.signatureFile?.[0]) || req.files?.signatureFile?.[0]?.filename;
+    const photoFile = getUploadedFileUrl(req.files?.photoFile?.[0]);
+    const idProofFile = getUploadedFileUrl(req.files?.idProofFile?.[0]);
+    const signatureFile = getUploadedFileUrl(req.files?.signatureFile?.[0]);
+
 
     // Enforce rules agreement + signature for new flow
     // (Legacy flow keeps working for already-stored uploads)

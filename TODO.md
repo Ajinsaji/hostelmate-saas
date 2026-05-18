@@ -1,6 +1,29 @@
-# TODO - Pending Approval UX Patch
+# HostelMate Cloudinary Safe Migration TODO
 
-- [ ] Update Frontend/src/App.jsx to redirect to /pending-approval on app reopen when localStorage.pendingApproval exists and no auth token exists.
-- [ ] Update Frontend/src/components/PendingApproval.jsx to ensure Login/Register are never shown while pending; keep existing approved logic clearing pendingApproval and navigating to /login.
-- [ ] Run frontend lint/build/tests if available.
+## Phase 1 — Identify + confirm flows (done)
+- Verify Cloudinary config + cloudinaryUpload middleware.
+- Identify upload routes currently using local multer.diskStorage.
+- Inspect controllers for how file URLs are persisted.
+
+## Phase 2 — Implement production-safe migration
+1. Switch routes to use `Backend/middleware/cloudinaryUpload.js`:
+   - `Backend/routes/residentRoutes.js`
+   - `Backend/routes/paymentRoutes.js`
+   - `Backend/routes/publicRoutes.js`
+   - `Backend/routes/requestRoutes.js`
+   - `Backend/routes/adminRoutes.js`
+2. Update controllers to persist Cloudinary `secure_url` (via `getUploadedFileUrl()`):
+   - `Backend/controllers/publicController.js`
+   - any controller paths touched by route changes
+3. QR Cloudinary migration:
+   - Rewrite `Backend/utils/qrCodeService.js` to upload generated QR to Cloudinary
+   - Ensure DB field gets Cloudinary full `secure_url`
+4. Create migration report:
+   - `CLOUDINARY_MIGRATION_REPORT.md`
+
+## Phase 3 — Validate
+- Old local uploads still render.
+- New uploads render from Cloudinary.
+- QR images persist after redeploy.
+- Payment proof + public admission uploads + resident signatures/photos display correctly.
 

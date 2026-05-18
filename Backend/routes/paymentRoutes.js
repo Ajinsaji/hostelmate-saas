@@ -2,8 +2,6 @@ const express = require("express");
 
 const router = express.Router();
 
-const multer = require("multer");
-
 const {
   createPayment,
   getPaymentsByHostel,
@@ -12,38 +10,9 @@ const {
   deletePayment,
 } = require("../controllers/paymentController");
 
+const { uploadSingle } = require("../middleware/cloudinaryUpload");
 
-// ==========================
-// MULTER STORAGE
-// ==========================
 
-const storage =
-  multer.diskStorage({
-    destination: (
-      req,
-      file,
-      cb
-    ) => {
-      cb(null, "uploads");
-    },
-
-    filename: (
-      req,
-      file,
-      cb
-    ) => {
-      cb(
-        null,
-        Date.now() +
-          "-" +
-          file.originalname
-      );
-    },
-  });
-
-const upload = multer({
-  storage,
-});
 
 
 // ==========================
@@ -52,9 +21,7 @@ const upload = multer({
 
 router.post(
   "/create",
-
-  upload.single("proof"),
-
+  uploadSingle("proof"),
   createPayment
 );
 
