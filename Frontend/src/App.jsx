@@ -9,6 +9,8 @@ import {
 import LandingPage from "./components/LandingPage";
 import LoginPage from "./components/LoginPage";
 import RegisterPage from "./components/RegisterPage";
+import PendingApproval from "./components/PendingApproval";
+
 import AdminLogin from "./components/AdminLogin";
 import PublicHostelPage from "./components/PublicHostelPage";
 
@@ -101,17 +103,39 @@ function SessionGateWrapper() {
 }
 
 function App() {
+  // Lightweight startup redirect for pending admin approval UX.
+  // Safety: only redirect when user has NOT authenticated (no token).
+  // Avoid redirect loops by allowing access to /pending-approval itself.
+  const token = localStorage.getItem("token") || localStorage.getItem("adminToken");
+  const pending = (() => {
+    try {
+      return JSON.parse(localStorage.getItem("pendingApproval") || "null");
+    } catch {
+      return null;
+    }
+  })();
+
+  const shouldRedirectPending = !!pending && !token;
+
   return (
     <ServerLoadingWrapper>
       <BrowserRouter>
         <SessionGateWrapper />
 
-      <Routes>
+        <Routes>
+
 
         <Route path="/" element={<LandingPage />} />
 
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
+        <Route
+          path="/pending-approval"
+          element={
+            <PendingApproval />
+          }
+        />
+
 
         <Route
           path="/dashboard"

@@ -1,12 +1,13 @@
 import { useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, User, Phone, Home, MapPin, Upload, Loader2 } from "lucide-react";
+import { ArrowLeft, User, Phone, Home, MapPin, Upload, Loader2, CheckCircle2 } from "lucide-react";
 import toast from "react-hot-toast";
 
 function RegisterPage() {
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
+  const [showSuccess, setShowSuccess] = useState(false);
   const [formData, setFormData] = useState({
     ownerName: "",
     phone: "",
@@ -18,6 +19,7 @@ function RegisterPage() {
   const [ownerPhoto, setOwnerPhoto] = useState(null);
   const [licensePhoto, setLicensePhoto] = useState(null);
   const [errors, setErrors] = useState({});
+
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -74,12 +76,27 @@ function RegisterPage() {
 
       if (response.data.success) {
         toast.success("Registration submitted");
+
+        // Persist pending approval UX state across refresh/close.
+        // Backend stores status by HostelRequest.phone.
+        localStorage.setItem(
+          "pendingApproval",
+          JSON.stringify({
+            phone: formData.phone,
+            hostelName: formData.hostelName,
+            submittedAt: Date.now(),
+          })
+        );
+
         setFormData({ ownerName: "", phone: "", hostelName: "", ownerAddress: "", hostelAddress: "" });
         setAadhaarFile(null);
         setOwnerPhoto(null);
         setLicensePhoto(null);
         setStep(1);
+        setShowSuccess(true);
       }
+
+
     } catch (error) {
       const message = error?.response?.data?.message || "Application already submitted or error occurred";
       if (/already submitted|exists|duplicate/i.test(message)) {
@@ -92,73 +109,170 @@ function RegisterPage() {
     }
   };
 
+  const adminSupport = {
+    name: "Admin Support",
+    email: "support@hostelmate.com",
+    phone: "+91 XXXXXXXXXX",
+  };
+
   return (
     <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
       {/* Header */}
       <div className="gradient-header" style={{ paddingBottom: "100px", borderBottomLeftRadius: "40px", borderBottomRightRadius: "40px" }}>
-        <button 
-          className="btn-icon" 
+        <button
+          className="btn-icon"
           style={{ background: "rgba(255,255,255,0.2)", color: "white", marginBottom: "24px" }}
-          onClick={() => step === 2 ? setStep(1) : navigate("/")}
+          onClick={() => (step === 2 ? setStep(1) : navigate("/"))}
         >
           <ArrowLeft size={24} />
         </button>
         <h1 style={{ fontSize: "32px", fontWeight: 700, marginBottom: "8px" }}>
-          {step === 1 ? "Partner with Us" : "Final Step"}
+          {showSuccess ? "Registration Submitted" : step === 1 ? "Partner with Us" : "Final Step"}
         </h1>
         <p style={{ color: "rgba(255,255,255,0.8)", fontSize: "16px" }}>
-          {step === 1 ? "Register your hostel today" : "Upload hostel documents"}
+          {showSuccess ? "Request Submitted Successfully" : step === 1 ? "Register your hostel today" : "Upload hostel documents"}
         </p>
       </div>
 
       {/* Form Card */}
       <div className="p-4" style={{ marginTop: "-60px", paddingBottom: "80px" }}>
         <div className="glass-card animate-slide-up" style={{ background: "var(--surface)", boxShadow: "var(--shadow-md)", padding: "24px" }}>
-          
-          {/* Step Indicator */}
-          <div className="flex gap-2 mb-6">
-            <div style={{ flex: 1, height: "6px", borderRadius: "10px", background: step >= 1 ? "var(--primary)" : "#e0e0e0" }} />
-            <div style={{ flex: 1, height: "6px", borderRadius: "10px", background: step >= 2 ? "var(--primary)" : "#e0e0e0" }} />
-          </div>
+          {showSuccess ? (
+            <div style={{ maxWidth: 720, margin: "0 auto" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
+                <div
+                  style={{
+                    width: 44,
+                    height: 44,
+                    borderRadius: 9999,
+                    background: "rgba(16, 185, 129, 0.12)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <CheckCircle2 size={22} color="var(--success, #10b981)" />
+                </div>
+                <h2 style={{ fontSize: 22, fontWeight: 800, margin: 0, color: "var(--text)" }}>
+                  Request Submitted Successfully
+                </h2>
+              </div>
 
-          {step === 1 && (
+              <p style={{ color: "var(--text-body)", fontSize: 15, lineHeight: 1.6, margin: "0 0 10px" }}>
+                Your hostel registration request has been sent to the admin team.
+              </p>
+              <p style={{ color: "var(--text-body)", fontSize: 15, lineHeight: 1.6, margin: "0 0 18px" }}>
+                Our team will review your request and contact you within 3 hours.
+              </p>
+
+              <div style={{ borderTop: "1px solid rgba(0,0,0,0.08)", paddingTop: 16, marginTop: 10 }}>
+                <div style={{ fontWeight: 800, marginBottom: 10 }}>Need Help? Contact Admin</div>
+
+                <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 10 }}>
+                  <div style={{ display: "flex", flexDirection: "column" }}>
+                    <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 2 }}>Admin</div>
+                    <div style={{ fontSize: 14, fontWeight: 700 }}>{adminSupport.name}</div>
+                  </div>
+
+                  <div style={{ display: "flex", flexDirection: "column" }}>
+                    <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 2 }}>Email</div>
+                    <a
+                      href={`mailto:${adminSupport.email}`}
+                      style={{ color: "var(--primary)", fontWeight: 700, textDecoration: "none", wordBreak: "break-word" }}
+                    >
+                      {adminSupport.email}
+                    </a>
+                  </div>
+
+                  <div style={{ display: "flex", flexDirection: "column" }}>
+                    <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 2 }}>Phone</div>
+                    <a
+                      href={`tel:${adminSupport.phone.replace(/\s+/g, "").replace(/x+/gi, "")}`}
+                      style={{ color: "var(--primary)", fontWeight: 700, textDecoration: "none" }}
+                    >
+                      {adminSupport.phone}
+                    </a>
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginTop: 18 }}>
+                <button className="btn-primary" onClick={() => navigate("/login")}>
+                  Back to Login
+                </button>
+                <button
+                  className="btn-secondary"
+                  onClick={() => {
+                    // UX-only: keep user on the same page; ensure contact section is visible.
+                    window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });
+                  }}
+                >
+                  Contact Admin
+                </button>
+              </div>
+
+              <p className="text-center text-body mt-6" style={{ marginTop: 18 }}>
+                You can submit another request anytime.
+              </p>
+            </div>
+          ) : (
             <>
-              <InputField icon={<User size={20}/>} placeholder="Owner Full Name" name="ownerName" value={formData.ownerName} onChange={handleChange} error={errors.ownerName} />
-              <InputField icon={<Phone size={20}/>} placeholder="Phone Number" name="phone" value={formData.phone} onChange={handleChange} error={errors.phone} />
-              <InputField icon={<Home size={20}/>} placeholder="Hostel Name" name="hostelName" value={formData.hostelName} onChange={handleChange} error={errors.hostelName} />
-              <InputField icon={<MapPin size={20}/>} placeholder="Owner Address" name="ownerAddress" value={formData.ownerAddress} onChange={handleChange} error={errors.ownerAddress} isTextArea />
-              
-              <UploadBox label="Upload Aadhaar / ID Proof" file={aadhaarFile} setFile={setAadhaarFile} error={errors.aadhaarFile} />
-              <UploadBox label="Upload Owner Photo" file={ownerPhoto} setFile={setOwnerPhoto} error={errors.ownerPhoto} />
-              
-              <button className="btn-primary mt-6" onClick={handleContinue}>Continue <ArrowLeft size={20} style={{ transform: "rotate(180deg)" }} /></button>
+              {/* Step Indicator */}
+              <div className="flex gap-2 mb-6">
+                <div style={{ flex: 1, height: "6px", borderRadius: "10px", background: step >= 1 ? "var(--primary)" : "#e0e0e0" }} />
+                <div style={{ flex: 1, height: "6px", borderRadius: "10px", background: step >= 2 ? "var(--primary)" : "#e0e0e0" }} />
+              </div>
+
+              {step === 1 && (
+                <>
+                  <InputField icon={<User size={20} />} placeholder="Owner Full Name" name="ownerName" value={formData.ownerName} onChange={handleChange} error={errors.ownerName} />
+                  <InputField icon={<Phone size={20} />} placeholder="Phone Number" name="phone" value={formData.phone} onChange={handleChange} error={errors.phone} />
+                  <InputField icon={<Home size={20} />} placeholder="Hostel Name" name="hostelName" value={formData.hostelName} onChange={handleChange} error={errors.hostelName} />
+                  <InputField icon={<MapPin size={20} />} placeholder="Owner Address" name="ownerAddress" value={formData.ownerAddress} onChange={handleChange} error={errors.ownerAddress} isTextArea />
+
+                  <UploadBox label="Upload Aadhaar / ID Proof" file={aadhaarFile} setFile={setAadhaarFile} error={errors.aadhaarFile} />
+                  <UploadBox label="Upload Owner Photo" file={ownerPhoto} setFile={setOwnerPhoto} error={errors.ownerPhoto} />
+
+                  <button className="btn-primary mt-6" onClick={handleContinue}>
+                    Continue <ArrowLeft size={20} style={{ transform: "rotate(180deg)" }} />
+                  </button>
+                </>
+              )}
+
+              {step === 2 && (
+                <>
+                  <InputField icon={<MapPin size={20} />} placeholder="Full Hostel Address" name="hostelAddress" value={formData.hostelAddress} onChange={handleChange} error={errors.hostelAddress} isTextArea />
+
+                  <UploadBox label="Upload Hostel License" file={licensePhoto} setFile={setLicensePhoto} error={errors.licensePhoto} />
+
+                  <button className="btn-primary mt-6" onClick={handleSubmit} disabled={loading}>
+                    {loading ? (
+                      <>
+                        <Loader2 size={16} className="animate-spin" /> Creating Account...
+                      </>
+                    ) : (
+                      "Submit Application"
+                    )}
+                  </button>
+                </>
+              )}
+
+              {/* Login Link */}
+              <p className="text-center text-body mt-6">
+                Already have an account?{" "}
+                <span onClick={() => navigate("/login")} style={{ color: "var(--primary)", fontWeight: 600, cursor: "pointer" }}>
+                  Login
+                </span>
+              </p>
             </>
           )}
-
-          {step === 2 && (
-            <>
-              <InputField icon={<MapPin size={20}/>} placeholder="Full Hostel Address" name="hostelAddress" value={formData.hostelAddress} onChange={handleChange} error={errors.hostelAddress} isTextArea />
-              
-              <UploadBox label="Upload Hostel License" file={licensePhoto} setFile={setLicensePhoto} error={errors.licensePhoto} />
-              
-              <button className="btn-primary mt-6" onClick={handleSubmit} disabled={loading}>
-                {loading ? <><Loader2 size={16} className="animate-spin" /> Creating Account...</> : "Submit Application"}
-              </button>
-            </>
-          )}
-
-          {/* Login Link */}
-          <p className="text-center text-body mt-6">
-            Already have an account?{" "}
-            <span onClick={() => navigate("/login")} style={{ color: "var(--primary)", fontWeight: 600, cursor: "pointer" }}>Login</span>
-          </p>
-
         </div>
       </div>
 
     </div>
   );
 }
+
 
 function InputField({ icon, placeholder, name, value, onChange, error, isTextArea }) {
   return (
