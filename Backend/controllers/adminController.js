@@ -166,24 +166,38 @@ const approveHostel =
           isPublic: true,
         });
 
-      // CREATE SUBSCRIPTION
-      await Subscription.create({
-        hostelId:
-          hostel._id,
+      // CREATE SUBSCRIPTION (match manual add-hostel trial initialization)
+      {
+        const now = new Date();
+        const trialEnd = new Date(now);
+        trialEnd.setDate(now.getDate() + 7);
 
-        planType:
-          "Basic",
+        const subscriptionDoc = await Subscription.create({
+          hostelId: hostel._id,
+          planType: "Basic",
+          subscriptionStatus: "trial",
+          isTrial: true,
+          trialStartDate: now,
+          trialEndDate: trialEnd,
+          subscriptionStartDate: now,
+          subscriptionEndDate: trialEnd,
+          // keep existing schema flexible: if fields exist they get persisted
+          residentLimit: 60,
+          multiHostelEnabled: false,
+          amount: 0,
+          isFreeAccess: true,
+        });
 
-        subscriptionStatus:
-          "trial",
+        // ensure hostel has canonical subscription display fields (some UIs read from Hostel)
+        hostel.subscriptionStatus = subscriptionDoc.subscriptionStatus || "trial";
+        hostel.planType = subscriptionDoc.planType || "Basic";
+        hostel.subscriptionStartDate = subscriptionDoc.subscriptionStartDate || now;
+        hostel.subscriptionEndDate = subscriptionDoc.subscriptionEndDate || trialEnd;
+        hostel.isFreeAccess = subscriptionDoc.isFreeAccess;
+        hostel.isTrial = subscriptionDoc.isTrial;
+        await hostel.save();
+      }
 
-        isTrial: true,
-
-        residentLimit: 60,
-
-        multiHostelEnabled:
-          false,
-      });
 
       // CREATE OWNER
       await Owner.create({
