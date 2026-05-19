@@ -85,28 +85,48 @@ function PendingApproval() {
 
     setChecking(true);
     try {
+      const queryPhone = pending.phone || pending.email;
       const res = await axios.get(
-        `${import.meta.env.VITE_API_URL}/api/auth/check-approval-status`,
-        {
-          params: { phone: pending.phone || pending.email },
-        }
+        `${import.meta.env.VITE_API_URL}/api/request/status/${encodeURIComponent(queryPhone)}`
       );
 
+      console.log("Polling response:", res.data);
       const data = res.data || {};
-      const isApproved = !!data.approved;
-      const isRejected = !!data.rejected;
+      const requestStatus =
+        data?.request?.status || data?.status || "";
+      const normalizedStatus = String(requestStatus).toLowerCase();
+      const isApproved = normalizedStatus === "approved" || data?.approved === true;
+      const isRejected = normalizedStatus === "rejected" || data?.rejected === true;
+
+      if (data?.message === "No application found" || data?.message === "Request not found") {
+        localStorage.removeItem("pendingRequestId");
+        localStorage.removeItem("pendingPhone");
+        localStorage.removeItem("pendingApproval");
+        navigate("/register");
+        return;
+      }
 
       setApproved(isApproved);
       setRejected(isRejected);
-      setStatus(data.status || "Waiting For Approval");
+      setStatus(requestStatus || "Waiting For Approval");
 
       if (isApproved) {
         localStorage.removeItem("pendingApproval");
+        localStorage.removeItem("pendingRequestId");
+        localStorage.removeItem("pendingPhone");
         toast.success("Your hostel has been approved. Please login.");
         navigate("/login");
       }
-    } catch {
-      // Keep the pending UI visible.
+    } catch (error) {
+      console.log("Polling response error:", error?.response?.data || error?.message || error);
+      if (error?.response?.status === 404 && error?.response?.data?.message) {
+        localStorage.removeItem("pendingRequestId");
+        localStorage.removeItem("pendingPhone");
+        localStorage.removeItem("pendingApproval");
+        navigate("/register");
+        return;
+      }
+
       setRejected(false);
       setApproved(false);
       setStatus("Waiting For Approval");
@@ -117,14 +137,23 @@ function PendingApproval() {
 
   useEffect(() => {
     let cancelled = false;
+    let intervalId;
+
     const run = async () => {
       if (cancelled) return;
       await checkStatus();
     };
+
     run();
+    intervalId = setInterval(() => {
+      if (!cancelled) {
+        checkStatus();
+      }
+    }, 5000);
 
     return () => {
       cancelled = true;
+      clearInterval(intervalId);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pending]);
@@ -202,61 +231,8 @@ function PendingApproval() {
             <div style={{ padding: 14, borderRadius: 14, background: "rgba(16,185,129,0.08)" }}>
               <div style={{ fontWeight: 900, marginBottom: 6 }}>Status</div>
               <div style={{ fontWeight: 800 }}>
-                {checking ? "Checking..." : status}Fix ALL missing hostel fields + broken QR/profile image issues by converting the system fully to Cloudinary URLs.
-
-Current problems:
-
-* QR image broken
-* Owner profile image missing
-* Hostel Type shows N/A
-* District shows N/A
-* City/Place shows N/A
-* Pincode shows N/A
-* Created date shows N/A
-* Old local filename-based image handling still exists
-
-Goal:
-Store FULL Cloudinary/public URLs in MongoDB for:
-
-* owner profile photo
-* QR image
-* uploaded documents
-
-And ensure all hostel fields persist correctly through:
-Register → HostelRequest → Approve → Hostel → Admin UI
-
-========================================
-
-1. FIX CLOUDINARY IMAGE STORAGE
-   ========================================
-
-Problem:
-Backend currently stores:
-
-```js
-qrCodeUrl: qrFilename
-```
-
-Example:
-
-```text
-RMH059685B1S-QR.png
-```
-
-This breaks frontend images because browser needs FULL URL.
-
-Fix BOTH:
-
-* approveHostel()
-* addHostel()
-
-Replace:
-
-```js
-qrCodeUrl: qrFilename
-```
-
-WITH:
+                {checking ? "Checking..." : status}
+              </div>
 
 ```js
 qrCodeUrl: qrResult.url

@@ -246,6 +246,7 @@ function HostelManagement() {
   const selectedHostelOwnerEmail = selectedHostel?.owner?.email || selectedHostel?.ownerEmail || selectedHostel?.email || "N/A";
   const selectedHostelUsername = selectedHostel?.owner?.username || selectedHostel?.username || selectedHostel?.phone || "N/A";
   const selectedHostelType = selectedHostel?.hostelType || selectedHostel?.type || selectedHostel?.category || "N/A";
+  const selectedHostelState = selectedHostel?.state || "N/A";
   const selectedHostelPlace = selectedHostel?.city || selectedHostel?.place || selectedHostel?.location || "N/A";
   const selectedHostelStatus = selectedHostel?.approvalStatus || selectedHostel?.status || (selectedHostel?.isApproved ? "approved" : "pending") || "Unknown";
   const selectedHostelSubscription = selectedHostel?.isTrial ? "trial" : selectedHostel?.subscriptionStatus || "Unknown";
@@ -640,6 +641,10 @@ This action cannot be undone.
                   <div className="flex justify-between gap-2">
                     <span className="text-muted">Type</span>
                     <span>{selectedHostelType}</span>
+                  </div>
+                  <div className="flex justify-between gap-2">
+                    <span className="text-muted">State</span>
+                    <span>{selectedHostelState}</span>
                   </div>
                   <div className="flex justify-between gap-2">
                     <span className="text-muted">District</span>

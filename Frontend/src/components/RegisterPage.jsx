@@ -62,6 +62,7 @@ function RegisterPage() {
     district: "",
     city: "",
     pincode: "",
+    hostelType: "",
   });
 
   const [aadhaarFile, setAadhaarFile] = useState(null);
@@ -131,6 +132,7 @@ function RegisterPage() {
 
     if (!formData.state) newErrors.state = "State is required";
     if (!formData.district) newErrors.district = "District is required";
+    if (!formData.hostelType) newErrors.hostelType = "Hostel type is required";
 
     const pin = String(formData.pincode || "").trim();
     if (!/^[0-9]{6}$/.test(pin)) newErrors.pincode = "Pincode must be exactly 6 digits";
@@ -173,6 +175,7 @@ function RegisterPage() {
       data.append("district", formData.district);
       data.append("city", formData.city);
       data.append("pincode", formData.pincode);
+      data.append("hostelType", formData.hostelType);
 
       data.append("aadhaarFile", aadhaarFile);
       data.append("ownerPhoto", ownerPhoto);
@@ -205,6 +208,7 @@ function RegisterPage() {
           district: "",
           city: "",
           pincode: "",
+          hostelType: "",
         });
         setAadhaarFile(null);
         setOwnerPhoto(null);
@@ -402,6 +406,32 @@ function RegisterPage() {
                     }}
                     error={errors.pincode}
                   />
+
+                  <div style={{ marginBottom: 16 }}>
+                    <div style={{ color: "rgba(255,255,255,0.75)", fontSize: 12, marginBottom: 6 }}>Hostel Type</div>
+                    <Select
+                      styles={selectStyles}
+                      options={[
+                        { value: "Boys Hostel", label: "Boys Hostel" },
+                        { value: "Girls Hostel", label: "Girls Hostel" },
+                        { value: "PG", label: "PG" },
+                        { value: "Mixed", label: "Mixed" },
+                      ]}
+                      value={
+                        [
+                          { value: "Boys Hostel", label: "Boys Hostel" },
+                          { value: "Girls Hostel", label: "Girls Hostel" },
+                          { value: "PG", label: "PG" },
+                          { value: "Mixed", label: "Mixed" },
+                        ].find((o) => o.value === formData.hostelType) || null
+                      }
+                      onChange={(sel) => setFormData((prev) => ({ ...prev, hostelType: sel?.value ?? "" }))}
+                      placeholder="Select Hostel Type"
+                      isSearchable
+                      theme={(theme) => ({ ...theme, borderRadius: 14, colors: { ...theme.colors, primary: "#10b981" } })}
+                    />
+                    {errors.hostelType && <p style={{ color: "var(--status-pending)", fontSize: 12, marginTop: 4 }}>{errors.hostelType}</p>}
+                  </div>
 
                   <UploadBox label="Upload Aadhaar / ID Proof" file={aadhaarFile} setFile={setAadhaarFile} error={errors.aadhaarFile} />
                   <UploadBox label="Upload Owner Photo" file={ownerPhoto} setFile={setOwnerPhoto} error={errors.ownerPhoto} />

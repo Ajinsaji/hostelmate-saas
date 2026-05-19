@@ -178,13 +178,26 @@ function HostelEditModal({ initialValues, onClose, onSave, saving }) {
             <label className="text-[12px] text-muted" style={{ display: "block", marginBottom: 6 }}>
               Hostel Type
             </label>
-            <input
-              type="text"
-              name="hostelType"
-              value={formData.hostelType}
-              onChange={handleTextChange}
-              placeholder="e.g. Boys/Girls/Co-ed"
-              style={{ width: "100%", padding: 14, borderRadius: 16, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.10)", color: "#fff" }}
+            <Select
+              styles={selectStyles}
+              options={[
+                { value: "Boys Hostel", label: "Boys Hostel" },
+                { value: "Girls Hostel", label: "Girls Hostel" },
+                { value: "PG", label: "PG" },
+                { value: "Mixed", label: "Mixed" },
+              ]}
+              value={
+                [
+                  { value: "Boys Hostel", label: "Boys Hostel" },
+                  { value: "Girls Hostel", label: "Girls Hostel" },
+                  { value: "PG", label: "PG" },
+                  { value: "Mixed", label: "Mixed" },
+                ].find((o) => o.value === formData.hostelType) || null
+              }
+              onChange={handleSelectChange("hostelType")}
+              placeholder="Select Hostel Type"
+              isSearchable
+              theme={(theme) => ({ ...theme, borderRadius: 14 })}
             />
           </div>
 

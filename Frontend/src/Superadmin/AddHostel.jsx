@@ -1,9 +1,11 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { api } from "../services/api";
 
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, User, Phone, Home, MapPin, Upload, Settings } from "lucide-react";
 import toast from "react-hot-toast";
+import { default as ReactSelect } from "react-select";
+import { State, City } from "country-state-city";
 
 function AddHostel() {
   const navigate = useNavigate();
@@ -14,6 +16,11 @@ function AddHostel() {
     hostelName: "",
     ownerAddress: "",
     hostelAddress: "",
+    hostelType: "",
+    state: "",
+    district: "",
+    city: "",
+    pincode: "",
 
     // subscription
     planType: "Basic",
@@ -33,6 +40,68 @@ function AddHostel() {
   const [licensePhoto, setLicensePhoto] = useState(null);
   const [errors, setErrors] = useState({});
 
+  const selectStyles = {
+    control: (base, state) => ({
+      ...base,
+      background: "rgba(255,255,255,0.05)",
+      borderColor: state.isFocused ? "rgba(16,185,129,0.45)" : "rgba(255,255,255,0.10)",
+      boxShadow: state.isFocused ? "0 0 0 1px rgba(16,185,129,0.35)" : "none",
+      minHeight: 46,
+      borderRadius: "14px",
+      cursor: "text",
+    }),
+    menu: (base) => ({
+      ...base,
+      background: "#0b2038",
+      borderRadius: "14px",
+      overflow: "hidden",
+    }),
+    option: (base, state) => ({
+      ...base,
+      background: state.isSelected ? "rgba(16,185,129,0.25)" : state.isFocused ? "rgba(16,185,129,0.12)" : undefined,
+      color: "#fff",
+    }),
+    singleValue: (base) => ({ ...base, color: "#fff" }),
+    input: (base) => ({ ...base, color: "#fff" }),
+    placeholder: (base) => ({ ...base, color: "rgba(255,255,255,0.5)" }),
+  };
+
+  const stateOptions = useMemo(() => {
+    const states = State.getStatesOfCountry("IN") || [];
+    return states.map((s) => ({ value: String(s.isoCode), label: s.name }));
+  }, []);
+
+  const districtOptions = useMemo(() => {
+    if (!formData.state) return [];
+    const cities = City.getCitiesOfState("IN", formData.state) || [];
+    return cities.map((c) => ({ value: c.name, label: c.name }));
+  }, [formData.state]);
+
+  const cityOptions = useMemo(() => {
+    if (!formData.state) return [];
+    const cities = City.getCitiesOfState("IN", formData.state) || [];
+    return cities.map((c) => ({ value: c.name, label: c.name }));
+  }, [formData.state]);
+
+  const hostelTypeOptions = [
+    { value: "Boys Hostel", label: "Boys Hostel" },
+    { value: "Girls Hostel", label: "Girls Hostel" },
+    { value: "PG", label: "PG" },
+    { value: "Mixed", label: "Mixed" },
+  ];
+
+  const handleSelectChange = (key) => (selected) => {
+    const value = selected?.value ?? "";
+    setFormData((prev) => {
+      const next = { ...prev, [key]: value };
+      if (key === "state") {
+        next.district = "";
+        next.city = "";
+      }
+      return next;
+    });
+  };
+
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
     setFormData({ ...formData, [name]: type === 'checkbox' ? checked : value });
@@ -46,6 +115,21 @@ function AddHostel() {
     if (!formData.ownerAddress.trim()) newErrors.ownerAddress = "Owner address is required";
     if (!aadhaarFile) newErrors.aadhaarFile = "Upload Aadhaar / ID Proof";
     if (!ownerPhoto) newErrors.ownerPhoto = "Upload Owner Photo";
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const validateStep2 = () => {
+    let newErrors = {};
+    if (!formData.hostelType) newErrors.hostelType = "Hostel type is required";
+    if (!formData.state) newErrors.state = "State is required";
+    if (!formData.district) newErrors.district = "District is required";
+    if (!formData.city) newErrors.city = "City / place is required";
+    const pin = String(formData.pincode || "").trim();
+    if (!/^[0-9]{6}$/.test(pin)) newErrors.pincode = "Pincode must be exactly 6 digits";
+    if (!formData.hostelAddress.trim()) newErrors.hostelAddress = "Hostel address is required";
+    if (!licensePhoto) newErrors.licensePhoto = "Upload Hostel License";
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -72,6 +156,11 @@ function AddHostel() {
       data.append("hostelName", formData.hostelName);
       data.append("ownerAddress", formData.ownerAddress);
       data.append("hostelAddress", formData.hostelAddress);
+      data.append("hostelType", formData.hostelType);
+      data.append("state", formData.state);
+      data.append("district", formData.district);
+      data.append("city", formData.city);
+      data.append("pincode", formData.pincode);
       
       // Pass subscription data
       const sub = {
@@ -152,6 +241,76 @@ const response = await api.post("/api/admin/hostels/add", data);
 
           {step === 2 && (
             <>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+                <div>
+                  <div style={{ marginBottom: 6, color: "rgba(255,255,255,0.8)", fontSize: 14, fontWeight: 500 }}>Hostel Type</div>
+                  <ReactSelect
+                    styles={selectStyles}
+                    options={hostelTypeOptions}
+                    value={hostelTypeOptions.find((o) => o.value === formData.hostelType) || null}
+                    onChange={handleSelectChange("hostelType")}
+                    placeholder="Select Hostel Type"
+                    isSearchable
+                    theme={(theme) => ({ ...theme, borderRadius: 14, colors: { ...theme.colors, primary: "#10b981" } })}
+                  />
+                  {errors.hostelType && <p style={{ color: "#ef4444", fontSize: "12px", marginTop: 4 }}>{errors.hostelType}</p>}
+                </div>
+                <div>
+                  <div style={{ marginBottom: 6, color: "rgba(255,255,255,0.8)", fontSize: 14, fontWeight: 500 }}>State</div>
+                  <ReactSelect
+                    styles={selectStyles}
+                    options={stateOptions}
+                    value={stateOptions.find((o) => o.value === formData.state) || null}
+                    onChange={handleSelectChange("state")}
+                    placeholder="Select State"
+                    isSearchable
+                    theme={(theme) => ({ ...theme, borderRadius: 14, colors: { ...theme.colors, primary: "#10b981" } })}
+                  />
+                  {errors.state && <p style={{ color: "#ef4444", fontSize: "12px", marginTop: 4 }}>{errors.state}</p>}
+                </div>
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", marginTop: "16px" }}>
+                <div>
+                  <div style={{ marginBottom: 6, color: "rgba(255,255,255,0.8)", fontSize: 14, fontWeight: 500 }}>District</div>
+                  <ReactSelect
+                    styles={selectStyles}
+                    options={districtOptions}
+                    value={districtOptions.find((o) => o.value === formData.district) || null}
+                    onChange={handleSelectChange("district")}
+                    placeholder="Select District"
+                    isSearchable
+                    isDisabled={!formData.state}
+                    theme={(theme) => ({ ...theme, borderRadius: 14, colors: { ...theme.colors, primary: "#10b981" } })}
+                  />
+                  {errors.district && <p style={{ color: "#ef4444", fontSize: "12px", marginTop: 4 }}>{errors.district}</p>}
+                </div>
+                <div>
+                  <div style={{ marginBottom: 6, color: "rgba(255,255,255,0.8)", fontSize: 14, fontWeight: 500 }}>City / Place</div>
+                  <ReactSelect
+                    styles={selectStyles}
+                    options={cityOptions}
+                    value={cityOptions.find((o) => o.value === formData.city) || null}
+                    onChange={handleSelectChange("city")}
+                    placeholder="Select City"
+                    isSearchable
+                    isDisabled={!formData.state}
+                    theme={(theme) => ({ ...theme, borderRadius: 14, colors: { ...theme.colors, primary: "#10b981" } })}
+                  />
+                  {errors.city && <p style={{ color: "#ef4444", fontSize: "12px", marginTop: 4 }}>{errors.city}</p>}
+                </div>
+              </div>
+
+              <InputField
+                label="Pincode"
+                icon={<MapPin size={20}/>} 
+                placeholder="6-digit pincode"
+                name="pincode"
+                value={formData.pincode}
+                onChange={handleChange}
+                error={errors.pincode}
+              />
+
               <InputField label="Hostel Address" icon={<MapPin size={20}/>} placeholder="Enter Full Hostel Address" name="hostelAddress" value={formData.hostelAddress} onChange={handleChange} error={errors.hostelAddress} isTextArea />
               
               <UploadBox label="Upload Hostel License" file={licensePhoto} setFile={setLicensePhoto} error={errors.licensePhoto} />
