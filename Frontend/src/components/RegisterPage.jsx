@@ -51,6 +51,23 @@ function RegisterPage() {
   const [step, setStep] = useState(1);
   const [showSuccess, setShowSuccess] = useState(false);
 
+  const deploymentTestMarker = (
+    <div
+      id="e2h0h7"
+      style={{
+        background: "red",
+        color: "white",
+        padding: "12px",
+        fontSize: "22px",
+        fontWeight: "bold",
+        textAlign: "center",
+      }}
+    >
+      NEW BUILD VERSION TEST 999
+    </div>
+  );
+
+
   const [formData, setFormData] = useState({
     ownerName: "",
     phone: "",
