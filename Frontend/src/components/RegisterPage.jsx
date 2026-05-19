@@ -463,8 +463,8 @@ function RegisterPage() {
               <p className="text-center text-body mt-6">
                 Already have an account?{" "}
                 <span onClick={() => navigate("/login")} style={{ color: "var(--primary)", fontWeight: 600, cursor: "pointer" }}>
-                  Login
-                </span> <h1>VERSION TEST 123</h1>
+                  Log
+                </span> 
               </p>
             </>
           )}
