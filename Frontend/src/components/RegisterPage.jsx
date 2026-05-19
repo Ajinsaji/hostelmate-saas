@@ -196,16 +196,31 @@ function RegisterPage() {
       data.append("ownerAddress", formData.ownerAddress);
       data.append("hostelAddress", formData.hostelAddress);
 
-      // location fields
-      data.append("state", formData.state);
-      data.append("district", formData.district);
-      data.append("city", formData.city);
-      data.append("pincode", formData.pincode);
-      data.append("hostelType", formData.hostelType);
+      // location fields (ensure strings)
+      data.append("state", String(formData.state || ""));
+      data.append("district", String(formData.district || ""));
+      data.append("city", String(formData.city || ""));
+      data.append("pincode", String(formData.pincode || ""));
+      data.append("hostelType", String(formData.hostelType || ""));
 
       data.append("aadhaarFile", aadhaarFile);
       data.append("ownerPhoto", ownerPhoto);
       data.append("licensePhoto", licensePhoto);
+
+      // Debug: exact payload being sent
+      console.log("SELECTED VALUES:", {
+        state: formData.state,
+        district: formData.district,
+        city: formData.city,
+        pincode: formData.pincode,
+        hostelType: formData.hostelType,
+      });
+      console.log("FILE PRESENCE:", {
+        aadhaarFile: !!aadhaarFile,
+        ownerPhoto: !!ownerPhoto,
+        licensePhoto: !!licensePhoto,
+      });
+      console.log("FORM DATA:", [...data.entries()]);
 
       const response = await axios.post(`${import.meta.env.VITE_API_URL}/api/request/register`, data);
 
@@ -485,7 +500,7 @@ function RegisterPage() {
                   <button className="btn-primary mt-6" onClick={handleSubmit} disabled={loading}>
                     {loading ? (
                       <>
-                        <Loader2 size={16} className="animate-spin" /> Creating Account...
+                        <Loader2 size={16} className="animate-spin" /> Sending Request...
                       </>
                     ) : (
                       "Submit Application"
