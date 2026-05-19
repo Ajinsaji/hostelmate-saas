@@ -4,8 +4,8 @@ const HostelRequest = require("../models/HostelRequest");
 // CREATE REQUEST
 const createRequest = async (req, res) => {
   try {
-    console.log("[createRequest] body:", req.body);
-    console.log("[createRequest] files:", req.files ? Object.keys(req.files) : null);
+    console.log("REQ BODY:", req.body);
+    console.log("REQ FILES:", req.files);
     const {
       ownerName,
       phone,
@@ -100,7 +100,7 @@ const createRequest = async (req, res) => {
         status: "pending",
       });
 
-    console.log("Hostel request saved successfully:", { id: request?._id, phone, status: request?.status });
+    console.log("Hostel request saved successfully");
 
     res.status(201).json({
       success: true,
@@ -109,7 +109,7 @@ const createRequest = async (req, res) => {
       request,
     });
   } catch (error) {
-    console.error("createRequest error:", error);
+    console.error("CREATE REQUEST ERROR:", error);
 
     res.status(500).json({
       success: false,

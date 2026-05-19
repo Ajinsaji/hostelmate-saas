@@ -237,9 +237,18 @@ function RegisterPage() {
         navigate("/pending-approval");
       }
     } catch (error) {
-      const message = error?.response?.data?.message || error?.response?.data?.details || "Unable to submit registration";
-      toast.error(message);
-      // Prevent false success navigation.
+      console.error("Registration submit error:", error);
+
+      console.error(
+        "Backend response:",
+        error?.response?.data
+      );
+
+      toast.error(
+        error?.response?.data?.message ||
+        error?.message ||
+        "Registration failed"
+      );
       localStorage.removeItem("pendingRequestId");
       localStorage.removeItem("pendingApproval");
     } finally {
