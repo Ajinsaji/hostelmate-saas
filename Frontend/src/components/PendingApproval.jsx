@@ -214,29 +214,81 @@ function PendingApproval() {
 
             {contactSection}
 
-            <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginTop: 18 }}>
-              <button className="btn-primary" onClick={refreshStatus} disabled={checking}>
-                {checking ? (
-                  <>
-                    <Loader2 size={16} className="animate-spin" /> Refresh Status
-                  </>
-                ) : (
-                  "Refresh Status"
-                )}
-              </button>
+            {pending && !approved && (
+              <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginTop: 18 }}>
+                <button className="btn-primary" onClick={refreshStatus} disabled={checking}>
+                  {checking ? (
+                    <>
+                      <Loader2 size={16} className="animate-spin" /> Refresh Status
+                    </>
+                  ) : (
+                    "Refresh Status"
+                  )}
+                </button>
 
-              <button
-                className="btn-secondary"
-                onClick={() => {
-                  window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });
-                }}
-              >
-                Contact Admin
-              </button>
+                <button
+                  onClick={async () => {
+                    try {
+                      const requestId = localStorage.getItem("pendingRequestId");
+                      if (!requestId) {
+                        toast.error("No request id found");
+                        return;
+                      }
+                      const response = await axios.delete(
+                        `${import.meta.env.VITE_API_URL}/api/request/cancel/${requestId}`
+                      );
+                      if (response.data.success) {
+                        localStorage.removeItem("pendingRequestId");
+                        localStorage.removeItem("pendingPhone");
+                        localStorage.removeItem("pendingApproval");
+                        toast.success("Request cancelled");
+                        navigate("/register");
+                      } else {
+                        toast.error(response.data.message || "Failed to cancel request");
+                      }
+                    } catch (error) {
+                      console.error("Cancel Request Error:", error);
+                      toast.error("Failed to cancel request");
+                    }
+                  }}
+                  className="bg-red-500 text-white px-4 py-2 rounded"
+                >
+                  Cancel Request
+                </button>
 
+                <button
+                  className="btn-secondary"
+                  onClick={() => {
+                    window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });
+                  }}
+                >
+                  Contact Admin
+                </button>
+              </div>
+            )}
 
+            {(!pending || approved) && (
+              <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginTop: 18 }}>
+                <button className="btn-primary" onClick={refreshStatus} disabled={checking}>
+                  {checking ? (
+                    <>
+                      <Loader2 size={16} className="animate-spin" /> Refresh Status
+                    </>
+                  ) : (
+                    "Refresh Status"
+                  )}
+                </button>
 
-            </div>
+                <button
+                  className="btn-secondary"
+                  onClick={() => {
+                    window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });
+                  }}
+                >
+                  Contact Admin
+                </button>
+              </div>
+            )}
 
           </div>
         </div>

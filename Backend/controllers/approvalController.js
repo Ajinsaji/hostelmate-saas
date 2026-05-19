@@ -27,9 +27,10 @@ const checkHostelRequestApproval = async (req, res) => {
       });
     }
 
-    const normalized = String(request.status || "Pending").toLowerCase();
+    const normalized = String(request.status || "pending").toLowerCase();
     const approved = normalized === "approved";
     const rejected = normalized === "rejected";
+
 
     return res.status(200).json({
       approved,

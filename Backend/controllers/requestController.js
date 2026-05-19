@@ -4,13 +4,27 @@ const HostelRequest = require("../models/HostelRequest");
 // CREATE REQUEST
 const createRequest = async (req, res) => {
   try {
+    console.log("[createRequest] body:", req.body);
+    console.log("[createRequest] files:", req.files ? Object.keys(req.files) : null);
     const {
       ownerName,
       phone,
       hostelName,
       ownerAddress,
       hostelAddress,
+      state,
+      district,
+      city,
+      pincode,
     } = req.body;
+
+    // Required location fields for new submissions
+    if (!state || !district || !pincode) {
+      return res.status(400).json({
+        success: false,
+        message: "state, district, and pincode are required",
+      });
+    }
 
     // CHECK EXISTING REQUEST
     const existingRequest =
@@ -55,6 +69,18 @@ const createRequest = async (req, res) => {
       });
     }
 
+    // Basic server-side pincode validation (6 digits)
+    const safePincode = pincode === undefined ? undefined : String(pincode);
+    if (safePincode !== undefined) {
+      if (!/^\d{6}$/.test(safePincode)) {
+        return res.status(400).json({
+          success: false,
+          message: "Pincode must be exactly 6 digits",
+        });
+      }
+    }
+
+    console.log("Saving hostel request...");
     const request =
       await HostelRequest.create({
         ownerName,
@@ -62,10 +88,17 @@ const createRequest = async (req, res) => {
         hostelName,
         ownerAddress,
         hostelAddress,
+        state: state || "",
+        district: district || "",
+        city: city || "",
+        pincode: safePincode || "",
         aadhaarFile: aadhaarFileName,
         ownerPhoto: ownerPhotoFileName,
         licensePhoto: licensePhotoFileName,
+        status: "pending",
       });
+
+    console.log("Hostel request saved successfully:", { id: request?._id, phone, status: request?.status });
 
     res.status(201).json({
       success: true,
@@ -121,7 +154,34 @@ const checkRequestStatus =
     }
   };
 
+const cancelRequest = async (req, res) => {
+  try {
+    const deleted = await HostelRequest.findByIdAndDelete(req.params.id);
+
+    if (!deleted) {
+      return res.status(404).json({
+        success: false,
+        message: "Request not found",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Request cancelled successfully",
+    });
+
+  } catch (error) {
+    console.error("Cancel Request Error:", error);
+
+    res.status(500).json({
+      success: false,
+      message: "Failed to cancel request",
+    });
+  }
+};
+
 module.exports = {
   createRequest,
   checkRequestStatus,
+  cancelRequest,
 };

@@ -9,7 +9,11 @@ const hostelSchema = new mongoose.Schema({
 
   address: String,
 
+  state: String,
+
   district: String,
+
+  city: String,
 
   pincode: String,
 

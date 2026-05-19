@@ -16,6 +16,7 @@ const {
   updateSubscription,
   getSubscriptions,
   addHostel,
+  editHostelLocation,
   resendWhatsApp,
   resetOwnerTempPassword,
   getAdminProfile,
@@ -71,6 +72,9 @@ router.post(
   ]),
   addHostel
 );
+
+// EDIT HOSTEL (ADMIN)
+router.put("/hostels/edit/:id", editHostelLocation);
 
 // ==========================
 // ADMIN PROFILE

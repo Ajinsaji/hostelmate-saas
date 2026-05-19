@@ -15,6 +15,12 @@ const hostelRequestSchema = new mongoose.Schema(
 
     hostelAddress: String,
 
+    // Location (India)
+    state: String,
+    district: String,
+    city: String,
+    pincode: String,
+
     aadhaarFile: String,
 
     ownerPhoto: String,
@@ -23,7 +29,11 @@ const hostelRequestSchema = new mongoose.Schema(
 
     status: {
       type: String,
-      default: "Pending",
+      // Canonical values across the whole system:
+      // pending | approved | rejected
+      default: "pending",
+      lowercase: true,
+      enum: ["pending", "approved", "rejected"],
     },
   },
   { timestamps: true }

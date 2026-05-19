@@ -5,6 +5,7 @@ const router = express.Router();
 const {
   createRequest,
   checkRequestStatus,
+  cancelRequest,
 } = require("../controllers/requestController");
 
 const { uploadFields } = require("../middleware/cloudinaryUpload");
@@ -31,6 +32,10 @@ router.post(
 
 // CHECK STATUS
 router.get("/status/:phone", checkRequestStatus);
+
+// CANCEL REQUEST
+router.delete("/cancel/:id", cancelRequest);
+
 
 module.exports = router;
 

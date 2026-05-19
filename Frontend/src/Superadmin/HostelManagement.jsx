@@ -21,6 +21,7 @@ import toast from "react-hot-toast";
 
 import buildQrUrl from "../utils/buildQrUrl";
 import buildFileUrl from "../utils/buildFileUrl";
+import HostelEditModal from "./HostelEditModal";
 
 function HostelManagement() {
   const [hostels, setHostels] = useState([]);
@@ -28,6 +29,8 @@ function HostelManagement() {
   const [searchFocused, setSearchFocused] = useState(false);
   const [filter, setFilter] = useState("all");
   const [selectedHostel, setSelectedHostel] = useState(null);
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [isEditSaving, setIsEditSaving] = useState(false);
 
   const normalizeHostel = (raw) => {
     const subscriptionStatusRaw = raw?.subscriptionStatus ?? raw?.planStatus ?? raw?.status;
@@ -461,7 +464,8 @@ function HostelManagement() {
                     onClick={() => setSelectedHostel(normalizeHostel(h))}
                     className="btn-icon"
                     style={{ width: "100%", height: 44, borderRadius: 14, background: "rgba(212, 175, 55, 0.10)", border: "1px solid rgba(212, 175, 55, 0.18)", color: "#D4AF37" }}
-                    aria-label="View QR"
+                    aria-la
+                    bel="View QR"
                   >
                     <Key size={16} />
                   </button>
@@ -563,6 +567,23 @@ This action cannot be undone.
             </button>
 
             <div className="flex flex-col gap-4 mb-4 text-white">
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const id = selectedHostel?.hostelId || selectedHostel?._id;
+                    setIsEditOpen(true);
+                  }}
+                  className="px-4 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition-colors"
+                  style={{
+                    background: "rgba(212,175,55,0.10)",
+                    border: "1px solid rgba(212,175,55,0.22)",
+                    color: "#D4AF37",
+                  }}
+                >
+                  ✏️ Edit Hostel
+                </button>
+              </div>
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <div>
                   <h2 className="text-2xl font-bold">{selectedHostel.hostelName || "Hostel Details"}</h2>
@@ -794,8 +815,67 @@ This action cannot be undone.
         </div>
       )}
 
-      {/* Confirmation Modal */}
+      {/* Edit Hostel Modal */}
+      {isEditOpen && selectedHostel && (
+        <HostelEditModal
+          initialValues={{
+            hostelName: selectedHostel.hostelName || "",
+            hostelType: selectedHostel.hostelType || selectedHostel.type || selectedHostel.category || "",
+            state: selectedHostel.state || "",
+            district: selectedHostel.district || "",
+            city: selectedHostel.city || selectedHostel.place || selectedHostel.location || "",
+            pincode: selectedHostel.pincode || "",
+            address: selectedHostel.address || "",
+            description: selectedHostel.description || "",
+          }}
+          onClose={() => setIsEditOpen(false)}
+          saving={isEditSaving}
+          onSave={async (values) => {
+            const id = selectedHostel?.hostelId || selectedHostel?._id;
+            if (!id) return;
 
+            try {
+              setIsEditSaving(true);
+              const payload = {
+                hostelName: values.hostelName,
+                hostelType: values.hostelType,
+                state: values.state,
+                district: values.district,
+                city: values.city,
+                pincode: values.pincode,
+                address: values.address,
+                description: values.description,
+              };
+
+              const res = await api.put(`/api/admin/hostels/edit/${id}`, payload);
+              toast.success("Hostel updated successfully");
+
+              const updated = res.data?.hostel || res.data?.data || res.data?.updatedHostel || res.data;
+
+              setHostels((prev) => {
+                return (prev || []).map((h) => {
+                  const hid = h?.hostelId || h?._id;
+                  if (String(hid) !== String(id)) return h;
+                  return normalizeHostel(updated);
+                });
+              });
+
+              setSelectedHostel((prev) => {
+                if (!prev) return prev;
+                return normalizeHostel({ ...prev, ...updated, hostelId: id });
+              });
+
+              setIsEditOpen(false);
+            } catch (err) {
+              toast.error(err?.response?.data?.message || "Failed to update hostel");
+            } finally {
+              setIsEditSaving(false);
+            }
+          }}
+        />
+      )}
+
+      {/* Confirmation Modal */}
       {/* Confirmation Modal */}
       {confirmModal.isOpen && (
         <div

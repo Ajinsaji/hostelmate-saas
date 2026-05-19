@@ -28,11 +28,7 @@ const getDashboardStats =
     try {
 
       const pendingHostels =
-        await HostelRequest.countDocuments(
-          {
-            status: "Pending",
-          }
-        );
+        await HostelRequest.countDocuments({ status: "pending" });
 
       const activeHostels =
         await Hostel.countDocuments();
@@ -103,11 +99,8 @@ const getAllRequests =
 const approveHostel =
   async (req, res) => {
     try {
+      const request = await HostelRequest.findById(req.params.id);
 
-      const request =
-        await HostelRequest.findById(
-          req.params.id
-        );
 
       if (!request) {
         return res.status(404).json({
@@ -146,9 +139,9 @@ const approveHostel =
       const tempPassword = "Temp@123";
 
       // CREATE HOSTEL
-      const hostel =
+    const hostel =
         await Hostel.create({
-          hostelName:
+      hostelName:
             request.hostelName,
 
           ownerName:
@@ -159,6 +152,12 @@ const approveHostel =
 
           address:
             request.hostelAddress,
+
+          // Location (safe for new + updated approvals)
+          state: request.state || "",
+          district: request.district || "",
+          city: request.city || "",
+          pincode: request.pincode || "",
           
           uniqueCode: uniqueCode,
           publicUrl: publicUrl,
@@ -199,10 +198,8 @@ const approveHostel =
       // SEND WHATSAPP & SMS
       await sendApprovalMessages(request.phone, request.ownerName, request.hostelName, request.phone, tempPassword, publicUrl);
 
-      // UPDATE REQUEST STATUS
-      request.status =
-        "Approved";
-
+// UPDATE REQUEST STATUS
+      request.status = "approved";
       await request.save();
 
       res.status(200).json({
@@ -233,14 +230,17 @@ const rejectRequest =
   async (req, res) => {
     try {
 
-      await HostelRequest.findByIdAndUpdate(
+      const updated = await HostelRequest.findByIdAndUpdate(
         req.params.id,
-
         {
-          status:
-            "Rejected",
-        }
+          status: "rejected",
+        },
+        { new: true }
       );
+
+      if (!updated) {
+        return res.status(404).json({ success: false, message: "Request not found" });
+      }
 
       res.status(200).json({
         success: true,
@@ -558,6 +558,10 @@ const addHostel = async (req, res) => {
       phone,
       ownerAddress,
       hostelAddress,
+      state,
+      district,
+      city,
+      pincode,
       subscription,
     } = req.body;
 
@@ -623,6 +627,11 @@ const addHostel = async (req, res) => {
       ownerName,
       phone,
       address: hostelAddress,
+
+      state: state || "",
+      district: district || "",
+      city: city || "",
+      pincode: pincode || "",
       uniqueCode: uniqueCode,
       publicUrl: publicUrl,
       qrCodeUrl: qrFilename,
@@ -784,8 +793,63 @@ const updateAdminProfile = async (req, res) => {
 // ==========================
 // CHANGE ADMIN PASSWORD
 // ==========================
-const changeAdminPassword = async (req, res) => {
+// ==========================
+// EDIT HOSTEL LOCATION (ADMIN)
+// ==========================
+const editHostelLocation = async (req, res) => {
   try {
+    const hostelId = req.params.id;
+    const {
+      hostelName,
+      state,
+      district,
+      city,
+      pincode,
+      address,
+      description,
+      hostelType,
+    } = req.body;
+
+    if (!hostelId) {
+      return res.status(400).json({ success: false, message: "Hostel id is required" });
+    }
+
+    if (!state || !district || !pincode) {
+      return res.status(400).json({ success: false, message: "state, district, and pincode are required" });
+    }
+
+    const safePincode = String(pincode);
+    if (!/^\d{6}$/.test(safePincode)) {
+      return res.status(400).json({ success: false, message: "Pincode must be exactly 6 digits" });
+    }
+
+    const updateData = {
+      ...(hostelName !== undefined ? { hostelName } : {}),
+      state,
+      district,
+      city: city || "",
+      pincode: safePincode,
+      ...(address !== undefined ? { address } : {}),
+      ...(description !== undefined ? { description } : {}),
+      ...(hostelType !== undefined ? { hostelType } : {}),
+    };
+
+    const updated = await Hostel.findByIdAndUpdate(hostelId, updateData, { new: true, runValidators: true }).lean();
+
+    if (!updated) {
+      return res.status(404).json({ success: false, message: "Hostel not found" });
+    }
+
+    return res.status(200).json({ success: true, message: "Hostel updated successfully", hostel: updated });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: "Failed to update hostel", error: error?.message || String(error) });
+  }
+};
+
+// ==========================
+// CHANGE ADMIN PASSWORD
+// ==========================
+const changeAdminPassword = async (req, res) => {
     const adminId = req.user?.id || req.userId;
     const { oldPassword, newPassword, confirmPassword } = req.body;
 
@@ -881,6 +945,8 @@ module.exports = {
   getSubscriptions,
 
   addHostel,
+
+  editHostelLocation,
   
   resendWhatsApp,
   

@@ -8,7 +8,7 @@ import toast from "react-hot-toast";
 
 function PendingRequests() {
   const [requests, setRequests] = useState([]);
-  const [activeTab, setActiveTab] = useState("Pending");
+  const [activeTab, setActiveTab] = useState("pending");
   const [approvedData, setApprovedData] = useState(null);
   const [loadingActionId, setLoadingActionId] = useState(null);
 
@@ -71,7 +71,7 @@ await api.put(`/api/admin/reject/${id}`, {});
     toast.success("Copied to clipboard!");
   };
 
-  const filteredRequests = requests.filter(r => r.status === activeTab);
+  const filteredRequests = requests.filter((r) => String(r.status || "").toLowerCase() === activeTab);
 
   return (
     <div style={{ minHeight: "100vh", background: "#081028", paddingBottom: "100px", fontFamily: "Poppins" }}>
@@ -85,17 +85,17 @@ await api.put(`/api/admin/reject/${id}`, {});
         {/* TABS */}
         <div className="flex rounded-xl p-1 shadow-sm mb-6" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
 
-          {["Pending", "Approved", "Rejected"].map(tab => (
+          {[{ label: "Pending", value: "pending" }, { label: "Approved", value: "approved" }, { label: "Rejected", value: "rejected" }].map((t) => (
             <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
+              key={t.value}
+              onClick={() => setActiveTab(t.value)}
               className="flex-1 py-2 text-sm rounded-lg transition-colors font-medium"
               style={{
-                background: activeTab === tab ? "var(--primary)" : "transparent",
-                color: activeTab === tab ? "white" : "var(--text-muted)",
+                background: activeTab === t.value ? "var(--primary)" : "transparent",
+                color: activeTab === t.value ? "white" : "var(--text-muted)",
               }}
             >
-              {tab}
+              {t.label}
             </button>
           ))}
         </div>
@@ -139,7 +139,7 @@ await api.put(`/api/admin/reject/${id}`, {});
 
               </div>
 
-              {item.status === "Pending" && (
+              {String(item.status || "").toLowerCase() === "pending" && (
 <div className="flex gap-3 mt-4 pt-4" style={{ borderTop: "1px solid rgba(255,255,255,0.08)" }}>
                   <button
                     disabled={loadingActionId === item._id}
