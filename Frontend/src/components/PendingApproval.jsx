@@ -75,7 +75,6 @@ function PendingApproval() {
       return;
     }
 
-
     if (!phoneForQuery) {
       setStatus("Waiting For Approval");
       setRejected(false);
@@ -90,10 +89,8 @@ function PendingApproval() {
         `${import.meta.env.VITE_API_URL}/api/request/status/${encodeURIComponent(queryPhone)}`
       );
 
-      console.log("Polling response:", res.data);
       const data = res.data || {};
-      const requestStatus =
-        data?.request?.status || data?.status || "";
+      const requestStatus = data?.request?.status || data?.status || "";
       const normalizedStatus = String(requestStatus).toLowerCase();
       const isApproved = normalizedStatus === "approved" || data?.approved === true;
       const isRejected = normalizedStatus === "rejected" || data?.rejected === true;
@@ -118,7 +115,6 @@ function PendingApproval() {
         navigate("/login");
       }
     } catch (error) {
-      console.log("Polling response error:", error?.response?.data || error?.message || error);
       if (error?.response?.status === 404 && error?.response?.data?.message) {
         localStorage.removeItem("pendingRequestId");
         localStorage.removeItem("pendingPhone");
@@ -158,12 +154,9 @@ function PendingApproval() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pending]);
 
-
   const refreshStatus = async () => {
     await checkStatus();
   };
-
-  const shouldShowWaiting = pending && !approved;
 
   return (
     <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
@@ -179,13 +172,10 @@ function PendingApproval() {
           <CheckCircle2 size={24} style={{ transform: "rotate(0deg)" }} />
         </button>
 
-        <h1 style={{ fontSize: 32, fontWeight: 800, marginBottom: 8 }}>
-          Request Already Submitted
-        </h1>
+        <h1 style={{ fontSize: 32, fontWeight: 800, marginBottom: 8 }}>Request Already Submitted</h1>
         <p style={{ color: "rgba(255,255,255,0.8)", fontSize: 16 }}>
           Our admin team is reviewing your application.
         </p>
-
       </div>
 
       <div className="p-4" style={{ marginTop: "-60px", paddingBottom: "80px" }}>
@@ -211,7 +201,6 @@ function PendingApproval() {
               <h2 style={{ fontSize: 22, fontWeight: 800, margin: 0, color: "var(--text)" }}>
                 Request Already Submitted
               </h2>
-
             </div>
 
             <p style={{ color: "var(--text-body)", fontSize: 15, lineHeight: 1.6, margin: "0 0 10px" }}>
@@ -227,301 +216,9 @@ function PendingApproval() {
               Expected response time: Within 3 hours.
             </p>
 
-
             <div style={{ padding: 14, borderRadius: 14, background: "rgba(16,185,129,0.08)" }}>
               <div style={{ fontWeight: 900, marginBottom: 6 }}>Status</div>
-              <div style={{ fontWeight: 800 }}>
-                {checking ? "Checking..." : status}
-              </div>
-
-```js
-qrCodeUrl: qrResult.url
-```
-
-Also ensure:
-
-```js
-publicUrl: publicUrl
-```
-
-remains unchanged.
-
-========================================
-2. VERIFY qrCodeService.js
-==========================
-
-File:
-
-* Backend/utils/qrCodeService.js
-
-Ensure generateQRCode() returns:
-
-```js
-{
-  success: true,
-  url: uploadedCloudinaryUrl
-}
-```
-
-NOT local filenames only.
-
-If QR image is generated locally first:
-
-* upload generated QR image to Cloudinary
-* return secure_url
-
-Example:
-
-```js
-const result = await cloudinary.uploader.upload(tempFilePath, {
-   folder: "hostelmate/qrcodes"
-});
-
-return {
-   success: true,
-   url: result.secure_url
-};
-```
-
-========================================
-3. FIX OWNER PROFILE PHOTO STORAGE
-==================================
-
-Problem:
-Owner photo uploads exist but admin UI shows:
-NO AVATAR
-
-Fix:
-Store Cloudinary secure_url in:
-
-* HostelRequest
-* Owner
-* Hostel
-
-In requestController.js:
-save:
-
-```js
-ownerPhoto: uploadedCloudinaryUrl
-```
-
-In approveHostel():
-
-```js
-await Owner.create({
-   ...
-   profileImage: request.ownerPhoto || "",
-});
-```
-
-OR:
-
-```js
-ownerPhoto: request.ownerPhoto
-```
-
-depending on Owner schema.
-
-========================================
-4. FIX REGISTER PAGE FIELD PERSISTENCE
-======================================
-
-File:
-
-* Frontend/src/components/RegisterPage.jsx
-
-Ensure FormData sends:
-
-```js
-formData.append("hostelType", hostelType);
-formData.append("district", district);
-formData.append("city", city);
-formData.append("pincode", pincode);
-formData.append("state", state);
-```
-
-Also ensure:
-
-```js
-formData.append("ownerPhoto", ownerPhotoFile);
-```
-
-========================================
-5. FIX requestController.js
-===========================
-
-When saving HostelRequest:
-
-```js
-hostelType: req.body.hostelType || "",
-district: req.body.district || "",
-city: req.body.city || "",
-pincode: req.body.pincode || "",
-state: req.body.state || "",
-```
-
-Also save:
-
-```js
-ownerPhoto
-```
-
-using uploaded Cloudinary URL.
-
-========================================
-6. FIX approveHostel()
-======================
-
-Inside Hostel.create():
-
-Add:
-
-```js
-hostelType: request.hostelType || "",
-district: request.district || "",
-city: request.city || "",
-pincode: request.pincode || "",
-state: request.state || "",
-```
-
-Inside Owner.create():
-
-Add:
-
-```js
-profileImage: request.ownerPhoto || "",
-```
-
-========================================
-7. FIX Hostel MODEL
-===================
-
-File:
-
-* Backend/models/Hostel.js
-
-Ensure schema contains:
-
-```js
-hostelType: {
-   type: String,
-   default: ""
-},
-
-district: {
-   type: String,
-   default: ""
-},
-
-city: {
-   type: String,
-   default: ""
-},
-
-pincode: {
-   type: String,
-   default: ""
-},
-
-qrCodeUrl: {
-   type: String,
-   default: ""
-},
-```
-
-========================================
-8. FIX ADMIN UI FIELD MAPPING
-=============================
-
-File:
-
-* Frontend/src/Superadmin/HostelManagement.jsx
-
-Fix:
-
-Created date:
-
-```js
-new Date(hostel.createdAt).toLocaleDateString()
-```
-
-NOT:
-
-```js
-hostel.created
-```
-
-Profile image:
-
-```jsx
-<img src={hostel.owner?.profileImage} />
-```
-
-QR image:
-
-```jsx
-<img src={hostel.qrCodeUrl} />
-```
-
-Add fallback:
-
-```jsx
-onError={(e) => {
-   e.target.src = "/default-avatar.png";
-}}
-```
-
-========================================
-9. IMPORTANT
-============
-
-OLD HOSTELS created before fixes may still show:
-
-* N/A
-* broken QR
-* missing avatar
-
-Only NEW registrations after fixes should fully work.
-
-Do NOT manually edit old broken records unless needed.
-
-========================================
-10. FINAL VERIFICATION
-======================
-
-After fixes:
-
-1. Register NEW hostel
-2. Approve from admin
-3. Verify MongoDB Hostel document contains:
-
-```json
-{
-  "hostelType": "Boys",
-  "district": "Thrissur",
-  "city": "Mannuthy",
-  "pincode": "680651",
-  "qrCodeUrl": "https://res.cloudinary.com/...",
-  "profileImage": "https://res.cloudinary.com/..."
-}
-```
-
-4. Verify admin page shows:
-
-* avatar
-* QR image
-* district
-* city
-* pincode
-* type
-* created date
-
-5. Verify View QR and Download QR work correctly.
-
-Apply only minimal diffs.
-Do NOT corrupt adminController.js again.
-
-              </div>
+              <div style={{ fontWeight: 800 }}>{checking ? "Checking..." : status}</div>
 
               {rejected && (
                 <div style={{ marginTop: 8, color: "var(--text-body)" }}>
@@ -565,7 +262,6 @@ Do NOT corrupt adminController.js again.
                         toast.error(response.data.message || "Failed to cancel request");
                       }
                     } catch (error) {
-                      console.error("Cancel Request Error:", error);
                       toast.error("Failed to cancel request");
                     }
                   }}
@@ -607,7 +303,6 @@ Do NOT corrupt adminController.js again.
                 </button>
               </div>
             )}
-
           </div>
         </div>
       </div>

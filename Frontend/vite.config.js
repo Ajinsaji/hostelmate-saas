@@ -13,6 +13,11 @@ export default defineConfig({
         cleanupOutdatedCaches: true,
         clientsClaim: true,
         skipWaiting: true,
+        // Allow large hashed bundles (prevents build failure on Vercel)
+        maximumFileSizeToCacheInBytes: 15 * 1024 * 1024,
+        // Also prevent treating those assets as build-blocking errors
+        importScripts: [],
+
       },
     }),
   ],

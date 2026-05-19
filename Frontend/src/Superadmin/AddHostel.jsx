@@ -135,13 +135,7 @@ function AddHostel() {
     return Object.keys(newErrors).length === 0;
   };
 
-  const validateStep2 = () => {
-    let newErrors = {};
-    if (!formData.hostelAddress.trim()) newErrors.hostelAddress = "Hostel address is required";
-    if (!licensePhoto) newErrors.licensePhoto = "Upload Hostel License";
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
+
 
   const handleContinue = () => {
     if (step === 1 && validateStep1()) setStep(2);
