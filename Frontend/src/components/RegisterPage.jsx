@@ -159,10 +159,19 @@ function RegisterPage() {
   };
 
   const handleContinue = () => {
+    console.log("STEP 1 VALIDATION (pre):", {
+      formData,
+      selectedState: formData.state,
+      selectedDistrict: formData.district,
+      hostelType: formData.hostelType,
+    });
+
     if (validateStep1()) {
+      console.log("Validation passed → moving to step 2");
       setErrors({});
       setStep(2);
     } else {
+      console.log("Validation failed → staying on step 1", { errors });
       toast.error("Please fill all required fields");
     }
   };
@@ -462,7 +471,7 @@ function RegisterPage() {
                   <UploadBox label="Upload Aadhaar / ID Proof" file={aadhaarFile} setFile={setAadhaarFile} error={errors.aadhaarFile} />
                   <UploadBox label="Upload Owner Photo" file={ownerPhoto} setFile={setOwnerPhoto} error={errors.ownerPhoto} />
 
-                  <button className="btn-primary mt-6" onClick={handleContinue}>
+                  <button className="btn-primary mt-6" type="button" onClick={handleContinue}>
                     Continue <ArrowLeft size={20} style={{ transform: "rotate(180deg)" }} />
                   </button>
                 </>
