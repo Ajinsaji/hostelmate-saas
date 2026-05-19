@@ -202,7 +202,349 @@ function PendingApproval() {
             <div style={{ padding: 14, borderRadius: 14, background: "rgba(16,185,129,0.08)" }}>
               <div style={{ fontWeight: 900, marginBottom: 6 }}>Status</div>
               <div style={{ fontWeight: 800 }}>
-                {checking ? "Checking..." : status}
+                {checking ? "Checking..." : status}Fix ALL missing hostel fields + broken QR/profile image issues by converting the system fully to Cloudinary URLs.
+
+Current problems:
+
+* QR image broken
+* Owner profile image missing
+* Hostel Type shows N/A
+* District shows N/A
+* City/Place shows N/A
+* Pincode shows N/A
+* Created date shows N/A
+* Old local filename-based image handling still exists
+
+Goal:
+Store FULL Cloudinary/public URLs in MongoDB for:
+
+* owner profile photo
+* QR image
+* uploaded documents
+
+And ensure all hostel fields persist correctly through:
+Register → HostelRequest → Approve → Hostel → Admin UI
+
+========================================
+
+1. FIX CLOUDINARY IMAGE STORAGE
+   ========================================
+
+Problem:
+Backend currently stores:
+
+```js
+qrCodeUrl: qrFilename
+```
+
+Example:
+
+```text
+RMH059685B1S-QR.png
+```
+
+This breaks frontend images because browser needs FULL URL.
+
+Fix BOTH:
+
+* approveHostel()
+* addHostel()
+
+Replace:
+
+```js
+qrCodeUrl: qrFilename
+```
+
+WITH:
+
+```js
+qrCodeUrl: qrResult.url
+```
+
+Also ensure:
+
+```js
+publicUrl: publicUrl
+```
+
+remains unchanged.
+
+========================================
+2. VERIFY qrCodeService.js
+==========================
+
+File:
+
+* Backend/utils/qrCodeService.js
+
+Ensure generateQRCode() returns:
+
+```js
+{
+  success: true,
+  url: uploadedCloudinaryUrl
+}
+```
+
+NOT local filenames only.
+
+If QR image is generated locally first:
+
+* upload generated QR image to Cloudinary
+* return secure_url
+
+Example:
+
+```js
+const result = await cloudinary.uploader.upload(tempFilePath, {
+   folder: "hostelmate/qrcodes"
+});
+
+return {
+   success: true,
+   url: result.secure_url
+};
+```
+
+========================================
+3. FIX OWNER PROFILE PHOTO STORAGE
+==================================
+
+Problem:
+Owner photo uploads exist but admin UI shows:
+NO AVATAR
+
+Fix:
+Store Cloudinary secure_url in:
+
+* HostelRequest
+* Owner
+* Hostel
+
+In requestController.js:
+save:
+
+```js
+ownerPhoto: uploadedCloudinaryUrl
+```
+
+In approveHostel():
+
+```js
+await Owner.create({
+   ...
+   profileImage: request.ownerPhoto || "",
+});
+```
+
+OR:
+
+```js
+ownerPhoto: request.ownerPhoto
+```
+
+depending on Owner schema.
+
+========================================
+4. FIX REGISTER PAGE FIELD PERSISTENCE
+======================================
+
+File:
+
+* Frontend/src/components/RegisterPage.jsx
+
+Ensure FormData sends:
+
+```js
+formData.append("hostelType", hostelType);
+formData.append("district", district);
+formData.append("city", city);
+formData.append("pincode", pincode);
+formData.append("state", state);
+```
+
+Also ensure:
+
+```js
+formData.append("ownerPhoto", ownerPhotoFile);
+```
+
+========================================
+5. FIX requestController.js
+===========================
+
+When saving HostelRequest:
+
+```js
+hostelType: req.body.hostelType || "",
+district: req.body.district || "",
+city: req.body.city || "",
+pincode: req.body.pincode || "",
+state: req.body.state || "",
+```
+
+Also save:
+
+```js
+ownerPhoto
+```
+
+using uploaded Cloudinary URL.
+
+========================================
+6. FIX approveHostel()
+======================
+
+Inside Hostel.create():
+
+Add:
+
+```js
+hostelType: request.hostelType || "",
+district: request.district || "",
+city: request.city || "",
+pincode: request.pincode || "",
+state: request.state || "",
+```
+
+Inside Owner.create():
+
+Add:
+
+```js
+profileImage: request.ownerPhoto || "",
+```
+
+========================================
+7. FIX Hostel MODEL
+===================
+
+File:
+
+* Backend/models/Hostel.js
+
+Ensure schema contains:
+
+```js
+hostelType: {
+   type: String,
+   default: ""
+},
+
+district: {
+   type: String,
+   default: ""
+},
+
+city: {
+   type: String,
+   default: ""
+},
+
+pincode: {
+   type: String,
+   default: ""
+},
+
+qrCodeUrl: {
+   type: String,
+   default: ""
+},
+```
+
+========================================
+8. FIX ADMIN UI FIELD MAPPING
+=============================
+
+File:
+
+* Frontend/src/Superadmin/HostelManagement.jsx
+
+Fix:
+
+Created date:
+
+```js
+new Date(hostel.createdAt).toLocaleDateString()
+```
+
+NOT:
+
+```js
+hostel.created
+```
+
+Profile image:
+
+```jsx
+<img src={hostel.owner?.profileImage} />
+```
+
+QR image:
+
+```jsx
+<img src={hostel.qrCodeUrl} />
+```
+
+Add fallback:
+
+```jsx
+onError={(e) => {
+   e.target.src = "/default-avatar.png";
+}}
+```
+
+========================================
+9. IMPORTANT
+============
+
+OLD HOSTELS created before fixes may still show:
+
+* N/A
+* broken QR
+* missing avatar
+
+Only NEW registrations after fixes should fully work.
+
+Do NOT manually edit old broken records unless needed.
+
+========================================
+10. FINAL VERIFICATION
+======================
+
+After fixes:
+
+1. Register NEW hostel
+2. Approve from admin
+3. Verify MongoDB Hostel document contains:
+
+```json
+{
+  "hostelType": "Boys",
+  "district": "Thrissur",
+  "city": "Mannuthy",
+  "pincode": "680651",
+  "qrCodeUrl": "https://res.cloudinary.com/...",
+  "profileImage": "https://res.cloudinary.com/..."
+}
+```
+
+4. Verify admin page shows:
+
+* avatar
+* QR image
+* district
+* city
+* pincode
+* type
+* created date
+
+5. Verify View QR and Download QR work correctly.
+
+Apply only minimal diffs.
+Do NOT corrupt adminController.js again.
+
               </div>
 
               {rejected && (

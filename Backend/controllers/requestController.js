@@ -16,6 +16,7 @@ const createRequest = async (req, res) => {
       district,
       city,
       pincode,
+      hostelType,
     } = req.body;
 
     // Required location fields for new submissions
@@ -92,6 +93,7 @@ const createRequest = async (req, res) => {
         district: district || "",
         city: city || "",
         pincode: safePincode || "",
+        hostelType: hostelType || "",
         aadhaarFile: aadhaarFileName,
         ownerPhoto: ownerPhotoFileName,
         licensePhoto: licensePhotoFileName,

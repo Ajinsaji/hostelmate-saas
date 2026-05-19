@@ -20,6 +20,7 @@ const hostelRequestSchema = new mongoose.Schema(
     district: String,
     city: String,
     pincode: String,
+    hostelType: String,
 
     aadhaarFile: String,
 

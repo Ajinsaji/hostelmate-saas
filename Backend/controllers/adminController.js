@@ -158,10 +158,11 @@ const approveHostel =
           district: request.district || "",
           city: request.city || "",
           pincode: request.pincode || "",
+          hostelType: request.hostelType || "",
           
           uniqueCode: uniqueCode,
           publicUrl: publicUrl,
-          qrCodeUrl: qrFilename,
+          qrCodeUrl: qrResult.url,
           isPublic: true,
         });
 
@@ -191,6 +192,7 @@ const approveHostel =
         phone: request.phone,
         password: tempPassword,
         tempPassword: tempPassword,
+        profileImage: request.ownerPhoto || "",
         role: "owner",
         status: "active",
       });
@@ -205,7 +207,7 @@ const approveHostel =
       res.status(200).json({
         success: true,
         message: "Hostel Approved Successfully",
-        qrCodeUrl: qrFilename,
+        qrCodeUrl: qrResult.url,
         qrCodeFullUrl: qrResult.url,
         publicUrl: publicUrl,
         username: request.phone,
@@ -562,6 +564,7 @@ const addHostel = async (req, res) => {
       district,
       city,
       pincode,
+      hostelType,
       subscription,
     } = req.body;
 
@@ -632,9 +635,10 @@ const addHostel = async (req, res) => {
       district: district || "",
       city: city || "",
       pincode: pincode || "",
+      hostelType: hostelType || "",
       uniqueCode: uniqueCode,
       publicUrl: publicUrl,
-      qrCodeUrl: qrFilename,
+      qrCodeUrl: qrResult.url,
       isPublic: true,
 
       subscriptionStatus: subPayload.subscriptionStatus || "trial",
@@ -652,10 +656,9 @@ const addHostel = async (req, res) => {
       phone,
       password: ownerPassword,
       tempPassword: ownerPassword,
+      profileImage: ownerPhotoFileName || "",
       role: "owner",
       status: "active",
-      aadhaarFile: aadhaarFileName,
-      ownerPhoto: ownerPhotoFileName,
     });
 
     // Create subscription
@@ -682,7 +685,7 @@ const addHostel = async (req, res) => {
       ownerId: owner._id,
       subscription: subscriptionDoc,
       publicUrl,
-      qrCodeUrl: qrFilename,
+      qrCodeUrl: qrResult.url,
       qrCodeFullUrl: qrResult.url,
       uniqueCode,
     });
@@ -850,6 +853,7 @@ const editHostelLocation = async (req, res) => {
 // CHANGE ADMIN PASSWORD
 // ==========================
 const changeAdminPassword = async (req, res) => {
+  try {
     const adminId = req.user?.id || req.userId;
     const { oldPassword, newPassword, confirmPassword } = req.body;
 

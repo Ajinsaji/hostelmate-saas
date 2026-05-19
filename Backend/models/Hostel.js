@@ -9,13 +9,30 @@ const hostelSchema = new mongoose.Schema({
 
   address: String,
 
-  state: String,
+  state: {
+    type: String,
+    default: "",
+  },
 
-  district: String,
+  district: {
+    type: String,
+    default: "",
+  },
 
-  city: String,
+  city: {
+    type: String,
+    default: "",
+  },
 
-  pincode: String,
+  pincode: {
+    type: String,
+    default: "",
+  },
+
+  hostelType: {
+    type: String,
+    default: "",
+  },
 
   qrImage: String,
 
@@ -51,7 +68,10 @@ const hostelSchema = new mongoose.Schema({
 
   publicUrl: String,
 
-  qrCodeUrl: String,
+  qrCodeUrl: {
+    type: String,
+    default: "",
+  },
 
   // Hostel Details
   whatsapp: String,
