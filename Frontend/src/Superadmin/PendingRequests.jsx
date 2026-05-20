@@ -47,7 +47,9 @@ function PendingRequests() {
           response.data.hostelId
         );
 
-        navigate(`/admin/subscription-setup/${response.data.hostelId}`);
+        setTimeout(() => {
+          navigate(`/admin/subscription-setup/${response.data.hostelId}`);
+        }, 100);
         return;
       }
 
@@ -59,7 +61,9 @@ function PendingRequests() {
           "NAVIGATING TO SUBSCRIPTION SETUP (already started):",
           response.data.hostelId
         );
-        navigate(`/admin/subscription-setup/${response.data.hostelId}`);
+        setTimeout(() => {
+          navigate(`/admin/subscription-setup/${response.data.hostelId}`);
+        }, 100);
         return;
       }
 
