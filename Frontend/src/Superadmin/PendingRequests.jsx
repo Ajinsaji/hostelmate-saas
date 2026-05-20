@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { api } from "../services/api";
 import buildFileUrl from "../utils/buildFileUrl";
 
-import { CheckCircle, XCircle, Copy, Download, Share2, Loader2 } from "lucide-react";
+import { CheckCircle, XCircle, Loader2 } from "lucide-react";
 import SuperadminBottomNav from "../components/SuperadminBottomNav";
 import toast from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
@@ -11,7 +11,6 @@ import { useNavigate } from "react-router-dom";
 function PendingRequests() {
   const [requests, setRequests] = useState([]);
   const [activeTab, setActiveTab] = useState("pending");
-  const [approvedData, setApprovedData] = useState(null);
   const [loadingActionId, setLoadingActionId] = useState(null);
 
   const fetchRequests = async () => {
@@ -38,6 +37,7 @@ const response = await api.get("/api/admin/requests");
       // Optimistic update: do NOT force status here; backend will be source of truth.
 
       const response = await api.put(`/api/admin/approve/${id}`, {});
+      console.log("Approve response:", response.data);
 
       if (response.data?.success && response.data?.requiresSubscriptionSetup) {
         toast.success("Draft created. Setup subscription to activate.");
@@ -51,12 +51,7 @@ const response = await api.get("/api/admin/requests");
         return;
       }
 
-
-      // Backward compat: if backend still returns QR/credentials
       toast.success("✅ Hostel Approved");
-      if (response.data?.success && response.data?.qrCodeUrl) {
-        setApprovedData(response.data);
-      }
       fetchRequests();
     } catch (error) {
       toast.error("Failed to approve");
@@ -101,11 +96,6 @@ await api.put(`/api/admin/reject/${id}`, {});
     }
   };
 
-
-  const handleCopy = (text) => {
-    navigator.clipboard.writeText(text);
-    toast.success("Copied to clipboard!");
-  };
 
   const filteredRequests = requests
     .filter((r) => String(r.status || "").toLowerCase() === activeTab)
@@ -263,54 +253,6 @@ await api.put(`/api/admin/reject/${id}`, {});
           ))
         )}
       </div>
-
-      {/* SUCCESS MODAL FOR QR AND CREDENTIALS */}
-      {approvedData && (
-        <div style={{
-          position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
-          background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)", display: "flex", justifyContent: "center", alignItems: "center",
-          zIndex: 1000, padding: "20px"
-        }}>
-          <div className="animate-slide-up" style={{ background: "rgba(11,23,57,0.75)", padding: "24px", borderRadius: "24px", maxWidth: "400px", width: "100%", textAlign: "center", boxShadow: "0 20px 40px rgba(0,0,0,0.35)", border: "1px solid rgba(255,255,255,0.10)" }}>
-
-            <div style={{ width: 60, height: 60, borderRadius: "50%", background: "#dcfce7", display: "flex", justifyContent: "center", alignItems: "center", margin: "0 auto 16px" }}>
-              <CheckCircle size={32} color="#22c55e" />
-            </div>
-            <h2 style={{ color: "var(--text-main)", marginBottom: "8px", fontSize: "22px", fontWeight: "bold" }}>Approval Success!</h2>
-            <p className="text-small text-muted mb-4">Credentials & QR generated.</p>
-            
-              <img src={buildFileUrl(approvedData.qrCodeUrl)} alt="QR Code" style={{ width: "180px", height: "180px", margin: "0 auto", borderRadius: "12px", border: "1px solid rgba(255,255,255,0.10)" }} />
-
-            
-            <div className="flex justify-center gap-2 mt-4">
-              <a href={buildFileUrl(approvedData.qrCodeUrl)} download className="flex items-center gap-1 text-xs" style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.10)", color: "#fff", padding: "8px 12px", borderRadius: "12px", fontWeight: 800 }}>
-
-                <Download size={14} /> Download QR
-              </a>
-              <button onClick={() => handleCopy(approvedData.publicUrl)} className="flex items-center gap-1 text-xs" style={{ background: "rgba(37,211,102,0.12)", border: "1px solid rgba(37,211,102,0.22)", color: "#EFFFF8", padding: "8px 12px", borderRadius: "12px", fontWeight: 800 }}>
-
-                <Copy size={14} /> Copy Link
-
-              </button>
-            </div>
-
-            <div style={{ marginTop: "16px", textAlign: "left", background: "rgba(255,255,255,0.04)", padding: "16px", borderRadius: "12px", border: "1px solid rgba(255,255,255,0.08)" }}>
-
-              <div className="flex justify-between items-center mb-2">
-                <p className="text-sm"><strong>User:</strong> {approvedData.username}</p>
-<button onClick={() => handleCopy(approvedData.username)}><Copy size={14} style={{ color: "rgba(255,255,255,0.55)" }} /></button>
-              </div>
-              <div className="flex justify-between items-center">
-                <p className="text-sm"><strong>Pass:</strong> {approvedData.tempPassword}</p>
-<button onClick={() => handleCopy(approvedData.tempPassword)}><Copy size={14} style={{ color: "rgba(255,255,255,0.55)" }} /></button>
-              </div>
-            </div>
-            <button onClick={() => setApprovedData(null)} style={{ marginTop: "20px", background: "var(--primary)", color: "white", padding: "14px", borderRadius: "12px", width: "100%", border: "none", fontWeight: 600 }}>
-              Done
-            </button>
-          </div>
-        </div>
-      )}
 
       <SuperadminBottomNav />
     </div>

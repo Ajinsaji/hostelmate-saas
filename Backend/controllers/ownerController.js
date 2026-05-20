@@ -17,6 +17,8 @@ const PublicAdmission = require("../models/PublicAdmission");
 const loginOwner = async (req, res) => {
   try {
     const { email, phone, password, username } = req.body || {};
+    console.log("LOGIN ATTEMPT");
+    console.log("Username entered:", username, "Email entered:", email, "Phone entered:", phone);
 
     const looksLikeBcryptHash = (val) => typeof val === "string" && /^\$2[aby]\$\d{2}\$/.test(val);
 
@@ -63,9 +65,12 @@ const loginOwner = async (req, res) => {
       };
 
       const ownerCandidate = await Owner.findOne(query);
+      console.log("Owner found:", ownerCandidate?.username, "Phone:", ownerCandidate?.phone);
+      console.log("Stored hash exists:", !!ownerCandidate?.password);
 
       if (ownerCandidate) {
         const ok = await safePasswordCompare(password, ownerCandidate.password);
+        console.log("Password match:", ok);
         if (ok) owner = ownerCandidate;
       }
 

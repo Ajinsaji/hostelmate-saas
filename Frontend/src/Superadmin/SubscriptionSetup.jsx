@@ -43,6 +43,7 @@ function SubscriptionSetup() {
   }, [form.planType]);
 
   useEffect(() => {
+    console.log("SUBSCRIPTION SETUP PAGE LOADED", hostelId);
     // Minimal placeholder: we don't yet have a dedicated hostel details endpoint for drafts.
     // So we at least initialize a reasonable date range.
     const now = new Date();
@@ -72,6 +73,7 @@ function SubscriptionSetup() {
 
   const submitFinalize = async (e) => {
     e.preventDefault();
+    console.log("Finalize button clicked", hostelId);
 
     if (!hostelId) {
       toast.error("Hostel ID missing");

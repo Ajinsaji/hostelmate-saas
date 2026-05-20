@@ -177,6 +177,7 @@ const approveHostel =
       request.status = "activation_pending";
       await request.save();
 
+      console.log("Draft hostel created:", hostel._id);
       return res.status(200).json({
         success: true,
         hostelId: hostel._id,
@@ -196,6 +197,7 @@ const approveHostel =
 const finalizeHostelActivation = async (req, res) => {
   try {
     const { hostelId } = req.params;
+    console.log("FINALIZE ACTIVATION START", hostelId);
     const { planType, amount, startDate, endDate, isTrial, isFreeAccess, notes } = req.body || {};
 
     if (!hostelId) {
@@ -209,11 +211,13 @@ const finalizeHostelActivation = async (req, res) => {
 
     // Generate temp password and hash it
     const tempPassword = `HM${Math.floor(1000 + Math.random() * 9000)}@`;
+    console.log("Generated temp password:", tempPassword);
 
     const bcryptjs = require("bcryptjs");
     const hashedPassword = await bcryptjs.hash(tempPassword, 10);
 
     // Owner: create ONLY here (activation boundary)
+    console.log("Creating owner now...");
     // Derive owner fields from draft hostel (created in approveHostel)
     const ownerPayload = {
       hostelId: hostel._id,
@@ -239,6 +243,7 @@ const finalizeHostelActivation = async (req, res) => {
 
 
     const createdOwner = await Owner.create(ownerPayload);
+    console.log("Owner created:", createdOwner?.username || createdOwner?._id);
 
     // Subscription creation ONLY here (activation boundary)
     // Map frontend labels to schema enum Basic/Pro
@@ -275,6 +280,7 @@ const finalizeHostelActivation = async (req, res) => {
     if (relatedRequest) {
       relatedRequest.status = "approved";
       await relatedRequest.save();
+      console.log("Hostel request approved:", relatedRequest._id);
     }
 
     // STEP 2: WhatsApp onboarding - provider-ready placeholder (must happen AFTER successful activation)
