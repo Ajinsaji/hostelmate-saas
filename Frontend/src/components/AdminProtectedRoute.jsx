@@ -25,6 +25,7 @@ const isTokenExpired = (token) => {
 };
 
 export default function AdminProtectedRoute({ children }) {
+  console.log("AdminProtectedRoute active");
   const token = localStorage.getItem("adminToken");
 
   if (!token) {

@@ -40,6 +40,10 @@ const response = await api.get("/api/admin/requests");
       console.log("Approve response:", response.data);
 
       if (response.data?.success && response.data?.requiresSubscriptionSetup) {
+        console.log(
+          "NAVIGATING TO SUBSCRIPTION SETUP:",
+          response.data.hostelId
+        );
         toast.success("Draft created. Setup subscription to activate.");
         navigate(`/admin/subscription-setup/${response.data.hostelId}`);
         return;

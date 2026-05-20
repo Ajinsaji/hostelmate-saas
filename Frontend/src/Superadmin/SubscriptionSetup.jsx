@@ -17,8 +17,10 @@ function toISODateInputValue(d) {
 }
 
 function SubscriptionSetup() {
+  console.log("SUBSCRIPTION SETUP COMPONENT MOUNTED");
   const navigate = useNavigate();
   const { hostelId } = useParams();
+  console.log("hostelId param:", hostelId);
 
   const [loading, setLoading] = useState(false);
   const [hostel, setHostel] = useState(null);
@@ -44,6 +46,10 @@ function SubscriptionSetup() {
 
   useEffect(() => {
     console.log("SUBSCRIPTION SETUP PAGE LOADED", hostelId);
+    if (!hostelId) {
+      console.warn("hostelId is undefined in useEffect");
+      return;
+    }
     // Minimal placeholder: we don't yet have a dedicated hostel details endpoint for drafts.
     // So we at least initialize a reasonable date range.
     const now = new Date();
@@ -115,6 +121,14 @@ function SubscriptionSetup() {
   };
 
   const qrPreviewSrc = hostel?.qrCodeUrl || hostel?.qrCode || "";
+
+  if (!hostelId) {
+    return (
+      <div style={{ minHeight: "100vh", background: "#081028", paddingBottom: "110px", display: "flex", justifyContent: "center", alignItems: "center" }}>
+        <div style={{ color: "white", fontSize: "18px" }}>Missing hostelId parameter</div>
+      </div>
+    );
+  }
 
   return (
     <div style={{ minHeight: "100vh", background: "#081028", paddingBottom: "110px" }}>
