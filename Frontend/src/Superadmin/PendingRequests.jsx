@@ -12,14 +12,17 @@ function PendingRequests() {
   const [requests, setRequests] = useState([]);
   const [activeTab, setActiveTab] = useState("pending");
   const [loadingActionId, setLoadingActionId] = useState(null);
+  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
   const fetchRequests = async () => {
     try {
       const response = await api.get("/api/admin/requests");
-      setRequests(response.data.requests);
+      setRequests(response.data.requests || []);
     } catch (error) {
       toast.error(error?.response?.data?.message || "Failed to load requests.");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -76,6 +79,14 @@ function PendingRequests() {
     }
   };
 
+  const handleActivationPendingClick = (item) => {
+    if (!item.hostelId) {
+      toast.error("Hostel activation details are not available yet.");
+      return;
+    }
+    navigate(`/admin/subscription-setup/${item.hostelId}`);
+  };
+
   const rejectRequest = async (id) => {
     setLoadingActionId(id);
     try {
@@ -118,14 +129,14 @@ await api.put(`/api/admin/reject/${id}`, {});
 
 
   return (
-    <div style={{ minHeight: "100vh", background: "#081028", paddingBottom: "100px", fontFamily: "Poppins" }}>
+    <div className="min-h-screen bg-[#081028] pb-32 font-sans text-white">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="gradient-header mb-6 rounded-[30px] border border-white/10 bg-white/5 p-6 shadow-xl">
+          <h1 className="text-3xl font-bold text-white">Requests</h1>
+          <p className="mt-2 text-sm text-white/80">Manage hostel partner applications</p>
+        </div>
 
-      <div className="gradient-header mb-6" style={{ paddingBottom: "40px", borderBottomLeftRadius: "30px", borderBottomRightRadius: "30px" }}>
-        <h1 className="text-h1" style={{ color: "white" }}>Requests</h1>
-        <p style={{ color: "rgba(255,255,255,0.8)" }}>Manage hostel partner applications</p>
-      </div>
-
-      <div className="p-4" style={{ marginTop: "-30px" }}>
+        <div className="mt-[-20px] p-4">
         {/* TABS */}
         <div className="flex rounded-xl p-1 shadow-sm mb-6" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
 
@@ -145,14 +156,26 @@ await api.put(`/api/admin/reject/${id}`, {});
         </div>
 
         {/* REQUEST LIST */}
-        {filteredRequests.length === 0 ? (
-        <div className="glass-card p-8 rounded-2xl text-center shadow-sm" style={{ background: "rgba(11,23,57,0.55)" }}>
-
+        {loading ? (
+          <div className="grid gap-4">
+            {[1, 2, 3].map((s) => (
+              <div key={s} className="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-sm animate-pulse" style={{ minHeight: 160 }} />
+            ))}
+          </div>
+        ) : filteredRequests.length === 0 ? (
+          <div className="glass-card p-8 rounded-2xl text-center shadow-sm" style={{ background: "rgba(11,23,57,0.55)" }}>
             No {activeTab} Requests Found
           </div>
         ) : (
           filteredRequests.map((item) => (
-            <div key={item._id} className="glass-card rounded-2xl p-5 mb-4 shadow-sm relative overflow-hidden" style={{ background: "rgba(11,23,57,0.45)" }}>
+            <div
+              key={item._id}
+              role={item.status === "activation_pending" ? "button" : undefined}
+              tabIndex={item.status === "activation_pending" ? 0 : undefined}
+              onClick={item.status === "activation_pending" ? () => handleActivationPendingClick(item) : undefined}
+              className={`glass-card rounded-2xl p-5 mb-4 shadow-sm relative overflow-hidden transition-all ${item.status === "activation_pending" ? "cursor-pointer hover:shadow-xl" : ""}`}
+              style={{ background: "rgba(11,23,57,0.45)" }}
+            >
 
               <div style={{ position: "absolute", top: 0, left: 0, width: "6px", height: "100%", background: item.status === "Approved" ? "#22c55e" : item.status === "Rejected" ? "#ef4444" : "#eab308" }} />
               
@@ -187,7 +210,7 @@ await api.put(`/api/admin/reject/${id}`, {});
                 <div className="flex gap-3 mt-4 pt-4" style={{ borderTop: "1px solid rgba(255,255,255,0.08)" }}>
                   <button
                     disabled={loadingActionId === item._id}
-                    onClick={() => approveRequest(item._id)}
+                    onClick={(e) => { e.stopPropagation(); approveRequest(item._id); }}
                     className="flex-1 py-3 rounded-xl flex justify-center items-center gap-2 font-medium"
                     style={{
                       background: "linear-gradient(135deg, rgba(16,185,129,0.95) 0%, rgba(34,197,94,0.85) 100%)",
@@ -201,7 +224,7 @@ await api.put(`/api/admin/reject/${id}`, {});
                   </button>
                   <button
                     disabled={loadingActionId === item._id}
-                    onClick={() => rejectRequest(item._id)}
+                    onClick={(e) => { e.stopPropagation(); rejectRequest(item._id); }}
                     className="flex-1 py-3 rounded-xl flex justify-center items-center gap-2 font-medium"
                     style={{
                       background: "rgba(239,68,68,0.10)",
@@ -216,7 +239,7 @@ await api.put(`/api/admin/reject/${id}`, {});
                   </button>
                   <button
                     disabled={loadingActionId === item._id}
-                    onClick={() => handleDelete(item._id)}
+                    onClick={(e) => { e.stopPropagation(); handleDelete(item._id); }}
                     className="flex-1 py-3 rounded-xl flex justify-center items-center gap-2 font-medium"
                     style={{
                       background: "rgba(239,68,68,0.06)",
@@ -235,7 +258,7 @@ await api.put(`/api/admin/reject/${id}`, {});
                 <div className="flex gap-3 mt-4 pt-4" style={{ borderTop: "1px solid rgba(255,255,255,0.08)" }}>
                   <button
                     disabled={loadingActionId === item._id}
-                    onClick={() => approveRequest(item._id)}
+                    onClick={(e) => { e.stopPropagation(); approveRequest(item._id); }}
                     className="flex-1 py-3 rounded-xl flex justify-center items-center gap-2 font-medium"
                     style={{
                       background: "linear-gradient(135deg, rgba(16,185,129,0.95) 0%, rgba(34,197,94,0.85) 100%)",
@@ -249,7 +272,7 @@ await api.put(`/api/admin/reject/${id}`, {});
                   </button>
                   <button
                     disabled={loadingActionId === item._id}
-                    onClick={() => handleDelete(item._id)}
+                    onClick={(e) => { e.stopPropagation(); handleDelete(item._id); }}
                     className="flex-1 py-3 rounded-xl flex justify-center items-center gap-2 font-medium"
                     style={{
                       background: "rgba(239,68,68,0.06)",

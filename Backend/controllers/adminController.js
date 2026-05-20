@@ -155,6 +155,7 @@ const approveHostel =
       const hostel = await Hostel.create({
         hostelName: request.hostelName,
         ownerName: request.ownerName,
+        ownerPhoto: request.ownerPhoto || "",
         phone: request.phone,
         address: request.hostelAddress,
 
@@ -173,8 +174,9 @@ const approveHostel =
         pendingActivation: true,
       });
 
-      // update request status -> activation_pending
+      // update request status -> activation_pending and store draft hostel link
       request.status = "activation_pending";
+      request.hostelId = String(hostel._id);
       await request.save();
 
       console.log("Draft hostel created:", hostel._id);
@@ -229,6 +231,7 @@ const finalizeHostelActivation = async (req, res) => {
       mustChangePassword: true,
       role: "owner",
       status: "active",
+      profileImage: hostel.ownerPhoto || "",
     };
 
     // Avoid accidental double-activation (idempotency best-effort)
@@ -289,6 +292,11 @@ const finalizeHostelActivation = async (req, res) => {
 
       const loginUrl = process.env.PUBLIC_URL || process.env.LOGIN_URL || "https://hostelmate-saas.vercel.app/login";
 
+      console.log("STARTING WHATSAPP ONBOARDING");
+      console.log("owner phone:", hostel.phone);
+      console.log("owner name:", hostel.ownerName);
+      console.log("hostel name:", hostel.hostelName);
+
       // We use hostel.qrCodeUrl as public QR URL (fits current storage) and hostel.publicUrl as public hostel URL.
       await sendOwnerOnboarding({
         ownerName: hostel.ownerName,
@@ -301,8 +309,10 @@ const finalizeHostelActivation = async (req, res) => {
         qrUrl: hostel.qrCodeUrl || hostel.qrCodeUrl,
         loginUrl,
       });
+
+      console.log("WHATSAPP SENT SUCCESS");
     } catch (e) {
-      console.error("Owner onboarding WhatsApp failed (non-blocking):", e?.message || e);
+      console.error("WHATSAPP SEND FAILED", e.response?.data || e.message);
     }
 
     return res.status(200).json({

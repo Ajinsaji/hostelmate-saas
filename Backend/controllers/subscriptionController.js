@@ -33,16 +33,19 @@ const getSubscriptionStatusEndpoint = async (req, res) => {
     const mergedHostel = {
       ...hostel,
       ...(subscription || {}),
+      planType: subscription?.planType || hostel?.planType || "Basic",
+      subscriptionStatus:
+        subscription?.subscriptionStatus || hostel?.subscriptionStatus || "inactive",
+      subscriptionStartDate:
+        subscription?.subscriptionStartDate || hostel?.subscriptionStartDate || null,
+      subscriptionEndDate:
+        subscription?.subscriptionEndDate || hostel?.subscriptionEndDate || null,
       isFreeAccess:
         subscription?.isFreeAccess !== undefined
           ? subscription.isFreeAccess
           : hostel?.isFreeAccess,
       isTrial:
         subscription?.isTrial !== undefined ? subscription.isTrial : hostel?.isTrial,
-      subscriptionEndDate:
-        subscription?.subscriptionEndDate || hostel?.subscriptionEndDate,
-      subscriptionStatus:
-        subscription?.subscriptionStatus || hostel?.subscriptionStatus,
     };
 
     const lifecycle = getSubscriptionStatus(mergedHostel);
@@ -54,6 +57,17 @@ const getSubscriptionStatusEndpoint = async (req, res) => {
       warningLevel: lifecycle.warningLevel,
       expiryDate: lifecycle.expiryDate ? lifecycle.expiryDate.toISOString() : null,
       renewalRequired: lifecycle.renewalRequired,
+      planType: mergedHostel.planType,
+      subscriptionPlan: mergedHostel.planType,
+      subscriptionStatus: mergedHostel.subscriptionStatus,
+      subscriptionStartDate: mergedHostel.subscriptionStartDate
+        ? mergedHostel.subscriptionStartDate.toISOString()
+        : null,
+      subscriptionEndDate: mergedHostel.subscriptionEndDate
+        ? mergedHostel.subscriptionEndDate.toISOString()
+        : null,
+      isFreeAccess: mergedHostel.isFreeAccess === true,
+      isTrial: mergedHostel.isTrial === true,
     });
   } catch (e) {
     console.error("getSubscriptionStatus error:", e);

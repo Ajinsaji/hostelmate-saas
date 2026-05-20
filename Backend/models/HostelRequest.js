@@ -9,6 +9,11 @@ const hostelRequestSchema = new mongoose.Schema(
       unique: true,
     },
 
+    hostelId: {
+      type: String,
+      default: null,
+    },
+
     hostelName: String,
 
     ownerAddress: String,

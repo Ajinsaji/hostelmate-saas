@@ -21,16 +21,19 @@ const checkSubscription = async (req, res, next) => {
     const mergedHostel = {
       ...hostel,
       ...(subscription || {}),
+      planType: subscription?.planType || hostel?.planType || "Basic",
+      subscriptionStatus:
+        subscription?.subscriptionStatus || hostel?.subscriptionStatus || "inactive",
+      subscriptionStartDate:
+        subscription?.subscriptionStartDate || hostel?.subscriptionStartDate || null,
+      subscriptionEndDate:
+        subscription?.subscriptionEndDate || hostel?.subscriptionEndDate || null,
       isFreeAccess:
         subscription?.isFreeAccess !== undefined
           ? subscription.isFreeAccess
           : hostel?.isFreeAccess,
       isTrial:
         subscription?.isTrial !== undefined ? subscription.isTrial : hostel?.isTrial,
-      subscriptionEndDate:
-        subscription?.subscriptionEndDate || hostel?.subscriptionEndDate,
-      subscriptionStatus:
-        subscription?.subscriptionStatus || hostel?.subscriptionStatus,
     };
 
     const lifecycle = getSubscriptionStatus(mergedHostel);

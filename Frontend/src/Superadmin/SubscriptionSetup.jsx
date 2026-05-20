@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import toast from "react-hot-toast";
 
@@ -17,18 +17,21 @@ function toISODateInputValue(d) {
 }
 
 function SubscriptionSetup() {
-  console.log("SUBSCRIPTION SETUP COMPONENT MOUNTED");
   const navigate = useNavigate();
   const { hostelId } = useParams();
-  console.log("hostelId param:", hostelId);
+  const submitLockRef = useRef(false);
+
+  const now = new Date();
+  const defaultStartDate = toISODateInputValue(now);
+  const defaultEndDate = toISODateInputValue(new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000));
 
   const [loading, setLoading] = useState(false);
   const [hostel, setHostel] = useState(null);
   const [form, setForm] = useState({
     planType: "Trial",
     amount: "",
-    startDate: "",
-    endDate: "",
+    startDate: defaultStartDate,
+    endDate: defaultEndDate,
     isTrial: true,
     isFreeAccess: false,
     notes: "",
@@ -45,41 +48,34 @@ function SubscriptionSetup() {
   }, [form.planType]);
 
   useEffect(() => {
-    console.log("SUBSCRIPTION SETUP PAGE LOADED", hostelId);
     if (!hostelId) {
-      console.warn("hostelId is undefined in useEffect");
       return;
     }
-    // Minimal placeholder: we don't yet have a dedicated hostel details endpoint for drafts.
-    // So we at least initialize a reasonable date range.
-    const now = new Date();
-    const end = new Date(now);
-    end.setDate(now.getDate() + 30);
 
-    setForm((prev) => ({
-      ...prev,
-      startDate: prev.startDate || toISODateInputValue(now),
-      endDate: prev.endDate || toISODateInputValue(end),
-    }));
-
-    // Optional: try to read hostel info if backend returns it from an existing hostels list.
-    // If it fails, UI still works and submits values.
+    let mounted = true;
     (async () => {
       try {
         const res = await api.get("/api/admin/hostels");
         const found = (res.data?.hostels || []).find((h) => String(h.hostelId || h._id) === String(hostelId));
-        if (found) {
+        if (mounted && found) {
           setHostel(found);
         }
       } catch {
         // ignore
       }
     })();
+
+    return () => {
+      mounted = false;
+    };
   }, [hostelId]);
 
   const submitFinalize = async (e) => {
     e.preventDefault();
-    console.log("Finalize button clicked", hostelId);
+
+    if (loading || submitLockRef.current) {
+      return;
+    }
 
     if (!hostelId) {
       toast.error("Hostel ID missing");
@@ -97,6 +93,7 @@ function SubscriptionSetup() {
       return;
     }
 
+    submitLockRef.current = true;
     setLoading(true);
     try {
       await api.post(`/api/admin/finalize-hostel-activation/${encodeURIComponent(hostelId)}`, {
@@ -110,12 +107,11 @@ function SubscriptionSetup() {
       });
 
       toast.success("Activation submitted");
-      // Do not navigate to credentials/activation success yet.
-      // Final activation will be wired after finalize logic is implemented.
       navigate("/admin/pending-requests");
     } catch (error) {
       toast.error(error?.response?.data?.message || "Failed to activate hostel");
     } finally {
+      submitLockRef.current = false;
       setLoading(false);
     }
   };
@@ -131,7 +127,10 @@ function SubscriptionSetup() {
   }
 
   return (
-    <div style={{ minHeight: "100vh", background: "#081028", paddingBottom: "110px" }}>
+    <div
+      style={{ minHeight: "100vh", background: "#081028" }}
+      className="overflow-x-hidden"
+    >
       <div
         className="gradient-header mb-6"
         style={{ paddingBottom: "40px", borderBottomLeftRadius: "30px", borderBottomRightRadius: "30px" }}
@@ -144,17 +143,14 @@ function SubscriptionSetup() {
         </p>
       </div>
 
-      <div className="p-4" style={{ marginTop: "-30px" }}>
-        <div
-          className="grid"
-          style={{
-            gridTemplateColumns: "1.1fr 0.9fr",
-            gap: 16,
-          }}
-        >
+      <div className="p-4" style={{ marginTop: 0, paddingBottom: 40 }}>
+        {/* Mobile: stacked | Desktop: keep side-by-side */}
+        <div className="flex flex-col lg:flex-row" style={{ gap: 16, width: "100%", overflowX: "hidden" }}>
+          {/* Give cards proper widths so they never overflow on mobile */}
+
           {/* HOSTEL INFO */}
           <div
-            className="glass-card rounded-2xl p-5 shadow-sm"
+            className="glass-card rounded-2xl p-5 shadow-sm w-full"
             style={{ background: "rgba(11,23,57,0.45)" }}
           >
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
@@ -191,7 +187,10 @@ function SubscriptionSetup() {
               </div>
             </div>
 
-            <div className="text-small text-muted" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 12 }}>
+            <div
+              className="text-small text-muted grid grid-cols-1 sm:grid-cols-2"
+              style={{ gap: 10, marginTop: 12 }}
+            >
               <div>
                 <div style={{ fontSize: 12, color: "rgba(255,255,255,0.6)", marginBottom: 4 }}>Owner</div>
                 <div style={{ fontWeight: 800, color: "rgba(255,255,255,0.92)" }}>
@@ -223,11 +222,16 @@ function SubscriptionSetup() {
                 QR Preview
               </div>
               {qrPreviewSrc ? (
-                <div style={{ display: "flex", justifyContent: "center" }}>
+                <div className="flex justify-center">
                   <img
                     src={buildFileUrl(qrPreviewSrc)}
                     alt="QR Code"
-                    style={{ width: 160, height: 160, borderRadius: 16, border: "1px solid rgba(255,255,255,0.10)" }}
+                    className="w-40 h-40 sm:w-48 sm:h-48 lg:w-40 lg:h-40 max-w-full"
+                    style={{
+                      borderRadius: 16,
+                      border: "1px solid rgba(255,255,255,0.10)",
+                      objectFit: "contain",
+                    }}
                   />
                 </div>
               ) : (
@@ -240,7 +244,7 @@ function SubscriptionSetup() {
 
           {/* SUBSCRIPTION FORM */}
           <div
-            className="glass-card rounded-2xl p-5 shadow-sm"
+            className="glass-card rounded-2xl p-5 shadow-sm w-full"
             style={{ background: "rgba(11,23,57,0.45)" }}
           >
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
@@ -275,7 +279,7 @@ function SubscriptionSetup() {
                 </select>
               </div>
 
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 lg:gap-12">
                 <div className="input-group">
                   <span className="input-label">Amount</span>
                   <input
@@ -303,7 +307,7 @@ function SubscriptionSetup() {
                 </div>
               </div>
 
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 lg:gap-12">
                 <div className="input-group">
                   <span className="input-label">Start Date</span>
                   <input
@@ -381,6 +385,8 @@ function SubscriptionSetup() {
         </div>
       </div>
 
+      {/* Safe bottom spacing for fixed bottom nav */}
+      <div style={{ height: 110 }} />
       <SuperadminBottomNav />
     </div>
   );

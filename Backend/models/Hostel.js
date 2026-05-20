@@ -5,6 +5,11 @@ const hostelSchema = new mongoose.Schema({
 
   ownerName: String,
 
+  ownerPhoto: {
+    type: String,
+    default: "",
+  },
+
   phone: String,
 
   address: String,

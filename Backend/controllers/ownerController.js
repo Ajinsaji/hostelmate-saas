@@ -265,8 +265,7 @@ const transferOwnership = async (req, res) => {
 // ==========================
 const getDashboardStats = async (req, res) => {
   try {
-    const { hostelId } = req.owner;
-    
+    const { hostelId, ownerId } = req.owner;
     const rooms = await Room.find({ hostelId });
     const residentsCount = await Resident.countDocuments({ hostelId, status: "active" });
     

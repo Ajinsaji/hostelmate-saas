@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import toast from "react-hot-toast";
 import api from "../utils/apiClient";
+import buildFileUrl from "../utils/buildFileUrl";
 import BottomNav from "../components/BottomNav";
 import useGlobalPolling from "../hooks/useGlobalPolling";
 import useOwnerRealtimeSync from "../hooks/useOwnerRealtimeSync";
@@ -20,6 +21,32 @@ function Dashboard() {
   const [pendingCount, setPendingCount] = useState(0);
   const [hostel, setHostel] = useState(null);
   const [ownerName, setOwnerName] = useState("Hostel Owner");
+
+  const ownerPhotoUrl =
+    hostel?.owner?.profileImage ||
+    hostel?.owner?.photo ||
+    hostel?.ownerPhoto ||
+    hostel?.profileImage ||
+    hostel?.photo ||
+    "";
+
+  const subscriptionPlan =
+    hostel?.planType ||
+    subscriptionState?.planType ||
+    (subscriptionState?.status === "trial" ? "Trial" : "HostelMate");
+
+  const subscriptionStatus =
+    subscriptionState?.status ||
+    hostel?.subscriptionStatus ||
+    "inactive";
+
+  const subscriptionStartDate =
+    hostel?.subscriptionStartDate || subscriptionState?.startDate || "";
+  const subscriptionEndDate =
+    hostel?.subscriptionEndDate || subscriptionState?.expiryDate || "";
+  const daysLeft = subscriptionState?.daysLeft ?? null;
+  const renewalRequired = subscriptionState?.renewalRequired || false;
+  const freeAccess = hostel?.isFreeAccess || subscriptionState?.status === "freeAccess";
 
   useEffect(() => {
     const user = JSON.parse(localStorage.getItem("user") || "null");
@@ -132,121 +159,134 @@ function Dashboard() {
   }, []);
 
   return (
-    <div className="pb-24">
-      {/* HEADER */}
-      {/* STEP B1: SubscriptionBanner (data source integration deferred; placeholder until API wiring is added) */}
-      <div className="mb-4">
-        {!subscriptionLoading && subscriptionState && (
-          <>
-            <SubscriptionBanner
-              status={subscriptionState.status}
-              daysLeft={subscriptionState.daysLeft}
-              warningLevel={subscriptionState.warningLevel}
-              renewalRequired={subscriptionState.renewalRequired}
-            />
-            <div className="mt-3">
-              <SubscriptionStatusBadge status={subscriptionState.status} />
-            </div>
-            <div className="mt-4">
-              <SubscriptionProgressCard
+    <div className="min-h-screen bg-[#081028] pb-32">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="mb-6">
+          {!subscriptionLoading && subscriptionState && (
+            <>
+              <SubscriptionBanner
                 status={subscriptionState.status}
                 daysLeft={subscriptionState.daysLeft}
-                expiryDate={subscriptionState.expiryDate}
+                warningLevel={subscriptionState.warningLevel}
                 renewalRequired={subscriptionState.renewalRequired}
               />
+              <div className="mt-3 grid gap-4 lg:grid-cols-[1fr_360px]">
+                <div>
+                  <SubscriptionStatusBadge status={subscriptionState.status} />
+                </div>
+                <div>
+                  <SubscriptionProgressCard
+                    status={subscriptionState.status}
+                    daysLeft={subscriptionState.daysLeft}
+                    expiryDate={subscriptionState.expiryDate}
+                    renewalRequired={subscriptionState.renewalRequired}
+                  />
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+
+        <div className="gradient-header mb-6 rounded-[32px] border border-white/10 bg-white/5 p-6 shadow-xl backdrop-blur-xl">
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+            <div className="space-y-3 max-w-3xl">
+              <p className="text-sm text-white/75">Welcome Back, {ownerName} 👋</p>
+              <h1 className="text-3xl font-bold text-white">{hostel?.hostelName || "HostelMate Premium"}</h1>
+              <p className="text-sm text-white/70">Small improvements every day create big success.</p>
             </div>
-          </>
-        )}
-      </div>
-
-
-      <div className="gradient-header mb-6">
-        <div className="flex justify-between items-center mb-6">
-
-          <div>
-            <p className="text-small" style={{ color: "rgba(255,255,255,0.8)" }}>Welcome Back, {ownerName} 👋</p>
-            <h1 className="text-h1" style={{ color: "white" }}>{hostel?.hostelName || "HostelMate Premium"}</h1>
-            <p className="text-small" style={{ color: "rgba(255,255,255,0.75)", marginTop: 8 }}>
-              “Small improvements every day create big success.”
-            </p>
-          </div>
-          <div className="flex gap-3">
-            <button 
-              className="btn-icon" 
-              style={{ background: "rgba(255,255,255,0.2)", backdropFilter: "blur(10px)", position: "relative" }}
-              onClick={() => navigate("/admissions")}
-            >
-              <Bell size={24} color="white" />
-              {pendingCount > 0 && (
-                <span
-                  style={{
-                    position: "absolute",
-                    top: "-6px",
-                    right: "-6px",
-                    background: "#ef4444",
-                    color: "white",
-                    fontSize: "11px",
-                    fontWeight: "bold",
-                    width: "20px",
-                    height: "20px",
-                    borderRadius: "50%",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    animation: "pulse 2s infinite"
-                  }}
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+              <div className="flex items-center gap-3 rounded-3xl border border-white/10 bg-white/5 p-3">
+                {ownerPhotoUrl ? (
+                  <img
+                    src={buildFileUrl(ownerPhotoUrl)}
+                    alt="Owner"
+                    className="h-16 w-16 rounded-2xl border border-white/10 object-cover"
+                  />
+                ) : (
+                  <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-slate-800 text-xl font-semibold text-white/90">
+                    {ownerName?.charAt(0)?.toUpperCase() || "H"}
+                  </div>
+                )}
+                <div>
+                  <p className="text-xs uppercase tracking-[0.2em] text-white/50">Hostel Owner</p>
+                  <p className="text-sm font-semibold text-white">{ownerName}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  className="inline-flex items-center justify-center rounded-2xl bg-white/10 px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/15"
+                  onClick={() => navigate("/admissions")}
                 >
-                  {pendingCount}
-                </span>
-              )}
-            </button>
-
-            <button className="btn-icon" style={{ background: "rgba(255,255,255,0.2)", backdropFilter: "blur(10px)" }} onClick={() => navigate("/profile")}>
-              <Settings size={24} color="white" />
-            </button>
+                  <Bell size={20} className="mr-2" />
+                  Admissions {pendingCount > 0 ? `(${pendingCount})` : ""}
+                </button>
+                <button
+                  type="button"
+                  className="inline-flex items-center justify-center rounded-2xl border border-white/10 bg-transparent px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/10"
+                  onClick={() => navigate("/profile")}
+                >
+                  <Settings size={20} className="mr-2" />
+                  Profile
+                </button>
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* HERO CARD */}
-        <div style={{
-          background: "rgba(255,255,255,0.1)",
-          border: "1px solid rgba(255,255,255,0.18)",
-          backdropFilter: "blur(20px)",
-          borderRadius: "24px",
-          padding: "24px",
-          position: "relative",
-          overflow: "hidden"
-        }}>
-          <div style={{
-            position: "absolute",
-            width: "150px", height: "150px",
-            borderRadius: "50%",
-            background: "rgba(15, 93, 70, 0.14)",
-            top: "-50px", right: "-30px"
-          }} />
-          <p style={{ color: "rgba(255,255,255,0.9)", marginBottom: "8px", fontWeight: 500 }}>Your premium SaaS dashboard</p>
-          <h2 className="text-h2" style={{ color: "white", marginBottom: "12px", lineHeight: 1.3 }}>
-            Manage your hostel with clarity and speed.
-          </h2>
-          <p className="text-small" style={{ color: "rgba(255,255,255,0.78)" }}>
-            Rooms, residents, payments, and reports in one premium experience.
-          </p>
-        </div>
-      </div>
+        <div className="grid gap-6 xl:grid-cols-[2fr_1fr]">
+          <div className="grid gap-6 md:grid-cols-2">
+            <StatCard title="Residents" value={stats.residents} icon={<Users size={24} color="var(--primary)" />} />
+            <StatCard title="Rooms" value={stats.rooms} icon={<BedDouble size={24} color="var(--primary)" />} />
+            <StatCard title="Occupancy" value={`${stats.occupancyRate}%`} icon={<Users size={24} color="var(--primary)" />} />
+            <StatCard title="Today's Collection" value={`₹${stats.todayCollection}`} icon={<IndianRupee size={24} color="var(--primary)" />} />
+            <StatCard title="Pending Rent" value={`₹${stats.pendingRent}`} icon={<Wallet size={24} color="var(--primary)" />} full />
+          </div>
 
-      <div className="p-4 flex-col gap-6">
-        {/* STATS */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
-          <StatCard title="Residents" value={stats.residents} icon={<Users size={24} color="var(--primary)" />} />
-          <StatCard title="Rooms" value={stats.rooms} icon={<BedDouble size={24} color="var(--primary)" />} />
-          <StatCard title="Occupancy" value={`${stats.occupancyRate}%`} icon={<Users size={24} color="var(--primary)" />} />
-          <StatCard title="Today's Collection" value={`₹${stats.todayCollection}`} icon={<IndianRupee size={24} color="var(--primary)" />} />
-          <StatCard title="Pending Rent" value={`₹${stats.pendingRent}`} icon={<Wallet size={24} color="var(--status-pending)" />} full />
+          <div className="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-lg backdrop-blur-xl">
+            <div className="flex items-start justify-between gap-3 mb-4 flex-wrap">
+              <div>
+                <p className="text-xs uppercase tracking-[0.2em] text-white/50">Subscription Info</p>
+                <h2 className="mt-2 text-lg font-semibold text-white">Current Plan</h2>
+              </div>
+              <span className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${subscriptionStatus === "expired" ? "bg-rose-500/15 text-rose-200" : subscriptionStatus === "trial" ? "bg-cyan-500/15 text-cyan-200" : "bg-emerald-500/15 text-emerald-200"}`}>
+                {subscriptionStatus === "trial" ? "Trial" : subscriptionStatus === "expired" ? "Expired" : subscriptionStatus === "active" ? "Active" : subscriptionStatus}
+              </span>
+            </div>
+            <div className="space-y-4 text-sm text-white/80">
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="rounded-2xl bg-white/5 p-4">
+                  <p className="text-xs text-white/50">Plan Type</p>
+                  <p className="mt-2 font-semibold text-white">{subscriptionPlan}</p>
+                </div>
+                <div className="rounded-2xl bg-white/5 p-4">
+                  <p className="text-xs text-white/50">Free Access</p>
+                  <p className="mt-2 font-semibold text-white">{freeAccess ? "Yes" : "No"}</p>
+                </div>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="rounded-2xl bg-white/5 p-4">
+                  <p className="text-xs text-white/50">Start Date</p>
+                  <p className="mt-2 font-semibold text-white">{subscriptionStartDate ? new Date(subscriptionStartDate).toLocaleDateString() : "N/A"}</p>
+                </div>
+                <div className="rounded-2xl bg-white/5 p-4">
+                  <p className="text-xs text-white/50">End Date</p>
+                  <p className="mt-2 font-semibold text-white">{subscriptionEndDate ? new Date(subscriptionEndDate).toLocaleDateString() : "N/A"}</p>
+                </div>
+              </div>
+              <div className="rounded-2xl bg-white/5 p-4">
+                <p className="text-xs text-white/50">Days Left</p>
+                <p className="mt-2 text-xl font-semibold text-white">{typeof daysLeft === "number" ? `${daysLeft} days` : "—"}</p>
+              </div>
+              <div className="rounded-2xl bg-white/5 p-4">
+                <p className="text-xs text-white/50">Renewal Required</p>
+                <p className="mt-2 font-semibold text-white">{renewalRequired ? "Yes" : "No"}</p>
+              </div>
+            </div>
+          </div>
         </div>
 
-        {/* QUICK ACTIONS */}
-        <div className="card">
-          <h2 className="text-h2 mb-4" style={{ color: "var(--text-main)" }}>Quick Access</h2>
+        <div className="mt-8 grid gap-6 md:grid-cols-2 xl:grid-cols-3">
           <ActionButton
             title="Manage Rooms"
             subtitle="Beds, occupancy and room status"
