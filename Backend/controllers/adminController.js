@@ -99,6 +99,7 @@ const getAllRequests =
 const approveHostel =
   async (req, res) => {
     try {
+      console.log("NEW DRAFT-ONLY APPROVE FLOW ACTIVE");
       const request = await HostelRequest.findById(req.params.id);
 
       if (!request) {
