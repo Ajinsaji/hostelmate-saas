@@ -564,6 +564,8 @@ const updateHostelSettings = async (req, res) => {
       return res.status(404).json({ success: false, message: "Hostel not found" });
     }
 
+    console.log("Saved hostel rules:", updated.rulesText);
+
     res.status(200).json({
       success: true,
       message: "Hostel settings saved successfully",

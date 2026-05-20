@@ -65,14 +65,18 @@ function PublicHostelPage() {
     const fetchHostel = async () => {
       try {
         const response = await api.get(`/api/public/hostel/${hostelCode}`);
-        setHostel(response.data.hostel);
+        const h = response.data?.hostel;
+        console.log("Public hostel response:", {
+          rulesText: h?.rulesText,
+          currentRulesVersion: h?.currentRulesVersion,
+          rulesVersionNumber: h?.rulesVersionNumber,
+        });
+        setHostel(h);
 
         // If backend starts exposing rules fields in public hostel payload, wire them here.
-        // Otherwise, user can still see generic rules text below.
-        const h = response.data?.hostel;
-        const rvId = h?.rulesVersionId || h?.rulesVersionID || "";
+        const rvId = h?.currentRulesVersion || h?.rulesVersionId || h?.rulesVersionID || "";
         const rvNum = h?.rulesVersionNumber || h?.rulesVersionNo || "";
-        const rulesText = h?.activeRulesText || h?.currentActiveRulesText || h?.rulesText || "";
+        const rulesText = h?.rulesText || h?.activeRulesText || h?.currentActiveRulesText || h?.rules || "";
 
         if (rvId) setRulesVersionId(rvId);
         if (rvNum) setRulesVersionNumber(rvNum);
@@ -153,6 +157,17 @@ function PublicHostelPage() {
       data.append("agreementChecked", agreementChecked ? "true" : "false");
     }
 
+    console.log("Admission payload:", {
+      ...formData,
+      photoFile: !!photoFile,
+      idProofFile: !!idProofFile,
+      signatureImage: !!signatureImage,
+      signatureFile: !!signatureFile,
+      rulesVersionId,
+      rulesVersionNumber,
+      acceptedRulesTextSnapshot: !!acceptedRulesTextSnapshot,
+      agreementChecked,
+    });
 
     try {
       const response = await api.post(`/api/public/hostel/${hostelCode}/admission`, data);
@@ -464,10 +479,19 @@ function PublicHostelPage() {
                       }}
                       className="no-scrollbar"
                     >
-                      <div className="text-small" style={{ color: "rgba(255,255,255,0.88)", lineHeight: 1.5, whiteSpace: "pre-wrap" }}>
-                        {acceptedRulesTextSnapshot ||
-                          "Rules are currently unavailable. Your submission will require the latest rules snapshot from backend admin."}
-                      </div>
+                      {acceptedRulesTextSnapshot ? (
+                        <ul style={{ margin: 0, paddingLeft: 18, color: "rgba(255,255,255,0.88)", lineHeight: 1.7 }}>
+                          {acceptedRulesTextSnapshot.split(/\r?\n/).filter((line) => line.trim()).map((line, index) => (
+                            <li key={index} style={{ marginBottom: 8 }}>
+                              {line.trim()}
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <div className="text-small" style={{ color: "rgba(255,255,255,0.88)", lineHeight: 1.5, whiteSpace: "pre-wrap" }}>
+                          Rules are currently unavailable. Your submission will require the latest rules snapshot from backend admin.
+                        </div>
+                      )}
                     </div>
 
                     <label style={{ display: "flex", alignItems: "flex-start", gap: 10, marginTop: 12, cursor: "pointer" }}>

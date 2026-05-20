@@ -22,6 +22,12 @@ const getPublicHostel = async (req, res) => {
       address: hostel.address,
       phone: hostel.phone,
       qrCodeUrl: hostel.qrCodeUrl,
+      description: hostel.description || "",
+      amenities: hostel.amenities || [],
+      rulesText: hostel.rulesText || "",
+      currentRulesVersion: hostel.currentRulesVersion || "",
+      rulesVersionNumber: hostel.rulesVersionNumber || "",
+      rulesConfig: hostel.rulesConfig || {},
       rooms: rooms.map((r) => ({
         _id: r._id,
         roomNumber: r.roomNumber,
@@ -32,6 +38,12 @@ const getPublicHostel = async (req, res) => {
         vacantBeds: (r.totalBeds || 0) - (r.occupiedBeds || 0),
       })),
     };
+
+    console.log("Public hostel response:", {
+      rulesText: publicData.rulesText,
+      currentRulesVersion: publicData.currentRulesVersion,
+      rulesVersionNumber: publicData.rulesVersionNumber,
+    });
 
     res.status(200).json({ success: true, hostel: publicData });
   } catch (error) {
@@ -67,6 +79,21 @@ const submitAdmission = async (req, res) => {
       signedAt,
     } = req.body;
 
+    console.log("Admission req.body:", {
+      residentName,
+      phone,
+      email,
+      emergencyContact,
+      address,
+      roomPreference,
+      rulesVersionId,
+      rulesVersionNumber,
+      acceptedRulesTextSnapshot: !!acceptedRulesTextSnapshot,
+      agreementChecked,
+      signatureImage: !!signatureImage,
+      signedAt,
+    });
+
     const getUploadedFileUrl = require("../utils/getUploadedFileUrl");
 
     // Files (support Cloudinary objects or legacy filename)
@@ -78,6 +105,8 @@ const submitAdmission = async (req, res) => {
     // Enforce rules agreement + signature for new flow
     // (Legacy flow keeps working for already-stored uploads)
     const isNewSignatureFlow = !!signatureImage;
+    const hostelHasRules = !!(hostel.rulesText || hostel.currentRulesVersion || hostel.rulesVersionNumber);
+
     if (isNewSignatureFlow) {
       const checked = agreementChecked === "true" || agreementChecked === true;
       if (!checked) {
@@ -86,7 +115,7 @@ const submitAdmission = async (req, res) => {
       if (!signatureImage) {
         return res.status(400).json({ success: false, message: "Please provide your signature." });
       }
-      if (!acceptedRulesTextSnapshot || !rulesVersionId || !rulesVersionNumber) {
+      if (hostelHasRules && (!acceptedRulesTextSnapshot || !rulesVersionId || !rulesVersionNumber)) {
         return res.status(400).json({ success: false, message: "Rules agreement snapshot is missing." });
       }
     }
