@@ -12,10 +12,11 @@ function PendingRequests() {
   const [requests, setRequests] = useState([]);
   const [activeTab, setActiveTab] = useState("pending");
   const [loadingActionId, setLoadingActionId] = useState(null);
+  const navigate = useNavigate();
 
   const fetchRequests = async () => {
     try {
-const response = await api.get("/api/admin/requests");
+      const response = await api.get("/api/admin/requests");
       setRequests(response.data.requests);
     } catch (error) {
       toast.error(error?.response?.data?.message || "Failed to load requests.");
@@ -34,32 +35,38 @@ const response = await api.get("/api/admin/requests");
   const approveRequest = async (id) => {
     setLoadingActionId(id);
     try {
-      // Optimistic update: do NOT force status here; backend will be source of truth.
-
       const response = await api.put(`/api/admin/approve/${id}`, {});
       console.log("Approve response:", response.data);
 
-      if (response.data?.success && response.data?.requiresSubscriptionSetup) {
+      if (
+        response.data.requiresSubscriptionSetup &&
+        response.data.hostelId
+      ) {
         console.log(
           "NAVIGATING TO SUBSCRIPTION SETUP:",
           response.data.hostelId
         );
-        toast.success("Draft created. Setup subscription to activate.");
+
         navigate(`/admin/subscription-setup/${response.data.hostelId}`);
         return;
       }
 
-      if (response.data?.success === false && response.data?.activationAlreadyStarted === true) {
-        toast.success("Activation already started");
+      if (
+        response.data.activationAlreadyStarted === true &&
+        response.data.hostelId
+      ) {
+        console.log(
+          "NAVIGATING TO SUBSCRIPTION SETUP (already started):",
+          response.data.hostelId
+        );
         navigate(`/admin/subscription-setup/${response.data.hostelId}`);
         return;
       }
 
-      toast.success("✅ Hostel Approved");
       fetchRequests();
     } catch (error) {
       toast.error("Failed to approve");
-      fetchRequests(); // Revert on failure
+      fetchRequests();
     } finally {
       setLoadingActionId(null);
     }
