@@ -6,7 +6,9 @@ const {
   createRequest,
   checkRequestStatus,
   cancelRequest,
+  deleteRequest,
 } = require("../controllers/requestController");
+
 
 const { uploadFields } = require("../middleware/cloudinaryUpload");
 
@@ -36,6 +38,9 @@ router.get("/status/:phone", checkRequestStatus);
 // CANCEL REQUEST
 router.delete("/cancel/:id", cancelRequest);
 
+// DELETE REQUEST (permanent)
+router.delete("/:id", deleteRequest);
 
 module.exports = router;
+
 

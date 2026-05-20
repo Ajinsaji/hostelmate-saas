@@ -66,6 +66,27 @@ await api.put(`/api/admin/reject/${id}`, {});
     }
   };
 
+  const handleDelete = async (id) => {
+    try {
+      const confirmed = window.confirm("Delete this request permanently?");
+
+      if (!confirmed) return;
+
+      setLoadingActionId(id);
+      await api.delete(`/api/request/${id}`);
+
+      toast.success("Request deleted");
+      fetchRequests();
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to delete request");
+      fetchRequests();
+    } finally {
+      setLoadingActionId(null);
+    }
+  };
+
+
   const handleCopy = (text) => {
     navigator.clipboard.writeText(text);
     toast.success("Copied to clipboard!");
@@ -140,7 +161,7 @@ await api.put(`/api/admin/reject/${id}`, {});
               </div>
 
               {String(item.status || "").toLowerCase() === "pending" && (
-<div className="flex gap-3 mt-4 pt-4" style={{ borderTop: "1px solid rgba(255,255,255,0.08)" }}>
+                <div className="flex gap-3 mt-4 pt-4" style={{ borderTop: "1px solid rgba(255,255,255,0.08)" }}>
                   <button
                     disabled={loadingActionId === item._id}
                     onClick={() => approveRequest(item._id)}
@@ -167,12 +188,59 @@ await api.put(`/api/admin/reject/${id}`, {});
                       color: "#fff",
                     }}
                   >
-
                     {loadingActionId === item._id ? <Loader2 size={18} className="animate-spin" /> : <XCircle size={18} />}
                     Reject
                   </button>
+                  <button
+                    disabled={loadingActionId === item._id}
+                    onClick={() => handleDelete(item._id)}
+                    className="flex-1 py-3 rounded-xl flex justify-center items-center gap-2 font-medium"
+                    style={{
+                      background: "rgba(239,68,68,0.06)",
+                      borderColor: "rgba(239,68,68,0.22)",
+                      opacity: loadingActionId === item._id ? 0.7 : 1,
+                      border: "1px solid rgba(239,68,68,0.22)",
+                      color: "#fee2e2",
+                    }}
+                  >
+                    Delete
+                  </button>
                 </div>
               )}
+
+              {String(item.status || "").toLowerCase() === "rejected" && (
+                <div className="flex gap-3 mt-4 pt-4" style={{ borderTop: "1px solid rgba(255,255,255,0.08)" }}>
+                  <button
+                    disabled={loadingActionId === item._id}
+                    onClick={() => approveRequest(item._id)}
+                    className="flex-1 py-3 rounded-xl flex justify-center items-center gap-2 font-medium"
+                    style={{
+                      background: "linear-gradient(135deg, rgba(16,185,129,0.95) 0%, rgba(34,197,94,0.85) 100%)",
+                      color: "#fff",
+                      opacity: loadingActionId === item._id ? 0.7 : 1,
+                      border: "none",
+                    }}
+                  >
+                    {loadingActionId === item._id ? <Loader2 size={18} className="animate-spin" /> : <CheckCircle size={18} />}
+                    Approve
+                  </button>
+                  <button
+                    disabled={loadingActionId === item._id}
+                    onClick={() => handleDelete(item._id)}
+                    className="flex-1 py-3 rounded-xl flex justify-center items-center gap-2 font-medium"
+                    style={{
+                      background: "rgba(239,68,68,0.06)",
+                      borderColor: "rgba(239,68,68,0.22)",
+                      opacity: loadingActionId === item._id ? 0.7 : 1,
+                      border: "1px solid rgba(239,68,68,0.22)",
+                      color: "#fee2e2",
+                    }}
+                  >
+                    Delete
+                  </button>
+                </div>
+              )}
+
             </div>
           ))
         )}

@@ -182,8 +182,39 @@ const cancelRequest = async (req, res) => {
   }
 };
 
+const deleteRequest = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const request = await HostelRequest.findById(id);
+
+    if (!request) {
+      return res.status(404).json({
+        success: false,
+        message: "Request not found",
+      });
+    }
+
+    await HostelRequest.findByIdAndDelete(id);
+
+    return res.json({
+      success: true,
+      message: "Request deleted successfully",
+    });
+  } catch (error) {
+    console.error("DELETE REQUEST ERROR:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to delete request",
+    });
+  }
+};
+
 module.exports = {
   createRequest,
   checkRequestStatus,
   cancelRequest,
+  deleteRequest,
 };
+
