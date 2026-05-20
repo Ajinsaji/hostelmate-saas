@@ -132,140 +132,72 @@ function SubscriptionSetup() {
       className="overflow-x-hidden"
     >
       <div
-        className="gradient-header mb-6"
-        style={{ paddingBottom: "40px", borderBottomLeftRadius: "30px", borderBottomRightRadius: "30px" }}
+        className="gradient-header mb-6 rounded-[32px] border border-white/10 bg-white/5 px-5 py-7 shadow-2xl shadow-slate-900/40"
+        style={{ paddingBottom: "36px" }}
       >
         <h1 className="text-h1" style={{ color: "white" }}>
           Subscription Setup
         </h1>
-        <p style={{ color: "rgba(255,255,255,0.8)" }}>
-          Configure subscription before activating this hostel.
+        <p style={{ color: "rgba(255,255,255,0.88)", maxWidth: 680, lineHeight: 1.7 }}>
+          Configure the subscription details clearly before activating this hostel. Use the fields below to select plan, dates, and access options.
         </p>
       </div>
 
       <div className="p-4" style={{ marginTop: 0, paddingBottom: 40 }}>
-        {/* Mobile: stacked | Desktop: keep side-by-side */}
-        <div className="flex flex-col lg:flex-row" style={{ gap: 16, width: "100%", overflowX: "hidden" }}>
-          {/* Give cards proper widths so they never overflow on mobile */}
-
-          {/* HOSTEL INFO */}
-          <div
-            className="glass-card rounded-2xl p-5 shadow-sm w-full"
-            style={{ background: "rgba(11,23,57,0.45)" }}
-          >
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+        <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
+          <div className="rounded-[32px] border border-white/10 bg-slate-950/80 p-6 shadow-2xl shadow-slate-900/40">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
               <div>
-                <h2 className="text-h3" style={{ color: "var(--text-main)", marginBottom: 6 }}>
-                  {hostel?.hostelName || "Hostel"}
-                </h2>
-
-                <div className="flex items-center gap-2" style={{ marginBottom: 8 }}>
-                  <AlertTriangle size={16} style={{ color: "#f59e0b" }} />
-                  <span
-                    className="text-xs"
-                    style={{
-                      background: "rgba(245,158,11,0.15)",
-                      color: "#fbbf24",
-                      border: "1px solid rgba(245,158,11,0.25)",
-                      padding: "6px 10px",
-                      borderRadius: 999,
-                      fontWeight: 800,
-                    }}
-                  >
-                    Pending Activation
-                  </span>
-                </div>
+                <h2 className="text-2xl font-bold text-white">Hostel details</h2>
+                <p className="mt-1 text-sm text-slate-300">Review the draft hostel and owner details before finalizing activation.</p>
               </div>
-
-              <div style={{ textAlign: "right" }}>
-                <div className="text-small text-muted" style={{ marginBottom: 4 }}>
-                  Hostel ID
-                </div>
-                <div style={{ fontSize: 12, fontWeight: 800, color: "rgba(255,255,255,0.85)" }}>
-                  {hostelId}
-                </div>
+              <div className="rounded-3xl border border-white/10 bg-slate-900/75 px-4 py-3 text-sm font-semibold text-white shadow-sm">
+                Pending activation
               </div>
             </div>
 
-            <div
-              className="text-small text-muted grid grid-cols-1 sm:grid-cols-2"
-              style={{ gap: 10, marginTop: 12 }}
-            >
-              <div>
-                <div style={{ fontSize: 12, color: "rgba(255,255,255,0.6)", marginBottom: 4 }}>Owner</div>
-                <div style={{ fontWeight: 800, color: "rgba(255,255,255,0.92)" }}>
-                  {hostel?.owner?.name || hostel?.ownerName || "-"}
-                </div>
-              </div>
-              <div>
-                <div style={{ fontSize: 12, color: "rgba(255,255,255,0.6)", marginBottom: 4 }}>Phone</div>
-                <div style={{ fontWeight: 800, color: "rgba(255,255,255,0.92)" }}>
-                  {hostel?.phone || "-"}
-                </div>
-              </div>
-              <div>
-                <div style={{ fontSize: 12, color: "rgba(255,255,255,0.6)", marginBottom: 4 }}>Hostel Type</div>
-                <div style={{ fontWeight: 800, color: "rgba(255,255,255,0.92)" }}>
-                  {hostel?.hostelType || "-"}
-                </div>
-              </div>
-              <div>
-                <div style={{ fontSize: 12, color: "rgba(255,255,255,0.6)", marginBottom: 4 }}>State/District</div>
-                <div style={{ fontWeight: 800, color: "rgba(255,255,255,0.92)" }}>
-                  {hostel?.state || "-"} / {hostel?.district || "-"}
-                </div>
-              </div>
+            <div className="mt-6 grid gap-4 sm:grid-cols-2">
+              <CardField label="Hostel name" value={hostel?.hostelName || "-"} />
+              <CardField label="Owner" value={hostel?.owner?.name || hostel?.ownerName || "-"} />
+              <CardField label="Phone" value={hostel?.phone || "-"} />
+              <CardField label="Type" value={hostel?.hostelType || "-"} />
+              <CardField label="State / District" value={`${hostel?.state || "-"} / ${hostel?.district || "-"}`} />
+              <CardField label="Hostel ID" value={hostelId} />
             </div>
 
-            <div style={{ marginTop: 14, borderTop: "1px solid rgba(255,255,255,0.08)", paddingTop: 14 }}>
-              <div style={{ fontWeight: 900, marginBottom: 10, color: "rgba(255,255,255,0.9)" }}>
-                QR Preview
-              </div>
-              {qrPreviewSrc ? (
-                <div className="flex justify-center">
+            <div className="mt-6 rounded-[28px] border border-white/10 bg-slate-900/40 p-4">
+              <div className="text-sm font-semibold text-white/80">QR Preview</div>
+              <div className="mt-4 flex items-center justify-center">
+                {qrPreviewSrc ? (
                   <img
                     src={buildFileUrl(qrPreviewSrc)}
                     alt="QR Code"
-                    className="w-40 h-40 sm:w-48 sm:h-48 lg:w-40 lg:h-40 max-w-full"
-                    style={{
-                      borderRadius: 16,
-                      border: "1px solid rgba(255,255,255,0.10)",
-                      objectFit: "contain",
-                    }}
+                    className="h-44 w-44 max-w-full rounded-3xl border border-white/10 object-contain"
                   />
-                </div>
-              ) : (
-                <div className="text-small" style={{ color: "rgba(255,255,255,0.65)", textAlign: "center" }}>
-                  QR not available yet.
-                </div>
-              )}
+                ) : (
+                  <div className="rounded-3xl border border-dashed border-white/10 bg-white/5 px-6 py-10 text-sm text-white/60">
+                    QR not available yet.
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
-          {/* SUBSCRIPTION FORM */}
-          <div
-            className="glass-card rounded-2xl p-5 shadow-sm w-full"
-            style={{ background: "rgba(11,23,57,0.45)" }}
-          >
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+          <div className="rounded-[32px] border border-white/10 bg-slate-950/90 p-6 shadow-2xl shadow-slate-900/40">
+            <div className="flex items-center justify-between gap-4">
               <div>
-                <div style={{ fontWeight: 900, color: "rgba(255,255,255,0.95)", fontSize: 16 }}>
-                  Subscription
-                </div>
-                <div style={{ color: "rgba(255,255,255,0.65)", fontSize: 12, marginTop: 2 }}>
-                  Configure plan before activation.
-                </div>
+                <h2 className="text-2xl font-bold text-white">Subscription</h2>
+                <p className="mt-1 text-sm text-slate-300">Set the plan, dates, and access controls for activation.</p>
               </div>
-              <div style={{ width: 40, height: 40, borderRadius: 14, background: "rgba(37,211,102,0.12)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--primary)" }}>
-                <ShieldCheck size={18} />
+              <div className="flex h-12 w-12 items-center justify-center rounded-3xl bg-emerald-500/10 text-emerald-300">
+                <ShieldCheck size={20} />
               </div>
             </div>
 
-            <form onSubmit={submitFinalize} className="flex flex-col gap-4">
-              <div className="input-group">
-                <span className="input-label">Plan Type</span>
+            <form onSubmit={submitFinalize} className="mt-6 flex flex-col gap-5">
+              <FieldRow label="Plan Type">
                 <select
-                  className="input-field"
+                  className="input-field w-full"
                   value={form.planType}
                   onChange={(e) => {
                     const val = e.target.value;
@@ -277,88 +209,76 @@ function SubscriptionSetup() {
                   <option value="Monthly">Monthly</option>
                   <option value="Yearly">Yearly</option>
                 </select>
-              </div>
+              </FieldRow>
 
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 lg:gap-12">
-                <div className="input-group">
-                  <span className="input-label">Amount</span>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <FieldRow label="Amount">
                   <input
-                    className="input-field"
+                    className="input-field w-full"
                     type="number"
                     value={form.amount}
                     placeholder="0"
                     onChange={(e) => setForm((prev) => ({ ...prev, amount: e.target.value }))}
                   />
-                </div>
-
-                <div className="input-group">
-                  <span className="input-label">Trial</span>
-                  <label className="flex items-center gap-2" style={{ cursor: "pointer" }}>
+                </FieldRow>
+                <FieldRow label="Trial">
+                  <label className="flex items-center gap-3 rounded-3xl border border-white/10 bg-slate-900/70 px-4 py-3 text-sm text-white/90">
                     <input
                       type="checkbox"
                       checked={form.isTrial}
                       onChange={(e) => setForm((prev) => ({ ...prev, isTrial: e.target.checked }))}
-                      style={{ width: 18, height: 18 }}
+                      className="h-5 w-5 rounded border border-white/10 bg-slate-950"
                     />
-                    <span style={{ fontSize: 12, fontWeight: 800, color: "rgba(255,255,255,0.85)" }}>
-                      {form.isTrial ? "Yes" : "No"}
-                    </span>
+                    <span>{form.isTrial ? "Yes" : "No"}</span>
                   </label>
-                </div>
+                </FieldRow>
               </div>
 
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 lg:gap-12">
-                <div className="input-group">
-                  <span className="input-label">Start Date</span>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <FieldRow label="Start Date">
                   <input
-                    className="input-field"
+                    className="input-field w-full"
                     type="date"
                     value={form.startDate}
                     onChange={(e) => setForm((prev) => ({ ...prev, startDate: e.target.value }))}
                   />
-                </div>
-                <div className="input-group">
-                  <span className="input-label">End Date</span>
+                </FieldRow>
+                <FieldRow label="End Date">
                   <input
-                    className="input-field"
+                    className="input-field w-full"
                     type="date"
                     value={form.endDate}
                     onChange={(e) => setForm((prev) => ({ ...prev, endDate: e.target.value }))}
                   />
-                </div>
+                </FieldRow>
               </div>
 
-              <div className="input-group">
-                <span className="input-label">Free Access</span>
-                <label className="flex items-center gap-2" style={{ cursor: "pointer" }}>
+              <FieldRow label="Free Access">
+                <label className="flex items-center gap-3 rounded-3xl border border-white/10 bg-slate-900/70 px-4 py-3 text-sm text-white/90">
                   <input
                     type="checkbox"
                     checked={form.isFreeAccess}
                     onChange={(e) => setForm((prev) => ({ ...prev, isFreeAccess: e.target.checked }))}
-                    style={{ width: 18, height: 18 }}
+                    className="h-5 w-5 rounded border border-white/10 bg-slate-950"
                   />
-                  <span style={{ fontSize: 12, fontWeight: 800, color: "rgba(255,255,255,0.85)" }}>
-                    {form.isFreeAccess ? "Enabled" : "Disabled"}
-                  </span>
+                  <span>{form.isFreeAccess ? "Enabled" : "Disabled"}</span>
                 </label>
-              </div>
+              </FieldRow>
 
-              <div className="input-group">
-                <span className="input-label">Notes (optional)</span>
+              <FieldRow label="Notes (optional)">
                 <textarea
-                  className="input-field"
+                  className="input-field min-h-[124px] w-full resize-none"
                   value={form.notes}
                   placeholder="Add internal notes for this activation..."
                   rows={4}
                   onChange={(e) => setForm((prev) => ({ ...prev, notes: e.target.value }))}
                 />
-              </div>
+              </FieldRow>
 
               <button
                 type="submit"
-                className="btn-primary"
+                className="btn-primary mt-2 flex items-center justify-center gap-2 rounded-3xl px-5 py-3 text-sm font-semibold"
                 disabled={loading}
-                style={{ marginTop: 6 }}
               >
                 {loading ? (
                   <span className="flex items-center gap-2 justify-center">
@@ -373,21 +293,38 @@ function SubscriptionSetup() {
                 )}
               </button>
 
-              <div style={{ color: "rgba(255,255,255,0.65)", fontSize: 12, lineHeight: 1.5 }}>
+              <div className="rounded-3xl border border-white/10 bg-slate-900/70 px-4 py-3 text-sm text-slate-300">
                 Activation finalization will be handled in the backend finalize endpoint.
               </div>
             </form>
           </div>
         </div>
 
-        <div className="mt-6" style={{ textAlign: "center", color: "rgba(255,255,255,0.55)", fontSize: 12 }}>
+        <div className="mt-6 text-center text-sm text-slate-400">
           Tip: If QR preview is missing, it will still be generated during draft approval.
         </div>
       </div>
 
-      {/* Safe bottom spacing for fixed bottom nav */}
       <div style={{ height: 110 }} />
       <SuperadminBottomNav />
+    </div>
+  );
+}
+
+function CardField({ label, value }) {
+  return (
+    <div className="rounded-3xl border border-white/10 bg-slate-900/50 p-4">
+      <div className="text-xs font-semibold uppercase tracking-[0.3em] text-white/50">{label}</div>
+      <div className="mt-2 text-sm font-semibold text-white">{value}</div>
+    </div>
+  );
+}
+
+function FieldRow({ label, children }) {
+  return (
+    <div className="space-y-2">
+      <div className="text-xs font-semibold uppercase tracking-[0.3em] text-white/50">{label}</div>
+      {children}
     </div>
   );
 }

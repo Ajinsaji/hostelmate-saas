@@ -163,27 +163,53 @@ function Dashboard() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="mb-6">
           {!subscriptionLoading && subscriptionState && (
-            <>
-              <SubscriptionBanner
-                status={subscriptionState.status}
-                daysLeft={subscriptionState.daysLeft}
-                warningLevel={subscriptionState.warningLevel}
-                renewalRequired={subscriptionState.renewalRequired}
-              />
-              <div className="mt-3 grid gap-4 lg:grid-cols-[1fr_360px]">
-                <div>
-                  <SubscriptionStatusBadge status={subscriptionState.status} />
-                </div>
-                <div>
-                  <SubscriptionProgressCard
-                    status={subscriptionState.status}
-                    daysLeft={subscriptionState.daysLeft}
-                    expiryDate={subscriptionState.expiryDate}
-                    renewalRequired={subscriptionState.renewalRequired}
-                  />
+            <div className="grid gap-4 lg:grid-cols-[1fr_360px]">
+              <div className="space-y-4">
+                <SubscriptionBanner
+                  status={subscriptionState.status}
+                  daysLeft={subscriptionState.daysLeft}
+                  warningLevel={subscriptionState.warningLevel}
+                  renewalRequired={subscriptionState.renewalRequired}
+                />
+                <div className="rounded-[32px] border border-white/10 bg-slate-950/85 p-5 shadow-xl backdrop-blur-xl">
+                  <div className="flex flex-wrap items-center justify-between gap-4">
+                    <div>
+                      <p className="text-xs uppercase tracking-[0.35em] text-white/50">Subscription status</p>
+                      <h2 className="mt-2 text-2xl font-semibold text-white">{subscriptionState.status === "trial" ? "Trial plan" : subscriptionState.status === "active" ? "Active plan" : subscriptionState.status === "expired" ? "Expired" : "Subscription"}</h2>
+                    </div>
+                    <SubscriptionStatusBadge status={subscriptionState.status} />
+                  </div>
+
+                  <div className="mt-6 grid gap-4 sm:grid-cols-2">
+                    <div className="rounded-3xl border border-white/10 bg-slate-900/50 p-4">
+                      <div className="text-xs uppercase tracking-[0.3em] text-white/50">Plan</div>
+                      <div className="mt-2 text-lg font-semibold text-white">{subscriptionPlan}</div>
+                    </div>
+                    <div className="rounded-3xl border border-white/10 bg-slate-900/50 p-4">
+                      <div className="text-xs uppercase tracking-[0.3em] text-white/50">Expiry date</div>
+                      <div className="mt-2 text-lg font-semibold text-white">{subscriptionEndDate || "Not set"}</div>
+                    </div>
+                  </div>
+
+                  <div className="mt-6 grid gap-4 sm:grid-cols-2">
+                    <div className="rounded-3xl border border-white/10 bg-slate-900/50 p-4">
+                      <div className="text-xs uppercase tracking-[0.3em] text-white/50">Days left</div>
+                      <div className="mt-2 text-lg font-semibold text-white">{typeof daysLeft === "number" ? `${daysLeft} days` : "—"}</div>
+                    </div>
+                    <div className="rounded-3xl border border-white/10 bg-slate-900/50 p-4">
+                      <div className="text-xs uppercase tracking-[0.3em] text-white/50">Status</div>
+                      <div className="mt-2 text-lg font-semibold text-white capitalize">{subscriptionStatus}</div>
+                    </div>
+                  </div>
                 </div>
               </div>
-            </>
+              <SubscriptionProgressCard
+                status={subscriptionState.status}
+                daysLeft={subscriptionState.daysLeft}
+                expiryDate={subscriptionState.expiryDate}
+                renewalRequired={subscriptionState.renewalRequired}
+              />
+            </div>
           )}
         </div>
 
@@ -243,21 +269,37 @@ function Dashboard() {
             <StatCard title="Pending Rent" value={`₹${stats.pendingRent}`} icon={<Wallet size={24} color="var(--primary)" />} full />
           </div>
 
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-lg backdrop-blur-xl">
-            <div className="flex items-start justify-between gap-3 mb-4 flex-wrap">
+          <div className="rounded-3xl border border-white/10 bg-slate-950/90 p-6 shadow-xl backdrop-blur-xl">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <p className="text-xs uppercase tracking-[0.2em] text-white/50">Subscription Info</p>
                 <h2 className="mt-2 text-lg font-semibold text-white">Current Plan</h2>
               </div>
-              <span className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${subscriptionStatus === "expired" ? "bg-rose-500/15 text-rose-200" : subscriptionStatus === "trial" ? "bg-cyan-500/15 text-cyan-200" : "bg-emerald-500/15 text-emerald-200"}`}>
-                {subscriptionStatus === "trial" ? "Trial" : subscriptionStatus === "expired" ? "Expired" : subscriptionStatus === "active" ? "Active" : subscriptionStatus}
+              <span className={`inline-flex rounded-full px-3 py-2 text-xs font-semibold ${subscriptionStatus === "expired" ? "bg-rose-500/15 text-rose-200" : subscriptionStatus === "trial" ? "bg-sky-500/15 text-sky-200" : subscriptionStatus === "expiringSoon" ? "bg-amber-500/15 text-amber-200" : "bg-emerald-500/15 text-emerald-200"}`}>
+                {subscriptionStatus === "trial" ? "Trial" : subscriptionStatus === "expired" ? "Expired" : subscriptionStatus === "expiringSoon" ? "Expiring Soon" : subscriptionStatus === "active" ? "Active" : subscriptionStatus}
               </span>
             </div>
-            <div className="space-y-4 text-sm text-white/80">
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div className="rounded-2xl bg-white/5 p-4">
-                  <p className="text-xs text-white/50">Plan Type</p>
-                  <p className="mt-2 font-semibold text-white">{subscriptionPlan}</p>
+            <div className="mt-5 grid gap-4 sm:grid-cols-2 text-sm text-white/80">
+              <div className="rounded-3xl border border-white/10 bg-slate-900/50 p-4">
+                <p className="text-xs uppercase tracking-[0.24em] text-white/50">Plan Type</p>
+                <p className="mt-2 text-lg font-semibold text-white">{subscriptionPlan}</p>
+              </div>
+              <div className="rounded-3xl border border-white/10 bg-slate-900/50 p-4">
+                <p className="text-xs uppercase tracking-[0.24em] text-white/50">Expiry Date</p>
+                <p className="mt-2 text-lg font-semibold text-white">{subscriptionEndDate || "Not set"}</p>
+              </div>
+            </div>
+            <div className="mt-4 grid gap-4 sm:grid-cols-2 text-sm text-white/80">
+              <div className="rounded-3xl border border-white/10 bg-slate-900/50 p-4">
+                <p className="text-xs uppercase tracking-[0.24em] text-white/50">Days Left</p>
+                <p className="mt-2 text-lg font-semibold text-white">{typeof daysLeft === "number" ? `${daysLeft} days` : "—"}</p>
+              </div>
+              <div className="rounded-3xl border border-white/10 bg-slate-900/50 p-4">
+                <p className="text-xs uppercase tracking-[0.24em] text-white/50">Status</p>
+                <p className="mt-2 text-lg font-semibold text-white capitalize">{subscriptionStatus}</p>
+              </div>
+            </div>
+          </div>
                 </div>
                 <div className="rounded-2xl bg-white/5 p-4">
                   <p className="text-xs text-white/50">Free Access</p>

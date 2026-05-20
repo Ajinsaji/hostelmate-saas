@@ -2,81 +2,63 @@ import React from "react";
 import { AlertTriangle, ShieldCheck } from "lucide-react";
 
 const bannerStyles = {
-  medium: {
-    icon: <AlertTriangle className="w-5 h-5" />, 
-    container:
-      "border border-orange-500/30 bg-gradient-to-br from-orange-500/15 to-orange-500/5 text-orange-50",
-  },
   critical: {
     icon: <AlertTriangle className="w-5 h-5" />,
-    container:
-      "border border-red-500/40 bg-gradient-to-br from-red-500/18 to-red-500/6 text-red-50",
+    container: "border border-rose-500/35 bg-gradient-to-br from-rose-500/15 to-rose-500/06 text-rose-100",
   },
-  expired: {
+  medium: {
     icon: <AlertTriangle className="w-5 h-5" />,
-    container:
-      "border border-red-600/50 bg-gradient-to-br from-red-600/18 to-red-600/6 text-red-50",
+    container: "border border-amber-500/35 bg-gradient-to-br from-amber-500/15 to-amber-500/06 text-amber-100",
   },
 };
 
 export default function SubscriptionBanner({ status, daysLeft, warningLevel, renewalRequired }) {
   if (status === "active" || status === "trial" || status === "freeAccess") return null;
 
-  if (status === "expired" || warningLevel === "critical") {
-    const level = "critical";
-    const msg =
-      status === "expired"
-        ? "Subscription expired.\nRenew to continue dashboard access."
-        : "Your HostelMate subscription expires soon.\nImmediate renewal recommended.";
+  const days = typeof daysLeft === "number" ? daysLeft : "a few";
 
-    const s = bannerStyles[level];
+  if (status === "expired" || warningLevel === "critical") {
+    const s = bannerStyles.critical;
+    const message =
+      status === "expired"
+        ? "Your subscription has expired. Renew now to keep dashboard access."
+        : "Your subscription expires very soon. Renew immediately to avoid disruption.";
 
     return (
-      <div
-        className={`w-full rounded-2xl p-4 backdrop-blur-md transition-all duration-300 shadow-[0_0_0_1px_rgba(255,0,0,0.1)] ${s.container}`}
-      >
-        <div className="flex items-start gap-3">
-          <div className="mt-0.5 text-red-200">{s.icon}</div>
+      <div className={`w-full rounded-[28px] border p-5 shadow-lg backdrop-blur-xl ${s.container}`}>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
+          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-rose-500/15 text-rose-200 shadow-sm">
+            {s.icon}
+          </div>
           <div className="flex-1">
-            <div className="text-sm font-semibold leading-5 whitespace-pre-line">
-              {msg}
-            </div>
-            {renewalRequired && (
-              <div className="mt-2 text-xs text-red-100/90">
-                Renewal recommended to keep uninterrupted access.
-              </div>
-            )}
+            <div className="text-sm font-semibold uppercase tracking-[0.18em] text-white/70">Urgent subscription alert</div>
+            <div className="mt-2 text-base font-semibold leading-7 text-white">{message}</div>
+            <div className="mt-2 text-sm text-rose-100/85">{renewalRequired ? "Renewal is required to keep hostel operations running." : "Please renew soon to avoid losing access."}</div>
           </div>
         </div>
       </div>
     );
   }
 
-  // medium
   if (warningLevel === "medium") {
     const s = bannerStyles.medium;
-    const days = typeof daysLeft === "number" ? daysLeft : "X";
 
     return (
-      <div
-        className={`w-full rounded-2xl p-4 backdrop-blur-md transition-all duration-300 shadow-[0_0_0_1px_rgba(255,168,0,0.12)] ${s.container}`}
-      >
-        <div className="flex items-start gap-3">
-          <div className="mt-0.5 text-orange-200">{s.icon}</div>
+      <div className={`w-full rounded-[28px] border p-5 shadow-lg backdrop-blur-xl ${s.container}`}>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-amber-500/15 text-amber-200 shadow-sm">
+            {s.icon}
+          </div>
           <div className="flex-1">
-            <div className="text-sm font-semibold leading-5 whitespace-pre-line">
-              Your subscription expires in {days} days.\nRenew now to avoid dashboard interruption.
-            </div>
-            <div className="mt-2 text-xs text-orange-100/90">
-              Keep your hostel operations running without downtime.
-            </div>
+            <div className="text-sm font-semibold uppercase tracking-[0.18em] text-white/70">Renewal reminder</div>
+            <div className="mt-2 text-base font-semibold leading-7 text-white">Your subscription expires in {days} days.</div>
+            <div className="mt-2 text-sm text-amber-100/85">Renew now to keep HostelMate dashboard access uninterrupted.</div>
           </div>
         </div>
       </div>
     );
   }
 
-  // fallback
   return null;
 }
 

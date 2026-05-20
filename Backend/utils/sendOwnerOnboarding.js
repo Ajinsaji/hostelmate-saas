@@ -38,7 +38,7 @@ const sendOwnerOnboarding = async ({
   };
 
   // eslint-disable-next-line no-console
-  // console.log("Owner onboarding payload prepared:", payload);
+  console.log("Owner onboarding payload prepared:", payload);
 
   return sendOwnerWhatsApp(payload);
 };

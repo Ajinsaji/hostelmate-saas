@@ -291,13 +291,19 @@ const finalizeHostelActivation = async (req, res) => {
       const { sendOwnerOnboarding } = require("../utils/sendOwnerOnboarding");
 
       const loginUrl = process.env.PUBLIC_URL || process.env.LOGIN_URL || "https://hostelmate-saas.vercel.app/login";
+      const apiVersion = process.env.WHATSAPP_API_VERSION || "v19.0";
 
       console.log("STARTING WHATSAPP ONBOARDING");
       console.log("owner phone:", hostel.phone);
+      console.log("normalized phone should be:", hostel.phone && hostel.phone.replace(/^0+/, "")?.length === 10 ? `91${hostel.phone.replace(/^0+/, "")}` : "unknown");
       console.log("owner name:", hostel.ownerName);
       console.log("hostel name:", hostel.hostelName);
+      console.log("WHATSAPP config present:", {
+        hasToken: !!process.env.WHATSAPP_TOKEN,
+        phoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID || "missing",
+        apiVersion,
+      });
 
-      // We use hostel.qrCodeUrl as public QR URL (fits current storage) and hostel.publicUrl as public hostel URL.
       await sendOwnerOnboarding({
         ownerName: hostel.ownerName,
         hostelName: hostel.hostelName,

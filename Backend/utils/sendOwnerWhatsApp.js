@@ -88,10 +88,14 @@ const sendOwnerWhatsApp = async (payload) => {
   console.log("STARTING WHATSAPP ONBOARDING", {
     ownerPhone: phone,
     normalizedPhone,
+    ownerName: payload.ownerName,
     hostelName,
+    apiVersion,
+    hasToken: !!token,
+    hasPhoneNumberId: !!phoneNumberId,
   });
 
-  const to = `+${normalizedPhone}`;
+  const to = normalizedPhone;
   const message = formatMessage({
     hostelName,
     username,
@@ -105,6 +109,7 @@ const sendOwnerWhatsApp = async (payload) => {
 
   const body = {
     messaging_product: "whatsapp",
+    recipient_type: "individual",
     to,
     type: "text",
     text: {
@@ -117,6 +122,7 @@ const sendOwnerWhatsApp = async (payload) => {
     normalizedPhone,
     to,
     url,
+    body,
   });
 
   try {
@@ -146,6 +152,7 @@ const sendOwnerWhatsApp = async (payload) => {
     console.error("[Meta WhatsApp] Send failed", {
       message: err?.message,
       response: err?.response?.data,
+      status: err?.response?.status,
     });
 
     // Rethrow so caller can decide non-blocking behavior (they should catch).
