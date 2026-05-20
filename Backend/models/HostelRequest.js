@@ -31,10 +31,10 @@ const hostelRequestSchema = new mongoose.Schema(
     status: {
       type: String,
       // Canonical values across the whole system:
-      // pending | approved | rejected
+      // pending | activation_pending | approved | rejected
       default: "pending",
       lowercase: true,
-      enum: ["pending", "approved", "rejected"],
+      enum: ["pending", "activation_pending", "approved", "rejected"],
     },
   },
   { timestamps: true }

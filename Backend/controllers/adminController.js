@@ -108,6 +108,29 @@ const approveHostel =
         });
       }
 
+      // ==========================
+      // CRITICAL IDEMPOTENCY FIX
+      // ==========================
+      // Prevent duplicate draft hostels.
+      // Search by:
+      // - requestId (best-effort via request._id if stored elsewhere)
+      // - owner phone
+      // - pendingActivation=true
+
+      const existingDraft = await Hostel.findOne({
+        phone: request.phone,
+        pendingActivation: true,
+      }).lean();
+
+      if (existingDraft) {
+        return res.status(200).json({
+          success: false,
+          activationAlreadyStarted: true,
+          hostelId: existingDraft._id,
+          message: "Activation already started",
+        });
+      }
+
       // GENERATE PUBLIC URL AND QR
       const uniqueCode =
         "RMH" +
@@ -148,6 +171,10 @@ const approveHostel =
         // IMPORTANT: draft-only gating for SaaS onboarding
         pendingActivation: true,
       });
+
+      // update request status -> activation_pending
+      request.status = "activation_pending";
+      await request.save();
 
       return res.status(200).json({
         success: true,
@@ -242,7 +269,7 @@ const finalizeHostelActivation = async (req, res) => {
 
     await hostel.save();
 
-    // Update hostel request status -> approved (approval finalization happens here)
+    // Update hostel request status -> approved (ONLY here finalizes activation)
     const relatedRequest = await HostelRequest.findOne({ phone: hostel.phone, hostelName: hostel.hostelName });
     if (relatedRequest) {
       relatedRequest.status = "approved";

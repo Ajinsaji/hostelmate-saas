@@ -35,17 +35,22 @@ const response = await api.get("/api/admin/requests");
   const approveRequest = async (id) => {
     setLoadingActionId(id);
     try {
-      // Optimistic update
-      setRequests((prev) => prev.map((r) => (r._id === id ? { ...r, status: "Approved" } : r)));
+      // Optimistic update: do NOT force status here; backend will be source of truth.
 
       const response = await api.put(`/api/admin/approve/${id}`, {});
 
       if (response.data?.success && response.data?.requiresSubscriptionSetup) {
         toast.success("Draft created. Setup subscription to activate.");
-        fetchRequests();
         navigate(`/admin/subscription-setup/${response.data.hostelId}`);
         return;
       }
+
+      if (response.data?.success === false && response.data?.activationAlreadyStarted === true) {
+        toast.success("Activation already started");
+        navigate(`/admin/subscription-setup/${response.data.hostelId}`);
+        return;
+      }
+
 
       // Backward compat: if backend still returns QR/credentials
       toast.success("✅ Hostel Approved");
@@ -102,7 +107,10 @@ await api.put(`/api/admin/reject/${id}`, {});
     toast.success("Copied to clipboard!");
   };
 
-  const filteredRequests = requests.filter((r) => String(r.status || "").toLowerCase() === activeTab);
+  const filteredRequests = requests
+    .filter((r) => String(r.status || "").toLowerCase() === activeTab)
+    .filter((r) => !(activeTab === "pending" && String(r.status || "").toLowerCase() === "approved"));
+
 
   return (
     <div style={{ minHeight: "100vh", background: "#081028", paddingBottom: "100px", fontFamily: "Poppins" }}>
@@ -116,7 +124,7 @@ await api.put(`/api/admin/reject/${id}`, {});
         {/* TABS */}
         <div className="flex rounded-xl p-1 shadow-sm mb-6" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
 
-          {[{ label: "Pending", value: "pending" }, { label: "Approved", value: "approved" }, { label: "Rejected", value: "rejected" }].map((t) => (
+          {[{ label: "Pending", value: "pending" }, { label: "Activation Pending", value: "activation_pending" }, { label: "Approved", value: "approved" }, { label: "Rejected", value: "rejected" }].map((t) => (
             <button
               key={t.value}
               onClick={() => setActiveTab(t.value)}
