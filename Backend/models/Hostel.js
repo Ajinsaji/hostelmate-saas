@@ -132,7 +132,15 @@ const hostelSchema = new mongoose.Schema({
     requireDigital: Boolean,
     requireUploaded: Boolean,
   },
+
+  // Activation gating for SaaS onboarding (Phase 1)
+  // When true, owner login/dashboard must be blocked until subscription activation is finalized.
+  pendingActivation: {
+    type: Boolean,
+    default: true,
+  },
 });
+
 
 module.exports = mongoose.model(
   "Hostel",

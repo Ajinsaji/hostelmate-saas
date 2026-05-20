@@ -21,6 +21,7 @@ const {
   resetOwnerTempPassword,
   getAdminProfile,
   updateAdminProfile,
+  finalizeHostelActivation,
   changeAdminPassword,
 } = require("../controllers/adminController");
 
@@ -41,6 +42,12 @@ router.get("/requests", getAllRequests);
 router.put("/approve/:id", approveHostel);
 
 router.put("/reject/:id", rejectRequest);
+
+router.post(
+  "/finalize-hostel-activation/:hostelId",
+  finalizeHostelActivation
+);
+
 
 // ==========================
 // HOSTELS

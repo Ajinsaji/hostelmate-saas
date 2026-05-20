@@ -147,6 +147,7 @@ const loginOwner = async (req, res) => {
         token,
         owner: userResponse,
         subscription,
+        mustChangePassword: !!owner.mustChangePassword,
       });
     }
 
@@ -650,6 +651,11 @@ const updateOwnerPassword = async (req, res) => {
 
     const salt = await bcrypt.genSalt(10);
     owner.password = await bcrypt.hash(newPassword, salt);
+
+    // Clear temp-password lifecycle and end forced-password change
+    owner.mustChangePassword = false;
+    owner.tempPassword = null;
+
     owner.updatedAt = new Date();
     await owner.save();
 

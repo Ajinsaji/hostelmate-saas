@@ -101,141 +101,189 @@ const approveHostel =
     try {
       const request = await HostelRequest.findById(req.params.id);
 
-
       if (!request) {
         return res.status(404).json({
           success: false,
-
-          message:
-            "Request not found",
-        });
-      }
-
-      // Check for duplicate phone
-      const existingOwner = await Owner.findOne({ phone: request.phone });
-      if (existingOwner) {
-        return res.status(400).json({
-          success: false,
-          message: "An owner with this phone number already exists.",
+          message: "Request not found",
         });
       }
 
       // GENERATE PUBLIC URL AND QR
-      const uniqueCode = "RMH" + Date.now().toString().slice(-6) + Math.random().toString(36).substring(2, 5).toUpperCase();
+      const uniqueCode =
+        "RMH" +
+        Date.now().toString().slice(-6) +
+        Math.random().toString(36).substring(2, 5).toUpperCase();
+
       const frontendUrl = process.env.FRONTEND_URL;
       const publicUrl = `${frontendUrl}/h/${uniqueCode}`;
       const qrFilename = `${uniqueCode}-QR.png`;
-      
-      // Generate QR code with error handling
+
       const qrResult = await generateQRCode(publicUrl, qrFilename);
       if (!qrResult.success) {
-        console.error('QR Generation failed:', qrResult.error);
+        console.error("QR Generation failed:", qrResult.error);
         return res.status(500).json({
           success: false,
           message: "Failed to generate QR code: " + qrResult.error,
         });
       }
 
-      const tempPassword = "Temp@123";
-
-      // CREATE HOSTEL
-    const hostel =
-        await Hostel.create({
-      hostelName:
-            request.hostelName,
-
-          ownerName:
-            request.ownerName,
-
-          phone:
-            request.phone,
-
-          address:
-            request.hostelAddress,
-
-          // Location (safe for new + updated approvals)
-          state: request.state || "",
-          district: request.district || "",
-          city: request.city || "",
-          pincode: request.pincode || "",
-          hostelType: request.hostelType || "",
-          
-          uniqueCode: uniqueCode,
-          publicUrl: publicUrl,
-          qrCodeUrl: qrResult.url,
-          isPublic: true,
-        });
-
-      // CREATE SUBSCRIPTION (match manual add-hostel trial initialization)
-      {
-        const now = new Date();
-        const trialEnd = new Date(now);
-        trialEnd.setDate(now.getDate() + 7);
-
-        const subscriptionDoc = await Subscription.create({
-          hostelId: hostel._id,
-          planType: "Basic",
-          subscriptionStatus: "trial",
-          isTrial: true,
-          trialStartDate: now,
-          trialEndDate: trialEnd,
-          subscriptionStartDate: now,
-          subscriptionEndDate: trialEnd,
-          // keep existing schema flexible: if fields exist they get persisted
-          residentLimit: 60,
-          multiHostelEnabled: false,
-          amount: 0,
-          isFreeAccess: true,
-        });
-
-        // ensure hostel has canonical subscription display fields (some UIs read from Hostel)
-        hostel.subscriptionStatus = subscriptionDoc.subscriptionStatus || "trial";
-        hostel.planType = subscriptionDoc.planType || "Basic";
-        hostel.subscriptionStartDate = subscriptionDoc.subscriptionStartDate || now;
-        hostel.subscriptionEndDate = subscriptionDoc.subscriptionEndDate || trialEnd;
-        hostel.isFreeAccess = subscriptionDoc.isFreeAccess;
-        hostel.isTrial = subscriptionDoc.isTrial;
-        await hostel.save();
-      }
-
-
-      // CREATE OWNER
-      await Owner.create({
-        hostelId: hostel._id,
+      // CREATE DRAFT HOSTEL ONLY (no Owner, no Subscription, no activation)
+      const hostel = await Hostel.create({
+        hostelName: request.hostelName,
         ownerName: request.ownerName,
         phone: request.phone,
-        password: tempPassword,
-        tempPassword: tempPassword,
-        profileImage: request.ownerPhoto || "",
-        role: "owner",
-        status: "active",
-      });
+        address: request.hostelAddress,
 
-      // SEND WHATSAPP & SMS
-      await sendApprovalMessages(request.phone, request.ownerName, request.hostelName, request.phone, tempPassword, publicUrl);
+        state: request.state || "",
+        district: request.district || "",
+        city: request.city || "",
+        pincode: request.pincode || "",
+        hostelType: request.hostelType || "",
 
-// UPDATE REQUEST STATUS
-      request.status = "approved";
-      await request.save();
-
-      res.status(200).json({
-        success: true,
-        message: "Hostel Approved Successfully",
+        uniqueCode,
+        publicUrl,
         qrCodeUrl: qrResult.url,
-        qrCodeFullUrl: qrResult.url,
-        publicUrl: publicUrl,
-        username: request.phone,
-        tempPassword: tempPassword
+        isPublic: true,
+
+        // IMPORTANT: draft-only gating for SaaS onboarding
+        pendingActivation: true,
       });
 
+      return res.status(200).json({
+        success: true,
+        hostelId: hostel._id,
+        requiresSubscriptionSetup: true,
+      });
     } catch (error) {
-
       console.log(error);
-
       res.status(500).json(error);
-
     }
   };
+
+// ==========================
+// FINALIZE HOSTEL ACTIVATION
+// SINGLE SOURCE OF TRUTH FOR ACTIVATION
+// ==========================
+
+const finalizeHostelActivation = async (req, res) => {
+  try {
+    const { hostelId } = req.params;
+    const { planType, amount, startDate, endDate, isTrial, isFreeAccess, notes } = req.body || {};
+
+    if (!hostelId) {
+      return res.status(400).json({ success: false, message: "hostelId is required" });
+    }
+
+    const hostel = await Hostel.findById(hostelId);
+    if (!hostel) {
+      return res.status(404).json({ success: false, message: "Hostel not found" });
+    }
+
+    // Generate temp password and hash it
+    const tempPassword = `HM${Math.floor(1000 + Math.random() * 9000)}@`;
+
+    const bcryptjs = require("bcryptjs");
+    const hashedPassword = await bcryptjs.hash(tempPassword, 10);
+
+    // Owner: create ONLY here (activation boundary)
+    // Derive owner fields from draft hostel (created in approveHostel)
+    const ownerPayload = {
+      hostelId: hostel._id,
+      ownerName: hostel.ownerName,
+      phone: hostel.phone,
+      username: hostel.phone,
+      password: hashedPassword,
+      tempPassword,
+      mustChangePassword: true,
+      role: "owner",
+      status: "active",
+    };
+
+    // Avoid accidental double-activation (idempotency best-effort)
+    if (hostel.pendingActivation === false) {
+      return res.status(400).json({ success: false, message: "Hostel already activated" });
+    }
+
+    const existingOwner = await Owner.findOne({ hostelId: hostel._id });
+    if (existingOwner) {
+      return res.status(400).json({ success: false, message: "Hostel already activated" });
+    }
+
+
+    const createdOwner = await Owner.create(ownerPayload);
+
+    // Subscription creation ONLY here (activation boundary)
+    // Map frontend labels to schema enum Basic/Pro
+    const normalizedPlanType = planType === "Pro" || planType === "Monthly" || planType === "Yearly" ? "Pro" : "Basic";
+
+    const subscriptionDoc = await Subscription.create({
+      hostelId: hostel._id,
+      planType: normalizedPlanType,
+      subscriptionStatus: isTrial ? "trial" : "active",
+      isTrial: !!isTrial,
+      trialStartDate: startDate ? new Date(startDate) : new Date(),
+      trialEndDate: endDate ? new Date(endDate) : undefined,
+      subscriptionStartDate: startDate ? new Date(startDate) : new Date(),
+      subscriptionEndDate: endDate ? new Date(endDate) : undefined,
+      residentLimit: 60,
+      isFreeAccess: !!isFreeAccess,
+      amount: Number(amount ?? 0),
+      notes: notes || "",
+    });
+
+    // Update hostel activation gating + store subscription canonical fields
+    hostel.pendingActivation = false;
+    hostel.subscriptionStatus = subscriptionDoc.subscriptionStatus;
+    hostel.planType = subscriptionDoc.planType;
+    hostel.subscriptionStartDate = subscriptionDoc.subscriptionStartDate;
+    hostel.subscriptionEndDate = subscriptionDoc.subscriptionEndDate;
+    hostel.isFreeAccess = subscriptionDoc.isFreeAccess;
+    hostel.isTrial = subscriptionDoc.isTrial;
+
+    await hostel.save();
+
+    // Update hostel request status -> approved (approval finalization happens here)
+    const relatedRequest = await HostelRequest.findOne({ phone: hostel.phone, hostelName: hostel.hostelName });
+    if (relatedRequest) {
+      relatedRequest.status = "approved";
+      await relatedRequest.save();
+    }
+
+    // STEP 2: WhatsApp onboarding - provider-ready placeholder (must happen AFTER successful activation)
+    try {
+      const { sendOwnerOnboarding } = require("../utils/sendOwnerOnboarding");
+
+      const loginUrl = process.env.PUBLIC_URL || process.env.LOGIN_URL || "https://hostelmate-saas.vercel.app/login";
+
+      // We use hostel.qrCodeUrl as public QR URL (fits current storage) and hostel.publicUrl as public hostel URL.
+      await sendOwnerOnboarding({
+        ownerName: hostel.ownerName,
+        hostelName: hostel.hostelName,
+        phone: hostel.phone,
+        username: hostel.phone,
+        tempPassword,
+        planType: hostel.planType,
+        expiryDate: hostel.subscriptionEndDate,
+        qrUrl: hostel.qrCodeUrl || hostel.qrCodeUrl,
+        loginUrl,
+      });
+    } catch (e) {
+      console.error("Owner onboarding WhatsApp failed (non-blocking):", e?.message || e);
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Hostel activated successfully",
+      credentials: {
+        username: hostel.phone,
+        tempPassword,
+      },
+    });
+  } catch (error) {
+    console.error("finalizeHostelActivation error:", error);
+    return res.status(500).json({ success: false, message: "Failed to finalize activation", error: error?.message || String(error) });
+  }
+};
 
 
 // ==========================
@@ -965,14 +1013,16 @@ module.exports = {
   addHostel,
 
   editHostelLocation,
-  
+
   resendWhatsApp,
-  
+
   resetOwnerTempPassword,
-  
+
   getAdminProfile,
-  
+
   updateAdminProfile,
-  
+
+  finalizeHostelActivation,
+
   changeAdminPassword,
 };

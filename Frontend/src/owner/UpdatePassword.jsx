@@ -62,8 +62,8 @@ function UpdatePassword() {
   return (
     <div className="pb-24" style={{ minHeight: "100vh" }}>
       <div className="gradient-header mb-6">
-        <h1 className="text-h1">Update Password</h1>
-        <p style={{ opacity: 0.8 }}>Keep your login secure</p>
+        <h1 className="text-h1">Welcome to HostelMate 🎉</h1>
+        <p style={{ opacity: 0.8 }}>Please secure your account before continuing.</p>
       </div>
 
       <div className="p-4">

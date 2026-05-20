@@ -24,6 +24,7 @@ import PendingAdmissions from "./owner/PendingAdmissions";
 import HostelSettings from "./owner/HostelSettings";
 import OwnerProfileEdit from "./owner/OwnerProfileEdit";
 import UpdatePassword from "./owner/UpdatePassword";
+import SubscriptionExpired from "./pages/SubscriptionExpired";
 
 import StaffManagement from "./owner/StaffManagement";
 
@@ -33,9 +34,11 @@ import CookDashboard from "./cook/Dashboard";
 import AdminDashboard from "./Superadmin/AdminDashboard";
 import PendingRequests from "./Superadmin/PendingRequests";
 import SubscriptionControl from "./Superadmin/SubscriptionControl";
+import SubscriptionSetup from "./Superadmin/SubscriptionSetup";
 import AddHostel from "./Superadmin/AddHostel";
 import AdminProfile from "./Superadmin/AdminPage";
 import HostelManagement from "./Superadmin/HostelManagement";
+
 
 import OwnerProtectedRoute from "./components/OwnerProtectedRoute";
 import WardenProtectedRoute from "./components/WardenProtectedRoute";
@@ -129,6 +132,10 @@ function App() {
             path="/pending-approval"
             element={<PendingApproval />}
           />
+
+          {/* Subscription expiry page (owner only, but must not override mustChangePassword redirect) */}
+          <Route path="/subscription-expired" element={<SubscriptionExpired />} />
+
 
         {shouldRedirectPending ? (
           <Route path="*" element={<Navigate to="/pending-approval" replace />} />
@@ -281,6 +288,14 @@ function App() {
           element={
             <AdminProtectedRoute>
               <PendingRequests />
+            </AdminProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/subscription-setup/:hostelId"
+          element={
+            <AdminProtectedRoute>
+              <SubscriptionSetup />
             </AdminProtectedRoute>
           }
         />

@@ -163,6 +163,11 @@ app.use(
   ownerRoutes
 );
 
+// SUBSCRIPTION GATING (owner dashboard)
+const subscriptionRoutes = require("./routes/subscriptionRoutes");
+app.use("/api/owner", subscriptionRoutes);
+
+
 // PUBLIC
 app.use(
   "/api/public",

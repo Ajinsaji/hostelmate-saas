@@ -6,11 +6,16 @@ import api from "../utils/apiClient";
 import BottomNav from "../components/BottomNav";
 import useGlobalPolling from "../hooks/useGlobalPolling";
 import useOwnerRealtimeSync from "../hooks/useOwnerRealtimeSync";
-
+import SubscriptionBanner from "../components/SubscriptionBanner";
+import SubscriptionStatusBadge from "../components/SubscriptionStatusBadge";
+import SubscriptionProgressCard from "../components/SubscriptionProgressCard";
 
 
 function Dashboard() {
   const navigate = useNavigate();
+  // STEP 1: subscription state
+  const [subscriptionState, setSubscriptionState] = useState(null);
+  const [subscriptionLoading, setSubscriptionLoading] = useState(true);
   const [stats, setStats] = useState({ residents: "-", rooms: "-", occupancyRate: "-", pendingRent: "-", todayCollection: "-" });
   const [pendingCount, setPendingCount] = useState(0);
   const [hostel, setHostel] = useState(null);
@@ -52,6 +57,57 @@ function Dashboard() {
     },
   });
 
+  // STEP 2: fetch lifecycle data
+  useEffect(() => {
+    let isMounted = true;
+
+    const fetchSubscription = async () => {
+      try {
+        setSubscriptionLoading(true);
+        const response = await api.get("/api/owner/subscription-status");
+        if (!isMounted) return;
+
+        const data = response?.data;
+        if (data?.success && data) {
+          // Expected fields: { status, daysLeft, warningLevel, expiryDate, renewalRequired }
+          setSubscriptionState({
+            status: data.status,
+            daysLeft: data.daysLeft,
+            warningLevel: data.warningLevel,
+            expiryDate: data.expiryDate,
+            renewalRequired: data.renewalRequired,
+          });
+        } else {
+          setSubscriptionState({
+            status: "inactive",
+            daysLeft: null,
+            warningLevel: "none",
+            expiryDate: null,
+            renewalRequired: false,
+          });
+        }
+      } catch (err) {
+        console.error("Subscription status fetch failed", err);
+        if (!isMounted) return;
+        setSubscriptionState({
+          status: "inactive",
+          daysLeft: null,
+          warningLevel: "none",
+          expiryDate: null,
+          renewalRequired: false,
+        });
+      } finally {
+        if (isMounted) setSubscriptionLoading(false);
+      }
+    };
+
+    fetchSubscription();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   // Fetch pending admission count with auto-refresh every 20 seconds
   useEffect(() => {
     const fetchPendingCount = async () => {
@@ -78,8 +134,35 @@ function Dashboard() {
   return (
     <div className="pb-24">
       {/* HEADER */}
+      {/* STEP B1: SubscriptionBanner (data source integration deferred; placeholder until API wiring is added) */}
+      <div className="mb-4">
+        {!subscriptionLoading && subscriptionState && (
+          <>
+            <SubscriptionBanner
+              status={subscriptionState.status}
+              daysLeft={subscriptionState.daysLeft}
+              warningLevel={subscriptionState.warningLevel}
+              renewalRequired={subscriptionState.renewalRequired}
+            />
+            <div className="mt-3">
+              <SubscriptionStatusBadge status={subscriptionState.status} />
+            </div>
+            <div className="mt-4">
+              <SubscriptionProgressCard
+                status={subscriptionState.status}
+                daysLeft={subscriptionState.daysLeft}
+                expiryDate={subscriptionState.expiryDate}
+                renewalRequired={subscriptionState.renewalRequired}
+              />
+            </div>
+          </>
+        )}
+      </div>
+
+
       <div className="gradient-header mb-6">
         <div className="flex justify-between items-center mb-6">
+
           <div>
             <p className="text-small" style={{ color: "rgba(255,255,255,0.8)" }}>Welcome Back, {ownerName} 👋</p>
             <h1 className="text-h1" style={{ color: "white" }}>{hostel?.hostelName || "HostelMate Premium"}</h1>

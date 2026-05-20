@@ -56,6 +56,11 @@ const ownerSchema = new mongoose.Schema(
       default: "active",
       enum: ["active", "disabled", "suspended"],
     },
+
+    mustChangePassword: {
+      type: Boolean,
+      default: true,
+    },
   },
   { timestamps: true }
 );

@@ -5,6 +5,8 @@ import buildFileUrl from "../utils/buildFileUrl";
 import { CheckCircle, XCircle, Copy, Download, Share2, Loader2 } from "lucide-react";
 import SuperadminBottomNav from "../components/SuperadminBottomNav";
 import toast from "react-hot-toast";
+import { useNavigate } from "react-router-dom";
+
 
 function PendingRequests() {
   const [requests, setRequests] = useState([]);
@@ -34,12 +36,20 @@ const response = await api.get("/api/admin/requests");
     setLoadingActionId(id);
     try {
       // Optimistic update
-      setRequests(prev => prev.map(r => r._id === id ? { ...r, status: "Approved" } : r));
-      
-const response = await api.put(`/api/admin/approve/${id}`, {});
+      setRequests((prev) => prev.map((r) => (r._id === id ? { ...r, status: "Approved" } : r)));
+
+      const response = await api.put(`/api/admin/approve/${id}`, {});
+
+      if (response.data?.success && response.data?.requiresSubscriptionSetup) {
+        toast.success("Draft created. Setup subscription to activate.");
+        fetchRequests();
+        navigate(`/admin/subscription-setup/${response.data.hostelId}`);
+        return;
+      }
+
+      // Backward compat: if backend still returns QR/credentials
       toast.success("✅ Hostel Approved");
-      
-      if (response.data.success && response.data.qrCodeUrl) {
+      if (response.data?.success && response.data?.qrCodeUrl) {
         setApprovedData(response.data);
       }
       fetchRequests();
