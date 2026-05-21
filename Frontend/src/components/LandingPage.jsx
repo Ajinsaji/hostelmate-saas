@@ -96,8 +96,42 @@ function LandingPage() {
       </div>
 
       <div className="p-4 pt-8 pb-24" style={{ marginTop: "-60px" }}>
-        <div style={{ textAlign: "center", color: "rgba(255,255,255,0.75)", fontSize: 13 }}>
-          HostelMate © 2026
+        <div className="mx-auto max-w-6xl">
+          <div className="grid gap-8 lg:grid-cols-[1.6fr_1fr]">
+            <div className="rounded-[28px] border border-white/10 bg-slate-950/80 p-6 text-white shadow-xl">
+              <h2 style={{ fontSize: "28px", fontWeight: 700, marginBottom: "18px" }}>Powerful hostel management with no fluff</h2>
+              <p style={{ color: "rgba(255,255,255,0.78)", marginBottom: "24px", lineHeight: 1.7 }}>
+                Stay on top of room allocations, payments, resident requests and staff operations from one mobile-first dashboard.
+              </p>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <FeatureItem text="Room and bed tracking" />
+                <FeatureItem text="Resident onboarding & approvals" />
+                <FeatureItem text="Payment status and receipts" />
+                <FeatureItem text="Staff and warden coordination" />
+              </div>
+            </div>
+
+            <div className="rounded-[28px] border border-white/10 bg-slate-950/70 p-6 text-white shadow-xl">
+              <p style={{ color: "rgba(255,255,255,0.7)", marginBottom: "16px", fontSize: "14px", letterSpacing: "0.04em" }}>Admin access</p>
+              <div className="rounded-3xl border border-white/10 bg-white/5 p-4">
+                <p style={{ color: "rgba(255,255,255,0.82)", marginBottom: "12px", fontWeight: 600 }}>Hidden admin entry</p>
+                <button
+                  className="btn-secondary"
+                  style={{ width: "100%", padding: "12px 16px", borderRadius: "14px", background: "rgba(255,255,255,0.05)", color: "var(--text-main)" }}
+                  onClick={handleBetaMindClick}
+                >
+                  BetaMIND TechSolutions
+                </button>
+                <p style={{ color: "rgba(255,255,255,0.55)", marginTop: "12px", fontSize: "13px" }}>
+                  Subtle admin login access for secure team use.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div style={{ textAlign: "center", color: "rgba(255,255,255,0.75)", fontSize: 13, marginTop: "40px" }}>
+            HostelMate © 2026
+          </div>
         </div>
       </div>
     </div>
