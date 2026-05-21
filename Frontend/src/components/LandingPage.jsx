@@ -93,6 +93,13 @@ function LandingPage() {
         <button className="btn-primary" style={{ background: "white", color: "var(--primary-dark)", padding: "18px" }} onClick={handleEnterDashboard}> 
           Enter Dashboard <ArrowRight size={20} />
         </button>
+        <button
+          className="btn-secondary"
+          style={{ width: "100%", padding: "18px", marginTop: "14px", color: "#E6FFFA", border: "1px solid rgba(255,255,255,0.12)", background: "rgba(23, 32, 51, 0.65)" }}
+          onClick={() => navigate("/onboarding")}
+        >
+          Explore Onboarding Flow
+        </button>
       </div>
 
       <div className="p-4 pt-8 pb-24" style={{ marginTop: "-60px" }}>
