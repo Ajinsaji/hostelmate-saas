@@ -5,6 +5,7 @@ import { ArrowLeft, User, Lock, Eye, EyeOff, Loader2 } from "lucide-react";
 
 import axios from "axios";
 import toast from "react-hot-toast";
+import { setAuthToken, setStoredUser } from "../utils/authToken";
 
 function LoginPage() {
   const navigate = useNavigate();
@@ -46,13 +47,20 @@ function LoginPage() {
 
       if (response.data.success) {
         toast.success("Login successful");
-        localStorage.setItem("token", response.data.token);
         const userData = response.data.owner || response.data.user || {};
-        localStorage.setItem("user", JSON.stringify(userData));
-
         const role = userData.role || "owner";
-        const needsOnboarding = response.data.needsOnboarding === true;
+        const storedUser = {
+          ...userData,
+          role,
+          onboardingCompleted: userData.onboardingCompleted === true,
+          firstLogin: userData.firstLogin === true,
+          token: response.data.token,
+        };
 
+        setAuthToken(response.data.token);
+        setStoredUser(storedUser);
+
+        const needsOnboarding = response.data.needsOnboarding === true;
         if (role === "warden") {
           navigate("/warden");
         } else if (role === "cook") {

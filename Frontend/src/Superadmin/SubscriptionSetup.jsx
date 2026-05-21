@@ -47,17 +47,19 @@ function SubscriptionSetup() {
     return "Basic";
   }, [form.planType]);
 
+  const mountedRef = useRef(false);
+
   useEffect(() => {
     if (!hostelId) {
       return;
     }
 
-    let mounted = true;
+    mountedRef.current = true;
     (async () => {
       try {
         const res = await api.get("/api/admin/hostels");
         const found = (res.data?.hostels || []).find((h) => String(h.hostelId || h._id) === String(hostelId));
-        if (mounted && found) {
+        if (mountedRef.current && found) {
           setHostel(found);
         }
       } catch {
@@ -66,7 +68,7 @@ function SubscriptionSetup() {
     })();
 
     return () => {
-      mounted = false;
+      mountedRef.current = false;
     };
   }, [hostelId]);
 
