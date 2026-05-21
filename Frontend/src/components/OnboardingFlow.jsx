@@ -43,7 +43,7 @@ function OnboardingFlow() {
     }
 
     if (onboardingState.onboardingCompleted) {
-      navigate("/dashboard", { replace: true });
+      navigate("/owner/dashboard", { replace: true });
       return;
     }
 
@@ -156,7 +156,7 @@ function OnboardingFlow() {
       if (response.data?.success) {
         toast.success("Onboarding completed successfully.");
         updateUserLocal({ roomsConfigured: true, onboardingCompleted: true });
-        navigate("/dashboard", { replace: true });
+        navigate("/owner/dashboard", { replace: true });
       } else {
         toast.error(response.data?.message || "Unable to complete onboarding.");
       }
@@ -426,7 +426,7 @@ function OnboardingFlow() {
                 <button
                   className="btn-primary w-full"
                   type="button"
-                  onClick={() => navigate("/dashboard")}
+                  onClick={() => navigate("/owner/dashboard")}
                 >
                   Go to dashboard
                 </button>

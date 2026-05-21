@@ -3,7 +3,7 @@ import api from "../utils/apiClient";
 import { isSafeToRefresh } from "../utils/globalRefresh";
 
 const OWNER_SNAPSHOT_EVENT = "hostelmate:ownerSnapshotUpdated";
-const USER_STORAGE_KEY = "user";
+const OWNER_USER_STORAGE_KEY = "ownerUser";
 
 export function dispatchOwnerSnapshotUpdated(snapshot = null) {
   try {
@@ -15,7 +15,9 @@ export function dispatchOwnerSnapshotUpdated(snapshot = null) {
 
 function getStoredUser() {
   try {
-    return JSON.parse(localStorage.getItem(USER_STORAGE_KEY) || "null") || null;
+    return (
+      JSON.parse(localStorage.getItem(OWNER_USER_STORAGE_KEY) || localStorage.getItem("user") || "null") || null
+    );
   } catch {
     return null;
   }
@@ -104,7 +106,7 @@ function isSnapshotEqual(a, b) {
 function updateStoredUser(snapshot) {
   if (!snapshot) return;
   try {
-    const current = JSON.parse(localStorage.getItem(USER_STORAGE_KEY) || "null") || {};
+    const current = JSON.parse(localStorage.getItem(OWNER_USER_STORAGE_KEY) || "null") || {};
     const next = {
       ...current,
       ownerName: snapshot.ownerName || current.ownerName,
@@ -113,7 +115,7 @@ function updateStoredUser(snapshot) {
       phone: snapshot.phone || current.phone,
       username: snapshot.username || current.username,
     };
-    localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(next));
+    localStorage.setItem(OWNER_USER_STORAGE_KEY, JSON.stringify(next));
   } catch {
     // no-op
   }

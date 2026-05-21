@@ -47,7 +47,7 @@ api.interceptors.request.use(
     const isAdminRequest = requestUrl.includes("/api/admin");
     const token = isAdminRequest
       ? localStorage.getItem("adminToken")
-      : localStorage.getItem("token");
+      : localStorage.getItem("ownerToken") || localStorage.getItem("token");
 
     if (token) {
       if (isTokenExpired(token)) {
@@ -55,6 +55,7 @@ api.interceptors.request.use(
           localStorage.removeItem("adminToken");
           redirectToLogin("/admin/login");
         } else {
+          localStorage.removeItem("ownerToken");
           localStorage.removeItem("token");
           redirectToLogin("/login");
         }
@@ -80,6 +81,7 @@ api.interceptors.response.use(
         localStorage.removeItem("adminToken");
         redirectToLogin("/admin/login");
       } else {
+        localStorage.removeItem("ownerToken");
         localStorage.removeItem("token");
         redirectToLogin("/login");
       }

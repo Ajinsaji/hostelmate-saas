@@ -24,7 +24,7 @@ function OwnerProfileEdit() {
       setLoading(true);
       const res = await api.get("/api/owner/dashboard");
       const payload = res.data || {};
-      const owner = payload.owner || JSON.parse(localStorage.getItem("user") || "null") || {};
+      const owner = payload.owner || JSON.parse(localStorage.getItem("ownerUser") || "null") || {};
 
       setForm({
         ownerName: owner.ownerName || "",
@@ -37,8 +37,8 @@ function OwnerProfileEdit() {
       }
 
       if (payload.owner) {
-        localStorage.setItem("user", JSON.stringify({
-          ...JSON.parse(localStorage.getItem("user") || "{}"),
+        localStorage.setItem("ownerUser", JSON.stringify({
+          ...JSON.parse(localStorage.getItem("ownerUser") || "{}"),
           ...payload.owner,
         }));
       }
@@ -118,7 +118,7 @@ function OwnerProfileEdit() {
       toast.success(res.data?.message || "Profile updated");
 
       const updatedOwner = res.data?.data?.owner || res.data?.owner || {};
-      const current = JSON.parse(localStorage.getItem("user") || "null") || {};
+      const current = JSON.parse(localStorage.getItem("ownerUser") || "null") || {};
       const next = {
         ...current,
         ownerName: updatedOwner.ownerName || form.ownerName,
@@ -129,7 +129,7 @@ function OwnerProfileEdit() {
       if (updatedOwner.profileImage) {
         next.profileImage = updatedOwner.profileImage;
       }
-      localStorage.setItem("user", JSON.stringify(next));
+      localStorage.setItem("ownerUser", JSON.stringify(next));
       dispatchOwnerSnapshotUpdated({
         ownerName: next.ownerName,
         profileImage: next.profileImage,

@@ -5,7 +5,7 @@ export const useAuthGuards = () => {
   useEffect(() => {
     const handle = () => {
       // Safety net: if no tokens exist, clear auth.
-      const token = localStorage.getItem("token");
+      const token = localStorage.getItem("ownerToken") || localStorage.getItem("token");
       const adminToken = localStorage.getItem("adminToken");
       const hasAny = !!token || !!adminToken;
 

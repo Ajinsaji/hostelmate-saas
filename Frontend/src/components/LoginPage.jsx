@@ -5,7 +5,7 @@ import { ArrowLeft, User, Lock, Eye, EyeOff, Loader2 } from "lucide-react";
 
 import axios from "axios";
 import toast from "react-hot-toast";
-import { setAuthToken, setStoredUser } from "../utils/authToken";
+import { setOwnerAuth, setStoredOwner } from "../utils/authToken";
 
 function LoginPage() {
   const navigate = useNavigate();
@@ -57,8 +57,8 @@ function LoginPage() {
           token: response.data.token,
         };
 
-        setAuthToken(response.data.token);
-        setStoredUser(storedUser);
+        setOwnerAuth(response.data.token);
+        setStoredOwner(storedUser);
 
         const needsOnboarding = response.data.needsOnboarding === true;
         if (role === "warden") {
@@ -68,7 +68,7 @@ function LoginPage() {
         } else if (role === "owner" && needsOnboarding) {
           navigate("/onboarding");
         } else {
-          navigate("/dashboard");
+          navigate("/owner/dashboard");
         }
       } else {
         const serverMessage = response.data?.message || "";

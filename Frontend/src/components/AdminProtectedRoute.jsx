@@ -1,5 +1,6 @@
 import { Navigate } from "react-router-dom";
 import toast from "react-hot-toast";
+import { getAdminToken } from "../utils/authToken";
 
 const decodeJwtPayload = (token) => {
   try {
@@ -25,8 +26,8 @@ const isTokenExpired = (token) => {
 };
 
 export default function AdminProtectedRoute({ children }) {
-  console.log("AdminProtectedRoute active");
-  const token = localStorage.getItem("adminToken");
+
+  const token = getAdminToken();
 
   if (!token) {
     localStorage.removeItem("adminToken");
@@ -39,6 +40,7 @@ export default function AdminProtectedRoute({ children }) {
 
   if (!payload || !validRole || expired) {
     localStorage.removeItem("adminToken");
+    localStorage.removeItem("adminUser");
     if (window.location.pathname !== "/admin/login") {
       toast.error("Session expired. Please login again.");
     }

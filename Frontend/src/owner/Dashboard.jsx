@@ -51,7 +51,7 @@ function Dashboard() {
   const freeAccess = hostel?.isFreeAccess || subscriptionState?.status === "freeAccess";
 
   useEffect(() => {
-    const user = JSON.parse(localStorage.getItem("user") || "null");
+    const user = JSON.parse(localStorage.getItem("ownerUser") || "null");
     if (user?.ownerName) {
       setOwnerName(user.ownerName);
     }

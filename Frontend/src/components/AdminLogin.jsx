@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import toast from "react-hot-toast";
+import { setAdminAuth, setStoredAdmin } from "../utils/authToken";
 import { ArrowLeft, User, Lock, Eye, EyeOff } from "lucide-react";
 
 
@@ -32,9 +33,8 @@ function AdminLogin() {
 
       if (response.data?.success && response.data?.token) {
         toast.success("Login successful. Welcome back!");
-        localStorage.setItem("adminToken", response.data.token);
-        localStorage.setItem("token", response.data.token);
-        localStorage.setItem("user", JSON.stringify({ role: "admin" }));
+        setAdminAuth(response.data.token);
+        setStoredAdmin({ role: "admin" });
         navigate("/admin");
 
         return;

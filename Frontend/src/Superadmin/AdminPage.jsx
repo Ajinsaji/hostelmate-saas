@@ -96,9 +96,8 @@ function AdminPage() {
 
   const handleLogout = () => {
     localStorage.removeItem("adminToken");
-    localStorage.removeItem("ownerToken");
-    localStorage.removeItem("residentToken");
-    navigate("/login");
+    localStorage.removeItem("adminUser");
+    navigate("/admin/login");
   };
 
   if (loading) {

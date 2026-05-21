@@ -10,7 +10,7 @@ export default function useSessionVerification() {
 
   useEffect(() => {
     let mounted = true;
-    const token = localStorage.getItem("token") || localStorage.getItem("adminToken");
+    const token = localStorage.getItem("ownerToken") || localStorage.getItem("token") || localStorage.getItem("adminToken");
 
     if (!token) {
       if (mounted) setVerifying(false);

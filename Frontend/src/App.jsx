@@ -50,11 +50,16 @@ import ServerLoadingWrapper from "./components/ServerLoadingWrapper";
 
 function NotificationBellHost() {
   const location = useLocation();
-  const token = localStorage.getItem("token");
+  const ownerToken = localStorage.getItem("ownerToken");
+  const adminToken = localStorage.getItem("adminToken");
 
   let user = null;
   try {
-    user = JSON.parse(localStorage.getItem("user") || "null");
+    if (adminToken) {
+      user = JSON.parse(localStorage.getItem("adminUser") || "null");
+    } else {
+      user = JSON.parse(localStorage.getItem("ownerUser") || localStorage.getItem("user") || "null");
+    }
   } catch {
     user = null;
   }
@@ -73,7 +78,7 @@ function NotificationBellHost() {
   const isPublicLike = publicLikePaths.includes(location.pathname);
 
   const shouldShowBell =
-    !!token &&
+    (!!ownerToken || !!adminToken) &&
     !!user &&
     !isPublicLike &&
     ((role === "owner" && location.pathname.startsWith("/")) ||
@@ -109,7 +114,7 @@ function SessionGateWrapper() {
 function App() {
   // Pending approval UX: if user is not authenticated yet but has a pending request,
   // always open /pending-approval (except when user is already on that route).
-  const token = localStorage.getItem("token") || localStorage.getItem("adminToken");
+  const token = localStorage.getItem("ownerToken") || localStorage.getItem("adminToken");
 
   const pending = (() => {
     try {
@@ -152,7 +157,7 @@ function App() {
 
 
         <Route
-          path="/dashboard"
+          path="/owner/dashboard"
           element={
             <OwnerProtectedRoute>
               <Dashboard />

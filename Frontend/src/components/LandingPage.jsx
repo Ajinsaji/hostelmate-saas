@@ -43,15 +43,15 @@ function LandingPage() {
 
   const handleEnterDashboard = () => {
     const adminToken = localStorage.getItem("adminToken");
-    const token = localStorage.getItem("token");
-    const user = JSON.parse(localStorage.getItem("user") || "null");
+    const ownerToken = localStorage.getItem("ownerToken");
+    const user = JSON.parse(localStorage.getItem("ownerUser") || localStorage.getItem("user") || "null");
 
     if (adminToken) {
       navigate("/admin");
       return;
     }
 
-    if (token) {
+    if (ownerToken) {
       const role = user?.role;
       if (role === "warden") {
         navigate("/warden");
@@ -61,7 +61,7 @@ function LandingPage() {
         navigate("/cook");
         return;
       }
-      navigate("/dashboard");
+      navigate("/owner/dashboard");
       return;
     }
 

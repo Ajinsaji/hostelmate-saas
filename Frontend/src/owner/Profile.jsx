@@ -19,7 +19,7 @@ function Profile() {
   const [loadingHostel, setLoadingHostel] = useState(false);
 
   useEffect(() => {
-    const user = JSON.parse(localStorage.getItem("user") || "{}");
+    const user = JSON.parse(localStorage.getItem("ownerUser") || localStorage.getItem("user") || "{}");
 
     if (user) {
       setOwnerData({
@@ -98,8 +98,8 @@ function Profile() {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
+    localStorage.removeItem("ownerToken");
+    localStorage.removeItem("ownerUser");
     toast.success("Logged out successfully");
     navigate("/login");
   };

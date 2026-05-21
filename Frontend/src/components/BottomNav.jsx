@@ -27,8 +27,8 @@ function BottomNav() {
       <NavItem
         icon={<Home size={24} />}
         text="Home"
-        isActive={location.pathname === "/dashboard"}
-        onClick={() => navigate("/dashboard")}
+        isActive={location.pathname === "/owner/dashboard"}
+        onClick={() => navigate("/owner/dashboard")}
       />
       <NavItem
         icon={<BedDouble size={24} />}
