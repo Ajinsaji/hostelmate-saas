@@ -93,33 +93,11 @@ function LandingPage() {
         <button className="btn-primary" style={{ background: "white", color: "var(--primary-dark)", padding: "18px" }} onClick={handleEnterDashboard}> 
           Enter Dashboard <ArrowRight size={20} />
         </button>
-        <button
-          className="btn-secondary"
-          style={{ width: "100%", padding: "18px", marginTop: "14px", color: "#E6FFFA", border: "1px solid rgba(255,255,255,0.12)", background: "rgba(23, 32, 51, 0.65)" }}
-          onClick={() => navigate("/onboarding")}
-        >
-          Explore Onboarding Flow
-        </button>
       </div>
 
       <div className="p-4 pt-8 pb-24" style={{ marginTop: "-60px" }}>
-        <div className="glass-card mb-6" style={{ background: "var(--surface)", boxShadow: "var(--shadow-md)" }}>
-          <h3 className="text-h2 mb-4">Everything you need</h3>
-
-          <FeatureItem text="Visual Room & Bed Allocation" />
-          <FeatureItem text="QR-based Resident Onboarding" />
-          <FeatureItem text="Partial Payment Tracking" />
-          <FeatureItem text="Automated WhatsApp Reminders" />
-          <FeatureItem text="Food & LPG Analytics" />
-        </div>
-
-        <div style={{ marginTop: 24, textAlign: "center", color: "rgba(255,255,255,0.75)", fontSize: 13 }}>
-          HostelMate © 2026 <span
-            onClick={handleBetaMindClick}
-            style={{ color: "rgba(167,243,208,1)", fontWeight: 700, cursor: "pointer" }}
-          >
-            BetaMind
-          </span>
+        <div style={{ textAlign: "center", color: "rgba(255,255,255,0.75)", fontSize: 13 }}>
+          HostelMate © 2026
         </div>
       </div>
     </div>
