@@ -59,6 +59,7 @@ const getSubscriptionStatusEndpoint = async (req, res) => {
       renewalRequired: lifecycle.renewalRequired,
       planType: mergedHostel.planType,
       subscriptionPlan: mergedHostel.planType,
+      subscriptionAmount: Number(mergedHostel.amount || 0),
       subscriptionStatus: mergedHostel.subscriptionStatus,
       subscriptionStartDate: mergedHostel.subscriptionStartDate
         ? mergedHostel.subscriptionStartDate.toISOString()

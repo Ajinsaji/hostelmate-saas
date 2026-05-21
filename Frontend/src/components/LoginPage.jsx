@@ -51,6 +51,8 @@ function LoginPage() {
           navigate("/warden");
         } else if (role === "cook") {
           navigate("/cook");
+        } else if (role === "owner" && userData.onboardingCompleted !== true) {
+          navigate("/onboarding");
         } else {
           navigate("/dashboard");
         }

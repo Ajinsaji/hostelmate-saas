@@ -1,4 +1,4 @@
-import { Navigate } from "react-router-dom";
+import { Navigate, useLocation } from "react-router-dom";
 import RoleProtectedRoute from "./RoleProtectedRoute";
 import { getAuthToken } from "../utils/authToken";
 import { useEffect, useState } from "react";
@@ -21,9 +21,20 @@ const decodeJwtPayload = (token) => {
 };
 
 export default function OwnerProtectedRoute({ children }) {
+  const location = useLocation();
   const token = getAuthToken();
   const payload = token ? decodeJwtPayload(token) : null;
   const mustChangePassword = payload?.mustChangePassword;
+
+  const storedUser = (() => {
+    try {
+      return JSON.parse(localStorage.getItem("user") || "null");
+    } catch {
+      return null;
+    }
+  })();
+
+  const onboardingCompleted = storedUser?.onboardingCompleted ?? payload?.onboardingCompleted;
 
   const [subscriptionExpired, setSubscriptionExpired] = useState(false);
 
@@ -65,14 +76,25 @@ export default function OwnerProtectedRoute({ children }) {
     };
   }, [token]);
 
-  // Priority order:
-  // 1) mustChangePassword
-  // 2) subscriptionExpired
-  if (mustChangePassword === true) {
-    return <Navigate to="/change-password" replace />;
+  const isOnboardingRoute = location.pathname === "/onboarding";
+
+  if (!token) {
+    return <Navigate to="/login" replace />;
   }
 
-  if (subscriptionExpired) {
+  if (mustChangePassword === true && onboardingCompleted !== true) {
+    return <Navigate to="/onboarding" replace />;
+  }
+
+  if (mustChangePassword === true && onboardingCompleted === true) {
+    return <Navigate to="/owner/update-password" replace />;
+  }
+
+  if (onboardingCompleted !== true && !isOnboardingRoute) {
+    return <Navigate to="/onboarding" replace />;
+  }
+
+  if (subscriptionExpired && location.pathname !== "/subscription-expired") {
     return <Navigate to="/subscription-expired" replace />;
   }
 

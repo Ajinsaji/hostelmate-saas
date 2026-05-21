@@ -15,6 +15,23 @@ export const setAuthToken = (token, { type = "token" } = {}) => {
   }
 };
 
+export const getStoredUser = () => {
+  try {
+    return JSON.parse(localStorage.getItem("user") || "null");
+  } catch {
+    return null;
+  }
+};
+
+export const setStoredUser = (user) => {
+  try {
+    if (!user) return;
+    localStorage.setItem("user", JSON.stringify(user));
+  } catch {
+    // ignore
+  }
+};
+
 export const clearAuth = () => {
   try {
     localStorage.removeItem("token");

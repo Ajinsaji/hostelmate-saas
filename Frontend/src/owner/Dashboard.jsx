@@ -41,9 +41,11 @@ function Dashboard() {
     "inactive";
 
   const subscriptionStartDate =
-    hostel?.subscriptionStartDate || subscriptionState?.startDate || "";
+    hostel?.subscriptionStartDate || subscriptionState?.subscriptionStartDate || "";
   const subscriptionEndDate =
-    hostel?.subscriptionEndDate || subscriptionState?.expiryDate || "";
+    hostel?.subscriptionEndDate || subscriptionState?.subscriptionEndDate || "";
+  const subscriptionAmount =
+    subscriptionState?.subscriptionAmount ?? hostel?.amount ?? null;
   const daysLeft = subscriptionState?.daysLeft ?? null;
   const renewalRequired = subscriptionState?.renewalRequired || false;
   const freeAccess = hostel?.isFreeAccess || subscriptionState?.status === "freeAccess";
@@ -186,6 +188,13 @@ function Dashboard() {
                       <div className="mt-2 text-lg font-semibold text-white">{subscriptionPlan}</div>
                     </div>
                     <div className="rounded-3xl border border-white/10 bg-slate-900/50 p-4">
+                      <div className="text-xs uppercase tracking-[0.3em] text-white/50">Subscription amount</div>
+                      <div className="mt-2 text-lg font-semibold text-white">{subscriptionAmount ? `₹${subscriptionAmount}` : "N/A"}</div>
+                    </div>
+                  </div>
+
+                  <div className="mt-6 grid gap-4 sm:grid-cols-2">
+                    <div className="rounded-3xl border border-white/10 bg-slate-900/50 p-4">
                       <div className="text-xs uppercase tracking-[0.3em] text-white/50">Expiry date</div>
                       <div className="mt-2 text-lg font-semibold text-white">{subscriptionEndDate || "Not set"}</div>
                     </div>
@@ -300,35 +309,32 @@ function Dashboard() {
               </div>
             </div>
           </div>
-                </div>
-                <div className="rounded-2xl bg-white/5 p-4">
-                  <p className="text-xs text-white/50">Free Access</p>
-                  <p className="mt-2 font-semibold text-white">{freeAccess ? "Yes" : "No"}</p>
-                </div>
-              </div>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div className="rounded-2xl bg-white/5 p-4">
-                  <p className="text-xs text-white/50">Start Date</p>
-                  <p className="mt-2 font-semibold text-white">{subscriptionStartDate ? new Date(subscriptionStartDate).toLocaleDateString() : "N/A"}</p>
-                </div>
-                <div className="rounded-2xl bg-white/5 p-4">
-                  <p className="text-xs text-white/50">End Date</p>
-                  <p className="mt-2 font-semibold text-white">{subscriptionEndDate ? new Date(subscriptionEndDate).toLocaleDateString() : "N/A"}</p>
-                </div>
-              </div>
-              <div className="rounded-2xl bg-white/5 p-4">
-                <p className="text-xs text-white/50">Days Left</p>
-                <p className="mt-2 text-xl font-semibold text-white">{typeof daysLeft === "number" ? `${daysLeft} days` : "—"}</p>
-              </div>
-              <div className="rounded-2xl bg-white/5 p-4">
-                <p className="text-xs text-white/50">Renewal Required</p>
-                <p className="mt-2 font-semibold text-white">{renewalRequired ? "Yes" : "No"}</p>
-              </div>
+          <div className="rounded-2xl bg-white/5 p-4">
+            <p className="text-xs text-white/50">Free Access</p>
+            <p className="mt-2 font-semibold text-white">{freeAccess ? "Yes" : "No"}</p>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="rounded-2xl bg-white/5 p-4">
+              <p className="text-xs text-white/50">Start Date</p>
+              <p className="mt-2 font-semibold text-white">{subscriptionStartDate ? new Date(subscriptionStartDate).toLocaleDateString() : "N/A"}</p>
+            </div>
+            <div className="rounded-2xl bg-white/5 p-4">
+              <p className="text-xs text-white/50">End Date</p>
+              <p className="mt-2 font-semibold text-white">{subscriptionEndDate ? new Date(subscriptionEndDate).toLocaleDateString() : "N/A"}</p>
             </div>
           </div>
+          <div className="rounded-2xl bg-white/5 p-4">
+            <p className="text-xs text-white/50">Days Left</p>
+            <p className="mt-2 text-xl font-semibold text-white">{typeof daysLeft === "number" ? `${daysLeft} days` : "—"}</p>
+          </div>
+          <div className="rounded-2xl bg-white/5 p-4">
+            <p className="text-xs text-white/50">Renewal Required</p>
+            <p className="mt-2 font-semibold text-white">{renewalRequired ? "Yes" : "No"}</p>
+          </div>
         </div>
+      </div>
 
-        <div className="mt-8 grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+      <div className="mt-8 grid gap-6 md:grid-cols-2 xl:grid-cols-3">
           <ActionButton
             title="Manage Rooms"
             subtitle="Beds, occupancy and room status"
@@ -372,7 +378,6 @@ function Dashboard() {
             onClick={() => navigate("/reports")}
           />
         </div>
-      </div>
 
       <BottomNav />
     </div>

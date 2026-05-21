@@ -16,6 +16,8 @@ const {
   updateHostelSettings,
   updateOwnerProfile,
   updateOwnerPassword,
+  saveOnboardingRules,
+  completeOnboardingRooms,
 } = require("../controllers/ownerController");
 
 const ownerAuth = require("../middleware/ownerAuth");
@@ -44,7 +46,8 @@ router.put(
   updateOwnerProfile
 );
 router.put("/password/update", ownerAuth, updateOwnerPassword);
-
+router.put("/onboarding/rules", ownerAuth, saveOnboardingRules);
+router.put("/onboarding/complete-rooms", ownerAuth, completeOnboardingRooms);
 
 // Superadmin actions
 router.put("/owners/reset-password", resetOwnerPassword);

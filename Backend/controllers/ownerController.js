@@ -5,6 +5,7 @@ const Staff = require("../models/Staff");
 const Hostel = require("../models/Hostel");
 const Subscription = require("../models/Subscription");
 const Room = require("../models/Room");
+const Bed = require("../models/Bed");
 const Resident = require("../models/Resident");
 const Payment = require("../models/Payment");
 const PublicAdmission = require("../models/PublicAdmission");
@@ -139,6 +140,8 @@ const loginOwner = async (req, res) => {
       userId,
       hostelId,
       role: userRole,
+      mustChangePassword: !!owner?.mustChangePassword,
+      onboardingCompleted: !!owner?.onboardingCompleted,
     };
 
     const secret = process.env.JWT_SECRET || "change_me_secret";
@@ -150,7 +153,15 @@ const loginOwner = async (req, res) => {
         success: true,
         message: "Login Success",
         token,
-        owner: userResponse,
+        owner: {
+          ...userResponse,
+          firstLogin: !!owner.firstLogin,
+          passwordChanged: !!owner.passwordChanged,
+          rulesConfigured: !!owner.rulesConfigured,
+          roomsConfigured: !!owner.roomsConfigured,
+          onboardingCompleted: !!owner.onboardingCompleted,
+          mustChangePassword: !!owner.mustChangePassword,
+        },
         subscription,
         mustChangePassword: !!owner.mustChangePassword,
       });
@@ -661,14 +672,148 @@ const updateOwnerPassword = async (req, res) => {
     // Clear temp-password lifecycle and end forced-password change
     owner.mustChangePassword = false;
     owner.tempPassword = null;
+    owner.firstLogin = false;
+    owner.passwordChanged = true;
 
     owner.updatedAt = new Date();
     await owner.save();
 
-    return res.status(200).json({ success: true, message: "Password updated", data: null });
+    return res.status(200).json({ success: true, message: "Password updated", data: {
+      firstLogin: owner.firstLogin,
+      passwordChanged: owner.passwordChanged,
+      mustChangePassword: owner.mustChangePassword,
+      onboardingCompleted: owner.onboardingCompleted,
+    } });
   } catch (e) {
     console.error("updateOwnerPassword error:", e);
     return res.status(500).json({ success: false, message: "Failed to update password", data: null });
+  }
+};
+
+const saveOnboardingRules = async (req, res) => {
+  try {
+    const { hostelId, ownerId } = req.owner;
+    const { rulesText, rulesConfig } = req.body || {};
+
+    if (!hostelId || !ownerId) {
+      return res.status(401).json({ success: false, message: "Unauthorized", data: null });
+    }
+
+    if (!String(rulesText || "").trim()) {
+      return res.status(400).json({ success: false, message: "Rules text is required", data: null });
+    }
+
+    const hostel = await Hostel.findById(hostelId);
+    if (!hostel) {
+      return res.status(404).json({ success: false, message: "Hostel not found", data: null });
+    }
+
+    const updatedData = {
+      rulesText: rulesText.trim(),
+    };
+
+    const hasRulesChanged = String(rulesText || "").trim() !== String(hostel.rulesText || "").trim();
+    if (hasRulesChanged) {
+      const newVersionNumber = (hostel.rulesVersionNumber || 0) + 1;
+      const newVersionId = `v${newVersionNumber}-${Date.now()}`;
+      updatedData.currentRulesVersion = newVersionId;
+      updatedData.rulesVersionNumber = newVersionNumber;
+      updatedData.rulesVersionHistory = [
+        ...(hostel.rulesVersionHistory || []),
+        {
+          versionId: newVersionId,
+          versionNumber: newVersionNumber,
+          rulesText: rulesText.trim(),
+          createdAt: new Date(),
+        },
+      ];
+    }
+
+    if (rulesConfig && typeof rulesConfig === "object") {
+      updatedData.rulesConfig = {
+        ...hostel.rulesConfig,
+        ...rulesConfig,
+      };
+    }
+
+    const [updatedHostel, updatedOwner] = await Promise.all([
+      Hostel.findByIdAndUpdate(hostelId, updatedData, { new: true, runValidators: true }),
+      Owner.findByIdAndUpdate(ownerId, { rulesConfigured: true }, { new: true }),
+    ]);
+
+    return res.status(200).json({
+      success: true,
+      message: "Hostel rules saved successfully",
+      hostel: updatedHostel,
+      owner: {
+        rulesConfigured: !!updatedOwner.rulesConfigured,
+        onboardingCompleted: !!updatedOwner.onboardingCompleted,
+      },
+    });
+  } catch (e) {
+    console.error("saveOnboardingRules error:", e);
+    return res.status(500).json({ success: false, message: "Failed to save rules", data: null });
+  }
+};
+
+const completeOnboardingRooms = async (req, res) => {
+  try {
+    const { hostelId, ownerId } = req.owner;
+    const { roomNumber, roomType, totalBeds, rentPerBed, skip } = req.body || {};
+
+    if (!hostelId || !ownerId) {
+      return res.status(401).json({ success: false, message: "Unauthorized", data: null });
+    }
+
+    let room = null;
+    if (!skip && String(roomNumber || "").trim() && Number(totalBeds) > 0 && Number(rentPerBed) >= 0) {
+      const normalizedRoomNumber = String(roomNumber).trim();
+      const existingRoom = await Room.findOne({ hostelId, roomNumber: { $regex: `^${normalizedRoomNumber}$`, $options: "i" } });
+      if (existingRoom) {
+        return res.status(400).json({ success: false, message: "Room number already exists", data: null });
+      }
+
+      room = await Room.create({
+        hostelId,
+        roomNumber: normalizedRoomNumber,
+        roomType: roomType || "Standard",
+        totalBeds: Number(totalBeds),
+        rentPerBed: Number(rentPerBed),
+      });
+
+      const beds = [];
+      for (let i = 1; i <= Number(totalBeds); i += 1) {
+        beds.push({
+          hostelId,
+          roomId: room._id,
+          bedNumber: `B${i}`,
+          status: "vacant",
+        });
+      }
+      await Bed.insertMany(beds);
+    }
+
+    const updatedOwner = await Owner.findByIdAndUpdate(
+      ownerId,
+      {
+        roomsConfigured: true,
+        onboardingCompleted: true,
+      },
+      { new: true }
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Onboarding completed successfully",
+      room,
+      owner: {
+        roomsConfigured: !!updatedOwner.roomsConfigured,
+        onboardingCompleted: !!updatedOwner.onboardingCompleted,
+      },
+    });
+  } catch (e) {
+    console.error("completeOnboardingRooms error:", e);
+    return res.status(500).json({ success: false, message: "Failed to complete onboarding", data: null });
   }
 };
 
@@ -686,6 +831,8 @@ module.exports = {
   updateHostelSettings,
   updateOwnerProfile,
   updateOwnerPassword,
+  saveOnboardingRules,
+  completeOnboardingRooms,
 };
 
 

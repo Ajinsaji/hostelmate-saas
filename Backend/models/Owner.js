@@ -61,6 +61,26 @@ const ownerSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+    firstLogin: {
+      type: Boolean,
+      default: true,
+    },
+    passwordChanged: {
+      type: Boolean,
+      default: false,
+    },
+    rulesConfigured: {
+      type: Boolean,
+      default: false,
+    },
+    roomsConfigured: {
+      type: Boolean,
+      default: false,
+    },
+    onboardingCompleted: {
+      type: Boolean,
+      default: false,
+    },
   },
   { timestamps: true }
 );
