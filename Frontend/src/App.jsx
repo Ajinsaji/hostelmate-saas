@@ -10,7 +10,7 @@ import LandingPage from "./components/LandingPage";
 import LoginPage from "./components/LoginPage";
 import RegisterPage from "./components/RegisterPage";
 import PendingApproval from "./components/PendingApproval";
-import OnboardingFlow from "./components/OnboardingFlow";
+
 
 import AdminLogin from "./components/AdminLogin";
 import PublicHostelPage from "./components/PublicHostelPage";
@@ -150,7 +150,6 @@ function App() {
             <Route path="/" element={<LandingPage />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
-            <Route path="/onboarding" element={<OnboardingFlow />} />
           </>
         )}
 
