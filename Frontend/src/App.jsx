@@ -10,7 +10,7 @@ import LandingPage from "./components/LandingPage";
 import LoginPage from "./components/LoginPage";
 import RegisterPage from "./components/RegisterPage";
 import PendingApproval from "./components/PendingApproval";
-
+import OnboardingFlow from "./components/OnboardingFlow";
 
 import AdminLogin from "./components/AdminLogin";
 import PublicHostelPage from "./components/PublicHostelPage";
@@ -153,7 +153,8 @@ function App() {
           </>
         )}
 
-
+        {/* Owner Onboarding - Protected but no onboarding check */}
+        <Route path="/ownerAction" element={<OnboardingFlow />} />
 
         <Route
           path="/owner/dashboard"

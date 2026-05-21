@@ -649,11 +649,14 @@ const updateOwnerPassword = async (req, res) => {
 
     const { currentPassword, newPassword, confirmPassword } = req.body || {};
 
-
-
     if (!ownerId) return res.status(401).json({ success: false, message: "Unauthorized", data: null });
 
-    if (!currentPassword || !newPassword || !confirmPassword) {
+    // Support two modes:
+    // 1. With currentPassword - regular password update (requires old password verification)
+    // 2. Without currentPassword - onboarding password change (no verification needed)
+    const isOnboarding = !currentPassword;
+
+    if (!newPassword || !confirmPassword) {
       return res.status(400).json({ success: false, message: "All fields are required", data: null });
     }
     if (newPassword.length < 6) {
@@ -666,8 +669,11 @@ const updateOwnerPassword = async (req, res) => {
     const owner = await Owner.findById(ownerId);
     if (!owner) return res.status(404).json({ success: false, message: "Owner not found", data: null });
 
-    const ok = await safePasswordCompare(currentPassword, owner.password);
-    if (!ok) return res.status(400).json({ success: false, message: "Current password is incorrect", data: null });
+    // If not onboarding, verify current password
+    if (!isOnboarding) {
+      const ok = await safePasswordCompare(currentPassword, owner.password);
+      if (!ok) return res.status(400).json({ success: false, message: "Current password is incorrect", data: null });
+    }
 
     const salt = await bcrypt.genSalt(10);
     owner.password = await bcrypt.hash(newPassword, salt);
@@ -696,13 +702,16 @@ const updateOwnerPassword = async (req, res) => {
 const saveOnboardingRules = async (req, res) => {
   try {
     const { hostelId, ownerId } = req.owner;
-    const { rulesText, rulesConfig } = req.body || {};
+    const { rules, rulesText, rulesConfig } = req.body || {};
 
     if (!hostelId || !ownerId) {
       return res.status(401).json({ success: false, message: "Unauthorized", data: null });
     }
 
-    if (!String(rulesText || "").trim()) {
+    // Accept either 'rules' (from new frontend) or 'rulesText' (legacy)
+    const finalRulesText = rules || rulesText || "";
+
+    if (!String(finalRulesText).trim()) {
       return res.status(400).json({ success: false, message: "Rules text is required", data: null });
     }
 
@@ -712,10 +721,10 @@ const saveOnboardingRules = async (req, res) => {
     }
 
     const updatedData = {
-      rulesText: rulesText.trim(),
+      rulesText: finalRulesText.trim(),
     };
 
-    const hasRulesChanged = String(rulesText || "").trim() !== String(hostel.rulesText || "").trim();
+    const hasRulesChanged = String(finalRulesText || "").trim() !== String(hostel.rulesText || "").trim();
     if (hasRulesChanged) {
       const newVersionNumber = (hostel.rulesVersionNumber || 0) + 1;
       const newVersionId = `v${newVersionNumber}-${Date.now()}`;
@@ -726,7 +735,7 @@ const saveOnboardingRules = async (req, res) => {
         {
           versionId: newVersionId,
           versionNumber: newVersionNumber,
-          rulesText: rulesText.trim(),
+          rulesText: finalRulesText.trim(),
           createdAt: new Date(),
         },
       ];
@@ -762,26 +771,32 @@ const saveOnboardingRules = async (req, res) => {
 const completeOnboardingRooms = async (req, res) => {
   try {
     const { hostelId, ownerId } = req.owner;
-    const { roomNumber, roomType, totalBeds, rentPerBed, skip } = req.body || {};
+    const { roomNumber, roomType, totalBeds, rentPerBed, skip, rooms } = req.body || {};
 
     if (!hostelId || !ownerId) {
       return res.status(401).json({ success: false, message: "Unauthorized", data: null });
     }
 
-    let room = null;
-    if (!skip && String(roomNumber || "").trim() && Number(totalBeds) > 0 && Number(rentPerBed) >= 0) {
+    let createdRooms = [];
+
+    // Support both old format (single room) and new format (array of rooms)
+    const roomsList = Array.isArray(rooms) ? rooms : [];
+    const hasSingleRoom = !skip && String(roomNumber || "").trim() && Number(totalBeds) > 0;
+
+    if (hasSingleRoom && roomsList.length === 0) {
+      // Legacy: single room format
       const normalizedRoomNumber = String(roomNumber).trim();
       const existingRoom = await Room.findOne({ hostelId, roomNumber: { $regex: `^${normalizedRoomNumber}$`, $options: "i" } });
       if (existingRoom) {
         return res.status(400).json({ success: false, message: "Room number already exists", data: null });
       }
 
-      room = await Room.create({
+      const room = await Room.create({
         hostelId,
         roomNumber: normalizedRoomNumber,
         roomType: roomType || "Standard",
         totalBeds: Number(totalBeds),
-        rentPerBed: Number(rentPerBed),
+        rentPerBed: Number(rentPerBed) || 0,
       });
 
       const beds = [];
@@ -794,6 +809,33 @@ const completeOnboardingRooms = async (req, res) => {
         });
       }
       await Bed.insertMany(beds);
+      createdRooms.push(room);
+    } else if (roomsList.length > 0) {
+      // New: array of rooms format
+      for (const roomData of roomsList) {
+        const normalizedRoomNumber = String(roomData.name || `Room-${Date.now()}`).trim();
+        const bedCount = Math.max(1, Number(roomData.beds) || 1);
+
+        const room = await Room.create({
+          hostelId,
+          roomNumber: normalizedRoomNumber,
+          roomType: "Standard",
+          totalBeds: bedCount,
+          rentPerBed: 0,
+        });
+
+        const beds = [];
+        for (let i = 1; i <= bedCount; i += 1) {
+          beds.push({
+            hostelId,
+            roomId: room._id,
+            bedNumber: `B${i}`,
+            status: "vacant",
+          });
+        }
+        await Bed.insertMany(beds);
+        createdRooms.push(room);
+      }
     }
 
     const updatedOwner = await Owner.findByIdAndUpdate(
@@ -801,6 +843,7 @@ const completeOnboardingRooms = async (req, res) => {
       {
         roomsConfigured: true,
         onboardingCompleted: true,
+        firstLogin: false,
       },
       { new: true }
     );
@@ -808,7 +851,7 @@ const completeOnboardingRooms = async (req, res) => {
     return res.status(200).json({
       success: true,
       message: "Onboarding completed successfully",
-      room,
+      rooms: createdRooms,
       owner: {
         roomsConfigured: !!updatedOwner.roomsConfigured,
         onboardingCompleted: !!updatedOwner.onboardingCompleted,
@@ -816,6 +859,45 @@ const completeOnboardingRooms = async (req, res) => {
     });
   } catch (e) {
     console.error("completeOnboardingRooms error:", e);
+    return res.status(500).json({ success: false, message: "Failed to complete onboarding", data: null });
+  }
+};
+
+// ==========================
+// Complete Onboarding
+// ==========================
+const completeOnboarding = async (req, res) => {
+  try {
+    const { ownerId } = req.owner;
+
+    if (!ownerId) {
+      return res.status(401).json({ success: false, message: "Unauthorized", data: null });
+    }
+
+    const updatedOwner = await Owner.findByIdAndUpdate(
+      ownerId,
+      {
+        onboardingCompleted: true,
+        firstLogin: false,
+        mustChangePassword: false,
+      },
+      { new: true }
+    );
+
+    if (!updatedOwner) {
+      return res.status(404).json({ success: false, message: "Owner not found", data: null });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Onboarding completed",
+      owner: {
+        onboardingCompleted: !!updatedOwner.onboardingCompleted,
+        firstLogin: !!updatedOwner.firstLogin,
+      },
+    });
+  } catch (e) {
+    console.error("completeOnboarding error:", e);
     return res.status(500).json({ success: false, message: "Failed to complete onboarding", data: null });
   }
 };
@@ -836,6 +918,7 @@ module.exports = {
   updateOwnerPassword,
   saveOnboardingRules,
   completeOnboardingRooms,
+  completeOnboarding,
 };
 
 

@@ -72,7 +72,7 @@ export default function OwnerProtectedRoute({ children }) {
     };
   }, [token]);
 
-  const isOnboardingRoute = location.pathname === "/onboarding";
+  const isOnboardingRoute = location.pathname === "/ownerAction" || location.pathname === "/onboarding";
 
   if (!hasAuthenticatedOwner) {
     return <Navigate to="/login" replace />;

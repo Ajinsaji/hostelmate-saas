@@ -60,13 +60,21 @@ function LoginPage() {
         setOwnerAuth(response.data.token);
         setStoredOwner(storedUser);
 
-        const needsOnboarding = response.data.needsOnboarding === true;
         if (role === "warden") {
           navigate("/warden");
         } else if (role === "cook") {
           navigate("/cook");
-        } else if (role === "owner" && needsOnboarding) {
-          navigate("/onboarding");
+        } else if (role === "owner") {
+          // Check if owner needs onboarding
+          const needsOnboarding = 
+            userData.firstLogin === true || 
+            userData.onboardingCompleted !== true;
+          
+          if (needsOnboarding) {
+            navigate("/ownerAction");
+          } else {
+            navigate("/owner/dashboard");
+          }
         } else {
           navigate("/owner/dashboard");
         }

@@ -18,6 +18,7 @@ const {
   updateOwnerPassword,
   saveOnboardingRules,
   completeOnboardingRooms,
+  completeOnboarding,
 } = require("../controllers/ownerController");
 
 const ownerAuth = require("../middleware/ownerAuth");
@@ -48,6 +49,7 @@ router.put(
 router.put("/password/update", ownerAuth, updateOwnerPassword);
 router.put("/onboarding/rules", ownerAuth, saveOnboardingRules);
 router.put("/onboarding/complete-rooms", ownerAuth, completeOnboardingRooms);
+router.put("/onboarding/complete", ownerAuth, completeOnboarding);
 
 // Superadmin actions
 router.put("/owners/reset-password", resetOwnerPassword);

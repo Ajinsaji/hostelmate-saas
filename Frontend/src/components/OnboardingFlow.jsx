@@ -1,462 +1,631 @@
-import { useEffect, useMemo, useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
-import api from "../utils/apiClient";
-import { getStoredUser, setStoredUser } from "../utils/authToken";
-
-const steps = [
-  { id: 1, label: "Welcome" },
-  { id: 2, label: "Security" },
-  { id: 3, label: "Rules" },
-  { id: 4, label: "Rooms" },
-  { id: 5, label: "Finish" },
-];
+import axios from "axios";
+import { Eye, EyeOff, Plus, X, CheckCircle, Loader2 } from "lucide-react";
+import { getOwnerToken, getStoredOwner, setStoredOwner } from "../utils/authToken";
 
 function OnboardingFlow() {
   const navigate = useNavigate();
-  const [storedUser, setStoredUserState] = useState(getStoredUser());
-  const [step, setStep] = useState(1);
+  const token = getOwnerToken();
+  const storedOwner = getStoredOwner();
+
+  const [currentStep, setCurrentStep] = useState(1);
   const [loading, setLoading] = useState(false);
-  const [roomSkipped, setRoomSkipped] = useState(false);
-  const [form, setForm] = useState({
-    currentPassword: "",
-    newPassword: "",
-    confirmPassword: "",
-    rulesText: "",
-    roomNumber: "",
-    roomType: "Standard",
-    totalBeds: "",
-    rentPerBed: "",
-  });
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  const onboardingState = useMemo(() => ({
-    onboardingCompleted: !!storedUser?.onboardingCompleted,
-    mustChangePassword: !!storedUser?.mustChangePassword,
-    rulesConfigured: !!storedUser?.rulesConfigured,
-    roomsConfigured: !!storedUser?.roomsConfigured,
-  }), [storedUser]);
+  // Step 2: Security
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
 
+  // Step 3: Rules
+  const [rules, setRules] = useState("");
+
+  // Step 4: Rooms & Beds
+  const [rooms, setRooms] = useState([]);
+  const [roomName, setRoomName] = useState("");
+  const [bedCount, setBedCount] = useState("");
+
+  // Restore progress from localStorage on mount
   useEffect(() => {
-    if (!storedUser) {
-      navigate("/login", { replace: true });
-      return;
-    }
-
-    if (onboardingState.onboardingCompleted) {
-      navigate("/owner/dashboard", { replace: true });
-      return;
-    }
-
-    if (!onboardingState.mustChangePassword) {
-      if (!onboardingState.rulesConfigured) {
-        setStep(3);
-      } else if (!onboardingState.roomsConfigured) {
-        setStep(4);
-      } else {
-        setStep(5);
+    const saved = localStorage.getItem("onboardingProgress");
+    if (saved) {
+      try {
+        const data = JSON.parse(saved);
+        setCurrentStep(data.currentStep || 1);
+        setNewPassword(data.newPassword || "");
+        setConfirmPassword(data.confirmPassword || "");
+        setRules(data.rules || "");
+        setRooms(data.rooms || []);
+      } catch {
+        // Ignore parse errors
       }
     }
-  }, [storedUser, onboardingState.mustChangePassword, onboardingState.rulesConfigured, onboardingState.roomsConfigured, onboardingState.onboardingCompleted, navigate]);
+  }, []);
 
-  const updateUserLocal = (updates) => {
-    const nextUser = { ...(storedUser || {}), ...updates };
-    setStoredUser(nextUser);
-    setStoredUserState(nextUser);
-  };
+  // Save progress to localStorage
+  useEffect(() => {
+    const progressData = {
+      currentStep,
+      newPassword,
+      confirmPassword,
+      rules,
+      rooms,
+    };
+    localStorage.setItem("onboardingProgress", JSON.stringify(progressData));
+  }, [currentStep, newPassword, confirmPassword, rules, rooms]);
 
-  const handlePasswordSave = async () => {
-    if (!form.currentPassword.trim() || !form.newPassword.trim() || !form.confirmPassword.trim()) {
-      toast.error("Please complete all password fields.");
-      return;
-    }
-    if (form.newPassword.length < 6) {
-      toast.error("New password must be at least 6 characters.");
-      return;
-    }
-    if (form.newPassword !== form.confirmPassword) {
-      toast.error("Password confirmation does not match.");
-      return;
-    }
+  // Redirect if not authenticated
+  if (!token || !storedOwner) {
+    navigate("/login", { replace: true });
+    return null;
+  }
 
-    try {
-      setLoading(true);
-      const response = await api.put("/api/owner/password/update", {
-        currentPassword: form.currentPassword,
-        newPassword: form.newPassword,
-        confirmPassword: form.confirmPassword,
-      });
-      if (response.data?.success) {
-        toast.success("Password saved. Continue with rules.");
-        updateUserLocal({
-          firstLogin: false,
-          passwordChanged: true,
-          mustChangePassword: false,
-        });
-        setStep(3);
-      } else {
-        toast.error(response.data?.message || "Unable to save password.");
-      }
-    } catch (error) {
-      toast.error(error?.response?.data?.message || "Unable to save password.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleRulesSave = async () => {
-    if (!form.rulesText.trim()) {
-      toast.error("Please enter hostel rules before continuing.");
-      return;
-    }
-
-    try {
-      setLoading(true);
-      const response = await api.put("/api/owner/onboarding/rules", {
-        rulesText: form.rulesText.trim(),
-      });
-      if (response.data?.success) {
-        toast.success("Hostel rules saved.");
-        updateUserLocal({ rulesConfigured: true });
-        setStep(4);
-      } else {
-        toast.error(response.data?.message || "Unable to save rules.");
-      }
-    } catch (error) {
-      toast.error(error?.response?.data?.message || "Unable to save rules.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const completeOnboarding = async (skip = false) => {
-    if (!skip) {
-      if (!form.roomNumber.trim()) {
-        toast.error("Room number is required or skip onboarding.");
-        return;
-      }
-      if (!form.totalBeds.trim() || Number(form.totalBeds) <= 0) {
-        toast.error("Total beds must be greater than 0.");
-        return;
-      }
-      if (!form.rentPerBed.trim() || Number(form.rentPerBed) < 0) {
-        toast.error("Rent per bed must be a positive value.");
-        return;
-      }
-    }
-
-    try {
-      setLoading(true);
-      const response = await api.put("/api/owner/onboarding/complete-rooms", {
-        skip,
-        roomNumber: skip ? undefined : form.roomNumber.trim(),
-        roomType: skip ? undefined : form.roomType,
-        totalBeds: skip ? undefined : Number(form.totalBeds),
-        rentPerBed: skip ? undefined : Number(form.rentPerBed),
-      });
-      if (response.data?.success) {
-        toast.success("Onboarding completed successfully.");
-        updateUserLocal({ roomsConfigured: true, onboardingCompleted: true });
-        navigate("/owner/dashboard", { replace: true });
-      } else {
-        toast.error(response.data?.message || "Unable to complete onboarding.");
-      }
-    } catch (error) {
-      toast.error(error?.response?.data?.message || "Unable to complete onboarding.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const currentLabel = steps.find((item) => item.id === step)?.label || "Start";
-
-  return (
-    <div className="min-h-screen bg-[#050c24] px-4 py-6 text-white sm:px-6 lg:px-8">
-      <div className="mx-auto w-full max-w-5xl">
-        <div className="mb-6 rounded-[32px] border border-white/10 bg-slate-950/70 p-5 shadow-2xl backdrop-blur-xl sm:p-8">
-          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div className="space-y-2">
-              <div className="inline-flex rounded-full bg-emerald-500/15 px-4 py-2 text-sm font-semibold text-emerald-200">
-                Onboarding step {step} of {steps.length}
+  // ============================================
+  // Step 1: Welcome
+  // ============================================
+  const Step1Welcome = () => {
+    const ownerName = storedOwner?.ownerName || "Owner";
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-[#001a4d] to-[#003d7a] flex items-center justify-center p-4">
+        <div className="w-full max-w-md">
+          <div className="bg-white rounded-2xl shadow-2xl p-8 text-center">
+            {/* Logo Area */}
+            <div className="mb-8">
+              <div className="w-20 h-20 bg-gradient-to-br from-[#001a4d] to-[#00b894] rounded-full flex items-center justify-center mx-auto">
+                <div className="text-white text-2xl font-bold">HM</div>
               </div>
-              <h1 className="text-3xl font-bold text-white">HostelMate onboarding</h1>
-              <p className="max-w-2xl text-sm text-slate-300">
-                Complete your owner setup in four steps: secure your account, publish hostel rules, add rooms, and finish onboarding.
-              </p>
             </div>
-            <div className="grid gap-2 sm:grid-cols-2">
-              {steps.map((item) => (
-                <div
-                  key={item.id}
-                  className={`rounded-3xl border px-4 py-3 text-sm font-semibold ${item.id === step ? "border-emerald-400 bg-emerald-500/10 text-white" : "border-white/10 bg-white/5 text-slate-300"}`}
-                >
-                  {item.label}
-                </div>
-              ))}
-            </div>
+
+            <h1 className="text-3xl font-bold text-[#001a4d] mb-2">
+              Welcome to HostelMate
+            </h1>
+            <p className="text-lg font-semibold text-[#001a4d] mb-1">
+              Welcome, {ownerName}
+            </p>
+            <p className="text-sm text-gray-600 mb-8">
+              Powered by BetaMIND TechSolutions
+            </p>
+
+            <p className="text-gray-700 mb-8 leading-relaxed">
+              Let's set up your hostel and get you started with HostelMate. 
+              This quick setup will take just a few minutes.
+            </p>
+
+            <button
+              onClick={() => setCurrentStep(2)}
+              className="w-full bg-gradient-to-r from-[#001a4d] to-[#00b894] text-white font-semibold py-3 px-4 rounded-lg hover:shadow-lg transition-all"
+            >
+              Let's Begin
+            </button>
           </div>
         </div>
+      </div>
+    );
+  };
 
-        <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
-          <div className="rounded-[32px] border border-white/10 bg-slate-950/80 p-6 shadow-xl backdrop-blur-xl">
-            {step === 1 && (
-              <div className="space-y-6">
-                <div className="flex items-center gap-3 rounded-3xl bg-emerald-500/10 p-4 text-emerald-100">
-                  <span className="rounded-full bg-emerald-500/20 p-3 text-lg">👋</span>
-                  <div>
-                    <p className="text-sm uppercase tracking-[0.35em] text-emerald-200/80">Welcome</p>
-                    <h2 className="text-2xl font-semibold text-white">Welcome to HostelMate</h2>
-                  </div>
-                </div>
+  // ============================================
+  // Step 2: Security
+  // ============================================
+  const Step2Security = () => {
+    const handleSave = async () => {
+      if (!newPassword.trim()) {
+        toast.error("Enter a new password");
+        return;
+      }
+      if (newPassword.length < 6) {
+        toast.error("Password must be at least 6 characters");
+        return;
+      }
+      if (newPassword !== confirmPassword) {
+        toast.error("Passwords do not match");
+        return;
+      }
 
-                <div className="space-y-4 rounded-3xl border border-white/10 bg-slate-900/60 p-6 text-slate-300">
-                  <p className="text-lg text-white">Thank you for joining HostelMate. Your owner account is ready, and the onboarding flow will help you secure your login and configure your hostel step by step.</p>
-                  <ul className="mt-4 space-y-3 text-sm text-slate-300">
-                    <li>1. Secure your password</li>
-                    <li>2. Add hostel rules</li>
-                    <li>3. Configure rooms and beds</li>
-                  </ul>
-                </div>
+      setLoading(true);
+      try {
+        const response = await axios.put(
+          `${import.meta.env.VITE_API_URL}/api/owner/password/update`,
+          { newPassword },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
 
+        if (response.data.success) {
+          toast.success("Password updated");
+          setCurrentStep(3);
+        } else {
+          toast.error(response.data.message || "Failed to update password");
+        }
+      } catch (error) {
+        toast.error(error?.response?.data?.message || "Failed to update password");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-[#001a4d] to-[#003d7a] flex items-center justify-center p-4">
+        <div className="w-full max-w-md">
+          <div className="bg-white rounded-2xl shadow-2xl p-8">
+            {/* Progress */}
+            <div className="flex justify-between items-center mb-8">
+              <div className="flex gap-2">
+                {[1, 2, 3, 4, 5].map((step) => (
+                  <div
+                    key={step}
+                    className={`h-1 flex-1 rounded-full transition-all ${
+                      step <= currentStep
+                        ? "bg-gradient-to-r from-[#001a4d] to-[#00b894]"
+                        : "bg-gray-200"
+                    }`}
+                  ></div>
+                ))}
+              </div>
+              <span className="text-sm font-semibold text-gray-600 ml-4">
+                2/5
+              </span>
+            </div>
+
+            <h2 className="text-2xl font-bold text-[#001a4d] mb-2">
+              Security First
+            </h2>
+            <p className="text-gray-600 mb-6">
+              Set a strong password to secure your account
+            </p>
+
+            {/* New Password */}
+            <div className="mb-5">
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                New Password
+              </label>
+              <div className="relative">
+                <input
+                  type={showPassword ? "text" : "password"}
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="Enter new password"
+                  className="w-full border border-gray-300 rounded-lg px-4 py-3 pr-10 focus:outline-none focus:ring-2 focus:ring-[#00b894]"
+                />
                 <button
-                  className="btn-primary w-full"
                   type="button"
-                  onClick={() => setStep(2)}
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-3 text-gray-600 hover:text-gray-800"
                 >
-                  Continue to security
+                  {showPassword ? (
+                    <EyeOff size={20} />
+                  ) : (
+                    <Eye size={20} />
+                  )}
                 </button>
               </div>
-            )}
+            </div>
 
-            {step === 2 && (
-              <div className="space-y-6">
-                <div className="flex items-center gap-3 rounded-3xl bg-emerald-500/10 p-4 text-emerald-100">
-                  <span className="rounded-full bg-emerald-500/20 p-3 text-lg">🔒</span>
-                  <div>
-                    <p className="text-sm uppercase tracking-[0.35em] text-emerald-200/80">Security setup</p>
-                    <h2 className="text-2xl font-semibold text-white">Secure your owner login</h2>
-                  </div>
-                </div>
-
-                <div className="space-y-4">
-                  <div className="input-group">
-                    <label className="input-label">Current password</label>
-                    <input
-                      className="input-field"
-                      type="password"
-                      value={form.currentPassword}
-                      onChange={(e) => setForm((prev) => ({ ...prev, currentPassword: e.target.value }))}
-                    />
-                  </div>
-                  <div className="input-group">
-                    <label className="input-label">New password</label>
-                    <input
-                      className="input-field"
-                      type="password"
-                      value={form.newPassword}
-                      onChange={(e) => setForm((prev) => ({ ...prev, newPassword: e.target.value }))}
-                    />
-                  </div>
-                  <div className="input-group">
-                    <label className="input-label">Confirm new password</label>
-                    <input
-                      className="input-field"
-                      type="password"
-                      value={form.confirmPassword}
-                      onChange={(e) => setForm((prev) => ({ ...prev, confirmPassword: e.target.value }))}
-                    />
-                  </div>
-                </div>
-
-                <div className="rounded-3xl border border-white/10 bg-slate-900/60 p-4 text-sm text-slate-300">
-                  Use your temporary login to set a secure password. This is required before you can configure rules and rooms.
-                </div>
-
+            {/* Confirm Password */}
+            <div className="mb-6">
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Confirm Password
+              </label>
+              <div className="relative">
+                <input
+                  type={showConfirmPassword ? "text" : "password"}
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="Confirm password"
+                  className="w-full border border-gray-300 rounded-lg px-4 py-3 pr-10 focus:outline-none focus:ring-2 focus:ring-[#00b894]"
+                />
                 <button
-                  className="btn-primary w-full"
                   type="button"
-                  onClick={handlePasswordSave}
-                  disabled={loading}
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="absolute right-3 top-3 text-gray-600 hover:text-gray-800"
                 >
-                  {loading ? "Saving…" : "Save password and continue"}
+                  {showConfirmPassword ? (
+                    <EyeOff size={20} />
+                  ) : (
+                    <Eye size={20} />
+                  )}
                 </button>
               </div>
-            )}
+            </div>
 
-            {step === 3 && (
-              <div className="space-y-6">
-                <div className="flex items-center gap-3 rounded-3xl bg-indigo-500/10 p-4 text-indigo-100">
-                  <span className="rounded-full bg-indigo-500/20 p-3 text-lg">📜</span>
-                  <div>
-                    <p className="text-sm uppercase tracking-[0.35em] text-indigo-200/80">House rules</p>
-                    <h2 className="text-2xl font-semibold text-white">Create your hostel rules</h2>
-                  </div>
-                </div>
-
-                <div className="space-y-4">
-                  <div className="input-group">
-                    <label className="input-label">Hostel rules</label>
-                    <textarea
-                      rows={7}
-                      className="input-field resize-none"
-                      placeholder="Example: Rent due before 5th, strict no-smoking policy, visitors allowed until 9 PM."
-                      value={form.rulesText}
-                      onChange={(e) => setForm((prev) => ({ ...prev, rulesText: e.target.value }))}
-                    />
-                  </div>
-                </div>
-
-                <div className="grid gap-3 sm:grid-cols-2">
-                  {[
-                    "No Smoking",
-                    "Visitors before 9 PM",
-                    "Rent due before 5th",
-                    "Quiet hours after 10 PM",
-                  ].map((label) => (
-                    <span
-                      key={label}
-                      className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-200"
-                    >
-                      {label}
-                    </span>
-                  ))}
-                </div>
-
-                <button
-                  className="btn-primary w-full"
-                  type="button"
-                  onClick={handleRulesSave}
-                  disabled={loading}
-                >
-                  {loading ? "Saving…" : "Save rules and continue"}
-                </button>
-              </div>
-            )}
-
-            {step === 4 && (
-              <div className="space-y-6">
-                <div className="flex items-center gap-3 rounded-3xl bg-sky-500/10 p-4 text-sky-100">
-                  <span className="rounded-full bg-sky-500/20 p-3 text-lg">🏨</span>
-                  <div>
-                    <p className="text-sm uppercase tracking-[0.35em] text-sky-200/80">Room setup</p>
-                    <h2 className="text-2xl font-semibold text-white">Add your first room</h2>
-                  </div>
-                </div>
-
-                <div className="space-y-4">
-                  <div className="input-group">
-                    <label className="input-label">Room number</label>
-                    <input
-                      className="input-field"
-                      placeholder="101"
-                      value={form.roomNumber}
-                      onChange={(e) => setForm((prev) => ({ ...prev, roomNumber: e.target.value }))}
-                    />
-                  </div>
-                  <div className="input-group">
-                    <label className="input-label">Room type</label>
-                    <select
-                      className="input-field"
-                      value={form.roomType}
-                      onChange={(e) => setForm((prev) => ({ ...prev, roomType: e.target.value }))}
-                    >
-                      <option>Standard</option>
-                      <option>AC Suite</option>
-                      <option>Shared Dorm</option>
-                    </select>
-                  </div>
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <div className="input-group">
-                      <label className="input-label">Total beds</label>
-                      <input
-                        className="input-field"
-                        placeholder="4"
-                        type="number"
-                        min="1"
-                        value={form.totalBeds}
-                        onChange={(e) => setForm((prev) => ({ ...prev, totalBeds: e.target.value }))}
-                      />
-                    </div>
-                    <div className="input-group">
-                      <label className="input-label">Rent per bed</label>
-                      <input
-                        className="input-field"
-                        placeholder="1500"
-                        type="number"
-                        min="0"
-                        value={form.rentPerBed}
-                        onChange={(e) => setForm((prev) => ({ ...prev, rentPerBed: e.target.value }))}
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex flex-col gap-3 sm:flex-row">
-                  <button
-                    className="btn-secondary w-full"
-                    type="button"
-                    onClick={() => {
-                      setRoomSkipped(true);
-                      completeOnboarding(true);
-                    }}
-                    disabled={loading}
-                  >
-                    {loading && roomSkipped ? "Saving…" : "Skip and finish"}
-                  </button>
-                  <button
-                    className="btn-primary w-full"
-                    type="button"
-                    onClick={() => completeOnboarding(false)}
-                    disabled={loading}
-                  >
-                    {loading ? "Saving…" : "Save room and finish"}
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {step === 5 && (
-              <div className="space-y-6">
-                <div className="rounded-3xl border border-emerald-400/10 bg-emerald-500/10 p-6 text-center text-white">
-                  <p className="text-sm uppercase tracking-[0.35em] text-emerald-200/80">Setup complete</p>
-                  <h2 className="mt-4 text-3xl font-semibold">You're ready to run your hostel!</h2>
-                  <p className="mt-3 text-sm text-slate-300">
-                    Your account is secure and your hostel is configured for resident onboarding.
-                  </p>
-                </div>
-                <button
-                  className="btn-primary w-full"
-                  type="button"
-                  onClick={() => navigate("/owner/dashboard")}
-                >
-                  Go to dashboard
-                </button>
-              </div>
-            )}
-          </div>
-
-          <div className="rounded-[32px] border border-white/10 bg-slate-900/75 p-6 shadow-xl backdrop-blur-xl">
-            <div className="space-y-4">
-              <div className="rounded-3xl bg-slate-950/60 p-4">
-                <p className="text-xs uppercase tracking-[0.35em] text-slate-400">Current step</p>
-                <h2 className="mt-2 text-2xl font-semibold text-white">{currentLabel}</h2>
-              </div>
-              <div className="rounded-3xl border border-white/10 bg-white/5 p-4 text-sm text-slate-300">
-                {step === 1 && "Welcome to HostelMate. Start your owner onboarding journey here."}
-                {step === 2 && "Secure your account by updating the temporary password assigned during activation."}
-                {step === 3 && "Set clear hostel rules so residents understand expectations from day one."}
-                {step === 4 && "Add your first room so residents can be assigned beds and rent can be tracked."}
-                {step === 5 && "Onboarding is complete. Your dashboard is ready for day-to-day hostel operations."}
-              </div>
-              <div className="rounded-3xl border border-white/10 bg-white/5 p-4 text-sm text-slate-300">
-                <p className="font-semibold text-white">Need help?</p>
-                <p className="mt-2">Reach out to support from the profile menu after onboarding is complete.</p>
-              </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setCurrentStep(1)}
+                className="flex-1 border border-gray-300 text-gray-700 font-semibold py-3 px-4 rounded-lg hover:bg-gray-50 transition-all"
+              >
+                Back
+              </button>
+              <button
+                onClick={handleSave}
+                disabled={loading}
+                className="flex-1 bg-gradient-to-r from-[#001a4d] to-[#00b894] text-white font-semibold py-3 px-4 rounded-lg hover:shadow-lg transition-all disabled:opacity-50"
+              >
+                {loading ? (
+                  <Loader2 className="inline mr-2" size={18} />
+                ) : null}
+                Save & Continue
+              </button>
             </div>
           </div>
         </div>
       </div>
-    </div>
-  );
+    );
+  };
+
+  // ============================================
+  // Step 3: Rules & Regulations
+  // ============================================
+  const Step3Rules = () => {
+    const handleSave = async () => {
+      if (!rules.trim()) {
+        toast.error("Please enter hostel rules and regulations");
+        return;
+      }
+
+      setLoading(true);
+      try {
+        const response = await axios.put(
+          `${import.meta.env.VITE_API_URL}/api/owner/onboarding/rules`,
+          { rules },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+
+        if (response.data.success) {
+          toast.success("Rules saved");
+          setCurrentStep(4);
+        } else {
+          toast.error(response.data.message || "Failed to save rules");
+        }
+      } catch (error) {
+        toast.error(error?.response?.data?.message || "Failed to save rules");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-[#001a4d] to-[#003d7a] flex items-center justify-center p-4">
+        <div className="w-full max-w-md">
+          <div className="bg-white rounded-2xl shadow-2xl p-8">
+            {/* Progress */}
+            <div className="flex justify-between items-center mb-8">
+              <div className="flex gap-2">
+                {[1, 2, 3, 4, 5].map((step) => (
+                  <div
+                    key={step}
+                    className={`h-1 flex-1 rounded-full transition-all ${
+                      step <= currentStep
+                        ? "bg-gradient-to-r from-[#001a4d] to-[#00b894]"
+                        : "bg-gray-200"
+                    }`}
+                  ></div>
+                ))}
+              </div>
+              <span className="text-sm font-semibold text-gray-600 ml-4">
+                3/5
+              </span>
+            </div>
+
+            <h2 className="text-2xl font-bold text-[#001a4d] mb-2">
+              Rules & Regulations
+            </h2>
+            <p className="text-gray-600 mb-6">
+              Set house rules for your residents
+            </p>
+
+            <div className="mb-6">
+              <textarea
+                value={rules}
+                onChange={(e) => setRules(e.target.value)}
+                placeholder="Enter your hostel's rules and regulations..."
+                className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#00b894] resize-none h-40"
+              />
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setCurrentStep(2)}
+                className="flex-1 border border-gray-300 text-gray-700 font-semibold py-3 px-4 rounded-lg hover:bg-gray-50 transition-all"
+              >
+                Back
+              </button>
+              <button
+                onClick={handleSave}
+                disabled={loading}
+                className="flex-1 bg-gradient-to-r from-[#001a4d] to-[#00b894] text-white font-semibold py-3 px-4 rounded-lg hover:shadow-lg transition-all disabled:opacity-50"
+              >
+                {loading ? (
+                  <Loader2 className="inline mr-2" size={18} />
+                ) : null}
+                Save & Continue
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // ============================================
+  // Step 4: Rooms & Beds
+  // ============================================
+  const Step4Rooms = () => {
+    const addRoom = () => {
+      if (!roomName.trim()) {
+        toast.error("Enter room name");
+        return;
+      }
+      if (!bedCount || bedCount < 1) {
+        toast.error("Enter valid bed count");
+        return;
+      }
+
+      setRooms([
+        ...rooms,
+        { id: Date.now(), name: roomName, beds: parseInt(bedCount) },
+      ]);
+      setRoomName("");
+      setBedCount("");
+      toast.success("Room added");
+    };
+
+    const removeRoom = (id) => {
+      setRooms(rooms.filter((r) => r.id !== id));
+    };
+
+    const handleSkip = () => {
+      setCurrentStep(5);
+    };
+
+    const handleSave = async () => {
+      if (rooms.length === 0) {
+        toast.error("Add at least one room or skip");
+        return;
+      }
+
+      setLoading(true);
+      try {
+        const response = await axios.put(
+          `${import.meta.env.VITE_API_URL}/api/owner/onboarding/complete-rooms`,
+          { rooms },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+
+        if (response.data.success) {
+          toast.success("Rooms configured");
+          setCurrentStep(5);
+        } else {
+          toast.error(response.data.message || "Failed to save rooms");
+        }
+      } catch (error) {
+        toast.error(error?.response?.data?.message || "Failed to save rooms");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-[#001a4d] to-[#003d7a] flex items-center justify-center p-4">
+        <div className="w-full max-w-md">
+          <div className="bg-white rounded-2xl shadow-2xl p-8">
+            {/* Progress */}
+            <div className="flex justify-between items-center mb-8">
+              <div className="flex gap-2">
+                {[1, 2, 3, 4, 5].map((step) => (
+                  <div
+                    key={step}
+                    className={`h-1 flex-1 rounded-full transition-all ${
+                      step <= currentStep
+                        ? "bg-gradient-to-r from-[#001a4d] to-[#00b894]"
+                        : "bg-gray-200"
+                    }`}
+                  ></div>
+                ))}
+              </div>
+              <span className="text-sm font-semibold text-gray-600 ml-4">
+                4/5
+              </span>
+            </div>
+
+            <h2 className="text-2xl font-bold text-[#001a4d] mb-2">
+              Rooms & Beds
+            </h2>
+            <p className="text-gray-600 mb-6">
+              Add your hostel rooms and bed count
+            </p>
+
+            {/* Add Room Form */}
+            <div className="mb-6 p-4 bg-gray-50 rounded-lg">
+              <div className="mb-3">
+                <input
+                  type="text"
+                  value={roomName}
+                  onChange={(e) => setRoomName(e.target.value)}
+                  placeholder="Room name (e.g., Room A)"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#00b894] mb-3"
+                />
+                <input
+                  type="number"
+                  value={bedCount}
+                  onChange={(e) => setBedCount(e.target.value)}
+                  placeholder="Bed count"
+                  min="1"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#00b894]"
+                />
+              </div>
+              <button
+                onClick={addRoom}
+                className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-[#001a4d] to-[#00b894] text-white font-semibold py-2 px-4 rounded-lg hover:shadow-lg transition-all"
+              >
+                <Plus size={18} /> Add Room
+              </button>
+            </div>
+
+            {/* Rooms List */}
+            <div className="mb-6">
+              {rooms.length > 0 ? (
+                <div className="space-y-2">
+                  {rooms.map((room) => (
+                    <div
+                      key={room.id}
+                      className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                    >
+                      <div>
+                        <p className="font-semibold text-[#001a4d]">
+                          {room.name}
+                        </p>
+                        <p className="text-sm text-gray-600">
+                          {room.beds} bed{room.beds > 1 ? "s" : ""}
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => removeRoom(room.id)}
+                        className="text-red-500 hover:text-red-700"
+                      >
+                        <X size={20} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-center text-gray-500 py-4">
+                  No rooms added yet
+                </p>
+              )}
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setCurrentStep(3)}
+                className="flex-1 border border-gray-300 text-gray-700 font-semibold py-3 px-4 rounded-lg hover:bg-gray-50 transition-all"
+              >
+                Back
+              </button>
+              <button
+                onClick={handleSkip}
+                className="flex-1 border border-gray-300 text-gray-700 font-semibold py-3 px-4 rounded-lg hover:bg-gray-50 transition-all"
+              >
+                Skip
+              </button>
+              <button
+                onClick={handleSave}
+                disabled={loading || rooms.length === 0}
+                className="flex-1 bg-gradient-to-r from-[#001a4d] to-[#00b894] text-white font-semibold py-3 px-4 rounded-lg hover:shadow-lg transition-all disabled:opacity-50"
+              >
+                {loading ? (
+                  <Loader2 className="inline mr-2" size={18} />
+                ) : null}
+                Continue
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // ============================================
+  // Step 5: Success
+  // ============================================
+  const Step5Success = () => {
+    const handleComplete = async () => {
+      setLoading(true);
+      try {
+        const response = await axios.put(
+          `${import.meta.env.VITE_API_URL}/api/owner/onboarding/complete`,
+          {},
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+
+        if (response.data.success) {
+          // Update localStorage
+          const updatedUser = {
+            ...storedOwner,
+            onboardingCompleted: true,
+            firstLogin: false,
+          };
+          setStoredOwner(updatedUser);
+
+          // Clear progress
+          localStorage.removeItem("onboardingProgress");
+
+          toast.success("Setup complete!");
+          setTimeout(() => {
+            navigate("/owner/dashboard", { replace: true });
+          }, 300);
+        } else {
+          toast.error(response.data.message || "Failed to complete onboarding");
+        }
+      } catch (error) {
+        toast.error(
+          error?.response?.data?.message || "Failed to complete onboarding"
+        );
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-[#001a4d] to-[#003d7a] flex items-center justify-center p-4">
+        <div className="w-full max-w-md">
+          <div className="bg-white rounded-2xl shadow-2xl p-8 text-center">
+            {/* Success Icon */}
+            <div className="mb-8 flex justify-center">
+              <div className="w-24 h-24 bg-gradient-to-br from-[#00b894] to-[#001a4d] rounded-full flex items-center justify-center animate-pulse">
+                <CheckCircle className="text-white" size={48} />
+              </div>
+            </div>
+
+            <h1 className="text-3xl font-bold text-[#001a4d] mb-2">
+              Happy Business Journey!
+            </h1>
+            <p className="text-lg text-gray-700 mb-2">
+              Your hostel setup is ready
+            </p>
+            <p className="text-sm font-semibold text-[#00b894] mb-8">
+              Welcome to HostelMate
+            </p>
+
+            <p className="text-gray-600 mb-8 leading-relaxed">
+              Your account has been successfully configured. You're all set to 
+              start managing your hostel operations efficiently.
+            </p>
+
+            <button
+              onClick={handleComplete}
+              disabled={loading}
+              className="w-full bg-gradient-to-r from-[#001a4d] to-[#00b894] text-white font-semibold py-3 px-4 rounded-lg hover:shadow-lg transition-all disabled:opacity-50"
+            >
+              {loading ? (
+                <Loader2 className="inline mr-2" size={18} />
+              ) : null}
+              Go to Dashboard
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // Render current step
+  const renderStep = () => {
+    switch (currentStep) {
+      case 1:
+        return <Step1Welcome />;
+      case 2:
+        return <Step2Security />;
+      case 3:
+        return <Step3Rules />;
+      case 4:
+        return <Step4Rooms />;
+      case 5:
+        return <Step5Success />;
+      default:
+        return <Step1Welcome />;
+    }
+  };
+
+  return renderStep();
 }
 
 export default OnboardingFlow;
