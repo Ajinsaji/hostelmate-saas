@@ -465,8 +465,7 @@ function HostelManagement() {
                     onClick={() => setSelectedHostel(normalizeHostel(h))}
                     className="btn-icon"
                     style={{ width: "100%", height: 44, borderRadius: 14, background: "rgba(212, 175, 55, 0.10)", border: "1px solid rgba(212, 175, 55, 0.18)", color: "#D4AF37" }}
-                    aria-la
-                    bel="View QR"
+                    aria-label="View QR"
                   >
                     <Key size={16} />
                   </button>
