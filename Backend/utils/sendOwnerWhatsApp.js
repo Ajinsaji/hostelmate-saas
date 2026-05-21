@@ -28,6 +28,7 @@ const normalizePhoneNumber = (phone) => {
 };
 
 const formatMessage = ({
+  ownerName,
   hostelName,
   username,
   tempPassword,
@@ -36,26 +37,32 @@ const formatMessage = ({
   loginUrl,
 }) => {
   return [
-    "Welcome to HostelMate 🎉",
+    "✨ Welcome to HostelMate",
     "",
-    `Hostel: ${hostelName || "-"}`,
+    `Hello ${ownerName || "Hostel Owner"},`,
     "",
+    `Your hostel \"${hostelName || "-"}\" has been successfully activated.`,
+    "",
+    "🔐 Login Details",
     `Username: ${username || "-"}`,
     `Temporary Password: ${tempPassword || "-"}`,
     "",
-    `Plan: ${planType || "Basic"}`,
-    `Expiry: ${expiryDate || "-"}`,
+    `📦 Subscription Plan: ${planType || "-"}`,
+    `📅 Expiry Date: ${expiryDate || "-"}`,
     "",
-    "Login URL:",
+    "🌐 Login:",
     `${loginUrl || ""}`,
     "",
     "⚠️ Please change your password immediately after login.",
+    "",
+    "Thank you for choosing HostelMate ❤️",
   ].join("\n");
 };
 
 const sendOwnerWhatsApp = async (payload) => {
   const {
     phone,
+    ownerName,
     hostelName,
     username,
     tempPassword,
