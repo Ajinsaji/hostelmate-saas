@@ -14,6 +14,10 @@ function LoginPage() {
   const [loading, setLoading] = useState(false);
 
   const handleLogin = async () => {
+    if (loading) {
+      return;
+    }
+
     if (!username?.trim()) {
       toast.error("Enter email, phone or username");
       return;
@@ -47,11 +51,13 @@ function LoginPage() {
         localStorage.setItem("user", JSON.stringify(userData));
 
         const role = userData.role || "owner";
+        const needsOnboarding = response.data.needsOnboarding === true;
+
         if (role === "warden") {
           navigate("/warden");
         } else if (role === "cook") {
           navigate("/cook");
-        } else if (role === "owner" && userData.onboardingCompleted !== true) {
+        } else if (role === "owner" && needsOnboarding) {
           navigate("/onboarding");
         } else {
           navigate("/dashboard");

@@ -82,14 +82,6 @@ export default function OwnerProtectedRoute({ children }) {
     return <Navigate to="/login" replace />;
   }
 
-  if (mustChangePassword === true && onboardingCompleted !== true) {
-    return <Navigate to="/onboarding" replace />;
-  }
-
-  if (mustChangePassword === true && onboardingCompleted === true) {
-    return <Navigate to="/owner/update-password" replace />;
-  }
-
   if (onboardingCompleted !== true && !isOnboardingRoute) {
     return <Navigate to="/onboarding" replace />;
   }

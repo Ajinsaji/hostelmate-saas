@@ -136,6 +136,8 @@ const loginOwner = async (req, res) => {
       });
     }
 
+    const needsOnboarding = !!owner.firstLogin || !owner.onboardingCompleted;
+
     const payload = {
       userId,
       hostelId,
@@ -153,6 +155,7 @@ const loginOwner = async (req, res) => {
         success: true,
         message: "Login Success",
         token,
+        needsOnboarding,
         owner: {
           ...userResponse,
           firstLogin: !!owner.firstLogin,

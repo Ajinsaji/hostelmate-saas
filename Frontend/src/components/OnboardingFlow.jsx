@@ -5,10 +5,11 @@ import api from "../utils/apiClient";
 import { getStoredUser, setStoredUser } from "../utils/authToken";
 
 const steps = [
-  { id: 1, label: "Security" },
-  { id: 2, label: "Rules" },
-  { id: 3, label: "Rooms" },
-  { id: 4, label: "Finish" },
+  { id: 1, label: "Welcome" },
+  { id: 2, label: "Security" },
+  { id: 3, label: "Rules" },
+  { id: 4, label: "Rooms" },
+  { id: 5, label: "Finish" },
 ];
 
 function OnboardingFlow() {
@@ -47,9 +48,15 @@ function OnboardingFlow() {
     }
 
     if (!onboardingState.mustChangePassword) {
-      setStep(2);
+      if (!onboardingState.rulesConfigured) {
+        setStep(3);
+      } else if (!onboardingState.roomsConfigured) {
+        setStep(4);
+      } else {
+        setStep(5);
+      }
     }
-  }, [storedUser, onboardingState, navigate]);
+  }, [storedUser, onboardingState.mustChangePassword, onboardingState.rulesConfigured, onboardingState.roomsConfigured, onboardingState.onboardingCompleted, navigate]);
 
   const updateUserLocal = (updates) => {
     const nextUser = { ...(storedUser || {}), ...updates };
@@ -85,7 +92,7 @@ function OnboardingFlow() {
           passwordChanged: true,
           mustChangePassword: false,
         });
-        setStep(2);
+        setStep(3);
       } else {
         toast.error(response.data?.message || "Unable to save password.");
       }
@@ -110,7 +117,7 @@ function OnboardingFlow() {
       if (response.data?.success) {
         toast.success("Hostel rules saved.");
         updateUserLocal({ rulesConfigured: true });
-        setStep(3);
+        setStep(4);
       } else {
         toast.error(response.data?.message || "Unable to save rules.");
       }
@@ -173,7 +180,7 @@ function OnboardingFlow() {
               </div>
               <h1 className="text-3xl font-bold text-white">HostelMate onboarding</h1>
               <p className="max-w-2xl text-sm text-slate-300">
-                Complete your owner setup in three steps: secure your account, publish your hostel rules, and configure rooms for residents.
+                Complete your owner setup in four steps: secure your account, publish hostel rules, add rooms, and finish onboarding.
               </p>
             </div>
             <div className="grid gap-2 sm:grid-cols-2">
@@ -192,6 +199,35 @@ function OnboardingFlow() {
         <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
           <div className="rounded-[32px] border border-white/10 bg-slate-950/80 p-6 shadow-xl backdrop-blur-xl">
             {step === 1 && (
+              <div className="space-y-6">
+                <div className="flex items-center gap-3 rounded-3xl bg-emerald-500/10 p-4 text-emerald-100">
+                  <span className="rounded-full bg-emerald-500/20 p-3 text-lg">👋</span>
+                  <div>
+                    <p className="text-sm uppercase tracking-[0.35em] text-emerald-200/80">Welcome</p>
+                    <h2 className="text-2xl font-semibold text-white">Welcome to HostelMate</h2>
+                  </div>
+                </div>
+
+                <div className="space-y-4 rounded-3xl border border-white/10 bg-slate-900/60 p-6 text-slate-300">
+                  <p className="text-lg text-white">Thank you for joining HostelMate. Your owner account is ready, and the onboarding flow will help you secure your login and configure your hostel step by step.</p>
+                  <ul className="mt-4 space-y-3 text-sm text-slate-300">
+                    <li>1. Secure your password</li>
+                    <li>2. Add hostel rules</li>
+                    <li>3. Configure rooms and beds</li>
+                  </ul>
+                </div>
+
+                <button
+                  className="btn-primary w-full"
+                  type="button"
+                  onClick={() => setStep(2)}
+                >
+                  Continue to security
+                </button>
+              </div>
+            )}
+
+            {step === 2 && (
               <div className="space-y-6">
                 <div className="flex items-center gap-3 rounded-3xl bg-emerald-500/10 p-4 text-emerald-100">
                   <span className="rounded-full bg-emerald-500/20 p-3 text-lg">🔒</span>
@@ -246,7 +282,7 @@ function OnboardingFlow() {
               </div>
             )}
 
-            {step === 2 && (
+            {step === 3 && (
               <div className="space-y-6">
                 <div className="flex items-center gap-3 rounded-3xl bg-indigo-500/10 p-4 text-indigo-100">
                   <span className="rounded-full bg-indigo-500/20 p-3 text-lg">📜</span>
@@ -296,7 +332,7 @@ function OnboardingFlow() {
               </div>
             )}
 
-            {step === 3 && (
+            {step === 4 && (
               <div className="space-y-6">
                 <div className="flex items-center gap-3 rounded-3xl bg-sky-500/10 p-4 text-sky-100">
                   <span className="rounded-full bg-sky-500/20 p-3 text-lg">🏨</span>
@@ -378,7 +414,7 @@ function OnboardingFlow() {
               </div>
             )}
 
-            {step === 4 && (
+            {step === 5 && (
               <div className="space-y-6">
                 <div className="rounded-3xl border border-emerald-400/10 bg-emerald-500/10 p-6 text-center text-white">
                   <p className="text-sm uppercase tracking-[0.35em] text-emerald-200/80">Setup complete</p>
@@ -405,10 +441,11 @@ function OnboardingFlow() {
                 <h2 className="mt-2 text-2xl font-semibold text-white">{currentLabel}</h2>
               </div>
               <div className="rounded-3xl border border-white/10 bg-white/5 p-4 text-sm text-slate-300">
-                {step === 1 && "Start by securing your owner account so only you can manage the hostel."}
-                {step === 2 && "Set clear rules for residents. This helps you onboard faster and reduce disputes."}
-                {step === 3 && "Add a room so your guests can be assigned beds immediately. You can always update later."}
-                {step === 4 && "Onboarding is complete. Your dashboard is ready for day-to-day hostel operations."}
+                {step === 1 && "Welcome to HostelMate. Start your owner onboarding journey here."}
+                {step === 2 && "Secure your account by updating the temporary password assigned during activation."}
+                {step === 3 && "Set clear hostel rules so residents understand expectations from day one."}
+                {step === 4 && "Add your first room so residents can be assigned beds and rent can be tracked."}
+                {step === 5 && "Onboarding is complete. Your dashboard is ready for day-to-day hostel operations."}
               </div>
               <div className="rounded-3xl border border-white/10 bg-white/5 p-4 text-sm text-slate-300">
                 <p className="font-semibold text-white">Need help?</p>
