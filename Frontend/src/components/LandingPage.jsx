@@ -70,37 +70,40 @@ function LandingPage() {
 
   return (
     <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
-      <div className="gradient-header" style={{ paddingBottom: "120px", borderBottomLeftRadius: "40px", borderBottomRightRadius: "40px" }}>
+      <div className="gradient-header" style={{ paddingBottom: "70px", borderBottomLeftRadius: "40px", borderBottomRightRadius: "40px" }}>
         <div className="flex justify-between items-center mb-8">
           <h2 style={{ fontWeight: 700, fontSize: "24px" }}>HostelMate</h2>
-<button 
-            className="btn-secondary" 
+          <button
+            className="btn-secondary"
             style={{ width: "auto", padding: "8px 16px", borderRadius: "100px", border: "1px solid rgba(255,255,255,0.08)", background: "rgba(23, 32, 51, 0.55)", color: "var(--text-main)" }}
             onClick={() => navigate("/login")}
           >
             Login
           </button>
-
         </div>
-        
+
         <h1 style={{ fontSize: "42px", fontWeight: 800, lineHeight: 1.1, marginBottom: "20px" }}>
-          The Mobile-First<br/>Hostel OS
+          The Mobile-First<br />Hostel OS
         </h1>
-        <p className="text-body" style={{ color: "rgba(255,255,255,0.8)", fontSize: "18px", marginBottom: "32px" }}>
+        <p className="text-body" style={{ color: "rgba(255,255,255,0.8)", fontSize: "18px", marginBottom: "22px" }}>
           Manage rooms, residents, payments, and food right from your phone.
         </p>
 
-        <button className="btn-primary" style={{ background: "white", color: "var(--primary-dark)", padding: "18px" }} onClick={handleEnterDashboard}> 
+        <button
+          className="btn-primary"
+          style={{ background: "white", color: "var(--primary-dark)", padding: "16px" }}
+          onClick={handleEnterDashboard}
+        >
           Enter Dashboard <ArrowRight size={20} />
         </button>
       </div>
 
-      <div className="p-4 pt-8 pb-24" style={{ marginTop: "-60px" }}>
+      <div className="p-4 pt-6 pb-16" style={{ marginTop: "-48px" }}>
         <div className="mx-auto max-w-6xl">
-          <div className="grid gap-8 lg:grid-cols-[1.6fr_1fr]">
-            <div className="rounded-[28px] border border-white/10 bg-slate-950/80 p-6 text-white shadow-xl">
-              <h2 style={{ fontSize: "28px", fontWeight: 700, marginBottom: "18px" }}>Powerful hostel management with no fluff</h2>
-              <p style={{ color: "rgba(255,255,255,0.78)", marginBottom: "24px", lineHeight: 1.7 }}>
+          <div className="grid gap-6 lg:grid-cols-[1.6fr_1fr]">
+            <div className="rounded-[28px] border border-white/10 bg-slate-950/80 p-5 text-white shadow-xl">
+              <h2 style={{ fontSize: "26px", fontWeight: 700, marginBottom: "14px" }}>Everything you need</h2>
+              <p style={{ color: "rgba(255,255,255,0.78)", marginBottom: "18px", lineHeight: 1.7 }}>
                 Stay on top of room allocations, payments, resident requests and staff operations from one mobile-first dashboard.
               </p>
               <div className="grid gap-4 sm:grid-cols-2">
@@ -111,8 +114,8 @@ function LandingPage() {
               </div>
             </div>
 
-            <div className="rounded-[28px] border border-white/10 bg-slate-950/70 p-6 text-white shadow-xl">
-              <p style={{ color: "rgba(255,255,255,0.7)", marginBottom: "16px", fontSize: "14px", letterSpacing: "0.04em" }}>Admin access</p>
+            <div className="rounded-[28px] border border-white/10 bg-slate-950/70 p-5 text-white shadow-xl">
+              <p style={{ color: "rgba(255,255,255,0.7)", marginBottom: "14px", fontSize: "14px", letterSpacing: "0.04em" }}>Admin access</p>
               <div className="rounded-3xl border border-white/10 bg-white/5 p-4">
                 <p style={{ color: "rgba(255,255,255,0.82)", marginBottom: "12px", fontWeight: 600 }}>Hidden admin entry</p>
                 <button
@@ -129,9 +132,29 @@ function LandingPage() {
             </div>
           </div>
 
-          <div style={{ textAlign: "center", color: "rgba(255,255,255,0.75)", fontSize: 13, marginTop: "40px" }}>
+          <div style={{ textAlign: "center", color: "rgba(255,255,255,0.75)", fontSize: 13, marginTop: "20px" }}>
             HostelMate © 2026
           </div>
+
+          <button
+            onClick={handleBetaMindClick}
+            aria-label="BetaMind"
+            style={{
+              display: "block",
+              margin: "10px auto 0",
+              fontSize: 13,
+              color: "rgba(255,255,255,0.35)",
+              background: "transparent",
+              border: "none",
+              padding: 0,
+              cursor: "pointer",
+              fontWeight: 600,
+              letterSpacing: "0.01em",
+              userSelect: "none",
+            }}
+          >
+            BetaMind
+          </button>
         </div>
       </div>
     </div>
