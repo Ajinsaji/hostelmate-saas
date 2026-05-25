@@ -33,11 +33,25 @@ const isTokenExpired = (token) => {
   return Math.floor(Date.now() / 1000) >= payload.exp;
 };
 
+const PUBLIC_PATHS = new Set(["/", "/login", "/admin-login", "/register"]);
+
+const isPublicPath = (pathname) => {
+  if (!pathname) return false;
+  if (PUBLIC_PATHS.has(pathname)) return true;
+  if (pathname.startsWith("/h/")) return true; // public hostel pages
+  return false;
+};
+
 const redirectToLogin = (path) => {
+  // If user is already on a public route, do not force any navigation.
+  // Prevents redirect loops on app startup/back.
+  if (isPublicPath(window.location.pathname)) return;
   if (window.location.pathname === path) return;
+
   toast.error("Session expired. Please login again.");
   window.location.href = path;
 };
+
 
 api.interceptors.request.use(
   (config) => {
