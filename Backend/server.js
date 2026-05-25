@@ -52,7 +52,6 @@ const app = express();
 // MIDDLEWARE
 // ==========================
 
-const cors = require("cors");
 
 
 const allowedOrigins = [
