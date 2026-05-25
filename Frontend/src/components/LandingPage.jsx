@@ -4,40 +4,21 @@ import { useRef } from "react";
 
 function LandingPage() {
   const navigate = useNavigate();
-  const tapCountRef = useRef(0);
-  const tapTimeoutRef = useRef(null);
-  const lastTapTimeRef = useRef(0);
+  const clickTimestampsRef = useRef([]);
 
-  const handleBetaMindClick = () => {
+  const handleSecretAdminAccess = () => {
     const now = Date.now();
-    const elapsed = now - lastTapTimeRef.current;
 
-    if (elapsed > 3000) {
-      tapCountRef.current = 1;
-    } else {
-      tapCountRef.current += 1;
-    }
+    clickTimestampsRef.current = [
+      ...clickTimestampsRef.current.filter(
+        (timestamp) => now - timestamp < 2000
+      ),
+      now,
+    ];
 
-    lastTapTimeRef.current = now;
-
-    if (tapTimeoutRef.current) {
-      clearTimeout(tapTimeoutRef.current);
-    }
-
-    tapTimeoutRef.current = setTimeout(() => {
-      tapCountRef.current = 0;
-      tapTimeoutRef.current = null;
-      lastTapTimeRef.current = 0;
-    }, 3000);
-
-    if (tapCountRef.current === 5) {
-      tapCountRef.current = 0;
-      if (tapTimeoutRef.current) {
-        clearTimeout(tapTimeoutRef.current);
-        tapTimeoutRef.current = null;
-      }
-      lastTapTimeRef.current = 0;
-      navigate("/admin/login");
+    if (clickTimestampsRef.current.length >= 6) {
+      clickTimestampsRef.current = [];
+      navigate("/admin-login");
     }
   };
 
@@ -71,6 +52,7 @@ function LandingPage() {
   return (
     <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
       <div className="gradient-header" style={{ paddingBottom: "70px", borderBottomLeftRadius: "40px", borderBottomRightRadius: "40px" }}>
+
         <div className="flex justify-between items-center mb-8">
           <h2 style={{ fontWeight: 700, fontSize: "24px" }}>HostelMate</h2>
           <button
@@ -97,6 +79,7 @@ function LandingPage() {
           Enter Dashboard <ArrowRight size={20} />
         </button>
       </div>
+
 
       <div className="p-4 pt-6 pb-16" style={{ marginTop: "-48px" }}>
         <div className="mx-auto max-w-6xl">
@@ -155,33 +138,27 @@ function LandingPage() {
               justifyContent: "center",
             }}
           >
-            <div
-              style={{
-                width: "100%",
-                maxWidth: 640,
-                borderRadius: 18,
-                background: "rgba(7, 15, 25, 0.35)",
-                backdropFilter: "blur(14px)",
-                border: "1px solid rgba(0,255,180,0.10)",
-                padding: "12px 16px",
-                color: "rgba(255,255,255,0.78)",
-                boxShadow: "0 10px 30px rgba(0,0,0,0.25)",
-              }}
-            >
-              HostelMate | © 2026 <span className="betamind-footer-secret" style={{ cursor: "pointer", pointerEvents: "auto" }} onClick={() => {
-                // 6 rapid clicks within 2 seconds => navigate to /admin-login
-                const now = Date.now();
-                // store click timestamps on the function to avoid extra state re-renders
-                if (!handleBetaMindClick._clicks) handleBetaMindClick._clicks = [];
-                const clicks = handleBetaMindClick._clicks;
-                clicks.push(now);
-                // keep only clicks within 2 seconds
-                while (clicks.length && now - clicks[0] > 2000) clicks.shift();
-                if (clicks.length >= 6) {
-                  handleBetaMindClick._clicks = [];
-                  navigate("/admin-login");
-                }
-              }}>BetaMind</span> TechSolutions. All rights reserved.
+              <div
+                style={{
+                  width: "100%",
+                  maxWidth: 640,
+                  borderRadius: 18,
+                  background: "rgba(7, 15, 25, 0.35)",
+                  backdropFilter: "blur(14px)",
+                  border: "1px solid rgba(0,255,180,0.10)",
+                  padding: "12px 16px",
+                  color: "rgba(255,255,255,0.78)",
+                  boxShadow: "0 10px 30px rgba(0,0,0,0.25)",
+                }}
+              >
+              <span
+                onClick={handleSecretAdminAccess}
+                className="cursor-default"
+              >
+                BetaMind
+              </span> TechSolutions. All rights reserved.
+
+
 
             </div>
           </div>
@@ -191,7 +168,6 @@ function LandingPage() {
       {/* Hidden admin trigger: 5 rapid clicks (no visible UI) */}
       <button
         type="button"
-        onClick={handleBetaMindClick}
         aria-hidden="true"
         tabIndex={-1}
         style={{
