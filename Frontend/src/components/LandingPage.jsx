@@ -2,11 +2,14 @@ import { ArrowRight, CheckCircle2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useRef } from "react";
 
+
 function LandingPage() {
   const navigate = useNavigate();
   const clickTimestampsRef = useRef([]);
 
   const handleSecretAdminAccess = () => {
+    console.log("BetaMind tapped");
+
     const now = Date.now();
 
     clickTimestampsRef.current = [
@@ -16,7 +19,11 @@ function LandingPage() {
       now,
     ];
 
+    console.log("Tap count:", clickTimestampsRef.current.length);
+
     if (clickTimestampsRef.current.length >= 6) {
+      console.log("Navigating to admin login");
+
       clickTimestampsRef.current = [];
       navigate("/admin-login");
     }
@@ -153,10 +160,14 @@ function LandingPage() {
               >
               <span
                 onClick={handleSecretAdminAccess}
-                className="cursor-default"
+                style={{
+                  pointerEvents: "auto",
+                  cursor: "default",
+                }}
               >
-                BetaMind
-              </span> TechSolutions. All rights reserved.
+                BetaMind 
+              </span>
+              TechSolutions. All rights reserved.
 
 
 
