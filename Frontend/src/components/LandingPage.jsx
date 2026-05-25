@@ -100,63 +100,97 @@ function LandingPage() {
 
       <div className="p-4 pt-6 pb-16" style={{ marginTop: "-48px" }}>
         <div className="mx-auto max-w-6xl">
-          <div className="grid gap-6 lg:grid-cols-[1.6fr_1fr]">
-            <div className="rounded-[28px] border border-white/10 bg-slate-950/80 p-5 text-white shadow-xl">
-              <h2 style={{ fontSize: "26px", fontWeight: 700, marginBottom: "14px" }}>Everything you need</h2>
+          {/* Everything you need (single centered glass section) */}
+          <div
+            className="rounded-[28px] p-5 text-white shadow-xl"
+            style={{
+              background: "rgba(7, 15, 25, 0.45)",
+              backdropFilter: "blur(18px)",
+              border: "1px solid rgba(0,255,180,0.12)",
+              boxShadow: "0 0 0 1px rgba(0,255,180,0.04), 0 14px 40px rgba(0,0,0,0.35)",
+              position: "relative",
+              overflow: "hidden",
+            }}
+          >
+            {/* subtle teal glow */}
+            <div
+              aria-hidden
+              style={{
+                position: "absolute",
+                inset: -1,
+                background:
+                  "radial-gradient(900px circle at 20% 0%, rgba(0,255,180,0.14), transparent 45%), radial-gradient(700px circle at 90% 10%, rgba(45,212,191,0.10), transparent 50%)",
+                pointerEvents: "none",
+              }}
+            />
+
+            <div style={{ position: "relative" }}>
+              <h2 style={{ fontSize: "26px", fontWeight: 700, marginBottom: "14px" }}>
+                Everything <span style={{
+                  background: "linear-gradient(90deg, rgba(0,255,180,1) 0%, rgba(34,211,238,1) 100%)",
+                  WebkitBackgroundClip: "text",
+                  backgroundClip: "text",
+                  color: "transparent",
+                }}>you need</span>
+              </h2>
               <p style={{ color: "rgba(255,255,255,0.78)", marginBottom: "18px", lineHeight: 1.7 }}>
                 Stay on top of room allocations, payments, resident requests and staff operations from one mobile-first dashboard.
               </p>
+
               <div className="grid gap-4 sm:grid-cols-2">
                 <FeatureItem text="Room and bed tracking" />
+                <FeatureItem text="Payment status and history" />
                 <FeatureItem text="Resident onboarding & approvals" />
-                <FeatureItem text="Payment status and receipts" />
                 <FeatureItem text="Staff and warden coordination" />
               </div>
             </div>
-
-            <div className="rounded-[28px] border border-white/10 bg-slate-950/70 p-5 text-white shadow-xl">
-              <p style={{ color: "rgba(255,255,255,0.7)", marginBottom: "14px", fontSize: "14px", letterSpacing: "0.04em" }}>Admin access</p>
-              <div className="rounded-3xl border border-white/10 bg-white/5 p-4">
-                <p style={{ color: "rgba(255,255,255,0.82)", marginBottom: "12px", fontWeight: 600 }}>Hidden admin entry</p>
-                <button
-                  className="btn-secondary"
-                  style={{ width: "100%", padding: "12px 16px", borderRadius: "14px", background: "rgba(255,255,255,0.05)", color: "var(--text-main)" }}
-                  onClick={handleBetaMindClick}
-                >
-                  BetaMIND TechSolutions
-                </button>
-                <p style={{ color: "rgba(255,255,255,0.55)", marginTop: "12px", fontSize: "13px" }}>
-                  Subtle admin login access for secure team use.
-                </p>
-              </div>
-            </div>
           </div>
 
-          <div style={{ textAlign: "center", color: "rgba(255,255,255,0.75)", fontSize: 13, marginTop: "20px" }}>
-            HostelMate © 2026
-          </div>
-
-          <button
-            onClick={handleBetaMindClick}
-            aria-label="BetaMind"
+          {/* Centered footer glass bar */}
+          <div
             style={{
-              display: "block",
-              margin: "10px auto 0",
-              fontSize: 13,
-              color: "rgba(255,255,255,0.35)",
-              background: "transparent",
-              border: "none",
-              padding: 0,
-              cursor: "pointer",
-              fontWeight: 600,
-              letterSpacing: "0.01em",
-              userSelect: "none",
+              textAlign: "center",
+              marginTop: 20,
+              display: "flex",
+              justifyContent: "center",
             }}
           >
-            BetaMind
-          </button>
+            <div
+              style={{
+                width: "100%",
+                maxWidth: 640,
+                borderRadius: 18,
+                background: "rgba(7, 15, 25, 0.35)",
+                backdropFilter: "blur(14px)",
+                border: "1px solid rgba(0,255,180,0.10)",
+                padding: "12px 16px",
+                color: "rgba(255,255,255,0.78)",
+                boxShadow: "0 10px 30px rgba(0,0,0,0.25)",
+              }}
+            >
+              HostelMate | © 2026 BETAMIND TechSolutions. All rights reserved.
+            </div>
+          </div>
         </div>
       </div>
+
+      {/* Hidden admin trigger: 5 rapid clicks (no visible UI) */}
+      <button
+        type="button"
+        onClick={handleBetaMindClick}
+        aria-hidden="true"
+        tabIndex={-1}
+        style={{
+          position: "absolute",
+          width: 1,
+          height: 1,
+          opacity: 0,
+          pointerEvents: "auto",
+          border: "none",
+          padding: 0,
+          margin: 0,
+        }}
+      />
     </div>
   );
 }
