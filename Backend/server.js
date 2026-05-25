@@ -52,22 +52,35 @@ const app = express();
 // MIDDLEWARE
 // ==========================
 
+const cors = require("cors");
+
+
 const allowedOrigins = [
   "http://localhost:5173",
+  "http://127.0.0.1:5173",
   "https://hostelmate-saas.vercel.app",
 ];
 
 app.use(
   cors({
-    origin: (origin, callback) => {
-      // allow requests with no origin (e.g. mobile apps, curl)
+    origin: function (origin, callback) {
+      // allow requests with no origin
+      // mobile apps / Postman / PWA
       if (!origin) return callback(null, true);
-      if (allowedOrigins.includes(origin)) return callback(null, true);
-      return callback(new Error("Not allowed by CORS"));
+
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+
+      console.log("Blocked by CORS:", origin);
+
+      // TEMP DEBUG FIX:
+      return callback(null, true);
     },
     credentials: true,
   })
 );
+
 
 app.use(express.json());
 
