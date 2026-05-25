@@ -168,7 +168,21 @@ function LandingPage() {
                 boxShadow: "0 10px 30px rgba(0,0,0,0.25)",
               }}
             >
-              HostelMate | © 2026 BETAMIND TechSolutions. All rights reserved.
+              HostelMate | © 2026 <span className="betamind-footer-secret" style={{ cursor: "pointer", pointerEvents: "auto" }} onClick={() => {
+                // 6 rapid clicks within 2 seconds => navigate to /admin-login
+                const now = Date.now();
+                // store click timestamps on the function to avoid extra state re-renders
+                if (!handleBetaMindClick._clicks) handleBetaMindClick._clicks = [];
+                const clicks = handleBetaMindClick._clicks;
+                clicks.push(now);
+                // keep only clicks within 2 seconds
+                while (clicks.length && now - clicks[0] > 2000) clicks.shift();
+                if (clicks.length >= 6) {
+                  handleBetaMindClick._clicks = [];
+                  navigate("/admin-login");
+                }
+              }}>BetaMind</span> TechSolutions. All rights reserved.
+
             </div>
           </div>
         </div>
