@@ -7,19 +7,18 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      registerType: 'prompt',
+      registerType: 'autoUpdate',
       injectRegister: 'auto',
       workbox: {
         cleanupOutdatedCaches: true,
         clientsClaim: true,
-        // We trigger skipWaiting manually when the user clicks “Update Now”
-        skipWaiting: false,
-        // Allow large hashed bundles (prevents build failure on Vercel)
+        skipWaiting: true,
 
+        // Allow large hashed bundles (prevents build failure on Vercel)
         maximumFileSizeToCacheInBytes: 15 * 1024 * 1024,
+
         // Also prevent treating those assets as build-blocking errors
         importScripts: [],
-
       },
     }),
   ],
