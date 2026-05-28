@@ -35,10 +35,14 @@ export default function useSessionVerification() {
       return;
     }
 
-    const token =
-      localStorage.getItem("ownerToken") ||
-      localStorage.getItem("token") ||
-      localStorage.getItem("adminToken");
+    const path = location.pathname;
+    const isAdminRoute = path.startsWith("/admin");
+
+    // On admin routes, verify ONLY admin session and never owner session.
+    // This prevents owner verify-session / interceptors from redirecting admins to /login.
+    const token = isAdminRoute
+      ? localStorage.getItem("adminToken")
+      : localStorage.getItem("ownerToken") || localStorage.getItem("token");
 
     if (!token) {
       if (mounted) setVerifying(false);

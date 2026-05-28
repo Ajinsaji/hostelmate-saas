@@ -49,9 +49,16 @@ const redirectToLogin = (path) => {
   if (isPublicPath(window.location.pathname)) return;
   if (window.location.pathname === path) return;
 
+  // Never override admin routes with owner redirects.
+  // If current path is /admin/*, force redirect only to /admin/login.
+  if (window.location.pathname.startsWith("/admin") && path === "/login") {
+    path = "/admin/login";
+  }
+
   toast.error("Session expired. Please login again.");
   window.location.href = path;
 };
+
 
 
 api.interceptors.request.use(
@@ -60,9 +67,12 @@ api.interceptors.request.use(
 
     const requestUrl = config.url || "";
     const isAdminRequest = requestUrl.includes("/api/admin");
+    // Admin and owner tokens must not cross-redirect each other.
+    // Admin requests should only ever read adminToken.
     const token = isAdminRequest
       ? localStorage.getItem("adminToken")
       : localStorage.getItem("ownerToken") || localStorage.getItem("token");
+
 
     if (token) {
       if (isTokenExpired(token)) {
