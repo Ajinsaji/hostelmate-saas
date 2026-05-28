@@ -29,6 +29,7 @@ function LandingPage() {
         window.history.pushState({}, "", "/admin/login");
         window.dispatchEvent(new PopStateEvent("popstate"));
       }, 50);
+
     }
   };
 
