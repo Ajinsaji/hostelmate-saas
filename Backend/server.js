@@ -54,27 +54,20 @@ const app = express();
 
 
 
-const allowedOrigins = [
-  "http://localhost:5173",
-  "http://127.0.0.1:5173",
-  "https://hostelmate-saas.vercel.app",
-];
-
 app.use(
   cors({
     origin: function (origin, callback) {
-      // allow requests with no origin
-      // mobile apps / Postman / PWA
-      if (!origin) return callback(null, true);
-
-      if (allowedOrigins.includes(origin)) {
-        return callback(null, true);
+      if (
+        !origin ||
+        origin.includes("localhost") ||
+        origin.includes("hostelmate-saas.vercel.app") ||
+        origin.includes("vercel.app")
+      ) {
+        callback(null, true);
+      } else {
+        console.log("Blocked by CORS:", origin);
+        callback(new Error("Blocked by CORS"));
       }
-
-      console.log("Blocked by CORS:", origin);
-
-      // TEMP DEBUG FIX:
-      return callback(null, true);
     },
     credentials: true,
   })
