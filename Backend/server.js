@@ -61,6 +61,9 @@ app.use(
         !origin ||
         origin.includes("localhost") ||
         origin.includes("hostelmate-saas.vercel.app") ||
+        // Allow official + any Vercel preview deployment for this project
+        origin.includes("hostelmate-saas") && origin.includes("vercel.app") ||
+        // Allow any Vercel preview deployment for this project
         origin.includes("vercel.app")
       ) {
         callback(null, true);
