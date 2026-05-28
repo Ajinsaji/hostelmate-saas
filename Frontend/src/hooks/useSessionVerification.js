@@ -13,8 +13,9 @@ export default function useSessionVerification() {
     if (
       path === "/" ||
       path === "/login" ||
-      path === "/admin-login" ||
-      path === "/register"
+      path === "/register" ||
+      path === "/admin/login" ||
+      path === "/admin-login"
     ) {
       return true;
     }
