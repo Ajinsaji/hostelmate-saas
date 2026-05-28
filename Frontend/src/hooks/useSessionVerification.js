@@ -4,7 +4,6 @@ import { useLocation, useNavigate } from "react-router-dom";
 export default function useSessionVerification() {
   const navigate = useNavigate();
   const location = useLocation();
-  const [verifying, setVerifying] = useState(true);
 
   const isPublicRoute = useMemo(() => {
     const path = location.pathname;
@@ -25,6 +24,8 @@ export default function useSessionVerification() {
 
     return false;
   }, [location.pathname]);
+
+  const [verifying, setVerifying] = useState(() => !isPublicRoute);
 
   useEffect(() => {
     let mounted = true;
@@ -54,10 +55,15 @@ export default function useSessionVerification() {
         const { api } = await import("../services/api");
         // Interceptor may handle redirects on 401/expired.
         await api.get("/api/auth/verify-session");
-        if (mounted) setVerifying(false);
-      } catch {
-        if (mounted) setVerifying(false);
+        if (mounted) {
+          setVerifying(false);
+        }
+      } catch (err) {
+        if (mounted) {
+          setVerifying(false);
+        }
       }
+
     };
 
     run();
@@ -65,9 +71,8 @@ export default function useSessionVerification() {
     return () => {
       mounted = false;
     };
-  }, [navigate, isPublicRoute]);
+  }, [navigate, isPublicRoute, location.pathname]);
 
   return { verifying };
 }
-
 
