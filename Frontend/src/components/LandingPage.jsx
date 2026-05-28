@@ -24,9 +24,11 @@ function LandingPage() {
       console.log("Navigating to admin login");
 
       clickTimestampsRef.current = [];
-      // If the app uses a HashRouter somewhere, normal navigate() won't work.
-      // Hard-link to preserve the route exactly.
-      window.location.href = "/#/admin/login";
+
+      setTimeout(() => {
+        window.history.pushState({}, "", "/admin/login");
+        window.dispatchEvent(new PopStateEvent("popstate"));
+      }, 50);
     }
   };
 
