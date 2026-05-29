@@ -117,7 +117,13 @@ function OnboardingFlow() {
   // Step 2: Security
   // ============================================
   const Step2Security = () => {
+    useEffect(() => {
+      console.log("Step2Security mounted");
+      return () => console.log("Step2Security unmounted");
+    }, []);
+
     // Prevent any accidental input constraints; use controlled value as-is.
+
 
     const passwordError =
       confirmPassword.length > 0 && newPassword !== confirmPassword
