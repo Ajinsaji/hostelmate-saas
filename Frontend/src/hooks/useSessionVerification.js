@@ -51,6 +51,13 @@ export default function useSessionVerification() {
     }
 
     const run = async () => {
+      // Admin routes must NOT call the owner verification endpoint.
+      // Admin validation is handled by <AdminProtectedRoute />.
+      if (isAdminRoute) {
+        if (mounted) setVerifying(false);
+        return;
+      }
+
       try {
         const { api } = await import("../services/api");
         // Interceptor may handle redirects on 401/expired.
@@ -67,6 +74,7 @@ export default function useSessionVerification() {
     };
 
     run();
+
 
     return () => {
       mounted = false;

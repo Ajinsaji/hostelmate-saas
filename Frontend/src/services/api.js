@@ -59,9 +59,15 @@ const redirectToLogin = (path) => {
   window.location.href = path;
 };
 
+// Detect admin context for redirect decisions.
+const isAdminContext = () => {
+  return window.location.pathname.startsWith("/admin");
+};
+
 
 
 api.interceptors.request.use(
+
   (config) => {
     config.headers = config.headers || {};
 
