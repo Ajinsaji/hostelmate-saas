@@ -1,12 +1,12 @@
-# HostelMate - Task Progress
+# HostelMate TODO
 
-## OnboardingFlow.jsx password/focus bug + theme fix
+## Step2Security remounting permanent fix
+- [ ] Inspect OnboardingFlow and identify Step2Security definition and remount trigger
+- [ ] Move Step2Security into a top-level component file (outside OnboardingFlow)
+- [ ] Pass required props/state/setters and keep step 2 UI/API logic unchanged
+- [ ] Remove Step2Security mount/unmount debug console logs
+- [ ] Update OnboardingFlow to render the new Step2Security top-level component without changing onboarding behavior
+- [x] Ensure typing in password fields does not cause remounts (focus remains) (manual verification required)
+- [x] Run `npm run build` in Frontend and confirm build success
 
-- [ ] Inspect and identify root cause in `Frontend/src/components/OnboardingFlow.jsx`
-- [ ] Move `/login` navigation out of render into `useEffect`
-- [ ] Stabilize Step2Security so password inputs don’t remount during typing
-- [ ] Guard onboardingProgress restore from overwriting active typing (only restore on mount)
-- [ ] Fix Step2 card styling to keep dark background + white text
-- [ ] Ensure eye toggle + validation remain unchanged
-- [ ] Run `npm run build` (Frontend) and report exact root cause
 
