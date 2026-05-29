@@ -1,9 +1,11 @@
 import { useNavigate } from "react-router-dom";
 import { LogOut, Edit2, Mail, Phone, Lock, Loader2 } from "lucide-react";
 import { useState, useEffect } from "react";
+
 import { api } from "../services/api";
 import toast from "react-hot-toast";
 import SuperadminBottomNav from "../components/SuperadminBottomNav";
+
 
 function AdminPage() {
   const navigate = useNavigate();
@@ -25,6 +27,13 @@ function AdminPage() {
     newPassword: "",
     confirmPassword: "",
   });
+
+  const [showPassword, setShowPassword] = useState({
+    old: false,
+    next: false,
+    confirm: false,
+  });
+
 
   // Fetch admin profile
   useEffect(() => {
@@ -67,32 +76,54 @@ function AdminPage() {
   const handleChangePassword = async (e) => {
     e.preventDefault();
 
-    if (passwordData.newPassword !== passwordData.confirmPassword) {
-      toast.error("Passwords do not match");
+    const currentPassword = String(passwordData.oldPassword || "").trim();
+    const newPassword = String(passwordData.newPassword || "").trim();
+    const confirmPassword = String(passwordData.confirmPassword || "").trim();
+
+    // Frontend validation (skip API call if invalid)
+    if (!currentPassword) {
+      toast.error("Current password is required");
       return;
     }
-
-    if (passwordData.newPassword.length < 6) {
-      toast.error("Password must be at least 6 characters");
+    if (!newPassword) {
+      toast.error("New password is required");
+      return;
+    }
+    if (!confirmPassword) {
+      toast.error("Confirm password is required");
+      return;
+    }
+    if (newPassword.length < 8) {
+      toast.error("Password must be at least 8 characters");
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      toast.error("New passwords do not match");
       return;
     }
 
     setIsSubmitting(true);
     try {
-      await api.put("/api/admin/profile/change-password", passwordData);
+      await api.put("/api/admin/profile/change-password", {
+        currentPassword,
+        newPassword,
+        confirmPassword,
+      });
+
+      toast.success("Password updated successfully");
       setShowPasswordModal(false);
       setPasswordData({
         oldPassword: "",
         newPassword: "",
         confirmPassword: "",
       });
-      toast.success("Password changed successfully!");
     } catch (error) {
-      toast.error(error.response?.data?.message || "Failed to change password");
+      toast.error(error?.response?.data?.message || "Failed to update password");
     } finally {
       setIsSubmitting(false);
     }
   };
+
 
   const handleLogout = () => {
     localStorage.removeItem("adminToken");
@@ -404,66 +435,151 @@ function AdminPage() {
                   <label style={{ display: "block", marginBottom: 6, fontSize: 12, opacity: 0.8 }}>
                     Current Password
                   </label>
-                  <input
-                    type="password"
-                    value={passwordData.oldPassword}
-                    onChange={(e) =>
-                      setPasswordData({ ...passwordData, oldPassword: e.target.value })
-                    }
-                    style={{
-                      width: "100%",
-                      padding: "10px 12px",
-                      borderRadius: 10,
-                      border: "1px solid rgba(255,255,255,0.2)",
-                      background: "rgba(255,255,255,0.05)",
-                      color: "white",
-                      fontFamily: "Poppins",
-                    }}
-                  />
+                  <div style={{ position: "relative" }}>
+                    <input
+                      type={showPassword.old ? "text" : "password"}
+                      value={passwordData.oldPassword}
+                      onChange={(e) =>
+                        setPasswordData({ ...passwordData, oldPassword: e.target.value })
+                      }
+                      style={{
+                        width: "100%",
+                        padding: "10px 40px 10px 12px",
+                        borderRadius: 10,
+                        border: "1px solid rgba(255,255,255,0.2)",
+                        background: "rgba(255,255,255,0.05)",
+                        color: "white",
+                        fontFamily: "Poppins",
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setShowPassword((p) => ({ ...p, old: !p.old }))
+                      }
+                      style={{
+                        position: "absolute",
+                        right: 12,
+                        top: "50%",
+                        transform: "translateY(-50%)",
+                        background: "transparent",
+                        border: "none",
+                        color: "rgba(255,255,255,0.8)",
+                        cursor: "pointer",
+                        padding: 0,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                      aria-label={showPassword.old ? "Hide password" : "Show password"}
+                    >
+                      {showPassword.old ? "🙈" : "👁️"}
+
+                    </button>
+                  </div>
+
                 </div>
 
                 <div>
                   <label style={{ display: "block", marginBottom: 6, fontSize: 12, opacity: 0.8 }}>
                     New Password
                   </label>
-                  <input
-                    type="password"
-                    value={passwordData.newPassword}
-                    onChange={(e) =>
-                      setPasswordData({ ...passwordData, newPassword: e.target.value })
-                    }
-                    style={{
-                      width: "100%",
-                      padding: "10px 12px",
-                      borderRadius: 10,
-                      border: "1px solid rgba(255,255,255,0.2)",
-                      background: "rgba(255,255,255,0.05)",
-                      color: "white",
-                      fontFamily: "Poppins",
-                    }}
-                  />
+                  <div style={{ position: "relative" }}>
+                    <input
+                      type={showPassword.next ? "text" : "password"}
+                      value={passwordData.newPassword}
+                      onChange={(e) =>
+                        setPasswordData({ ...passwordData, newPassword: e.target.value })
+                      }
+                      style={{
+                        width: "100%",
+                        padding: "10px 40px 10px 12px",
+                        borderRadius: 10,
+                        border: "1px solid rgba(255,255,255,0.2)",
+                        background: "rgba(255,255,255,0.05)",
+                        color: "white",
+                        fontFamily: "Poppins",
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setShowPassword((p) => ({ ...p, next: !p.next }))
+                      }
+                      style={{
+                        position: "absolute",
+                        right: 12,
+                        top: "50%",
+                        transform: "translateY(-50%)",
+                        background: "transparent",
+                        border: "none",
+                        color: "rgba(255,255,255,0.8)",
+                        cursor: "pointer",
+                        padding: 0,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                      aria-label={showPassword.next ? "Hide password" : "Show password"}
+                    >
+                      {showPassword.next ? "🙈" : "👁️"}
+
+                    </button>
+                  </div>
+
                 </div>
 
                 <div>
                   <label style={{ display: "block", marginBottom: 6, fontSize: 12, opacity: 0.8 }}>
                     Confirm Password
                   </label>
-                  <input
-                    type="password"
-                    value={passwordData.confirmPassword}
-                    onChange={(e) =>
-                      setPasswordData({ ...passwordData, confirmPassword: e.target.value })
-                    }
-                    style={{
-                      width: "100%",
-                      padding: "10px 12px",
-                      borderRadius: 10,
-                      border: "1px solid rgba(255,255,255,0.2)",
-                      background: "rgba(255,255,255,0.05)",
-                      color: "white",
-                      fontFamily: "Poppins",
-                    }}
-                  />
+                  <div style={{ position: "relative" }}>
+                    <input
+                      type={showPassword.confirm ? "text" : "password"}
+                      value={passwordData.confirmPassword}
+                      onChange={(e) =>
+                        setPasswordData({ ...passwordData, confirmPassword: e.target.value })
+                      }
+                      style={{
+                        width: "100%",
+                        padding: "10px 40px 10px 12px",
+                        borderRadius: 10,
+                        border: "1px solid rgba(255,255,255,0.2)",
+                        background: "rgba(255,255,255,0.05)",
+                        color: "white",
+                        fontFamily: "Poppins",
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setShowPassword((p) => ({ ...p, confirm: !p.confirm }))
+                      }
+                      style={{
+                        position: "absolute",
+                        right: 12,
+                        top: "50%",
+                        transform: "translateY(-50%)",
+                        background: "transparent",
+                        border: "none",
+                        color: "rgba(255,255,255,0.8)",
+                        cursor: "pointer",
+                        padding: 0,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                      aria-label={showPassword.confirm ? "Hide password" : "Show password"}
+                    >
+                      {showPassword.confirm ? (
+                        "🙈"
+                      ) : (
+                        "👁️"
+                      )}
+
+                    </button>
+                  </div>
+
                 </div>
 
                 <div style={{ display: "flex", gap: 12, marginTop: 16 }}>
@@ -498,8 +614,9 @@ function AdminPage() {
                       opacity: isSubmitting ? 0.7 : 1,
                     }}
                   >
-                    {isSubmitting ? "Processing..." : "Update"}
+                    {isSubmitting ? "Updating..." : "Update"}
                   </button>
+
                 </div>
               </form>
             </div>

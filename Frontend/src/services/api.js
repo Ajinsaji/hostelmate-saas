@@ -60,9 +60,8 @@ const redirectToLogin = (path) => {
 };
 
 // Detect admin context for redirect decisions.
-const isAdminContext = () => {
-  return window.location.pathname.startsWith("/admin");
-};
+const isAdminContext = () => window.location.pathname.startsWith("/admin");
+
 
 
 
@@ -72,7 +71,9 @@ api.interceptors.request.use(
     config.headers = config.headers || {};
 
     const requestUrl = config.url || "";
-    const isAdminRequest = requestUrl.includes("/api/admin");
+    const isAdminRequest =
+      requestUrl.includes("/api/admin") || isAdminContext();
+
     // Admin and owner tokens must not cross-redirect each other.
     // Admin requests should only ever read adminToken.
     const token = isAdminRequest

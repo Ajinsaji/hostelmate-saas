@@ -1,17 +1,15 @@
-# TODO - Automatic production PWA updates (HostelMate)
+# TODO
 
-## Plan
-1. Update `Frontend/vite.config.js` VitePWA settings to:
-   - `registerType: "autoUpdate"`
-   - `workbox.clientsClaim: true`
-   - `workbox.skipWaiting: true`
-   - Ensure cleanup of old caches remains enabled.
-2. Update `Frontend/src/main.jsx` to implement production SW lifecycle handling:
-   - Register/update SW safely.
-   - Listen for `controllerchange` and reload exactly once after activation.
-   - Call `registration.update()` safely (no crashes if SW not ready).
-   - Prevent infinite reload loops via a sessionStorage/flag.
-3. Preserve Firebase messaging service worker (do not remove/change `public/firebase-messaging-sw.js`).
-4. Run `npm run build` in `Frontend` to ensure SW build succeeds.
-5. Commit changes with message: `Implement automatic production PWA updates`.
+## Admin session redirect bug (completed)
+- [x] useSessionVerification.js: skip owner verify-session on /admin routes
+- [x] api.js: ensure redirects from admin context never go to /login
+
+## Admin change password modal improvements (pending)
+- [x] Find correct admin profile page/modal component (`Frontend/src/Superadmin/AdminPage.jsx` contains the Change Password modal)
+- [ ] Add eye icon visibility toggle for current/new/confirm password fields
+- [ ] Add frontend validation + toast notifications
+- [ ] Add loading state (Updating... disabled)
+- [ ] Handle API success/failure with toasts and field reset + modal close
+- [ ] Run npm run build
+
 

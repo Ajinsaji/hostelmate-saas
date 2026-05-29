@@ -78,15 +78,16 @@ function OnboardingFlow() {
               </div>
             </div>
 
-            <h1 className="text-3xl font-bold text-[#001a4d] mb-2">
+            <h1 className="text-3xl font-bold text-[#FFFFFF] mb-2">
               Welcome to HostelMate
             </h1>
-            <p className="text-lg font-semibold text-[#001a4d] mb-1">
+            <p className="text-lg font-semibold text-[#FFFFFF] mb-1">
               Welcome, {ownerName}
             </p>
-            <p className="text-sm text-gray-600 mb-8">
+            <p className="text-sm text-white/85 mb-8">
               Powered by BetaMIND TechSolutions
             </p>
+
 
             <p className="text-gray-700 mb-8 leading-relaxed">
               Let's set up your hostel and get you started with HostelMate. 
@@ -162,23 +163,26 @@ function OnboardingFlow() {
                   ></div>
                 ))}
               </div>
-              <span className="text-sm font-semibold text-gray-600 ml-4">
+              <span className="text-sm font-semibold text-[#FFFFFF] ml-4">
                 2/5
               </span>
+
             </div>
 
-            <h2 className="text-2xl font-bold text-[#001a4d] mb-2">
+            <h2 className="text-2xl font-bold text-[#FFFFFF] mb-2">
               Security First
             </h2>
-            <p className="text-gray-600 mb-6">
+            <p className="text-[#FFFFFF]/85 mb-6">
               Set a strong password to secure your account
             </p>
 
+
             {/* New Password */}
             <div className="mb-5">
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
+            <label className="block text-sm font-semibold text-[#FFFFFF] mb-2">
                 New Password
               </label>
+
               <div className="relative">
                 <input
                   type={showPassword ? "text" : "password"}
@@ -203,9 +207,10 @@ function OnboardingFlow() {
 
             {/* Confirm Password */}
             <div className="mb-6">
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
+              <label className="block text-sm font-semibold text-[#FFFFFF] mb-2">
                 Confirm Password
               </label>
+
               <div className="relative">
                 <input
                   type={showConfirmPassword ? "text" : "password"}
