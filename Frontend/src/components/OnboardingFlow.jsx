@@ -652,7 +652,7 @@ function OnboardingFlow() {
       case 1:
         return <Step1Welcome />;
       case 2:
-        return <Step2Security />;
+        return <Step2Security key="step2" />;
       case 3:
         return <Step3Rules />;
       case 4:
@@ -666,5 +666,6 @@ function OnboardingFlow() {
 
   return renderStep();
 }
+
 
 export default OnboardingFlow;

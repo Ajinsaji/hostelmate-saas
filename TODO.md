@@ -1,15 +1,12 @@
-# TODO
+# HostelMate - Task Progress
 
-## Admin session redirect bug (completed)
-- [x] useSessionVerification.js: skip owner verify-session on /admin routes
-- [x] api.js: ensure redirects from admin context never go to /login
+## OnboardingFlow.jsx password/focus bug + theme fix
 
-## Admin change password modal improvements (pending)
-- [x] Find correct admin profile page/modal component (`Frontend/src/Superadmin/AdminPage.jsx` contains the Change Password modal)
-- [ ] Add eye icon visibility toggle for current/new/confirm password fields
-- [ ] Add frontend validation + toast notifications
-- [ ] Add loading state (Updating... disabled)
-- [ ] Handle API success/failure with toasts and field reset + modal close
-- [ ] Run npm run build
-
+- [ ] Inspect and identify root cause in `Frontend/src/components/OnboardingFlow.jsx`
+- [ ] Move `/login` navigation out of render into `useEffect`
+- [ ] Stabilize Step2Security so password inputs don’t remount during typing
+- [ ] Guard onboardingProgress restore from overwriting active typing (only restore on mount)
+- [ ] Fix Step2 card styling to keep dark background + white text
+- [ ] Ensure eye toggle + validation remain unchanged
+- [ ] Run `npm run build` (Frontend) and report exact root cause
 
