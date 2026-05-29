@@ -9,4 +9,9 @@
 - [x] Ensure typing in password fields does not cause remounts (focus remains) (manual verification required)
 - [x] Run `npm run build` in Frontend and confirm build success
 
+## Step 2 Save button not advancing (temporary debug added)
+- [ ] Confirm console logs: "Save button clicked" + "handleSave called"
+- [ ] Confirm isPasswordValid is true for password `anju12345`
+
+
 

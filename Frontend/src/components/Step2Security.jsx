@@ -123,13 +123,21 @@ export default function Step2Security({
               Back
             </button>
             <button
-              onClick={handleSave}
+              onClick={() => {
+                console.log("Save button clicked");
+                console.log("isPasswordValid:", isPasswordValid);
+                console.log("loading:", loading);
+                console.log("handleSave type:", typeof handleSave);
+                handleSave?.();
+              }}
               disabled={loading || !isPasswordValid}
+
               className="flex-1 bg-gradient-to-r from-[#001a4d] to-[#00b894] text-white font-semibold py-3 px-4 rounded-lg hover:shadow-lg hover:scale-[1.02] transition-all disabled:opacity-50"
             >
               {loading ? <Loader2 className="inline mr-2" size={18} /> : null}
               Save & Continue
             </button>
+
           </div>
         </div>
       </div>
