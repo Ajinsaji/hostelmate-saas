@@ -47,37 +47,42 @@ function LoginPage() {
 
       if (response.data.success) {
         toast.success("Login successful");
-        const userData = response.data.owner || response.data.user || {};
-        const role = userData.role || "owner";
-        const storedUser = {
-          ...userData,
-          role,
-          onboardingCompleted: userData.onboardingCompleted === true,
-          firstLogin: userData.firstLogin === true,
-          token: response.data.token,
-        };
+      console.log("[LoginPage] LOGIN RESPONSE:", response.data);
 
-        setOwnerAuth(response.data.token);
-        setStoredOwner(storedUser);
+      const userData = response.data.owner || response.data.user || {};
+      const role = userData.role || "owner";
+      const storedUser = {
+        ...userData,
+        role,
+        onboardingCompleted: userData.onboardingCompleted === true,
+        firstLogin: userData.firstLogin === true,
+        token: response.data.token,
+      };
 
-        if (role === "warden") {
-          navigate("/warden");
-        } else if (role === "cook") {
-          navigate("/cook");
-        } else if (role === "owner") {
-          // Check if owner needs onboarding
-          const needsOnboarding = 
-            userData.firstLogin === true || 
-            userData.onboardingCompleted !== true;
-          
-          if (needsOnboarding) {
-            navigate("/ownerAction");
-          } else {
-            navigate("/owner/dashboard");
-          }
-        } else {
-          navigate("/owner/dashboard");
-        }
+      setOwnerAuth(response.data.token);
+      setStoredOwner(storedUser);
+
+      console.log("[LoginPage] TOKEN SAVED (ownerToken):", localStorage.getItem("ownerToken"));
+      console.log("[LoginPage] OWNER SAVED (ownerUser):", localStorage.getItem("ownerUser"));
+
+      // Debug onboarding routing
+      const needsOnboarding =
+        userData.firstLogin === true ||
+        userData.onboardingCompleted !== true;
+
+      console.log("[LoginPage] needsOnboarding:", needsOnboarding);
+      console.log("[LoginPage] onboardingCompleted:", userData.onboardingCompleted);
+      console.log("[LoginPage] mustChangePassword:", userData.mustChangePassword);
+
+      const targetRoute = (() => {
+        if (role === "warden") return "/warden";
+        if (role === "cook") return "/cook";
+        if (role === "owner") return needsOnboarding ? "/ownerAction" : "/owner/dashboard";
+        return "/owner/dashboard";
+      })();
+
+      console.log("[LoginPage] Navigating to:", targetRoute);
+      navigate(targetRoute, { replace: true });
       } else {
         const serverMessage = response.data?.message || "";
         if (/owner not found|account not found|provide email|provide phone|provide username/i.test(serverMessage)) {
