@@ -16,6 +16,10 @@ function OnboardingFlow() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
+  // Prevent localStorage from clobbering step transitions during initial hydrate / in-flight saves
+  const [isHydrated, setIsHydrated] = useState(false);
+
+
   // Step 2: Security
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -34,19 +38,27 @@ function OnboardingFlow() {
     if (saved) {
       try {
         const data = JSON.parse(saved);
-        setCurrentStep(data.currentStep || 1);
-        setNewPassword(data.newPassword || "");
-        setConfirmPassword(data.confirmPassword || "");
-        setRules(data.rules || "");
-        setRooms(data.rooms || []);
+        const restoredStep = Number(data?.currentStep);
+        setCurrentStep(Number.isFinite(restoredStep) && restoredStep >= 1 && restoredStep <= 5 ? restoredStep : 1);
+        setNewPassword(data?.newPassword || "");
+        setConfirmPassword(data?.confirmPassword || "");
+        setRules(data?.rules || "");
+        setRooms(Array.isArray(data?.rooms) ? data.rooms : []);
       } catch {
         // Ignore parse errors
       }
     }
+
+    setIsHydrated(true);
   }, []);
 
   // Save progress to localStorage
   useEffect(() => {
+    // Avoid clobbering state transitions while we are mid-request (notably Step2 -> Step3)
+    // and avoid persisting before hydrate completes.
+    if (!isHydrated) return;
+    if (loading) return;
+
     const progressData = {
       currentStep,
       newPassword,
@@ -54,8 +66,11 @@ function OnboardingFlow() {
       rules,
       rooms,
     };
+
     localStorage.setItem("onboardingProgress", JSON.stringify(progressData));
-  }, [currentStep, newPassword, confirmPassword, rules, rooms]);
+  }, [isHydrated, loading, currentStep, newPassword, confirmPassword, rules, rooms]);
+
+
 
   // Redirect if not authenticated (DO NOT navigate during render)
   const [authChecked, setAuthChecked] = useState(false);
@@ -486,6 +501,7 @@ function OnboardingFlow() {
     }
 
     setLoading(true);
+
     try {
       const response = await axios.put(
         `${import.meta.env.VITE_API_URL}/api/owner/password/update`,
