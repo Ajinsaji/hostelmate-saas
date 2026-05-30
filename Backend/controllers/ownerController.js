@@ -21,6 +21,7 @@ const loginOwner = async (req, res) => {
     console.log("LOGIN ATTEMPT");
     console.log("Username entered:", username, "Email entered:", email, "Phone entered:", phone);
 
+
     const looksLikeBcryptHash = (val) => typeof val === "string" && /^\$2[aby]\$\d{2}\$/.test(val);
 
     const safePasswordCompare = async (plain, stored) => {
@@ -68,12 +69,19 @@ const loginOwner = async (req, res) => {
       const ownerCandidate = await Owner.findOne(query);
       console.log("Owner found:", ownerCandidate?.username, "Phone:", ownerCandidate?.phone);
       console.log("Stored hash exists:", !!ownerCandidate?.password);
+      console.log("Owner candidate debug:", {
+        _id: ownerCandidate?._id,
+        phone: ownerCandidate?.phone,
+        email: ownerCandidate?.email,
+        onboardingCompleted: !!ownerCandidate?.onboardingCompleted,
+      });
 
       if (ownerCandidate) {
         const ok = await safePasswordCompare(password, ownerCandidate.password);
         console.log("Password match:", ok);
         if (ok) owner = ownerCandidate;
       }
+
 
       if (!owner) {
         staff = await Staff.findOne({
