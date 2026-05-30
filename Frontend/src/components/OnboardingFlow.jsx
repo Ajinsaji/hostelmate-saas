@@ -11,7 +11,13 @@ function OnboardingFlow() {
   const token = getOwnerToken();
   const storedOwner = getStoredOwner();
 
+
+
+
   const [currentStep, setCurrentStep] = useState(1);
+  useEffect(() => {
+    console.log("[OnboardingFlow] currentStep state init/changed:", currentStep);
+  }, [currentStep]);
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -487,7 +493,11 @@ function OnboardingFlow() {
   };
 
   const handleStep2Save = async () => {
+    console.log("[OnboardingFlow] handleStep2Save called");
+    console.log("[OnboardingFlow] newPassword len:", newPassword?.length);
+    console.log("[OnboardingFlow] confirmPassword len:", confirmPassword?.length);
     if (!newPassword.trim()) {
+
       toast.error("Enter a new password");
       return;
     }

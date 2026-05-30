@@ -124,9 +124,12 @@ export default function Step2Security({
             </button>
             <button
               onClick={() => {
+                console.log("[Step2Security] button clicked");
+                console.log("[Step2Security] handleSave:", typeof handleSave);
                 handleSave?.();
               }}
               disabled={loading || !isPasswordValid}
+
 
               className="flex-1 bg-gradient-to-r from-[#001a4d] to-[#00b894] text-white font-semibold py-3 px-4 rounded-lg hover:shadow-lg hover:scale-[1.02] transition-all disabled:opacity-50"
             >
