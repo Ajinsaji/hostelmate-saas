@@ -153,8 +153,11 @@ function App() {
           </>
         )}
 
-        {/* Owner Onboarding - Protected but no onboarding check */}
+        {/* Owner Onboarding */}
         <Route path="/ownerAction" element={<OnboardingFlow />} />
+        {/* Alias to satisfy OwnerProtectedRoute redirect destination */}
+        <Route path="/onboarding" element={<OnboardingFlow />} />
+
 
         <Route
           path="/owner/dashboard"
