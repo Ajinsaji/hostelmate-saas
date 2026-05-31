@@ -124,10 +124,9 @@ export default function Step2Security({
             </button>
             <button
               onClick={() => {
-                console.log("[Step2Security] button clicked");
-                console.log("[Step2Security] handleSave:", typeof handleSave);
                 handleSave?.();
               }}
+
               disabled={loading || !isPasswordValid}
 
 

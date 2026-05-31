@@ -493,42 +493,85 @@ function OnboardingFlow() {
   };
 
   const handleStep2Save = async () => {
-    console.log("[OnboardingFlow] handleStep2Save called");
-    console.log("[OnboardingFlow] newPassword len:", newPassword?.length);
-    console.log("[OnboardingFlow] confirmPassword len:", confirmPassword?.length);
-    if (!newPassword.trim()) {
-
-      toast.error("Enter a new password");
-      return;
-    }
-    if (newPassword.length < 8) {
-      toast.error("Password must be at least 8 characters");
-      return;
-    }
-    if (newPassword !== confirmPassword) {
-      toast.error("Passwords do not match");
-      return;
-    }
-
-    setLoading(true);
+    console.log("[Step2] STEP2-A start");
 
     try {
+      console.log("[Step2] STEP2-B after password validation/pre-check");
+      // NOTE: We intentionally keep validation logs as separate branches.
+      if (!newPassword.trim()) {
+        console.log("[Step2] STEP2-B validation fail: empty newPassword");
+        toast.error("Enter a new password");
+        return;
+      }
+      if (newPassword.length < 8) {
+        console.log("[Step2] STEP2-B validation fail: newPassword length < 8");
+        toast.error("Password must be at least 8 characters");
+        return;
+      }
+      if (newPassword !== confirmPassword) {
+        console.log("[Step2] STEP2-B validation fail: password mismatch");
+        toast.error("Passwords do not match");
+        return;
+      }
+
+      console.log("[Step2] STEP2-C before reading token/owner");
+      console.log("[Step2] token value:", token);
+      console.log("[Step2] storedOwner value:", storedOwner);
+      console.log("[Step2] storedOwner?.hostelId:", storedOwner?.hostelId);
+      console.log("[Step2] STEP2-C VITE_API_URL:", import.meta.env.VITE_API_URL);
+
+      console.log("[Step2] STEP2-D after reading token/owner");
+
+      console.log("[Step2] STEP2-E before setLoading(true)");
+      setLoading(true);
+      console.log("[Step2] STEP2-F after setLoading(true)");
+
+      console.log("[Step2] STEP2-F before axios request");
+      console.log(
+        "[Step2] axios instance used:",
+        axios && axios.put ? "raw axios (import axios)" : "unknown"
+      );
+
+      console.log(
+        "[Step2] STEP2-F request url:",
+        `${import.meta.env.VITE_API_URL}/api/owner/password/update`
+      );
+
       const response = await axios.put(
         `${import.meta.env.VITE_API_URL}/api/owner/password/update`,
         { newPassword },
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
-      if (response.data.success) {
+      console.log(
+        "[Step2] STEP2-G after axios response. status/data:",
+        response?.status,
+        response?.data
+      );
+
+      console.log("[Step2] STEP2-H before setCurrentStep(3)");
+      if (response?.data?.success) {
         toast.success("Password updated");
         setCurrentStep(3);
       } else {
-        toast.error(response.data.message || "Failed to update password");
+        toast.error(response?.data?.message || "Failed to update password");
+        return;
       }
+
+      console.log("[Step2] STEP2-I after setCurrentStep(3)");
     } catch (error) {
+      console.log("[Step2] STEP2-J catch block. error:", error);
+      console.log("[Step2] STEP2-J error.stack:", error?.stack);
+
+      // Axios error shape logging (if applicable)
+      console.log("[Step2] STEP2-J axios error status:", error?.response?.status);
+      console.log("[Step2] STEP2-J axios error data:", error?.response?.data);
+
       toast.error(error?.response?.data?.message || "Failed to update password");
     } finally {
+      console.log("[Step2] STEP2-K finally block (before setLoading(false))");
       setLoading(false);
+      console.log("[Step2] STEP2-K finally block (after setLoading(false))");
     }
   };
 
