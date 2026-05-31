@@ -539,7 +539,7 @@ function OnboardingFlow() {
 
       const response = await axios.put(
         `${import.meta.env.VITE_API_URL}/api/owner/password/update`,
-        { newPassword },
+        { newPassword, confirmPassword },
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
