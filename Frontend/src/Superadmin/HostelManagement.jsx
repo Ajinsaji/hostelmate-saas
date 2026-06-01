@@ -261,14 +261,15 @@ function HostelManagement() {
 
   return (
     <div style={{ minHeight: "100vh", background: "#081028", paddingBottom: "100px", fontFamily: "Poppins" }}>
-      <div className="gradient-header mb-6" style={{ paddingBottom: "40px", borderBottomLeftRadius: "30px", borderBottomRightRadius: "30px" }}>
-        <h1 className="text-h1" style={{ color: "white" }}>
-          Hostel Management
-        </h1>
-        <p style={{ color: "rgba(255,255,255,0.8)" }}>Manage approved hostels & credentials</p>
-      </div>
+      <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="gradient-header mb-6" style={{ paddingBottom: "40px", borderBottomLeftRadius: "30px", borderBottomRightRadius: "30px" }}>
+          <h1 className="text-h1" style={{ color: "white" }}>
+            Hostel Management
+          </h1>
+          <p style={{ color: "rgba(255,255,255,0.8)" }}>Manage approved hostels & credentials</p>
+        </div>
 
-      <div className="p-4" style={{ marginTop: "-30px" }}>
+        <div style={{ marginTop: "-30px" }}>
         <div className="card" style={{ marginBottom: "24px" }}>
           <div style={{ position: "relative" }}>
             <Search
@@ -959,6 +960,7 @@ This action cannot be undone.
       )}
 
       <SuperadminBottomNav />
+      </div>
     </div>
   );
 }

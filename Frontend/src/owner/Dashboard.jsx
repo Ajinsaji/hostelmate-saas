@@ -5,6 +5,9 @@ import toast from "react-hot-toast";
 import api from "../utils/apiClient";
 import buildFileUrl from "../utils/buildFileUrl";
 import BottomNav from "../components/BottomNav";
+import DashboardLayout from "./DashboardLayout";
+
+
 import useGlobalPolling from "../hooks/useGlobalPolling";
 import useOwnerRealtimeSync from "../hooks/useOwnerRealtimeSync";
 import SubscriptionBanner from "../components/SubscriptionBanner";
@@ -162,7 +165,14 @@ function Dashboard() {
 
   return (
     <div className="min-h-screen bg-[#081028] pb-32">
+      <div className="hidden lg:block">
+        <DesktopSidebar variant="owner" activePath={"/owner/dashboard"} />
+      </div>
+
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+
+
+
         <div className="mb-6">
           {!subscriptionLoading && subscriptionState && (
             <div className="grid gap-4 lg:grid-cols-[1fr_360px]">

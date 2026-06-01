@@ -2,62 +2,65 @@ import { Home, CheckCircle2, ShieldCheck, BadgePercent, UserCircle2, Building } 
 import { useNavigate, useLocation } from "react-router-dom";
 
 function SuperadminBottomNav() {
+
   const navigate = useNavigate();
   const location = useLocation();
 
   return (
-    <div
-      style={{
-        position: "fixed",
-        bottom: "0",
-        left: "50%",
-        transform: "translateX(-50%)",
-        width: "100%",
-        maxWidth: "480px",
-        background: "var(--surface-glass)",
-        backdropFilter: "blur(20px)",
-        WebkitBackdropFilter: "blur(20px)",
-        borderTop: "1px solid rgba(0,0,0,0.05)",
-        display: "flex",
-        justifyContent: "space-around",
-        padding: "12px 10px 24px",
-        zIndex: 50,
-      }}
-    >
-      <NavItem
-        icon={<Home size={24} />}
-        text="Admin"
-        isActive={location.pathname === "/admin"}
-        onClick={() => navigate("/admin")}
-      />
+    <div className="lg:hidden">
+      <div
+        style={{
+          position: "fixed",
+          bottom: "0",
+          left: "50%",
+          transform: "translateX(-50%)",
+          width: "100%",
+          maxWidth: "100%",
+          background: "var(--surface-glass)",
+          backdropFilter: "blur(20px)",
+          WebkitBackdropFilter: "blur(20px)",
+          borderTop: "1px solid rgba(0,0,0,0.05)",
+          display: "flex",
+          justifyContent: "space-around",
+          padding: "12px 10px 24px",
+          zIndex: 50,
+        }}
+      >
+        <NavItem
+          icon={<Home size={24} />}
+          text="Admin"
+          isActive={location.pathname === "/admin"}
+          onClick={() => navigate("/admin")}
+        />
 
-      <NavItem
-        icon={<CheckCircle2 size={24} />}
-        text="Pending"
-        isActive={location.pathname === "/admin/pending-requests"}
-        onClick={() => navigate("/admin/pending-requests")}
-      />
+        <NavItem
+          icon={<CheckCircle2 size={24} />}
+          text="Pending"
+          isActive={location.pathname === "/admin/pending-requests"}
+          onClick={() => navigate("/admin/pending-requests")}
+        />
 
-      <NavItem
-        icon={<ShieldCheck size={24} />}
-        text="Subscriptions"
-        isActive={location.pathname === "/admin/subscriptions"}
-        onClick={() => navigate("/admin/subscriptions")}
-      />
+        <NavItem
+          icon={<ShieldCheck size={24} />}
+          text="Subscriptions"
+          isActive={location.pathname === "/admin/subscriptions"}
+          onClick={() => navigate("/admin/subscriptions")}
+        />
 
-      <NavItem
-        icon={<Building size={24} />}
-        text="Hostels"
-        isActive={location.pathname === "/admin/hostels"}
-        onClick={() => navigate("/admin/hostels")}
-      />
+        <NavItem
+          icon={<Building size={24} />}
+          text="Hostels"
+          isActive={location.pathname === "/admin/hostels"}
+          onClick={() => navigate("/admin/hostels")}
+        />
 
-      <NavItem
-        icon={<UserCircle2 size={24} />}
-        text="Profile"
-        isActive={location.pathname === "/admin/profile"}
-        onClick={() => navigate("/admin/profile")}
-      />
+        <NavItem
+          icon={<UserCircle2 size={24} />}
+          text="Profile"
+          isActive={location.pathname === "/admin/profile"}
+          onClick={() => navigate("/admin/profile")}
+        />
+      </div>
     </div>
   );
 }

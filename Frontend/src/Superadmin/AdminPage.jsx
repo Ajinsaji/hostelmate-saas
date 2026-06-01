@@ -154,17 +154,12 @@ function AdminPage() {
         minHeight: "100vh",
         background: "linear-gradient(135deg, #072f1f 0%, #0b7a45 100%)",
         color: "white",
-        padding: "20px",
         fontFamily: "Poppins",
         paddingBottom: "110px",
       }}
     >
-      <div
-        style={{
-          maxWidth: 720,
-          margin: "0 auto",
-        }}
-      >
+      <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8" style={{ paddingTop: 20 }}>
+
         {/* Header */}
         <div style={{ marginBottom: 24, textAlign: "center" }}>
           <div
@@ -416,12 +411,11 @@ function AdminPage() {
               padding: "20px",
             }}
           >
-            <div
+                <div
               style={{
                 background: "rgba(7, 46, 31, 0.95)",
                 borderRadius: 26,
                 padding: 24,
-                maxWidth: 400,
                 width: "100%",
                 border: "1px solid rgba(255,255,255,0.15)",
               }}

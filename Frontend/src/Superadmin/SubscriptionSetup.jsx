@@ -133,57 +133,59 @@ function SubscriptionSetup() {
       style={{ minHeight: "100vh", background: "#081028" }}
       className="overflow-x-hidden"
     >
-      <div
-        className="gradient-header mb-6 rounded-[32px] border border-white/10 bg-white/5 px-5 py-7 shadow-2xl shadow-slate-900/40"
-        style={{ paddingBottom: "36px" }}
-      >
-        <h1 className="text-h1" style={{ color: "white" }}>
-          Subscription Setup
-        </h1>
-        <p style={{ color: "rgba(255,255,255,0.88)", maxWidth: 680, lineHeight: 1.7 }}>
-          Configure the subscription details clearly before activating this hostel. Use the fields below to select plan, dates, and access options.
-        </p>
-      </div>
+      <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div
+          className="gradient-header mb-6 rounded-[32px] border border-white/10 bg-white/5 py-7 shadow-2xl shadow-slate-900/40"
+          style={{ paddingBottom: "36px" }}
+        >
+          <h1 className="text-h1" style={{ color: "white" }}>
+            Subscription Setup
+          </h1>
+          <p style={{ color: "rgba(255,255,255,0.88)", lineHeight: 1.7 }}>
+            Configure the subscription details clearly before activating this hostel. Use the fields below to select plan, dates, and access options.
+          </p>
+        </div>
 
-      <div className="p-4" style={{ marginTop: 0, paddingBottom: 40 }}>
-        <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
-          <div className="rounded-[32px] border border-white/10 bg-slate-950/80 p-6 shadow-2xl shadow-slate-900/40">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-              <div>
-                <h2 className="text-2xl font-bold text-white">Hostel details</h2>
-                <p className="mt-1 text-sm text-slate-300">Review the draft hostel and owner details before finalizing activation.</p>
+        <div style={{ marginTop: 0, paddingBottom: 40 }}>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="rounded-[32px] border border-white/10 bg-slate-950/80 p-6 shadow-2xl shadow-slate-900/40">
+
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <h2 className="text-2xl font-bold text-white">Hostel details</h2>
+                  <p className="mt-1 text-sm text-slate-300">Review the draft hostel and owner details before finalizing activation.</p>
+                </div>
+                <div className="rounded-3xl border border-white/10 bg-slate-900/75 px-4 py-3 text-sm font-semibold text-white shadow-sm">
+                  Pending activation
+                </div>
               </div>
-              <div className="rounded-3xl border border-white/10 bg-slate-900/75 px-4 py-3 text-sm font-semibold text-white shadow-sm">
-                Pending activation
+
+              <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+                <CardField label="Hostel name" value={hostel?.hostelName || "-"} />
+                <CardField label="Owner" value={hostel?.owner?.name || hostel?.ownerName || "-"} />
+                <CardField label="Phone" value={hostel?.phone || "-"} />
+                <CardField label="Type" value={hostel?.hostelType || "-"} />
+                <CardField label="State / District" value={`${hostel?.state || "-"} / ${hostel?.district || "-"}`} />
+                <CardField label="Hostel ID" value={hostelId} />
+              </div>
+
+              <div className="mt-6 rounded-[28px] border border-white/10 bg-slate-900/40 p-4">
+                <div className="text-sm font-semibold text-white/80">QR Preview</div>
+                <div className="mt-4 flex items-center justify-center">
+                  {qrPreviewSrc ? (
+                    <img
+                      src={buildFileUrl(qrPreviewSrc)}
+                      alt="QR Code"
+                      className="h-44 w-44 max-w-full rounded-3xl border border-white/10 object-contain"
+                    />
+                  ) : (
+                    <div className="rounded-3xl border border-dashed border-white/10 bg-white/5 px-6 py-10 text-sm text-white/60">
+                      QR not available yet.
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
-
-            <div className="mt-6 grid gap-4 sm:grid-cols-2">
-              <CardField label="Hostel name" value={hostel?.hostelName || "-"} />
-              <CardField label="Owner" value={hostel?.owner?.name || hostel?.ownerName || "-"} />
-              <CardField label="Phone" value={hostel?.phone || "-"} />
-              <CardField label="Type" value={hostel?.hostelType || "-"} />
-              <CardField label="State / District" value={`${hostel?.state || "-"} / ${hostel?.district || "-"}`} />
-              <CardField label="Hostel ID" value={hostelId} />
-            </div>
-
-            <div className="mt-6 rounded-[28px] border border-white/10 bg-slate-900/40 p-4">
-              <div className="text-sm font-semibold text-white/80">QR Preview</div>
-              <div className="mt-4 flex items-center justify-center">
-                {qrPreviewSrc ? (
-                  <img
-                    src={buildFileUrl(qrPreviewSrc)}
-                    alt="QR Code"
-                    className="h-44 w-44 max-w-full rounded-3xl border border-white/10 object-contain"
-                  />
-                ) : (
-                  <div className="rounded-3xl border border-dashed border-white/10 bg-white/5 px-6 py-10 text-sm text-white/60">
-                    QR not available yet.
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
 
           <div className="rounded-[32px] border border-white/10 bg-slate-950/90 p-6 shadow-2xl shadow-slate-900/40">
             <div className="flex items-center justify-between gap-4">
@@ -213,7 +215,7 @@ function SubscriptionSetup() {
                 </select>
               </FieldRow>
 
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
                 <FieldRow label="Amount">
                   <input
                     className="input-field w-full"
@@ -236,7 +238,7 @@ function SubscriptionSetup() {
                 </FieldRow>
               </div>
 
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
                 <FieldRow label="Start Date">
                   <input
                     className="input-field w-full"
@@ -300,6 +302,7 @@ function SubscriptionSetup() {
               </div>
             </form>
           </div>
+        </div>
         </div>
 
         <div className="mt-6 text-center text-sm text-slate-400">

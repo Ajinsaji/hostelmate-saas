@@ -106,17 +106,18 @@ function Profile() {
 
   return (
     <div className="pb-24" style={{ minHeight: "100vh" }}>
-      <div className="gradient-header mb-6 flex items-center gap-4">
-        <button className="btn-icon" style={{ background: "transparent", color: "white" }} onClick={() => navigate(-1)}>
-          <ArrowLeft size={24} />
-        </button>
-        <div>
-          <h1 className="text-h1" style={{ color: "white" }}>Settings</h1>
-          <p className="text-small" style={{ color: "rgba(255,255,255,0.8)" }}>Profile & Preferences</p>
+      <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="gradient-header mb-6 flex items-center gap-4">
+          <button className="btn-icon" style={{ background: "transparent", color: "white" }} onClick={() => navigate(-1)}>
+            <ArrowLeft size={24} />
+          </button>
+          <div>
+            <h1 className="text-h1" style={{ color: "white" }}>Settings</h1>
+            <p className="text-small" style={{ color: "rgba(255,255,255,0.8)" }}>Profile & Preferences</p>
+          </div>
         </div>
-      </div>
 
-      <div className="p-4 flex-col gap-4">
+        <div className="flex-col gap-4">
         {/* User Info Card */}
         <div className="card flex items-center gap-4 mb-4">
           <div style={{ width: 64, height: 64, borderRadius: "50%", background: "var(--primary-light)", display: "flex", justifyContent: "center", alignItems: "center", color: "white" }}>
@@ -299,6 +300,8 @@ function Profile() {
           </div>
         </div>
       )}
+      </div>
+
     </div>
   );
 }

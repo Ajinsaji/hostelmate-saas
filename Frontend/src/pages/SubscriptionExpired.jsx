@@ -34,18 +34,17 @@ const SubscriptionExpired = () => {
   };
 
   return (
-    <div style={{ minHeight: "100vh", background: "#081028", padding: 16, display: "flex", justifyContent: "center" }}>
-      <div
-        className="glass-card rounded-2xl p-6"
-        style={{
-          width: "100%",
-          maxWidth: 820,
-          marginTop: 48,
-          background: "rgba(11,23,57,0.55)",
-          border: "1px solid rgba(255,255,255,0.08)",
-          backdropFilter: "blur(12px)",
-        }}
-      >
+    <div style={{ minHeight: "100vh", background: "#081028" }} className="flex justify-center">
+      <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center">
+        <div
+          className="glass-card rounded-2xl p-6 w-full"
+          style={{
+            background: "rgba(11,23,57,0.55)",
+            border: "1px solid rgba(255,255,255,0.08)",
+            backdropFilter: "blur(12px)",
+            marginTop: 48,
+          }}
+        >
         <div style={{ textAlign: "center", marginBottom: 18 }}>
           <h1 className="text-h1" style={{ color: "white", margin: 0, fontWeight: 900 }}>
             Subscription Expired
@@ -91,6 +90,7 @@ const SubscriptionExpired = () => {
 
         <div style={{ marginTop: 14, color: "rgba(255,255,255,0.65)", fontSize: 12, textAlign: "center" }}>
           Renewal is enabled after the next lifecycle step.
+        </div>
         </div>
       </div>
     </div>

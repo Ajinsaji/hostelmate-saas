@@ -76,12 +76,13 @@ function AdminDashboard() {
         </div>
       </div>
 
-      <div className="p-4 flex-col gap-6">
+      <div className="w-full px-4 sm:px-6 lg:px-8 pb-24">
         {/* STATS */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
           <StatCard title="Hostels" value={stats.activeHostels} icon={<BedDouble size={24} color="var(--primary)" />} />
           <StatCard title="Pending" value={stats.pendingHostels} icon={<Users size={24} color="var(--primary)" />} />
         </div>
+
 
         <div className="glass-card" style={{ background: "rgba(37, 211, 102, 0.18)", border: "1px solid rgba(255,255,255,0.2)" }}>
           <div className="flex items-center gap-4 mb-2">
