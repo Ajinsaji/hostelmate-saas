@@ -550,9 +550,11 @@ function ActionButton({ title, subtitle, icon, onClick }) {
 }
 
 function QrIcon() {
-  const { default: Icon } = QrCode;
-  return <Icon size={22} color="var(--primary-dark)" />;
+  // QR icon source was missing/undefined (QrCode was not defined).
+  // Use a safe placeholder icon to prevent runtime crashes.
+  return <FileText size={22} color="var(--primary-dark)" />;
 }
+
 
 export default Dashboard;
 
