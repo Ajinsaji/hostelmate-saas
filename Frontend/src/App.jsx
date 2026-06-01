@@ -40,6 +40,8 @@ import AddHostel from "./Superadmin/AddHostel";
 import AdminProfile from "./Superadmin/AdminPage";
 import HostelManagement from "./Superadmin/HostelManagement";
 
+import DesktopShell from "./pages/_DesktopShell";
+
 
 import OwnerProtectedRoute from "./components/OwnerProtectedRoute";
 import WardenProtectedRoute from "./components/WardenProtectedRoute";
@@ -163,7 +165,14 @@ function App() {
           path="/owner/dashboard"
           element={
             <OwnerProtectedRoute>
-              <Dashboard />
+              <DesktopShell
+                variant="owner"
+                title="Dashboard"
+                breadcrumbs={[{ label: "Dashboard" }]}
+                backTo={"/owner/dashboard"}
+              >
+                <Dashboard />
+              </DesktopShell>
             </OwnerProtectedRoute>
           }
         />
@@ -171,7 +180,14 @@ function App() {
           path="/rooms"
           element={
             <OwnerProtectedRoute>
-              <Rooms />
+              <DesktopShell
+                variant="owner"
+                title="Rooms"
+                breadcrumbs={[{ label: "Rooms" }]}
+                backTo={"/owner/dashboard"}
+              >
+                <Rooms />
+              </DesktopShell>
             </OwnerProtectedRoute>
           }
         />
@@ -179,7 +195,14 @@ function App() {
           path="/residents"
           element={
             <OwnerProtectedRoute>
-              <Residents />
+              <DesktopShell
+                variant="owner"
+                title="Residents"
+                breadcrumbs={[{ label: "Residents" }]}
+                backTo={"/owner/dashboard"}
+              >
+                <Residents />
+              </DesktopShell>
             </OwnerProtectedRoute>
           }
         />
@@ -187,7 +210,14 @@ function App() {
           path="/payments"
           element={
             <OwnerProtectedRoute>
-              <Payments />
+              <DesktopShell
+                variant="owner"
+                title="Payments"
+                breadcrumbs={[{ label: "Payments" }]}
+                backTo={"/owner/dashboard"}
+              >
+                <Payments />
+              </DesktopShell>
             </OwnerProtectedRoute>
           }
         />
@@ -195,7 +225,14 @@ function App() {
           path="/reports"
           element={
             <OwnerProtectedRoute>
-              <Reports />
+              <DesktopShell
+                variant="owner"
+                title="Reports"
+                breadcrumbs={[{ label: "Reports" }]}
+                backTo={"/owner/dashboard"}
+              >
+                <Reports />
+              </DesktopShell>
             </OwnerProtectedRoute>
           }
         />
@@ -203,7 +240,14 @@ function App() {
           path="/profile"
           element={
             <OwnerProtectedRoute>
-              <Profile />
+              <DesktopShell
+                variant="owner"
+                title="Profile"
+                breadcrumbs={[{ label: "Profile" }]}
+                backTo={"/owner/dashboard"}
+              >
+                <Profile />
+              </DesktopShell>
             </OwnerProtectedRoute>
           }
         />
@@ -211,7 +255,14 @@ function App() {
           path="/owner/settings"
           element={
             <OwnerProtectedRoute>
-              <HostelSettings />
+              <DesktopShell
+                variant="owner"
+                title="Settings"
+                breadcrumbs={[{ label: "Settings" }]}
+                backTo={"/owner/dashboard"}
+              >
+                <HostelSettings />
+              </DesktopShell>
             </OwnerProtectedRoute>
           }
         />
@@ -219,7 +270,14 @@ function App() {
           path="/owner/profile"
           element={
             <OwnerProtectedRoute>
-              <OwnerProfileEdit />
+              <DesktopShell
+                variant="owner"
+                title="Owner Profile"
+                breadcrumbs={[{ label: "Owner Profile" }]}
+                backTo={"/owner/dashboard"}
+              >
+                <OwnerProfileEdit />
+              </DesktopShell>
             </OwnerProtectedRoute>
           }
         />
@@ -227,7 +285,14 @@ function App() {
           path="/owner/update-password"
           element={
             <OwnerProtectedRoute>
-              <UpdatePassword />
+              <DesktopShell
+                variant="owner"
+                title="Update Password"
+                breadcrumbs={[{ label: "Update Password" }]}
+                backTo={"/owner/dashboard"}
+              >
+                <UpdatePassword />
+              </DesktopShell>
             </OwnerProtectedRoute>
           }
         />
@@ -236,7 +301,14 @@ function App() {
           path="/staff"
           element={
             <OwnerProtectedRoute>
-              <StaffManagement />
+              <DesktopShell
+                variant="owner"
+                title="Staff Management"
+                breadcrumbs={[{ label: "Staff Management" }]}
+                backTo={"/owner/dashboard"}
+              >
+                <StaffManagement />
+              </DesktopShell>
             </OwnerProtectedRoute>
           }
         />
@@ -244,10 +316,18 @@ function App() {
           path="/admissions"
           element={
             <OwnerProtectedRoute>
-              <PendingAdmissions />
+              <DesktopShell
+                variant="owner"
+                title="Pending Admissions"
+                breadcrumbs={[{ label: "Pending Admissions" }]}
+                backTo={"/owner/dashboard"}
+              >
+                <PendingAdmissions />
+              </DesktopShell>
             </OwnerProtectedRoute>
           }
         />
+
 
         <Route
           path="/warden"
@@ -273,23 +353,14 @@ function App() {
           path="/admin"
           element={
             <AdminProtectedRoute>
-              <AdminDashboard />
-            </AdminProtectedRoute>
-          }
-        />
-        <Route
-          path="/admin/profile"
-          element={
-            <AdminProtectedRoute>
-              <AdminProfile />
-            </AdminProtectedRoute>
-          }
-        />
-        <Route
-          path="/admin/reports"
-          element={
-            <AdminProtectedRoute>
-              <Reports />
+              <DesktopShell
+                variant="admin"
+                title="Admin"
+                breadcrumbs={[{ label: "Admin" }]}
+                backTo={"/admin"}
+              >
+                <AdminDashboard />
+              </DesktopShell>
             </AdminProtectedRoute>
           }
         />
@@ -297,7 +368,14 @@ function App() {
           path="/admin/pending-requests"
           element={
             <AdminProtectedRoute>
-              <PendingRequests />
+              <DesktopShell
+                variant="admin"
+                title="Pending Requests"
+                breadcrumbs={[{ label: "Pending Requests" }]}
+                backTo={"/admin"}
+              >
+                <PendingRequests />
+              </DesktopShell>
             </AdminProtectedRoute>
           }
         />
@@ -305,7 +383,14 @@ function App() {
           path="/admin/subscription-setup/:hostelId"
           element={
             <AdminProtectedRoute>
-              <SubscriptionSetup />
+              <DesktopShell
+                variant="admin"
+                title="Subscription Setup"
+                breadcrumbs={[{ label: "Subscription Setup" }]}
+                backTo={"/admin"}
+              >
+                <SubscriptionSetup />
+              </DesktopShell>
             </AdminProtectedRoute>
           }
         />
@@ -313,7 +398,14 @@ function App() {
           path="/admin/subscriptions"
           element={
             <AdminProtectedRoute>
-              <SubscriptionControl />
+              <DesktopShell
+                variant="admin"
+                title="Subscriptions"
+                breadcrumbs={[{ label: "Subscriptions" }]}
+                backTo={"/admin"}
+              >
+                <SubscriptionControl />
+              </DesktopShell>
             </AdminProtectedRoute>
           }
         />
@@ -321,7 +413,14 @@ function App() {
           path="/admin/add-hostel"
           element={
             <AdminProtectedRoute>
-              <AddHostel />
+              <DesktopShell
+                variant="admin"
+                title="Add Hostel"
+                breadcrumbs={[{ label: "Add Hostel" }]}
+                backTo={"/admin"}
+              >
+                <AddHostel />
+              </DesktopShell>
             </AdminProtectedRoute>
           }
         />
@@ -329,10 +428,48 @@ function App() {
           path="/admin/hostels"
           element={
             <AdminProtectedRoute>
-              <HostelManagement />
+              <DesktopShell
+                variant="admin"
+                title="Hostel Management"
+                breadcrumbs={[{ label: "Hostel Management" }]}
+                backTo={"/admin"}
+              >
+                <HostelManagement />
+              </DesktopShell>
             </AdminProtectedRoute>
           }
         />
+        <Route
+          path="/admin/profile"
+          element={
+            <AdminProtectedRoute>
+              <DesktopShell
+                variant="admin"
+                title="Profile"
+                breadcrumbs={[{ label: "Profile" }]}
+                backTo={"/admin"}
+              >
+                <AdminProfile />
+              </DesktopShell>
+            </AdminProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/reports"
+          element={
+            <AdminProtectedRoute>
+              <DesktopShell
+                variant="admin"
+                title="Reports"
+                breadcrumbs={[{ label: "Reports" }]}
+                backTo={"/admin"}
+              >
+                <Reports />
+              </DesktopShell>
+            </AdminProtectedRoute>
+          }
+        />
+
 
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
