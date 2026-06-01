@@ -17,6 +17,7 @@ import SubscriptionProgressCard from "../components/SubscriptionProgressCard";
 function Dashboard() {
   const navigate = useNavigate();
 
+
   // STEP 1: subscription state
   const [subscriptionState, setSubscriptionState] = useState(null);
   const [subscriptionLoading, setSubscriptionLoading] = useState(true);
@@ -167,92 +168,25 @@ function Dashboard() {
     <DashboardLayout variant="owner" activePath="/owner/dashboard">
       <div className="mb-6">
         {!subscriptionLoading && subscriptionState && (
-<div className="grid gap-4 lg:grid-cols-[2fr_1fr]">
-            <div className="space-y-4">
-              <SubscriptionBanner
-                status={subscriptionState.status}
-                daysLeft={subscriptionState.daysLeft}
-                warningLevel={subscriptionState.warningLevel}
-                renewalRequired={subscriptionState.renewalRequired}
-              />
-
-              <div className="rounded-[32px] border border-white/10 bg-slate-950/85 p-5 shadow-xl backdrop-blur-xl">
-                <div className="flex flex-wrap items-center justify-between gap-4">
-                  <div>
-                    <p className="text-xs uppercase tracking-[0.35em] text-white/50">
-                      Subscription status
-                    </p>
-                    <h2 className="mt-2 text-2xl font-semibold text-white">
-                      {subscriptionState.status === "trial"
-                        ? "Trial plan"
-                        : subscriptionState.status === "active"
-                          ? "Active plan"
-                          : subscriptionState.status === "expired"
-                            ? "Expired"
-                            : "Subscription"}
-                    </h2>
-                  </div>
-                  <SubscriptionStatusBadge status={subscriptionState.status} />
-                </div>
-
-                <div className="mt-6 grid gap-4 sm:grid-cols-2">
-                  <div className="rounded-3xl border border-white/10 bg-slate-900/50 p-4">
-                    <div className="text-xs uppercase tracking-[0.3em] text-white/50">Plan</div>
-                    <div className="mt-2 text-lg font-semibold text-white">{subscriptionPlan}</div>
-                  </div>
-                  <div className="rounded-3xl border border-white/10 bg-slate-900/50 p-4">
-                    <div className="text-xs uppercase tracking-[0.3em] text-white/50">
-                      Subscription amount
-                    </div>
-                    <div className="mt-2 text-lg font-semibold text-white">
-                      {subscriptionAmount ? `₹${subscriptionAmount}` : "N/A"}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="mt-6 grid gap-4 sm:grid-cols-2">
-                  <div className="rounded-3xl border border-white/10 bg-slate-900/50 p-4">
-                    <div className="text-xs uppercase tracking-[0.3em] text-white/50">Expiry date</div>
-                    <div className="mt-2 text-lg font-semibold text-white">
-                      {subscriptionEndDate || "Not set"}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="mt-6 grid gap-4 sm:grid-cols-2">
-                  <div className="rounded-3xl border border-white/10 bg-slate-900/50 p-4">
-                    <div className="text-xs uppercase tracking-[0.3em] text-white/50">Days left</div>
-                    <div className="mt-2 text-lg font-semibold text-white">
-                      {typeof daysLeft === "number" ? `${daysLeft} days` : "—"}
-                    </div>
-                  </div>
-                  <div className="rounded-3xl border border-white/10 bg-slate-900/50 p-4">
-                    <div className="text-xs uppercase tracking-[0.3em] text-white/50">Status</div>
-                    <div className="mt-2 text-lg font-semibold text-white capitalize">
-                      {subscriptionStatus}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <SubscriptionProgressCard
+          <div className="space-y-4">
+            <SubscriptionBanner
               status={subscriptionState.status}
               daysLeft={subscriptionState.daysLeft}
-              expiryDate={subscriptionState.expiryDate}
+              warningLevel={subscriptionState.warningLevel}
               renewalRequired={subscriptionState.renewalRequired}
             />
           </div>
         )}
       </div>
 
-      <div className="gradient-header mb-6 rounded-[32px] border border-white/10 bg-white/5 p-6 shadow-xl backdrop-blur-xl">
-        <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-          <div className="space-y-3 max-w-3xl">
+      <div className="gradient-header mb-6 rounded-[32px] border border-white/10 bg-white/5 p-5 shadow-xl backdrop-blur-xl">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="space-y-2 max-w-3xl">
             <p className="text-sm text-white/75">Welcome Back, {ownerName} 👋</p>
-            <h1 className="text-3xl font-bold text-white">{hostel?.hostelName || "HostelMate Premium"}</h1>
+            <h1 className="text-2xl lg:text-3xl font-bold text-white">{hostel?.hostelName || "HostelMate Premium"}</h1>
             <p className="text-sm text-white/70">Small improvements every day create big success.</p>
           </div>
+
 
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
             <div className="flex items-center gap-3 rounded-3xl border border-white/10 bg-white/5 p-3">
@@ -297,10 +231,10 @@ function Dashboard() {
       </div>
 
       {/* Stats + Subscription */}
-      <div className="grid gap-6 lg:grid-cols-[2fr_1fr] xl:grid-cols-[2fr_1fr]">
-        {/* Stats */}
+      <div className="grid gap-6 grid-cols-1 xl:grid-cols-[3fr_1fr]">
+        {/* Left: Welcome + Stats */}
         <div className="grid gap-6">
-          <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 xl:grid-cols-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
             <StatCard title="Residents" value={stats.residents} icon={<Users size={24} color="var(--primary)" />} />
             <StatCard title="Rooms" value={stats.rooms} icon={<BedDouble size={24} color="var(--primary)" />} />
             <StatCard title="Occupancy" value={`${stats.occupancyRate}%`} icon={<Users size={24} color="var(--primary)" />} />
@@ -318,12 +252,12 @@ function Dashboard() {
           </div>
         </div>
 
-        {/* Subscription section */}
-        <div className="rounded-3xl border border-white/10 bg-slate-950/90 p-6 shadow-xl backdrop-blur-xl">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        {/* Right: Compact Subscription Summary */}
+        <div className="max-w-sm rounded-3xl border border-white/10 bg-slate-950/90 p-5 shadow-xl backdrop-blur-xl">
+          <div className="flex items-center justify-between gap-4">
             <div>
-              <p className="text-xs uppercase tracking-[0.2em] text-white/50">Subscription Info</p>
-              <h2 className="mt-2 text-lg font-semibold text-white">Current Plan</h2>
+              <p className="text-xs uppercase tracking-[0.2em] text-white/50">Subscription</p>
+              <h2 className="mt-2 text-lg font-semibold text-white">{subscriptionPlan}</h2>
             </div>
             <span
               className={`inline-flex rounded-full px-3 py-2 text-xs font-semibold ${
@@ -348,99 +282,56 @@ function Dashboard() {
             </span>
           </div>
 
-          <div className="mt-5 grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 text-sm text-white/80">
-            <div className="rounded-3xl border border-white/10 bg-slate-900/50 p-4">
-              <p className="text-xs uppercase tracking-[0.24em] text-white/50">Plan Type</p>
-              <p className="mt-2 text-lg font-semibold text-white">{subscriptionPlan}</p>
-            </div>
-            <div className="rounded-3xl border border-white/10 bg-slate-900/50 p-4">
-              <p className="text-xs uppercase tracking-[0.24em] text-white/50">Expiry Date</p>
-              <p className="mt-2 text-lg font-semibold text-white">{subscriptionEndDate || "Not set"}</p>
-            </div>
-          </div>
-
-          <div className="mt-4 grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 text-sm text-white/80">
-            <div className="rounded-3xl border border-white/10 bg-slate-900/50 p-4">
+          <div className="mt-4 grid gap-3">
+            <div className="rounded-2xl border border-white/10 bg-slate-900/50 p-4">
               <p className="text-xs uppercase tracking-[0.24em] text-white/50">Days Left</p>
-              <p className="mt-2 text-lg font-semibold text-white">
+              <p className="mt-2 text-sm font-semibold text-white">
                 {typeof daysLeft === "number" ? `${daysLeft} days` : "—"}
               </p>
             </div>
-            <div className="rounded-3xl border border-white/10 bg-slate-900/50 p-4">
-              <p className="text-xs uppercase tracking-[0.24em] text-white/50">Status</p>
-              <p className="mt-2 text-lg font-semibold text-white capitalize">{subscriptionStatus}</p>
-            </div>
-          </div>
-
-          <div className="mt-5 grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 text-sm text-white/80">
-            <div className="rounded-2xl bg-white/5 p-4">
-              <p className="text-xs text-white/50">Free Access</p>
-              <p className="mt-2 font-semibold text-white">{freeAccess ? "Yes" : "No"}</p>
-            </div>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div className="rounded-2xl bg-white/5 p-4">
-                <p className="text-xs text-white/50">Start Date</p>
-                <p className="mt-2 font-semibold text-white">
-                  {subscriptionStartDate
-                    ? new Date(subscriptionStartDate).toLocaleDateString()
-                    : "N/A"}
-                </p>
-              </div>
-              <div className="rounded-2xl bg-white/5 p-4">
-                <p className="text-xs text-white/50">End Date</p>
-                <p className="mt-2 font-semibold text-white">
-                  {subscriptionEndDate ? new Date(subscriptionEndDate).toLocaleDateString() : "N/A"}
-                </p>
-              </div>
+            <div className="rounded-2xl border border-white/10 bg-slate-900/50 p-4">
+              <p className="text-xs uppercase tracking-[0.24em] text-white/50">Expiry Date</p>
+              <p className="mt-2 text-sm font-semibold text-white">{subscriptionEndDate || "Not set"}</p>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="mt-8 grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+      <div className="mt-8 grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         <ActionButton
-          title="Manage Rooms"
-          subtitle="Beds, occupancy and room status"
+
+          title="Add Room"
+          subtitle="Create a new room"
           icon={<BedDouble size={22} color="var(--primary-dark)" />}
           onClick={() => navigate("/rooms")}
         />
         <ActionButton
-          title="Pending Admissions"
-          subtitle="Review digital admissions from QR"
+          title="Add Resident"
+          subtitle="Register a new resident"
           icon={<Users size={22} color="var(--primary-dark)" />}
           onClick={() => navigate("/admissions")}
         />
         <ActionButton
-          title="Residents"
-          subtitle="View and manage residents"
-          icon={<Users size={22} color="var(--primary-dark)" />}
-          onClick={() => navigate("/residents")}
-        />
-        <ActionButton
-          title="Payments"
-          subtitle="Rent collection and dues"
+          title="Collect Payment"
+          subtitle="Review and collect rent"
           icon={<Wallet size={22} color="var(--primary-dark)" />}
           onClick={() => navigate("/payments")}
         />
         <ActionButton
-          title="Public QR & Link"
-          subtitle="View and share admission QR"
-          icon={<QrIcon />}
-          onClick={() => navigate("/profile")}
-        />
-        <ActionButton
-          title="Staff Management"
-          subtitle="Add wardens and cooks"
-          icon={<ShieldCheck size={22} color="var(--primary-dark)" />}
-          onClick={() => navigate("/staff")}
-        />
-        <ActionButton
-          title="Reports"
+          title="View Reports"
           subtitle="Download reports and analytics"
           icon={<FileText size={22} color="var(--primary-dark)" />}
           onClick={() => navigate("/reports")}
         />
+        <ActionButton
+          title="Profile"
+          subtitle="Manage owner profile"
+          icon={<Users size={22} color="var(--primary-dark)" />}
+          onClick={() => navigate("/owner/profile")}
+        />
       </div>
+
+      {/* Quick actions */}
 
       <BottomNav />
     </DashboardLayout>
