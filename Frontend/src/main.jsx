@@ -4,6 +4,7 @@ import App from "./App";
 import "./index.css";
 import "react-toastify/dist/ReactToastify.css";
 import { ToastContainer } from "react-toastify";
+import { Toaster } from "react-hot-toast";
 import AppUpdateBanner from "./components/AppUpdateBanner";
 
 const SW_UPDATE_LOOP_GUARD_KEY = "sw_update_applied_v1";
@@ -67,6 +68,12 @@ safeRequestSwUpdate();
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
     <ToastContainer position="top-right" autoClose={3000} hideProgressBar newestOnTop closeOnClick />
+    <Toaster
+      position="top-right"
+      toastOptions={{
+        duration: 4000,
+      }}
+    />
     <AppUpdateBanner />
     <App />
   </React.StrictMode>
