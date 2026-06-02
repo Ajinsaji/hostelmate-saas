@@ -38,20 +38,51 @@ function OnboardingFlow() {
 
   // Restore progress from localStorage on mount
   useEffect(() => {
-    const saved = localStorage.getItem("onboardingProgress");
-    if (saved) {
+    const savedRaw = localStorage.getItem("onboardingProgress");
+
+    console.log("[OnboardingFlow] STORED OWNER", storedOwner);
+    console.log("[OnboardingFlow] RAW onboardingProgress", savedRaw);
+    console.log("[OnboardingFlow] USER FLAGS", {
+      firstLogin: storedOwner?.firstLogin,
+      mustChangePassword: storedOwner?.mustChangePassword,
+      passwordChanged: storedOwner?.passwordChanged,
+      rulesConfigured: storedOwner?.rulesConfigured,
+      roomsConfigured: storedOwner?.roomsConfigured,
+      onboardingCompleted: storedOwner?.onboardingCompleted,
+    });
+
+    const isFreshOwner =
+      storedOwner?.firstLogin === true &&
+      storedOwner?.mustChangePassword === true &&
+      storedOwner?.passwordChanged === false &&
+      storedOwner?.rulesConfigured === false &&
+      storedOwner?.roomsConfigured === false &&
+      storedOwner?.onboardingCompleted === false;
+
+    if (isFreshOwner) {
+      console.log("[OnboardingFlow] Fresh owner detected. Ignoring saved onboardingProgress.");
+      console.log("SET CURRENT STEP CALLED", 1, "FROM", currentStep);
+      setCurrentStep(1);
+      setIsHydrated(true);
+      return;
+    }
+
+    if (savedRaw) {
       try {
-        const data = JSON.parse(saved);
-        const restoredStep = Number(data?.currentStep);
-        setCurrentStep(
+        const parsedProgress = JSON.parse(savedRaw);
+        console.log("[OnboardingFlow] RESTORED PROGRESS", parsedProgress);
+
+        const restoredStep = Number(parsedProgress?.currentStep);
+        const nextStep =
           Number.isFinite(restoredStep) && restoredStep >= 1 && restoredStep <= 5
             ? restoredStep
-            : 1
-        );
-        setNewPassword(data?.newPassword || "");
-        setConfirmPassword(data?.confirmPassword || "");
-        setRules(data?.rules || "");
-        setRooms(Array.isArray(data?.rooms) ? data.rooms : []);
+            : 1;
+        console.log("SET CURRENT STEP CALLED", nextStep, "FROM", currentStep);
+        setCurrentStep(nextStep);
+        setNewPassword(parsedProgress?.newPassword || "");
+        setConfirmPassword(parsedProgress?.confirmPassword || "");
+        setRules(parsedProgress?.rules || "");
+        setRooms(Array.isArray(parsedProgress?.rooms) ? parsedProgress.rooms : []);
       } catch {
         // Ignore parse errors
       }
