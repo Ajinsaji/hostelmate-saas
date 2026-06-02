@@ -96,7 +96,7 @@ export default function OnboardingStep3Rules({
               value={rules}
               onChange={(e) => setRules(e.target.value)}
               placeholder="Enter your hostel's rules and regulations..."
-              className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#00b894] resize-none h-40"
+              className="w-full bg-slate-900 text-white placeholder-slate-400 border border-slate-700 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#00b894] resize-none h-40"
             />
           </div>
 

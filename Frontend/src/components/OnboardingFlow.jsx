@@ -239,6 +239,14 @@ function OnboardingFlow() {
   // Step 4: Rooms & Beds
   // ============================================
   const Step4Rooms = () => {
+    useEffect(() => {
+      console.log("[ROOM] COMPONENT MOUNTED");
+      return () => {
+        console.log("[ROOM] COMPONENT UNMOUNTED");
+      };
+    }, []);
+
+    console.log("[ROOM] COMPONENT RENDER");
     const addRoom = () => {
       if (!roomName.trim()) {
         toast.error("Enter room name");
@@ -314,14 +322,22 @@ function OnboardingFlow() {
                 <input
                   type="text"
                   value={roomName}
-                  onChange={(e) => setRoomName(e.target.value)}
+                  onChange={(e) => {
+                    console.log("[ROOM] NAME CHANGE", e.target.value);
+                    console.log("[ROOM] setRoomName called");
+                    setRoomName(e.target.value);
+                  }}
                   placeholder="Room name (e.g., Room A)"
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#00b894] mb-3"
                 />
                 <input
                   type="number"
                   value={bedCount}
-                  onChange={(e) => setBedCount(e.target.value)}
+                  onChange={(e) => {
+                    console.log("[ROOM] BED CHANGE", e.target.value);
+                    console.log("[ROOM] setBedCount called");
+                    setBedCount(e.target.value);
+                  }}
                   placeholder="Bed count"
                   min="1"
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#00b894]"
