@@ -16,6 +16,8 @@ const PublicAdmission = require("../models/PublicAdmission");
 
 const { generateQRCode } = require('../utils/qrCodeService');
 const { sendApprovalMessages } = require('../utils/messageService');
+const mongoose = require("mongoose");
+
 
 
 
@@ -1047,6 +1049,56 @@ const changeAdminPassword = async (req, res) => {
 // ==========================
 // Module.exports
 // ==========================
+// ==========================
+// SYSTEM HEALTH
+// ==========================
+
+const getSystemHealth = async (req, res) => {
+  try {
+    const stats = await mongoose.connection.db.stats();
+
+    const mb2 = (bytesOrNumber) => {
+      const n = Number(bytesOrNumber ?? 0);
+      if (!Number.isFinite(n)) return "0";
+      return (n / (1024 * 1024)).toFixed(2);
+    };
+
+    const dataSizeMB = mb2(stats?.dataSize);
+    const storageSizeMB = mb2(stats?.storageSize);
+
+    const [totalHostels, totalOwners, totalResidents, totalRooms, totalPayments] =
+      await Promise.all([
+        Hostel.countDocuments(),
+        Owner.countDocuments(),
+        Resident.countDocuments(),
+        Room.countDocuments(),
+        Payment.countDocuments(),
+      ]);
+
+    res.status(200).json({
+      dataSizeMB,
+      storageSizeMB,
+      collections: stats?.collections ?? 0,
+      objects: stats?.objects ?? 0,
+      totalHostels,
+      totalOwners,
+      totalResidents,
+      totalRooms,
+      totalPayments,
+    });
+  } catch (error) {
+    console.error("getSystemHealth error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to load system health",
+      error: error?.message || String(error),
+    });
+  }
+};
+
+// ==========================
+// Module.exports
+// ==========================
 module.exports = {
 
   getDashboardStats,
@@ -1080,4 +1132,7 @@ module.exports = {
   finalizeHostelActivation,
 
   changeAdminPassword,
+
+  getSystemHealth,
 };
+

@@ -23,7 +23,9 @@ const {
   updateAdminProfile,
   finalizeHostelActivation,
   changeAdminPassword,
+  getSystemHealth,
 } = require("../controllers/adminController");
+
 
 const { uploadFields } = require("../middleware/cloudinaryUpload");
 
@@ -34,10 +36,17 @@ const { uploadFields } = require("../middleware/cloudinaryUpload");
 router.get("/dashboard", getDashboardStats);
 
 // ==========================
+// SYSTEM HEALTH
+// ==========================
+
+router.get("/system-health", getSystemHealth);
+
+// ==========================
 // REQUESTS
 // ==========================
 
 router.get("/requests", getAllRequests);
+
 
 router.put("/approve/:id", approveHostel);
 

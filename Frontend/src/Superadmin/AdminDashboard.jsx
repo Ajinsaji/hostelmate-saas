@@ -11,6 +11,21 @@ function AdminDashboard() {
   const navigate = useNavigate();
   const [stats, setStats] = useState({ pendingHostels: 0, activeHostels: 0, revenue: 0 });
 
+  const [systemHealth, setSystemHealth] = useState({
+    dataSizeMB: "0.00",
+    storageSizeMB: "0.00",
+    collections: 0,
+    objects: 0,
+    totalHostels: 0,
+    totalOwners: 0,
+    totalResidents: 0,
+    totalRooms: 0,
+    totalPayments: 0,
+  });
+  const [systemHealthLoading, setSystemHealthLoading] = useState(false);
+  const [systemHealthError, setSystemHealthError] = useState(null);
+
+
   const fetchStats = async () => {
     try {
       const response = await api.get("/api/admin/dashboard");
@@ -23,6 +38,27 @@ function AdminDashboard() {
   };
 
   useGlobalPolling(fetchStats, { interval: 8000 });
+
+  const fetchSystemHealth = async () => {
+    setSystemHealthLoading(true);
+    setSystemHealthError(null);
+    try {
+      const response = await api.get("/api/admin/system-health");
+      if (response.data) {
+        setSystemHealth(response.data);
+      }
+    } catch (error) {
+      const message = error?.response?.data?.message || "Failed to load system health.";
+      setSystemHealthError(message);
+      toast.error(message);
+    } finally {
+      setSystemHealthLoading(false);
+    }
+  };
+
+  // Fetch once on mount; stats already poll.
+  useGlobalPolling(fetchSystemHealth, { interval: 60000, immediate: true });
+
 
   return (
     <div className="pb-24" style={{ minHeight: "100vh" }}>
@@ -79,6 +115,7 @@ function AdminDashboard() {
       <div className="w-full px-4 sm:px-6 lg:px-8 pb-24">
         {/* STATS */}
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+
           <StatCard title="Hostels" value={stats.activeHostels} icon={<BedDouble size={24} color="var(--primary)" />} />
           <StatCard title="Pending" value={stats.pendingHostels} icon={<Users size={24} color="var(--primary)" />} />
         </div>
@@ -93,8 +130,109 @@ function AdminDashboard() {
           <p style={{ color: "rgba(0,0,0,0.5)", fontSize: "14px" }}>This Month</p>
         </div>
 
+        {/* SYSTEM HEALTH */}
+        <div className="card" style={{ padding: "18px 16px", marginBottom: "16px" }}>
+          <h2 className="text-h2" style={{ color: "var(--text-main)", marginBottom: "12px" }}>
+            System Health
+          </h2>
+
+          {systemHealthLoading ? (
+            <div style={{ color: "rgba(255,255,255,0.7)" }}>Loading system health...</div>
+          ) : systemHealthError ? (
+            <div style={{ color: "#ff6b6b" }}>{systemHealthError}</div>
+          ) : (
+            <>
+              {/* Desktop: 3 cols, Mobile: 1 col */}
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                <div className="glass-card" style={{ padding: "14px" }}>
+                  <div className="mb-3">
+                    <p className="text-small" style={{ marginBottom: 0, opacity: 0.9 }}>
+                      Database Size
+                    </p>
+                    <p style={{ fontSize: "22px", fontWeight: 800, color: "var(--text-main)" }}>
+                      {Number(systemHealth.dataSizeMB).toFixed(2)} MB
+                    </p>
+                  </div>
+
+                  <div className="mb-3">
+                    <p className="text-small" style={{ marginBottom: 0, opacity: 0.9 }}>
+                      Storage Used
+                    </p>
+                    <p style={{ fontSize: "22px", fontWeight: 800, color: "var(--text-main)" }}>
+                      {Number(systemHealth.storageSizeMB).toFixed(2)} MB
+                    </p>
+                  </div>
+
+                  <div className="flex justify-between gap-3">
+                    <div>
+                      <p className="text-small" style={{ marginBottom: 0, opacity: 0.9 }}>
+                        Collections
+                      </p>
+                      <p style={{ fontSize: "18px", fontWeight: 800, color: "var(--text-main)" }}>
+                        {systemHealth.collections ?? 0}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-small" style={{ marginBottom: 0, opacity: 0.9 }}>
+                        Documents
+                      </p>
+                      <p style={{ fontSize: "18px", fontWeight: 800, color: "var(--text-main)" }}>
+                        {systemHealth.objects ?? 0}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="glass-card" style={{ padding: "14px" }}>
+                  <h3 className="text-h3" style={{ color: "var(--text-main)", marginBottom: "10px" }}>
+                    Business Stats
+                  </h3>
+                  <MetricLine label="Total Hostels" value={systemHealth.totalHostels ?? 0} />
+                  <MetricLine label="Total Owners" value={systemHealth.totalOwners ?? 0} />
+                  <MetricLine label="Total Residents" value={systemHealth.totalResidents ?? 0} />
+                  <MetricLine label="Total Rooms" value={systemHealth.totalRooms ?? 0} />
+                  <MetricLine label="Total Payments" value={systemHealth.totalPayments ?? 0} />
+                </div>
+
+                <div className="glass-card" style={{ padding: "14px" }}>
+                  {(() => {
+                    const limitMB = 512;
+                    const storageMB = Number(systemHealth.storageSizeMB ?? 0);
+                    const usagePercent = limitMB > 0 ? (storageMB / limitMB) * 100 : 0;
+                    const pct = Math.max(0, usagePercent);
+
+                    const color = pct < 70 ? "#22c55e" : pct <= 90 ? "#f59e0b" : "#ef4444";
+                    const barBg = "rgba(255,255,255,0.15)";
+
+                    return (
+                      <>
+                        <h3 className="text-h3" style={{ color: "var(--text-main)", marginBottom: "10px" }}>
+                          Storage Usage
+                        </h3>
+                        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px" }}>
+                          <p className="text-small" style={{ margin: 0, opacity: 0.9 }}>
+                            {storageMB.toFixed(0)} MB / {limitMB} MB
+                          </p>
+                          <p className="text-small" style={{ margin: 0, color }}>
+                            {pct.toFixed(0)}%
+                          </p>
+                        </div>
+
+                        <div style={{ height: "10px", background: barBg, borderRadius: "999px", overflow: "hidden" }}>
+                          <div style={{ width: `${Math.min(100, pct)}%`, height: "100%", background: color }} />
+                        </div>
+                      </>
+                    );
+                  })()}
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+
         {/* QUICK ACTIONS */}
         <div className="card">
+
           <h2 className="text-h2 mb-4" style={{ color: "var(--text-main)" }}>Quick Access</h2>
           <ActionButton
             title="Pending Requests"
@@ -134,7 +272,19 @@ function AdminDashboard() {
   );
 }
 
+function MetricLine({ label, value }) {
+  return (
+    <div style={{ display: "flex", justifyContent: "space-between", gap: "12px", marginBottom: "10px" }}>
+      <p className="text-small" style={{ margin: 0, opacity: 0.9 }}>
+        {label}
+      </p>
+      <p style={{ margin: 0, fontWeight: 800, color: "var(--text-main)" }}>{value}</p>
+    </div>
+  );
+}
+
 function StatCard({ title, value, icon }) {
+
   return (
     <div className="card" style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
       <div
