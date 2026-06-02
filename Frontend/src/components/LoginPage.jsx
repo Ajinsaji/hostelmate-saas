@@ -20,11 +20,11 @@ function LoginPage() {
     }
 
     if (!username?.trim()) {
-      toast.error("Enter email, phone or username");
+      toast.error("⚠️ Enter your phone number");
       return;
     }
     if (!password) {
-      toast.error("Enter password");
+      toast.error("⚠️ Enter your password");
       return;
     }
 
@@ -85,22 +85,31 @@ function LoginPage() {
       navigate(targetRoute, { replace: true });
       } else {
         const serverMessage = response.data?.message || "";
-        if (/owner not found|account not found|provide email|provide phone|provide username/i.test(serverMessage)) {
-          toast.error("Account not found");
-        } else if (/invalid credentials|password/i.test(serverMessage)) {
-          toast.error("Invalid password");
+      if (/owner not found|account not found|provide email|provide phone|provide username/i.test(serverMessage)) {
+          toast.error("❌ Account Not Found\nNo account exists with this phone number/email.");
+        } else if (/invalid credentials|invalid password|incorrect password|password match false|password/i.test(serverMessage)) {
+          toast.error("❌ Incorrect Password\nThe password you entered is incorrect.");
+        } else if (/pending|activation pending|approved but not yet activated|not yet activated/i.test(serverMessage)) {
+          toast("🟡 Hostel Activation Pending", {
+            icon: "🟡",
+          });
+          toast.error("🟡 Hostel Activation Pending\nYour hostel has been approved but not yet activated by the administrator.");
         } else {
-          toast.error("Unable to login");
+          toast.error("❌ Server Error\nSomething went wrong. Please try again later.");
         }
       }
     } catch (error) {
       const message = error?.response?.data?.message || error?.response?.data?.details || "Unable to login";
-      if (/owner not found|account not found/i.test(message)) {
-        toast.error("Account not found");
-      } else if (/invalid credentials|password/i.test(message)) {
-        toast.error("Invalid password");
+      if (/owner not found|account not found|user not found/i.test(message)) {
+        toast.error("❌ Account Not Found\nNo account exists with this phone number/email.");
+      } else if (/invalid credentials|invalid password|incorrect password|password match false|password/i.test(message)) {
+        toast.error("❌ Incorrect Password\nThe password you entered is incorrect.");
+      } else if (/pending|activation pending|approved but not yet activated|not yet activated/i.test(message)) {
+        toast.error("🟡 Hostel Activation Pending\nYour hostel has been approved but not yet activated by the administrator.");
+      } else if (/disabled|suspended/i.test(message)) {
+        toast.error("❌ Account Disabled\nPlease contact support.");
       } else {
-        toast.error("Unable to login");
+        toast.error("❌ Server Error\nSomething went wrong. Please try again later.");
       }
     } finally {
       setLoading(false);
