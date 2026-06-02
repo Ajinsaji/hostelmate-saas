@@ -86,6 +86,7 @@ export const clearOwnerAuth = () => {
     localStorage.removeItem(OWNER_USER_KEY);
     localStorage.removeItem("token");
     localStorage.removeItem("user");
+    localStorage.removeItem("onboardingProgress");
   } catch {
     // ignore
   }

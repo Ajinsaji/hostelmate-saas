@@ -5,7 +5,7 @@ import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import { api } from "../services/api";
 import useOwnerRealtimeSync from "../hooks/useOwnerRealtimeSync";
-
+import { clearOwnerAuth } from "../utils/authToken";
 import buildQrUrl from "../utils/buildQrUrl";
 
 
@@ -98,8 +98,7 @@ function Profile() {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem("ownerToken");
-    localStorage.removeItem("ownerUser");
+    clearOwnerAuth();
     toast.success("Logged out successfully");
     navigate("/login");
   };
