@@ -441,7 +441,9 @@ const getAllHostels = async (req, res) => {
         pincode: hostel.pincode || "",
         description: hostel.description || "",
         createdAt: hostel.createdAt || null,
-        approvalStatus: hostel.approvalStatus || hostel.status || "approved",
+        approvalStatus: hostel.pendingActivation === true
+          ? "activation_pending"
+          : hostel.approvalStatus || hostel.status || "approved",
         subscriptionStatus:
           (subscription && subscription.subscriptionStatus) ||
           hostel.subscriptionStatus ||

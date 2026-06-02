@@ -248,7 +248,9 @@ function HostelManagement() {
   const selectedHostelType = selectedHostel?.hostelType || selectedHostel?.type || selectedHostel?.category || "N/A";
   const selectedHostelState = selectedHostel?.state || "N/A";
   const selectedHostelPlace = selectedHostel?.city || selectedHostel?.place || selectedHostel?.location || "N/A";
-  const selectedHostelStatus = selectedHostel?.approvalStatus || selectedHostel?.status || (selectedHostel?.isApproved ? "approved" : "pending") || "Unknown";
+  const selectedHostelStatus = selectedHostel?.pendingActivation === true
+    ? "activation_pending"
+    : selectedHostel?.approvalStatus || selectedHostel?.status || (selectedHostel?.isApproved ? "approved" : "pending") || "Unknown";
   const selectedHostelSubscription = selectedHostel?.isTrial ? "trial" : selectedHostel?.subscriptionStatus || "Unknown";
   const selectedHostelCreatedDate = selectedHostel?.createdAt || selectedHostel?.createdOn || selectedHostel?.createdDate || "";
   const selectedHostelCreatedLabel = selectedHostelCreatedDate ? new Date(selectedHostelCreatedDate).toLocaleDateString() : "N/A";
@@ -591,9 +593,22 @@ This action cannot be undone.
                   <p className="text-sm text-muted mt-1">{selectedHostel.description || "No description provided."}</p>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  <span className="px-3 py-1 rounded-full text-[11px] uppercase font-semibold" style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.10)", color: "#fff" }}>
-                    Approval: {selectedHostelStatus}
-                  </span>
+                  {selectedHostel?.pendingActivation === true ? (
+                    <span
+                      className="px-3 py-1 rounded-full text-[11px] uppercase font-semibold"
+                      style={{
+                        background: "rgba(254,249,195,0.10)",
+                        border: "1px solid rgba(234,179,8,0.25)",
+                        color: "#854d0e",
+                      }}
+                    >
+                      🟡 Activation Pending
+                    </span>
+                  ) : (
+                    <span className="px-3 py-1 rounded-full text-[11px] uppercase font-semibold" style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.10)", color: "#fff" }}>
+                      Approval: {selectedHostelStatus}
+                    </span>
+                  )}
                   <span className="px-3 py-1 rounded-full text-[11px] uppercase font-semibold" style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.10)", color: "#fff" }}>
                     Subscription: {selectedHostelSubscription}
                   </span>

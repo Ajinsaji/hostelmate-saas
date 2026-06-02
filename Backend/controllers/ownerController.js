@@ -122,6 +122,14 @@ const loginOwner = async (req, res) => {
         });
       }
 
+      if (hostel?.pendingActivation) {
+        return res.status(403).json({
+          success: false,
+          message: "Hostel activation pending. Contact administrator.",
+        });
+      }
+
+
       userRole = "owner";
       userId = owner._id;
       hostelId = hostel._id;
