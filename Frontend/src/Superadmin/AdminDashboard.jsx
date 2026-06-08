@@ -114,7 +114,12 @@ function AdminDashboard() {
 
       <div className="w-full px-4 sm:px-6 lg:px-8 pb-24">
         {/* STATS */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+        <div
+          className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4"
+          onClick={() => {
+            console.log("[GRID CLICK]");
+          }}
+        >
 
           <StatCard
             title="Hostels"
@@ -299,7 +304,13 @@ function StatCard({ title, value, icon, onClick }) {
     <div
       className="card cursor-pointer hover:scale-[1.02] transition-all"
       style={{ display: "flex", flexDirection: "column", gap: "8px" }}
-      onClick={onClick}
+      onMouseDown={() => {
+        console.log("[STAT CARD MOUSEDOWN]", title);
+      }}
+      onClick={() => {
+        console.log("[STAT CARD CLICK]", title);
+        onClick?.();
+      }}
     >
 
       <div
