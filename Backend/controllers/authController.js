@@ -5,12 +5,27 @@ const loginAdmin = async (req, res) => {
   try {
     const { username, email, password } = req.body;
 
+    console.log("========== ADMIN LOGIN ATTEMPT ==========");
+    console.log("USERNAME:", username);
+    console.log("EMAIL:", email);
+
     // Find admin by username OR email (do not include password in the query)
     const admin = await Admin.findOne({
       $or: [{ username }, { email }],
     });
 
+    console.log("ADMIN FOUND:", admin ? {
+      id: admin._id,
+      username: admin.username,
+      email: admin.email,
+      role: admin.role
+    } : null);
+
+    console.log("PASSWORD HASH EXISTS:", !!admin?.password);
+
     if (!admin) {
+      console.log("INVALID CREDENTIALS REASON");
+      console.log("REASON: ADMIN NOT FOUND");
       return res.status(400).json({
         success: false,
         message: "Invalid Credentials",
@@ -33,7 +48,13 @@ const loginAdmin = async (req, res) => {
       isMatch = password === storedPassword;
     }
 
+    console.log("PASSWORD MATCH:", isMatch);
+
     if (!isMatch) {
+      console.log("INVALID CREDENTIALS REASON");
+      if (admin && !isMatch) {
+        console.log("REASON: PASSWORD MISMATCH");
+      }
       return res.status(400).json({
         success: false,
         message: "Invalid Credentials",

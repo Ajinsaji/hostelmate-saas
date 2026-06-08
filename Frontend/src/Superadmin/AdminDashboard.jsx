@@ -116,8 +116,18 @@ function AdminDashboard() {
         {/* STATS */}
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
 
-          <StatCard title="Hostels" value={stats.activeHostels} icon={<BedDouble size={24} color="var(--primary)" />} />
-          <StatCard title="Pending" value={stats.pendingHostels} icon={<Users size={24} color="var(--primary)" />} />
+          <StatCard
+            title="Hostels"
+            value={stats.activeHostels}
+            icon={<BedDouble size={24} color="var(--primary)" />}
+            onClick={() => navigate("/admin/hostels")}
+          />
+          <StatCard
+            title="Pending"
+            value={stats.pendingHostels}
+            icon={<Users size={24} color="var(--primary)" />}
+            onClick={() => navigate("/admin/pending-requests")}
+          />
         </div>
 
 
@@ -283,10 +293,15 @@ function MetricLine({ label, value }) {
   );
 }
 
-function StatCard({ title, value, icon }) {
+function StatCard({ title, value, icon, onClick }) {
 
   return (
-    <div className="card" style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+    <div
+      className="card cursor-pointer hover:scale-[1.02] transition-all"
+      style={{ display: "flex", flexDirection: "column", gap: "8px" }}
+      onClick={onClick}
+    >
+
       <div
         style={{
           width: "40px",

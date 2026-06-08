@@ -1,16 +1,11 @@
-# HostelMate - Activation Pending Fix (No Business Logic Changes)
+# TODO - Onboarding resume bug (per-owner progress)
 
-## Plan checkpoints
-- [ ] Understand current status mapping in backend/adminController.getAllHostels
-- [ ] Understand frontend status badge logic in Frontend/src/Superadmin/HostelManagement.jsx
-- [ ] Understand owner login flow in backend/controllers/ownerController.js (loginOwner)
+- [ ] Inspect existing onboarding progress logic in Frontend/src/components/OnboardingFlow.jsx
+- [ ] Implement per-owner localStorage progress under onboardingProgressV2
+- [ ] Restore progress only when stored ownerId matches current logged-in owner
+- [ ] Preserve existing stale-progress protection for fresh owners
+- [ ] Keep legacy onboardingProgress cleanup on completion (and during owner change if needed)
+- [ ] Add debug logs for restore/mismatch
+- [x] Build: `cd hostelmate-saas/Frontend && npm run build`
 
-## Implemented changes
-- [ ] Backend: getAllHostels approvalStatus => activation_pending when pendingActivation === true
-- [ ] Frontend: HostelManagement badges => show 🟡 Activation Pending when pendingActivation === true (draft only)
-- [ ] Backend: owner loginOwner => 403 if hostel.pendingActivation is true
-
-## Validation
-- [ ] Run: cd hostelmate-saas/Frontend && npm run build
-- [ ] Report modified files + exact code changes + build result
 
