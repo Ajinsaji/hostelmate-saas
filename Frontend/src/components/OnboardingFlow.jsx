@@ -171,7 +171,7 @@ function OnboardingFlow() {
             <button
               type="button"
               onClick={() => navigate("/owner/login")}
-              className="absolute top-4 left-4 inline-flex items-center gap-2 text-[#001a4d] font-semibold px-2 py-1 rounded-lg hover:bg-black/5 transition-colors"
+              className="mb-4 inline-flex items-center gap-2 text-[#001a4d] font-semibold px-2 py-1 rounded-lg hover:bg-black/5 transition-colors"
               aria-label="Back to Owner Login"
               title="Back"
             >
