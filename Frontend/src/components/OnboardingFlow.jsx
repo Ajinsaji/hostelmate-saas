@@ -167,7 +167,18 @@ function OnboardingFlow() {
     return (
       <div className="min-h-screen bg-gradient-to-b from-[#001a4d] to-[#003d7a] flex items-center justify-center p-4">
         <div className="w-full max-w-md">
-          <div className="bg-white rounded-2xl shadow-2xl p-8 text-center">
+          <div className="bg-white rounded-2xl shadow-2xl p-8 text-center relative">
+            <button
+              type="button"
+              onClick={() => navigate("/owner/login")}
+              className="absolute top-4 left-4 inline-flex items-center gap-2 text-[#001a4d] font-semibold px-2 py-1 rounded-lg hover:bg-black/5 transition-colors"
+              aria-label="Back to Owner Login"
+              title="Back"
+            >
+              <span className="text-xl leading-none">←</span>
+              <span className="text-sm">Back</span>
+            </button>
+
             {/* Logo Area */}
             <div className="mb-8">
               <div className="w-20 h-20 bg-gradient-to-br from-[#001a4d] to-[#00b894] rounded-full flex items-center justify-center mx-auto">
