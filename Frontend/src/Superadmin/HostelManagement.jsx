@@ -73,6 +73,8 @@ function HostelManagement() {
     const ownerEmail = owner?.email ?? raw?.ownerEmail ?? raw?.email ?? "N/A";
     const ownerUsername = owner?.username ?? raw?.username ?? (phone || "N/A");
 
+    const ownerId = raw?.ownerId ?? owner?._id ?? raw?.owner?._id;
+
     return {
       ...raw,
       hostelId,

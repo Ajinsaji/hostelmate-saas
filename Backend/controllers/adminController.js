@@ -480,6 +480,14 @@ const getAllHostels = async (req, res) => {
 const resendWhatsApp = async (req, res) => {
   try {
     const { ownerId } = req.params;
+
+    if (!ownerId) {
+      return res.status(400).json({
+        success: false,
+        message: "Owner ID is required",
+      });
+    }
+
     const owner = await Owner.findById(ownerId).populate("hostelId");
     if (!owner) return res.status(404).json({ success: false, message: "Owner not found" });
 
