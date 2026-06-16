@@ -783,6 +783,10 @@ const addHostel = async (req, res) => {
       qrCodeUrl: qrResult.url,
       isPublic: true,
 
+      // Admin-created hostels must be immediately login-able.
+      // NOTE: loginOwner() gates on hostel.pendingActivation.
+      pendingActivation: false,
+
       subscriptionStatus: subPayload.subscriptionStatus || "trial",
       planType: subPayload.planType || "Basic",
       subscriptionStartDate: subPayload.subscriptionStartDate,
@@ -790,6 +794,7 @@ const addHostel = async (req, res) => {
       isFreeAccess: Boolean(subPayload.isFreeAccess),
       licensePhoto: licensePhotoFileName,
     });
+
 
     // Create owner
     const owner = await Owner.create({
