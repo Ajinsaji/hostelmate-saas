@@ -528,9 +528,16 @@ const resetOwnerTempPassword = async (req, res) => {
     if (!owner) return res.status(404).json({ success: false, message: "Owner not found" });
 
     const newTempPassword = "Temp@" + Math.floor(1000 + Math.random() * 9000);
-    owner.password = newTempPassword;
+
+    // Store bcrypt hash in `password` (temporary password remains plaintext in `tempPassword`).
+    // TODO(migration): remove plaintext login fallback after legacy owners are migrated.
+    const bcryptjs = require("bcryptjs");
+    const hashedPassword = await bcryptjs.hash(newTempPassword, 10);
+
+    owner.password = hashedPassword;
     owner.tempPassword = newTempPassword;
     await owner.save();
+
 
     res.status(200).json({ success: true, message: "Password reset successfully", tempPassword: newTempPassword });
   } catch (error) {
@@ -727,6 +734,12 @@ const addHostel = async (req, res) => {
 
     const ownerPassword = req.body.ownerPassword || "123456";
 
+    // TODO(migration): password plaintext fallback exists for legacy owners.
+    // Newly created owners should always use bcrypt for `Owner.password`.
+    const bcryptjs = require("bcryptjs");
+    const hashedOwnerPassword = await bcryptjs.hash(ownerPassword, 10);
+
+
     // ==========================
     // GENERATE PUBLIC URL + QR (match approveHostel)
     // ==========================
@@ -783,12 +796,14 @@ const addHostel = async (req, res) => {
       hostelId: hostel._id,
       ownerName,
       phone,
-      password: ownerPassword,
+      // Store bcrypt hash in `password`. tempPassword remains plaintext.
+      password: hashedOwnerPassword,
       tempPassword: ownerPassword,
       profileImage: ownerPhotoFileName || "",
       role: "owner",
       status: "active",
     });
+
 
     // Create subscription
     const subscriptionDoc = await Subscription.create({
