@@ -379,6 +379,42 @@ const rejectRequest =
 
 
 // ==========================
+// GET PENDING HOSTELS (activation pending)
+// ==========================
+
+const getPendingHostels = async (req, res) => {
+  try {
+    const hostels = await Hostel.find({ pendingActivation: true }).lean();
+
+    const result = [];
+
+    for (const hostel of hostels || []) {
+      const hostelRequest = await HostelRequest.findOne({ hostelId: hostel._id }).lean();
+
+      result.push({
+        hostelId: hostel._id,
+        ...hostel,
+        hostelRequest: {
+          hostelName: hostelRequest?.hostelName || "",
+          ownerName: hostelRequest?.ownerName || "",
+          phone: hostelRequest?.phone || "",
+          hostelType: hostelRequest?.hostelType || "",
+          state: hostelRequest?.state || "",
+          district: hostelRequest?.district || "",
+          city: hostelRequest?.city || "",
+          pincode: hostelRequest?.pincode || "",
+        },
+      });
+    }
+
+    return res.status(200).json({ success: true, hostels: result });
+  } catch (error) {
+    console.error("Error fetching pending hostels:", error);
+    return res.status(500).json({ success: false, message: "Failed to fetch pending hostels" });
+  }
+};
+
+// ==========================
 // GET ALL HOSTELS
 // ==========================
 
@@ -1179,6 +1215,8 @@ module.exports = {
   rejectRequest,
 
   getAllHostels,
+
+  getPendingHostels,
 
   deleteHostel,
 

@@ -12,6 +12,7 @@ const {
   approveHostel,
   rejectRequest,
   getAllHostels,
+  getPendingHostels,
   deleteHostel,
   updateSubscription,
   getSubscriptions,
@@ -63,6 +64,8 @@ router.post(
 // ==========================
 
 router.get("/hostels", getAllHostels);
+
+router.get("/pending-hostels", getPendingHostels);
 
 router.delete("/hostels/delete/:id", deleteHostel);
 

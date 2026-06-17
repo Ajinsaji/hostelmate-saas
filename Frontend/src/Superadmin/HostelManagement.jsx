@@ -25,6 +25,8 @@ import HostelEditModal from "./HostelEditModal";
 
 function HostelManagement() {
   const [hostels, setHostels] = useState([]);
+  const [pendingHostels, setPendingHostels] = useState([]);
+
   const [searchQuery, setSearchQuery] = useState("");
   const [searchFocused, setSearchFocused] = useState(false);
   const [filter, setFilter] = useState("all");
@@ -42,7 +44,6 @@ function HostelManagement() {
 
     const phone = raw?.phone ?? raw?.owner?.phone ?? raw?.ownerPhone ?? raw?.mobile ?? raw?.hostelRequest?.phone ?? "";
 
-
     const ownerName =
       raw?.ownerName ??
       raw?.owner?.name ??
@@ -58,7 +59,6 @@ function HostelManagement() {
     const qrCodeUrl = raw?.qrCodeUrl ?? raw?.qrUrl ?? raw?.qr ?? raw?.qrCode ?? "";
 
     const tempPassword = raw?.tempPassword ?? raw?.temporaryPassword ?? raw?.password ?? "";
-
 
     const occupancy = raw?.occupancy ?? {};
     const totalRooms = occupancy?.totalRooms ?? raw?.totalRooms ?? 0;
@@ -100,6 +100,9 @@ function HostelManagement() {
       ownerEmail,
       username: ownerUsername,
       owner: raw?.owner ?? owner,
+
+      // Explicitly expose pending applicant fields so modals can show them.
+      pendingHostelRequest: raw?.hostelRequest,
     };
   };
 
@@ -136,6 +139,26 @@ function HostelManagement() {
     }
   };
 
+  const fetchPendingHostels = async ({ silent = false } = {}) => {
+    try {
+      if (!silent) setIsLoading(true);
+
+      const response = await api.get("/api/admin/pending-hostels");
+      setPendingHostels((response.data.hostels || []).map(normalizeHostel));
+    } catch (error) {
+      if (!silent) {
+        toast.error("Failed to load pending hostels");
+      } else {
+        console.warn(
+          "Pending hostel list refresh skipped or failed",
+          error?.message || error
+        );
+      }
+    } finally {
+      if (!silent) setIsLoading(false);
+    }
+  };
+
   const safeRefreshProps = {
     isEditing: !!selectedHostel,
     showModal: confirmModal.isOpen,
@@ -145,6 +168,11 @@ function HostelManagement() {
   };
 
   useGlobalPolling(fetchHostels, { interval: 8000, safeProps: safeRefreshProps });
+  useGlobalPolling(fetchPendingHostels, {
+    interval: 8000,
+    safeProps: safeRefreshProps,
+  });
+
 
   const handleCopy = (text, type = "Copied") => {
     if (!text) return;
@@ -221,7 +249,13 @@ function HostelManagement() {
   };
 
   const filteredHostels = useMemo(() => {
-    return hostels.filter((h) => {
+    // This screen must show activation-pending hostels when the selected item is pending.
+    // Data sources:
+    // - Activated: GET /api/admin/hostels
+    // - Pending: GET /api/admin/pending-hostels
+    const list = selectedHostel?.pendingActivation === true ? pendingHostels : hostels;
+
+    return (list || []).filter((h) => {
       const matchesSearch =
         (h.hostelName || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
         (h.phone || "").toString().includes(searchQuery);
