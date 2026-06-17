@@ -26,6 +26,8 @@ import HostelSettings from "./owner/HostelSettings";
 import OwnerProfileEdit from "./owner/OwnerProfileEdit";
 import UpdatePassword from "./owner/UpdatePassword";
 import SubscriptionExpired from "./pages/SubscriptionExpired";
+import RequestStatus from "./pages/RequestStatus";
+
 
 import StaffManagement from "./owner/StaffManagement";
 
@@ -152,8 +154,10 @@ function App() {
             <Route path="/" element={<LandingPage />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
+            <Route path="/request-status" element={<RequestStatus />} />
           </>
         )}
+
 
         {/* Owner Onboarding */}
         <Route path="/ownerAction" element={<OnboardingFlow />} />

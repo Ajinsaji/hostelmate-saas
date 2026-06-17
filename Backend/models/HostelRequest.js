@@ -36,16 +36,14 @@ const hostelRequestSchema = new mongoose.Schema(
     status: {
       type: String,
       // Canonical values across the whole system:
-      // pending | activation_pending | approved | rejected
+      // pending | activation_pending | approved | activated | rejected
       default: "pending",
       lowercase: true,
-      enum: ["pending", "activation_pending", "approved", "rejected"],
+      enum: ["pending", "activation_pending", "approved", "activated", "rejected"],
     },
   },
   { timestamps: true }
 );
 
-module.exports = mongoose.model(
-  "HostelRequest",
-  hostelRequestSchema
-);
+module.exports = mongoose.model("HostelRequest", hostelRequestSchema);
+

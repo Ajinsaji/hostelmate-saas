@@ -27,20 +27,25 @@ const createRequest = async (req, res) => {
       });
     }
 
-    // CHECK EXISTING REQUEST
-    const existingRequest =
-      await HostelRequest.findOne({
-        phone,
-      });
+    // CHECK EXISTING REQUEST (duplicate prevention)
+    const existingRequest = await HostelRequest.findOne({
+      phone,
+      status: {
+        $in: ["pending", "approved", "activation_pending", "activated"],
+      },
+    });
 
     if (existingRequest) {
       return res.status(400).json({
         success: false,
-        message:
-          "Application already submitted",
+        alreadyExists: true,
         status: existingRequest.status,
+        hostelName: existingRequest.hostelName,
+        requestId: existingRequest._id,
+        message: "A request already exists for this phone number.",
       });
     }
+
 
     // CREATE REQUEST
     // Also ensure uploads directory exists.
@@ -104,9 +109,9 @@ const createRequest = async (req, res) => {
 
     res.status(201).json({
       success: true,
-      message:
-        "Application Submitted",
+      message: "Application Submitted",
       request,
+      requestId: request?._id || request?.id,
     });
   } catch (error) {
     console.error("CREATE REQUEST ERROR:", error);
@@ -120,41 +125,41 @@ const createRequest = async (req, res) => {
 };
 
 
-// CHECK STATUS
-const checkRequestStatus =
-  async (req, res) => {
-    try {
-      const phone =
-        req.params.phone;
+// CHECK STATUS + OWNER STATUS API
+// GET /api/request/status/:phone
+// and will also be compatible with the new spec endpoint.
+const checkRequestStatus = async (req, res) => {
+  try {
+    const phone = req.params.phone;
 
-      const request =
-        await HostelRequest.findOne({
-          phone,
-        });
+    const request = await HostelRequest.findOne({ phone });
 
-      if (!request) {
-        return res.status(404).json({
-          success: false,
-          message:
-            "No application found",
-        });
-      }
-
-      res.status(200).json({
-        success: true,
-        status: request.status,
-        request,
-      });
-    } catch (error) {
-      console.error("checkRequestStatus error:", error);
-
-      res.status(500).json({
+    if (!request) {
+      return res.status(404).json({
         success: false,
-        message: "Server error while checking application status",
-        details: error?.message || String(error),
+        message: "No application found",
       });
     }
-  };
+
+    return res.status(200).json({
+      success: true,
+      requestId: request._id,
+      hostelName: request.hostelName,
+      phone: request.phone,
+      status: request.status,
+      submittedAt: request.createdAt,
+    });
+  } catch (error) {
+    console.error("checkRequestStatus error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Server error while checking application status",
+      details: error?.message || String(error),
+    });
+  }
+};
+
 
 const cancelRequest = async (req, res) => {
   try {
@@ -217,4 +222,5 @@ module.exports = {
   cancelRequest,
   deleteRequest,
 };
+
 

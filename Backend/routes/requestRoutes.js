@@ -32,8 +32,15 @@ router.post(
   createRequest
 );
 
-// CHECK STATUS
+// OWNER STATUS (GET)
 router.get("/status/:phone", checkRequestStatus);
+
+// SPEC-FORM API (GET)
+router.get(
+  "/hostel-request/status/:phone",
+  checkRequestStatus
+);
+
 
 // CANCEL REQUEST
 router.delete("/cancel/:id", cancelRequest);
