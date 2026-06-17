@@ -384,7 +384,7 @@ const rejectRequest =
 
 const getAllHostels = async (req, res) => {
   try {
-    const hostels = await Hostel.find().lean();
+    const hostels = await Hostel.find({ pendingActivation: false }).lean();
 
     const safeHostels = (hostels || []).map((hostel) => ({
       ...hostel,

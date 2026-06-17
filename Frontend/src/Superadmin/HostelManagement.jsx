@@ -263,6 +263,8 @@ function HostelManagement() {
   const selectedHostelVacantBeds = selectedHostelOccupancy.vacantBeds ?? (typeof selectedHostelTotalBeds === "number" && typeof selectedHostelOccupiedBeds === "number" ? selectedHostelTotalBeds - selectedHostelOccupiedBeds : null);
   const selectedHostelActiveResidents = selectedHostelOccupancy.activeResidents ?? selectedHostel?.activeResidents ?? 0;
 
+  const hasOwnerRecord = !!selectedHostel?.ownerId;
+
   return (
     <div style={{ minHeight: "100vh", background: "#081028", paddingBottom: "100px", fontFamily: "Poppins" }}>
       <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -808,19 +810,19 @@ This action cannot be undone.
               </button>
               <button
                 type="button"
-                disabled={isResending}
-                onClick={() => handleResendWhatsApp(selectedHostel.ownerId)}
+                disabled={isResending || !selectedHostel.ownerId}
+                onClick={() => selectedHostel.ownerId && handleResendWhatsApp(selectedHostel.ownerId)}
                 className="w-full text-white py-3 rounded-xl font-medium text-sm flex justify-center items-center gap-2"
-                style={{ background: "linear-gradient(135deg, rgba(16,185,129,0.35), rgba(34,197,94,0.22))", opacity: isResending ? 0.7 : 1, border: "1px solid rgba(34,197,94,0.22)" }}
+                style={{ background: "linear-gradient(135deg, rgba(16,185,129,0.35), rgba(34,197,94,0.22))", opacity: isResending || !selectedHostel.ownerId ? 0.6 : 1, border: "1px solid rgba(34,197,94,0.22)" }}
               >
                 <MessageCircle size={16} /> Resend Credentials via WhatsApp
               </button>
               <button
                 type="button"
-                disabled={isResetting}
-                onClick={() => handleResetPassword(selectedHostel.ownerId)}
+                disabled={isResetting || !selectedHostel.ownerId}
+                onClick={() => selectedHostel.ownerId && handleResetPassword(selectedHostel.ownerId)}
                 className="w-full py-3 rounded-xl font-medium text-sm flex justify-center items-center gap-2"
-                style={{ background: "linear-gradient(135deg, rgba(245,158,11,0.25), rgba(239,68,68,0.10))", color: "#fff", opacity: isResetting ? 0.7 : 1, border: "1px solid rgba(245,158,11,0.28)" }}
+                style={{ background: "linear-gradient(135deg, rgba(245,158,11,0.25), rgba(239,68,68,0.10))", color: "#fff", opacity: isResetting || !selectedHostel.ownerId ? 0.6 : 1, border: "1px solid rgba(245,158,11,0.28)" }}
               >
                 {isResetting ? <RefreshCw size={16} className="animate-spin" /> : <RefreshCw size={16} />} Generate New Temporary Password
               </button>

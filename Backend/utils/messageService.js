@@ -34,6 +34,7 @@ const formatPhoneNumber = (phone) => {
  * @returns {string} - Formatted message
  */
 const generateWhatsAppMessage = (hostelName, username, tempPassword, publicUrl, phone, ownerName) => {
+  const appUrl = "https://hostelmate-saas.vercel.app";
   const message = `🎉 *Welcome to HostelMate OS!*
 
 Hello *${ownerName || '-'}* 👋
@@ -47,6 +48,9 @@ Your hostel *${hostelName}* has been activated successfully.
 🔐 Temporary Password: ${tempPassword || '-'}
 
 ⚠️ Please change your password after your first login.
+
+📲 HostelMate App
+${appUrl}
 
 🔗 *Hostel Public Page*
 ${publicUrl}
