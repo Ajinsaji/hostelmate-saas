@@ -399,7 +399,15 @@ const getAllHostels = async (req, res) => {
     const result = [];
 
     for (const hostel of safeHostels) {
+      // If activation is still pending, the Owner record does not exist yet.
+      // Attach HostelRequest applicant details for a better admin experience.
       const owner = await Owner.findOne({ hostelId: hostel._id }).lean();
+
+      const hostelRequest = hostel.pendingActivation === true
+        ? await HostelRequest.findOne({ hostelId: hostel._id })
+            .lean()
+        : null;
+
       const subscription = await Subscription.findOne({ hostelId: hostel._id }).lean();
 
       const rooms = await Room.find({ hostelId: hostel._id }).lean();
@@ -423,8 +431,20 @@ const getAllHostels = async (req, res) => {
       result.push({
         ...hostel,
         hostelId: hostel._id,
+        hostelRequest: hostel.pendingActivation === true
+          ? {
+              hostelName: hostelRequest?.hostelName || hostel.hostelName || "",
+              ownerName: hostelRequest?.ownerName || hostel.ownerName || "",
+              phone: hostelRequest?.phone || hostel.phone || "",
+              hostelType: hostelRequest?.hostelType || hostel.hostelType || hostel.type || hostel.category || "",
+              state: hostelRequest?.state || hostel.state || "",
+              district: hostelRequest?.district || hostel.district || "",
+              city: hostelRequest?.city || hostel.city || hostel.place || hostel.location || "",
+              pincode: hostelRequest?.pincode || hostel.pincode || "",
+            }
+          : undefined,
         owner: {
-          name: owner?.ownerName || hostel.ownerName || "N/A",
+          name: owner?.ownerName || hostel.hostelName || hostel.ownerName || "N/A",
           email: owner?.email || "",
           phone: owner?.phone || hostel.phone || "",
           username: owner?.username || owner?.phone || owner?.email || hostel.phone || "",

@@ -40,7 +40,8 @@ function HostelManagement() {
 
     const hostelId = raw?.hostelId || raw?._id || raw?.id || null;
 
-    const phone = raw?.phone ?? raw?.owner?.phone ?? raw?.ownerPhone ?? raw?.mobile ?? "";
+    const phone = raw?.phone ?? raw?.owner?.phone ?? raw?.ownerPhone ?? raw?.mobile ?? raw?.hostelRequest?.phone ?? "";
+
 
     const ownerName =
       raw?.ownerName ??
@@ -49,6 +50,7 @@ function HostelManagement() {
       raw?.owner?.username ??
       raw?.owner?.ownerName ??
       raw?.owner?.owner_id ??
+      raw?.hostelRequest?.ownerName ??
       "";
 
     const publicUrl = raw?.publicUrl ?? raw?.publicLink ?? raw?.publicUrlPath ?? raw?.link ?? "";
@@ -56,6 +58,7 @@ function HostelManagement() {
     const qrCodeUrl = raw?.qrCodeUrl ?? raw?.qrUrl ?? raw?.qr ?? raw?.qrCode ?? "";
 
     const tempPassword = raw?.tempPassword ?? raw?.temporaryPassword ?? raw?.password ?? "";
+
 
     const occupancy = raw?.occupancy ?? {};
     const totalRooms = occupancy?.totalRooms ?? raw?.totalRooms ?? 0;
@@ -71,6 +74,7 @@ function HostelManagement() {
 
     const owner = raw?.owner;
     const ownerEmail = owner?.email ?? raw?.ownerEmail ?? raw?.email ?? "N/A";
+
     const ownerUsername = owner?.username ?? raw?.username ?? (phone || "N/A");
 
     const ownerId = raw?.ownerId ?? owner?._id ?? raw?.owner?._id;
@@ -247,9 +251,10 @@ function HostelManagement() {
     : "";
   const selectedHostelOwnerEmail = selectedHostel?.owner?.email || selectedHostel?.ownerEmail || selectedHostel?.email || "N/A";
   const selectedHostelUsername = selectedHostel?.owner?.username || selectedHostel?.username || selectedHostel?.phone || "N/A";
-  const selectedHostelType = selectedHostel?.hostelType || selectedHostel?.type || selectedHostel?.category || "N/A";
-  const selectedHostelState = selectedHostel?.state || "N/A";
-  const selectedHostelPlace = selectedHostel?.city || selectedHostel?.place || selectedHostel?.location || "N/A";
+  const selectedHostelType = selectedHostel?.hostelType || selectedHostel?.type || selectedHostel?.category || selectedHostel?.hostelRequest?.hostelType || "N/A";
+  const selectedHostelState = selectedHostel?.state || selectedHostel?.hostelRequest?.state || "N/A";
+  const selectedHostelPlace = selectedHostel?.city || selectedHostel?.place || selectedHostel?.location || selectedHostel?.hostelRequest?.city || "N/A";
+
   const selectedHostelStatus = selectedHostel?.pendingActivation === true
     ? "activation_pending"
     : selectedHostel?.approvalStatus || selectedHostel?.status || (selectedHostel?.isApproved ? "approved" : "pending") || "Unknown";
@@ -633,7 +638,8 @@ This action cannot be undone.
                 <div className="grid gap-2">
                   <div>
                     <p className="text-[10px] uppercase tracking-[0.24em] text-muted">Owner Name</p>
-                    <p className="font-semibold">{selectedHostel.ownerName || selectedHostel?.owner?.name || "N/A"}</p>
+                    <p className="font-semibold">{selectedHostel.ownerName || selectedHostel?.hostelRequest?.ownerName || selectedHostel?.owner?.name || "N/A"}</p>
+
                   </div>
                   <div>
                     <p className="text-[10px] uppercase tracking-[0.24em] text-muted">Owner Email</p>
@@ -642,7 +648,8 @@ This action cannot be undone.
                   <div className="grid sm:grid-cols-2 gap-2">
                     <div>
                       <p className="text-[10px] uppercase tracking-[0.24em] text-muted">Phone</p>
-                      <p className="font-semibold">{selectedHostel.phone || "N/A"}</p>
+                      <p className="font-semibold">{selectedHostel.phone || selectedHostel?.hostelRequest?.phone || "N/A"}</p>
+
                     </div>
                     <div>
                       <p className="text-[10px] uppercase tracking-[0.24em] text-muted">Username</p>
