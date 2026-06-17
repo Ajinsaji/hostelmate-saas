@@ -27,32 +27,41 @@ const formatPhoneNumber = (phone) => {
 
 /**
  * Generate WhatsApp message with credentials
- * @param {string} hostelName 
- * @param {string} ownerEmail 
- * @param {string} tempPassword 
- * @param {string} publicUrl 
+ * @param {string} hostelName
+ * @param {string} ownerEmail (kept for backward compat; now passed as username)
+ * @param {string} tempPassword
+ * @param {string} publicUrl
  * @returns {string} - Formatted message
  */
-const generateWhatsAppMessage = (hostelName, ownerEmail, tempPassword, publicUrl) => {
+const generateWhatsAppMessage = (hostelName, username, tempPassword, publicUrl, phone, ownerName) => {
   const message = `🎉 *Welcome to HostelMate OS!*
 
-Your hostel *${hostelName}* has been approved successfully.
+Hello *${ownerName || '-'}* 👋
 
-📋 *Login Credentials:*
-📧 Email: ${ownerEmail}
-🔐 Password: ${tempPassword}
+Your hostel *${hostelName}* has been activated successfully.
 
-🔗 *Public Hostel Link:*
+📋 *Login Credentials*
+
+👤 Username: ${username || '-'}
+📱 Phone: ${phone || '-'}
+🔐 Temporary Password: ${tempPassword || '-'}
+
+⚠️ Please change your password after your first login.
+
+🔗 *Hostel Public Page*
 ${publicUrl}
 
-📱 Residents can scan your QR code for digital admission.
+📱 Residents can use this link or scan the hostel QR code for digital admission.
 
-✨ Start managing your hostel with our smart platform!
+🚀 Welcome to HostelMate!
 
-Need help? Contact: support@hostelmate.com`;
-  
+Need help?
+Contact your HostelMate administrator.`;
+
   return message;
 };
+
+
 
 const generateStaffWhatsAppMessage = (staffName, role, username, password, loginUrl) => {
   const normalizedRole = role ? role.charAt(0).toUpperCase() + role.slice(1) : "Staff";
@@ -77,20 +86,19 @@ const generateWhatsAppURL = (phone, message) => {
  */
 const sendApprovalMessages = async (phone, ownerName, hostelName, ownerEmail, tempPassword, publicUrl) => {
   try {
-    
-    
-    
-    
     const formattedPhone = formatPhoneNumber(phone);
-    const message = generateWhatsAppMessage(hostelName, ownerEmail, tempPassword, publicUrl);
+
+    const message = generateWhatsAppMessage(
+      hostelName,
+      ownerEmail,
+      tempPassword,
+      publicUrl,
+      formattedPhone,
+      ownerName
+    );
+
     const whatsappURL = generateWhatsAppURL(phone, message);
-    
-    
-    
-    
-    
-    
-    
+
     // TODO: Integrate actual Twilio / MSG91 API for production
     // const twilioClient = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
     // await twilioClient.messages.create({
@@ -98,7 +106,7 @@ const sendApprovalMessages = async (phone, ownerName, hostelName, ownerEmail, te
     //   from: process.env.TWILIO_PHONE_NUMBER,
     //   to: formattedPhone
     // });
-    
+
     return { success: true, whatsappURL, message };
   } catch (error) {
     console.error("❌ Message Service Error:", error);
@@ -106,13 +114,24 @@ const sendApprovalMessages = async (phone, ownerName, hostelName, ownerEmail, te
   }
 };
 
+
 /**
  * Generate resend WhatsApp URL for owner dashboard
  */
-const generateResendWhatsAppURL = (hostelName, ownerEmail, tempPassword, publicUrl, phone) => {
-  const message = generateWhatsAppMessage(hostelName, ownerEmail, tempPassword, publicUrl);
+const generateResendWhatsAppURL = (hostelName, username, tempPassword, publicUrl, phone, ownerName) => {
+  const message = generateWhatsAppMessage(
+    hostelName,
+    username,
+    tempPassword,
+    publicUrl,
+    phone,
+    ownerName
+  );
   return generateWhatsAppURL(phone, message);
 };
+
+
+
 
 module.exports = {
   sendApprovalMessages,

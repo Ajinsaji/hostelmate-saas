@@ -494,24 +494,43 @@ const resendWhatsApp = async (req, res) => {
     const hostel = owner.hostelId;
     if (!hostel) return res.status(404).json({ success: false, message: "Hostel not found" });
 
+    // Safety: tempPassword is cleared after onboarding/password change.
+    // If missing/null/empty, do NOT send resend credentials (no Temp@123 fallback).
+    if (!owner.tempPassword || !String(owner.tempPassword).trim()) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Owner has already configured a custom password. Use Reset Temporary Password to generate new credentials.",
+      });
+    }
+
     const { generateResendWhatsAppURL } = require('../utils/messageService');
     const whatsappURL = generateResendWhatsAppURL(
-      hostel.hostelName, 
-      owner.phone, 
-      owner.tempPassword || "Temp@123", 
-      hostel.publicUrl, 
-      owner.phone
+      hostel.hostelName,
+      owner.username || owner.phone,
+      owner.tempPassword,
+      hostel.publicUrl,
+      owner.phone,
+      owner.ownerName
     );
-    
+
     // Call the message service to log
-    const result = await sendApprovalMessages(owner.phone, owner.ownerName, hostel.hostelName, owner.phone, owner.tempPassword || "Temp@123", hostel.publicUrl);
-    
-    res.status(200).json({ 
-      success: true, 
-      message: "WhatsApp link generated", 
+    const result = await sendApprovalMessages(
+      owner.phone,
+      owner.ownerName,
+      hostel.hostelName,
+      owner.username || owner.phone,
+      owner.tempPassword,
+      hostel.publicUrl
+    );
+
+    res.status(200).json({
+      success: true,
+      message: "WhatsApp link generated",
       whatsappURL: whatsappURL,
       phone: owner.phone
     });
+
   } catch (error) {
     console.error("ResendWhatsApp Error:", error);
     res.status(500).json({ success: false, error: error.message });
