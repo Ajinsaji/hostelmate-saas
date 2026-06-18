@@ -111,9 +111,16 @@ function PendingApproval() {
         localStorage.removeItem("pendingApproval");
         localStorage.removeItem("pendingRequestId");
         localStorage.removeItem("pendingPhone");
-        toast.success("Your hostel has been approved. Please login.");
-        navigate("/login");
+
+        // Move to request-status so the correct card is shown.
+        try {
+          localStorage.setItem("hostelRequestPhone", phoneForQuery);
+        } catch {
+          // ignore
+        }
+        navigate("/request-status");
       }
+
     } catch (error) {
       if (error?.response?.status === 404 && error?.response?.data?.message) {
         localStorage.removeItem("pendingRequestId");

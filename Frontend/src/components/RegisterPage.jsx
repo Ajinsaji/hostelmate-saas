@@ -227,16 +227,16 @@ function RegisterPage() {
       if (response.data.success) {
         toast.success("Registration submitted");
 
-        // Persist only after backend confirms the request is saved.
+        // Persist keys for request-status UI immediately after backend confirms.
+        localStorage.setItem("hostelRequestPhone", formData.phone);
         localStorage.setItem(
-          "pendingRequestId",
+          "hostelRequestId",
           JSON.stringify({
-            requestId: response.data?.request?._id,
+            requestId: response.data?.request?._id || response.data?.requestId,
             phone: formData.phone,
-            hostelName: formData.hostelName,
-            submittedAt: Date.now(),
           })
         );
+
 
         setFormData({
 
@@ -257,10 +257,22 @@ function RegisterPage() {
         setStep(1);
         setShowSuccess(true);
 
-        // Navigate after successful save.
-        navigate("/pending-approval");
+        // Persist status-tracking keys required by /request-status
+        try {
+          localStorage.setItem("hostelRequestPhone", formData.phone);
+          localStorage.setItem(
+            "hostelRequestId",
+            JSON.stringify({ requestId: response.data?.request?._id || response.data?.requestId || response.data?.request?._id, phone: formData.phone })
+          );
+        } catch {
+          // ignore storage failures
+        }
+
+        // Navigate to request status page (do NOT redirect to login)
+        navigate("/request-status");
       }
     } catch (error) {
+
       console.error("Registration submit error:", error);
 
       console.error(
