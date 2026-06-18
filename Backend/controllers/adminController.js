@@ -285,13 +285,14 @@ const finalizeHostelActivation = async (req, res) => {
 
     await hostel.save();
 
-    // Update hostel request status -> approved (ONLY here finalizes activation)
+    // Update hostel request status -> activated (ONLY here finalizes activation)
     const relatedRequest = await HostelRequest.findOne({ phone: hostel.phone, hostelName: hostel.hostelName });
     if (relatedRequest) {
-      relatedRequest.status = "approved";
+      relatedRequest.status = "activated";
       await relatedRequest.save();
-      console.log("Hostel request approved:", relatedRequest._id);
+      console.log("Hostel request activated:", relatedRequest._id);
     }
+
 
     // STEP 2: WhatsApp onboarding - provider-ready placeholder (must happen AFTER successful activation)
     try {

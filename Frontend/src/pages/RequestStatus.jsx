@@ -131,14 +131,62 @@ function RequestStatus() {
             </div>
 
             {statusData.status === "activated" ? (
-              <div className="rounded-[32px] border border-white/10 bg-slate-950/80 p-6 shadow-2xl shadow-slate-900/40">
+              <div className="rounded-[32px] border border-white/10 bg-slate-950/80 p-8 shadow-2xl shadow-slate-900/40 flex flex-col items-center text-center">
+                <div style={{ fontSize: 34, lineHeight: 1, marginBottom: 10 }}>
+                  🎉 Hostel Activated
+                </div>
+                <div style={{ width: "100%", maxWidth: 420 }}>
+                  <div className="mt-3">
+                    <div style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", fontWeight: 700, letterSpacing: "0.2em", textTransform: "uppercase" }}>
+                      Hostel Name
+                    </div>
+                    <div style={{ marginTop: 6, fontSize: 16, fontWeight: 800 }}>{statusData.hostelName || "-"}</div>
+                  </div>
+                  <div className="mt-4">
+                    <div style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", fontWeight: 700, letterSpacing: "0.2em", textTransform: "uppercase" }}>
+                      Phone Number
+                    </div>
+                    <div style={{ marginTop: 6, fontSize: 16, fontWeight: 800 }}>{statusData.phone || "-"}</div>
+                  </div>
+                  <div className="mt-4">
+                    <div style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", fontWeight: 700, letterSpacing: "0.2em", textTransform: "uppercase" }}>
+                      Status
+                    </div>
+                    <div style={{ marginTop: 6, fontSize: 16, fontWeight: 800 }}>Activated</div>
+                  </div>
+                  <div style={{ marginTop: 14, color: "rgba(255,255,255,0.75)", fontSize: 14, lineHeight: 1.6 }}>
+                    Your hostel is now active.
+                  </div>
+                </div>
                 <button
                   type="button"
-                  className="btn-primary w-full flex items-center justify-center gap-2 rounded-3xl px-5 py-3 text-sm font-semibold"
+                  className="btn-primary mt-6 w-full flex items-center justify-center gap-2 rounded-3xl px-5 py-3 text-sm font-semibold"
                   onClick={() => navigate("/login")}
                 >
                   Login Now
                 </button>
+              </div>
+            ) : statusData.status === "approved" ? (
+              <div className="rounded-[32px] border border-white/10 bg-slate-950/80 p-8 shadow-2xl shadow-slate-900/40 flex flex-col items-center text-center">
+                <div style={{ fontSize: 28, lineHeight: 1, marginBottom: 10 }}>🟢 Documents Approved</div>
+                <div style={{ width: "100%", maxWidth: 420 }}>
+                  <div style={{ marginTop: 4, color: "rgba(255,255,255,0.75)", fontSize: 14, lineHeight: 1.6 }}>
+                    Your application has been approved.
+                    <br />
+                    Waiting for final activation.
+                  </div>
+                </div>
+              </div>
+            ) : statusData.status === "activation_pending" ? (
+              <div className="rounded-[32px] border border-white/10 bg-slate-950/80 p-8 shadow-2xl shadow-slate-900/40 flex flex-col items-center text-center">
+                <div style={{ fontSize: 28, lineHeight: 1, marginBottom: 10 }}>🟢 Waiting For Activation</div>
+                <div style={{ width: "100%", maxWidth: 420 }}>
+                  <div style={{ marginTop: 4, color: "rgba(255,255,255,0.75)", fontSize: 14, lineHeight: 1.6 }}>
+                    Your hostel has been approved.
+                    <br />
+                    Activation is pending.
+                  </div>
+                </div>
               </div>
             ) : statusData.status === "rejected" ? (
               <div className="rounded-[32px] border border-white/10 bg-slate-950/80 p-6 shadow-2xl shadow-slate-900/40">
@@ -150,25 +198,7 @@ function RequestStatus() {
                   Submit New Request
                 </button>
               </div>
-            ) : (
-              <div className="rounded-[32px] border border-white/10 bg-slate-950/80 p-6 shadow-2xl shadow-slate-900/40">
-                <button
-                  type="button"
-                  className="px-4 py-3 rounded-xl font-semibold w-full"
-                  style={{
-                    background: "rgba(255,255,255,0.06)",
-                    border: "1px solid rgba(255,255,255,0.10)",
-                    color: "#fff",
-                  }}
-                  onClick={() => navigate("/login")}
-                >
-                  Login Now
-                </button>
-                <div style={{ marginTop: 10, color: "rgba(255,255,255,0.7)", fontSize: 13 }}>
-                  You can still log in later. We’ll keep showing your current status here.
-                </div>
-              </div>
-            )}
+            ) : null}
           </div>
         )}
       </div>
