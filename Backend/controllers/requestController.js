@@ -132,7 +132,8 @@ const checkRequestStatus = async (req, res) => {
   try {
     const phone = req.params.phone;
 
-    const request = await HostelRequest.findOne({ phone });
+    const request = await HostelRequest.findOne({ phone }).sort({ createdAt: -1 });
+
 
     if (!request) {
       return res.status(404).json({
