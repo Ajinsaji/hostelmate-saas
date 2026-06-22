@@ -130,9 +130,16 @@ const createRequest = async (req, res) => {
 // and will also be compatible with the new spec endpoint.
 const checkRequestStatus = async (req, res) => {
   try {
-    const phone = req.params.phone;
+    const phone = String(req.params.phone).trim();
 
-    const request = await HostelRequest.findOne({ phone }).sort({ createdAt: -1 });
+    console.log("STATUS CHECK PHONE:", phone);
+
+    const request = await HostelRequest
+      .findOne({ phone })
+      .sort({ createdAt: -1 });
+
+    console.log("FOUND REQUEST:", request);
+
 
 
     if (!request) {
