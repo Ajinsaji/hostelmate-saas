@@ -229,13 +229,9 @@ function RegisterPage() {
 
         // Persist keys for request-status UI immediately after backend confirms.
         localStorage.setItem("hostelRequestPhone", formData.phone);
-        localStorage.setItem(
-          "hostelRequestId",
-          JSON.stringify({
-            requestId: response.data?.request?._id || response.data?.requestId,
-            phone: formData.phone,
-          })
-        );
+        const requestId = response.data?.request?._id || response.data?.requestId;
+        localStorage.setItem("hostelRequestPhone", formData.phone);
+        localStorage.setItem("hostelRequestId", requestId);
 
 
         setFormData({
@@ -262,7 +258,7 @@ function RegisterPage() {
           localStorage.setItem("hostelRequestPhone", formData.phone);
           localStorage.setItem(
             "hostelRequestId",
-            JSON.stringify({ requestId: response.data?.request?._id || response.data?.requestId || response.data?.request?._id, phone: formData.phone })
+            response.data?.request?._id || response.data?.requestId
           );
         } catch {
           // ignore storage failures

@@ -5,6 +5,7 @@ import {
   Navigate,
   useLocation,
 } from "react-router-dom";
+import { useEffect, useState } from "react";
 
 import LandingPage from "./components/LandingPage";
 import LoginPage from "./components/LoginPage";
@@ -115,6 +116,48 @@ function SessionGateWrapper() {
   return verifying ? <div style={{ minHeight: "100vh" }} /> : null;
 }
 
+function RequestAutoRedirect() {
+  const [booting, setBooting] = useState(true);
+  const [shouldRedirect, setShouldRedirect] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+
+    (async () => {
+      try {
+        const phone = localStorage.getItem("hostelRequestPhone");
+        if (!phone) {
+          if (mounted) setShouldRedirect(false);
+          return;
+        }
+
+        const apiBase = import.meta.env?.VITE_API_URL || "";
+        const res = await fetch(
+          `${apiBase}/api/hostel-request/status/${encodeURIComponent(phone)}`
+        );
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+        const data = await res.json();
+        const status = data?.request?.status || data?.status;
+        const allowed = ["pending", "approved", "activation_pending"];
+
+        if (mounted) setShouldRedirect(allowed.includes(status));
+      } catch {
+        // ignore auto-redirect failures
+      } finally {
+        if (mounted) setBooting(false);
+      }
+    })();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  if (booting) return null;
+  return shouldRedirect ? <Navigate to="/request-status" replace /> : null;
+}
+
 function App() {
   // Pending approval UX: if user is not authenticated yet but has a pending request,
   // always open /pending-approval (except when user is already on that route).
@@ -153,8 +196,9 @@ function App() {
           <>
             <Route path="/" element={<LandingPage />} />
             <Route path="/login" element={<LoginPage />} />
-            <Route path="/register" element={<RegisterPage />} />
-            <Route path="/request-status" element={<RequestStatus />} />
+          <Route path="/register" element={<RegisterPage />} />
+            <Route path="/login" element={<LoginPage />} />
+          <Route path="/request-status" element={<RequestStatus />} />
           </>
         )}
 

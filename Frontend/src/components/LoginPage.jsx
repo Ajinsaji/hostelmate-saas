@@ -14,6 +14,12 @@ function LoginPage() {
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  const [trackModalOpen, setTrackModalOpen] = useState(false);
+  const [trackPhone, setTrackPhone] = useState("");
+  const [trackLoading, setTrackLoading] = useState(false);
+  const [trackError, setTrackError] = useState("");
+
+
   const handleLogin = async () => {
     if (loading) {
       return;
@@ -186,6 +192,147 @@ function LoginPage() {
           <button className="btn-primary mb-6" onClick={handleLogin} disabled={loading}>
             {loading ? <><Loader2 size={16} className="animate-spin" /> Signing In...</> : "Login to Dashboard"}
           </button>
+
+          <div style={{ display: "flex", justifyContent: "center", marginBottom: 18 }}>
+            <button
+              type="button"
+              onClick={() => {
+                try {
+                  window.dispatchEvent(new CustomEvent("HOSTELMATE_TRACK_APPLICATION_STATUS_OPEN"));
+                } catch {
+                  // ignore
+                }
+                setTrackModalOpen(true);
+              }}
+              style={{
+                background: "rgba(255,255,255,0.06)",
+                border: "1px solid rgba(255,255,255,0.10)",
+                color: "#fff",
+                padding: "12px 16px",
+                borderRadius: "12px",
+                fontWeight: 700,
+                cursor: "pointer",
+                width: "100%",
+              }}
+            >
+              Track Application Status
+            </button>
+          </div>
+
+          {trackModalOpen ? (
+            <div
+              style={{
+                position: "fixed",
+                inset: 0,
+                background: "rgba(0,0,0,0.55)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                zIndex: 4000,
+                padding: 16,
+              }}
+            >
+              <div
+                style={{
+                  width: "100%",
+                  maxWidth: 420,
+                  background: "#081028",
+                  border: "1px solid rgba(255,255,255,0.10)",
+                  borderRadius: 16,
+                  padding: 20,
+                  color: "#fff",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+                  <div style={{ fontSize: 18, fontWeight: 900 }}>Track Application Status</div>
+                  <button
+                    type="button"
+                    onClick={() => setTrackModalOpen(false)}
+                    style={{
+                      background: "transparent",
+                      border: "none",
+                      color: "rgba(255,255,255,0.8)",
+                      cursor: "pointer",
+                      fontSize: 16,
+                      fontWeight: 900,
+                    }}
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                <div style={{ marginBottom: 10, color: "rgba(255,255,255,0.75)", fontWeight: 700 }}>
+                  Enter phone number
+                </div>
+
+                <input
+                  type="text"
+                  value={trackPhone}
+                  onChange={(e) => setTrackPhone(e.target.value)}
+                  placeholder="Phone number"
+                  className="input-field"
+                  style={{
+                    width: "100%",
+                    background: "rgba(255,255,255,0.05)",
+                    border: "1px solid rgba(255,255,255,0.10)",
+                    borderRadius: 12,
+                    padding: "12px 14px",
+                    color: "#fff",
+                    outline: "none",
+                    marginBottom: 10,
+                  }}
+                />
+
+                {trackError ? (
+                  <div style={{ color: "#ef4444", fontWeight: 900, marginBottom: 10 }}>
+                    {trackError}
+                  </div>
+                ) : null}
+
+                <button
+                  type="button"
+                  disabled={trackLoading}
+                  onClick={async () => {
+                    const phone = trackPhone?.trim();
+                    if (!phone) {
+                      setTrackError("Please enter phone number");
+                      return;
+                    }
+
+                    setTrackLoading(true);
+                    setTrackError("");
+                    try {
+                      const res = await axios.get(
+                        `${import.meta.env.VITE_API_URL}/api/hostel-request/status/${encodeURIComponent(phone)}`
+                      );
+
+                      const found = res?.data?.success;
+                      const requestId = res?.data?.requestId;
+
+                      if (found === false || !requestId) {
+                        setTrackError("No application found for this phone number.");
+                        return;
+                      }
+
+                      localStorage.setItem("hostelRequestPhone", phone);
+                      localStorage.setItem("hostelRequestId", requestId);
+
+                      setTrackModalOpen(false);
+                      navigate("/request-status");
+                    } catch (e) {
+                      setTrackError("No application found for this phone number.");
+                    } finally {
+                      setTrackLoading(false);
+                    }
+                  }}
+                  className="btn-primary w-full"
+                  style={{ width: "100%" }}
+                >
+                  {trackLoading ? <Loader2 size={16} className="animate-spin" /> : "Check Status"}
+                </button>
+              </div>
+            </div>
+          ) : null}
 
           <p className="text-center text-body">
             Don't have an account?{" "}
