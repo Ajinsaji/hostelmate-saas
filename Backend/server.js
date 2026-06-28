@@ -127,6 +127,13 @@ app.use(
   requestRoutes
 );
 
+// Compatibility alias for older/mobile clients
+app.use(
+  "/api/hostel-request",
+  requestRoutes
+);
+
+
 
 // ROOMS
 app.use(

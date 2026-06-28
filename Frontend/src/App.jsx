@@ -199,8 +199,10 @@ function App() {
           <Route path="/register" element={<RegisterPage />} />
             <Route path="/login" element={<LoginPage />} />
           <Route path="/request-status" element={<RequestStatus />} />
+          <Route path="/back" element={<Navigate to="/login" replace />} />
           </>
         )}
+
 
 
         {/* Owner Onboarding */}

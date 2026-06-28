@@ -1,9 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import toast from "react-hot-toast";
 
 import { api } from "../services/api";
-import SuperadminBottomNav from "../components/SuperadminBottomNav";
+
 
 const statusToUi = {
   pending: {
@@ -107,11 +106,13 @@ function RequestStatus() {
                 border: "1px solid rgba(255,255,255,0.10)",
                 color: "#fff",
               }}
-              onClick={() => navigate("/login")}
+              onClick={() => navigate("/register")}
             >
-              Go to Login
+              Back
             </button>
+
           </div>
+
         ) : !statusData?.success ? (
           <div className="text-center p-8 card" style={{ background: "var(--bg-2)" }}>
             No status found.
@@ -131,6 +132,7 @@ function RequestStatus() {
             </div>
 
             {statusData.status === "activated" ? (
+
               <div className="rounded-[32px] border border-white/10 bg-slate-950/80 p-8 shadow-2xl shadow-slate-900/40 flex flex-col items-center text-center">
                 <div style={{ fontSize: 34, lineHeight: 1, marginBottom: 10 }}>
                   🎉 Hostel Activated
@@ -204,10 +206,10 @@ function RequestStatus() {
       </div>
 
       <div style={{ height: 110 }} />
-      <SuperadminBottomNav />
     </div>
   );
 }
+
 
 function CardLine({ label, value }) {
   return (
