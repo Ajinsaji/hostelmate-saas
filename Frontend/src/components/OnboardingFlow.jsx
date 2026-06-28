@@ -12,12 +12,12 @@ function OnboardingFlow() {
   const token = getOwnerToken();
   const storedOwner = getStoredOwner();
 
+  // Backend is the only source of truth for onboarding step.
   const [currentStep, setCurrentStep] = useState(1);
-  useEffect(() => {
-    console.log("[OnboardingFlow] currentStep state init/changed:", currentStep);
-  }, [currentStep]);
+  const [backendStepInitialized, setBackendStepInitialized] = useState(false);
 
   const [loading, setLoading] = useState(false);
+
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
@@ -36,102 +36,47 @@ function OnboardingFlow() {
   const [roomName, setRoomName] = useState("");
   const [bedCount, setBedCount] = useState("");
 
-  // Restore progress from localStorage on mount
+  // Initialize onboarding step from backend owner object (NO localStorage restore for step).
   useEffect(() => {
-    // IMPORTANT: we keep the fresh-owner stale-progress protection.
+    if (!storedOwner || backendStepInitialized) return;
 
-    // 1) Determine current ownerId
-    const currentOwnerId = storedOwner?._id || storedOwner?.ownerId;
+    const onboardingCompleted = storedOwner?.onboardingCompleted === true;
 
-    // 2) Read per-owner progress (v2)
-    const savedV2Raw = localStorage.getItem("onboardingProgressV2");
-    // Legacy key (v1) may exist; we will ignore it for restore to prevent cross-owner leakage.
-    const legacyRaw = localStorage.getItem("onboardingProgress");
+    if (onboardingCompleted) {
+      // Skip onboarding if completed
+      navigate("/owner/dashboard", { replace: true });
+      return;
+    }
 
-    console.log("[OnboardingFlow] STORED OWNER", storedOwner);
-    console.log("[OnboardingFlow] USER FLAGS", {
-      firstLogin: storedOwner?.firstLogin,
-      mustChangePassword: storedOwner?.mustChangePassword,
-      passwordChanged: storedOwner?.passwordChanged,
-      rulesConfigured: storedOwner?.rulesConfigured,
-      roomsConfigured: storedOwner?.roomsConfigured,
-      onboardingCompleted: storedOwner?.onboardingCompleted,
-    });
-    console.log("[OnboardingFlow] RAW onboardingProgressV2", savedV2Raw);
-    console.log("[OnboardingFlow] RAW onboardingProgress (legacy, ignored for restore)", legacyRaw);
+    const backendStep = storedOwner?.onboardingStep;
 
-    const isFreshOwner =
+    // Only allow Step 1 when backend onboardingStep is missing OR owner is brand new
+    // (new owner heuristics may still exist in storedOwner flags).
+    const isBrandNewOwner =
       storedOwner?.firstLogin === true &&
       storedOwner?.mustChangePassword === true &&
       storedOwner?.passwordChanged === false &&
       storedOwner?.rulesConfigured === false &&
-      storedOwner?.roomsConfigured === false &&
-      storedOwner?.onboardingCompleted === false;
+      storedOwner?.roomsConfigured === false;
 
-    if (isFreshOwner) {
-      console.log("[OnboardingFlow] Fresh owner detected. Ignoring saved onboarding progress.");
+    if (backendStep == null && isBrandNewOwner) {
       setCurrentStep(1);
-      setIsHydrated(true);
-      return;
+    } else {
+      setCurrentStep(backendStep || 1);
     }
 
-    if (!savedV2Raw) {
-      setIsHydrated(true);
-      return;
-    }
-
-    try {
-      const parsedProgress = JSON.parse(savedV2Raw);
-      const savedOwnerId = parsedProgress?.ownerId;
-
-      console.log("[OnboardingFlow] onboardingProgressV2 parsed", parsedProgress);
-      console.log("[OnboardingFlow] onboardingProgressV2 ownerId compare", {
-        currentOwnerId,
-        savedOwnerId,
-        match: currentOwnerId && savedOwnerId && currentOwnerId === savedOwnerId,
-      });
-
-      if (!currentOwnerId || !savedOwnerId || currentOwnerId !== savedOwnerId) {
-        console.log(
-          "[OnboardingFlow] OwnerId mismatch. Ignoring saved onboardingProgressV2."
-        );
-        setIsHydrated(true);
-        return;
-      }
-
-      const restoredStep = Number(parsedProgress?.currentStep);
-      const nextStep =
-        Number.isFinite(restoredStep) && restoredStep >= 1 && restoredStep <= 5
-          ? restoredStep
-          : 1;
-
-      console.log("[OnboardingFlow] Restoring step", {
-        nextStep,
-        restoredStep,
-      });
-
-      setCurrentStep(nextStep);
-      setNewPassword(parsedProgress?.newPassword || "");
-      setConfirmPassword(parsedProgress?.confirmPassword || "");
-      setRules(parsedProgress?.rules || "");
-      setRooms(Array.isArray(parsedProgress?.rooms) ? parsedProgress.rooms : []);
-    } catch {
-      // Ignore parse errors
-    }
-
+    setBackendStepInitialized(true);
     setIsHydrated(true);
-  }, []);
+  }, [storedOwner, backendStepInitialized, navigate]);
 
-  // Save progress to localStorage
+
+  // Save progress to localStorage as temporary cache ONLY.
+  // NOTE: localStorage is never used to initialize `currentStep`.
   useEffect(() => {
-    // Avoid clobbering state transitions while we are mid-request (notably Step2 -> Step3)
-    // and avoid persisting before hydrate completes.
     if (!isHydrated) return;
     if (loading) return;
 
     const currentOwnerId = storedOwner?._id || storedOwner?.ownerId;
-
-    // If ownerId isn't known yet, don't persist.
     if (!currentOwnerId) return;
 
     const progressData = {
@@ -146,6 +91,7 @@ function OnboardingFlow() {
 
     localStorage.setItem("onboardingProgressV2", JSON.stringify(progressData));
   }, [isHydrated, loading, currentStep, newPassword, confirmPassword, rules, rooms, storedOwner]);
+
 
   // Redirect if not authenticated (DO NOT navigate during render)
   const [authChecked, setAuthChecked] = useState(false);
