@@ -130,16 +130,27 @@ const createRequest = async (req, res) => {
 // and will also be compatible with the new spec endpoint.
 const checkRequestStatus = async (req, res) => {
   try {
-    const phone = String(req.params.phone).trim();
+    let phone = String(req.params.phone || "").trim();
 
-    console.log("STATUS CHECK PHONE:", phone);
+    // Normalize: strip spaces, dashes, and any leading '+'
+    phone = phone.replace(/[\s-]/g, "").replace(/^\+/, "");
+
+    console.log("Incoming phone:", req.params.phone);
+    console.log("Normalized incoming phone:", phone);
+
+    const latestRequests = await HostelRequest
+      .find({})
+      .sort({ createdAt: -1 })
+      .limit(5)
+      .select("phone ownerPhone mobile contactNumber hostelName status");
+
+    console.log("Latest HostelRequests:", latestRequests);
 
     const request = await HostelRequest
       .findOne({ phone })
       .sort({ createdAt: -1 });
 
     console.log("FOUND REQUEST:", request);
-
 
 
     if (!request) {
@@ -167,6 +178,7 @@ const checkRequestStatus = async (req, res) => {
     });
   }
 };
+
 
 
 const cancelRequest = async (req, res) => {
