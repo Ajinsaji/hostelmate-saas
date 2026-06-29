@@ -160,7 +160,16 @@ const loginOwner = async (req, res) => {
       role: userRole,
       mustChangePassword: !!owner?.mustChangePassword,
       onboardingCompleted: !!owner?.onboardingCompleted,
+      onboardingStep: owner?.onboardingStep || 1,
     };
+
+    console.log("===== LOGIN RESPONSE =====");
+    console.log("Owner onboardingStep:", owner?.onboardingStep);
+    console.log("Owner onboardingCompleted:", owner?.onboardingCompleted);
+    console.log("Owner firstLogin:", owner?.firstLogin);
+    console.log("Owner rulesConfigured:", owner?.rulesConfigured);
+    console.log("Owner roomsConfigured:", owner?.roomsConfigured);
+
 
     const secret = process.env.JWT_SECRET || "change_me_secret";
     const token = jwt.sign(payload, secret, { expiresIn: "7d" });
@@ -180,6 +189,7 @@ const loginOwner = async (req, res) => {
           roomsConfigured: !!owner.roomsConfigured,
           onboardingCompleted: !!owner.onboardingCompleted,
           mustChangePassword: !!owner.mustChangePassword,
+          onboardingStep: owner?.onboardingStep || 1,
         },
         subscription,
         mustChangePassword: !!owner.mustChangePassword,
@@ -653,6 +663,7 @@ const updateOwnerPassword = async (req, res) => {
   try {
     const { ownerId } = req.owner;
 
+
     const looksLikeBcryptHash = (val) => typeof val === "string" && /^\$2[aby]\$\d{2}\$/.test(val);
 
     // bcrypt hash => bcrypt.compare
@@ -698,7 +709,11 @@ const updateOwnerPassword = async (req, res) => {
     owner.mustChangePassword = false;
     owner.tempPassword = null;
     owner.firstLogin = false;
-    owner.passwordChanged = true;
+      owner.passwordChanged = true;
+    
+      // Persist next onboarding screen after password step
+      owner.onboardingStep = 3;
+
 
     owner.updatedAt = new Date();
     await owner.save();
@@ -766,7 +781,11 @@ const saveOnboardingRules = async (req, res) => {
 
     const [updatedHostel, updatedOwner] = await Promise.all([
       Hostel.findByIdAndUpdate(hostelId, updatedData, { new: true, runValidators: true }),
-      Owner.findByIdAndUpdate(ownerId, { rulesConfigured: true }, { new: true }),
+      Owner.findByIdAndUpdate(
+        ownerId,
+        { rulesConfigured: true, onboardingStep: 4 },
+        { new: true }
+      ),
     ]);
 
     return res.status(200).json({
@@ -860,6 +879,7 @@ const completeOnboardingRooms = async (req, res) => {
         roomsConfigured: true,
         onboardingCompleted: true,
         firstLogin: false,
+        onboardingStep: 5,
       },
       { new: true }
     );
@@ -896,6 +916,7 @@ const completeOnboarding = async (req, res) => {
         onboardingCompleted: true,
         firstLogin: false,
         mustChangePassword: false,
+        onboardingStep: 5,
       },
       { new: true }
     );

@@ -81,6 +81,10 @@ const ownerSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    onboardingStep: {
+      type: Number,
+      default: 1,
+    },
   },
   { timestamps: true }
 );

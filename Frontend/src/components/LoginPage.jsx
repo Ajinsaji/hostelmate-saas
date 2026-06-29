@@ -65,6 +65,10 @@ function LoginPage() {
         token: response.data.token,
       };
 
+      console.log("Stored User:", storedUser);
+      console.log("Stored onboardingStep:", storedUser.onboardingStep);
+
+
       setOwnerAuth(response.data.token);
       setStoredOwner(storedUser);
 

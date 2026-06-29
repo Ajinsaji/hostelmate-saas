@@ -12,9 +12,12 @@ function OnboardingFlow() {
   const token = getOwnerToken();
   const storedOwner = getStoredOwner();
 
-  // Backend is the only source of truth for onboarding step.
-  const [currentStep, setCurrentStep] = useState(1);
+  console.log("Stored Owner:", storedOwner);
+  console.log("Backend Step:", storedOwner?.onboardingStep);
+  console.log("Current Step:", currentStep);
+
   const [backendStepInitialized, setBackendStepInitialized] = useState(false);
+
 
   const [loading, setLoading] = useState(false);
 
