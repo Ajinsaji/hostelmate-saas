@@ -16,9 +16,10 @@ function OnboardingFlow() {
   console.log("Backend Step:", storedOwner?.onboardingStep);
   const [backendStepInitialized, setBackendStepInitialized] = useState(false);
 
-
+  const [currentStep, setCurrentStep] = useState(1);
 
   const [loading, setLoading] = useState(false);
+
 
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -39,8 +40,11 @@ function OnboardingFlow() {
   const [bedCount, setBedCount] = useState("");
 
   // Initialize onboarding step from backend owner object (NO localStorage restore for step).
+
+
   useEffect(() => {
     if (!storedOwner || backendStepInitialized) return;
+
 
     const onboardingCompleted = storedOwner?.onboardingCompleted === true;
 
@@ -66,6 +70,7 @@ function OnboardingFlow() {
     } else {
       setCurrentStep(backendStep || 1);
     }
+
 
     setBackendStepInitialized(true);
     setIsHydrated(true);
