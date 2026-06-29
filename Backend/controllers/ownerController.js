@@ -718,7 +718,10 @@ const updateOwnerPassword = async (req, res) => {
     owner.updatedAt = new Date();
     await owner.save();
 
+    console.log("OWNER AFTER PASSWORD:", owner.onboardingStep);
+
     return res.status(200).json({ success: true, message: "Password updated", data: {
+
       firstLogin: owner.firstLogin,
       passwordChanged: owner.passwordChanged,
       mustChangePassword: owner.mustChangePassword,
@@ -788,7 +791,10 @@ const saveOnboardingRules = async (req, res) => {
       ),
     ]);
 
+    console.log("OWNER AFTER RULES:", updatedOwner?.onboardingStep);
+
     return res.status(200).json({
+
       success: true,
       message: "Hostel rules saved successfully",
       hostel: updatedHostel,
