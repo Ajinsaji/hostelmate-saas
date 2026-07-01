@@ -10,8 +10,6 @@ import {
   CalendarDays,
   Clock3,
   Sparkles,
-  CheckCircle2,
-  Circle,
   ShieldCheck,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
@@ -19,6 +17,7 @@ import { useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import api from "../utils/apiClient";
 import buildFileUrl from "../utils/buildFileUrl";
+
 import BottomNav from "../components/BottomNav";
 import DashboardLayout from "./DashboardLayout";
 
@@ -30,6 +29,7 @@ function Dashboard() {
   const navigate = useNavigate();
 
   const [subscriptionState, setSubscriptionState] = useState(null);
+
   const [subscriptionLoading, setSubscriptionLoading] = useState(true);
   const [stats, setStats] = useState({
     residents: "-",
@@ -223,50 +223,71 @@ function Dashboard() {
 
   const quickActions = useMemo(
     () => [
-      { title: "Add Room", description: "Create a new room", icon: <BedDouble size={22} />, onClick: () => navigate("/rooms") },
-      { title: "Add Resident", description: "Register a new resident", icon: <Users size={22} />, onClick: () => navigate("/residents") },
-      { title: "Collect Payment", description: "Review and collect rent", icon: <Wallet size={22} />, onClick: () => navigate("/payments") },
-      { title: "Admissions", description: "Review new requests", icon: <FileText size={22} />, onClick: () => navigate("/admissions") },
-      { title: "Reports", description: "Download reports", icon: <FileText size={22} />, onClick: () => navigate("/reports") },
-      { title: "Profile", description: "Manage owner profile", icon: <Users size={22} />, onClick: () => navigate("/owner/profile") },
-      { title: "Settings", description: "Hostel preferences", icon: <Settings size={22} />, onClick: () => navigate("/owner/settings") },
+      {
+        title: "Add Room",
+        description: "Create a new room",
+        icon: <BedDouble size={22} />,
+        onClick: () => navigate("/rooms"),
+      },
+      {
+        title: "Add Resident",
+        description: "Register a new resident",
+        icon: <Users size={22} />,
+        onClick: () => navigate("/residents"),
+      },
+      {
+        title: "Collect Payment",
+        description: "Review and collect rent",
+        icon: <Wallet size={22} />,
+        onClick: () => navigate("/payments"),
+      },
+      {
+        title: "Admissions",
+        description: "Review new requests",
+        icon: <FileText size={22} />,
+        onClick: () => navigate("/admissions"),
+      },
     ],
     [navigate]
   );
 
-  const managementItems = useMemo(
-    () => [
-      { title: "Rooms", description: "Create and update room inventory", count: stats.rooms, href: "/rooms" },
-      { title: "Residents", description: "Track roommates and occupancy", count: stats.residents, href: "/residents" },
-      { title: "Payments", description: "Monitor collections and dues", count: stats.pendingRent, href: "/payments" },
-      { title: "Reports", description: "Review hostel performance", count: "Live", href: "/reports" },
-      { title: "Subscriptions", description: "Stay on top of renewals", count: subscriptionPlan, href: "/owner/settings" },
-      { title: "Profile", description: "Owner details and preferences", count: "Edit", href: "/owner/profile" },
-    ],
-    [stats.pendingRent, stats.residents, stats.rooms, subscriptionPlan]
-  );
-
   const activityCards = useMemo(
     () => [
-      { title: "Latest Residents", description: "No activity yet. Start by adding your first resident.", href: "/residents" },
-      { title: "Recent Payments", description: "No activity yet. Start by adding your first resident.", href: "/payments" },
-      { title: "Pending Admissions", description: "No activity yet. Start by adding your first resident.", href: "/admissions" },
-      { title: "Recent Notifications", description: "No activity yet. Start by adding your first resident.", href: "/admissions" },
+      {
+        title: "Recent Payments",
+        description: "Track new and verified payment entries.",
+        href: "/payments",
+      },
+      {
+        title: "Recent Admissions",
+        description: "Review pending admissions and updates.",
+        href: "/admissions",
+      },
+      {
+        title: "Recent Residents",
+        description: "View the latest resident additions.",
+        href: "/residents",
+      },
+      {
+        title: "Latest Notifications",
+        description: "Check important alerts and announcements.",
+        href: "/admissions",
+      },
+      {
+        title: "Quick Payments",
+        description: "Go directly to collect dues.",
+        href: "/payments",
+      },
     ],
     []
   );
-
-  const isNewHostel = useMemo(() => {
-    const hasNoRooms = Number(stats.rooms) === 0;
-    const hasNoResidents = Number(stats.residents) === 0;
-    return Boolean(hostel && (hostel?.isNewHostel || hostel?.isNew || hostel?.onboardingCompleted === false || (hasNoRooms && hasNoResidents)));
-  }, [hostel, stats.residents, stats.rooms]);
 
   const formattedDate = now.toLocaleDateString("en-IN", {
     day: "numeric",
     month: "short",
     year: "numeric",
   });
+
   const formattedTime = now.toLocaleTimeString("en-IN", {
     hour: "numeric",
     minute: "2-digit",
@@ -366,7 +387,7 @@ function Dashboard() {
           <div className="mb-3 flex items-end justify-between gap-3">
             <div>
               <h2 id="overview-title" className="text-[22px] font-semibold text-slate-900">
-                Today&apos;s Overview
+                Today's Overview
               </h2>
               <p className="text-sm text-slate-500">A quick pulse of hostel operations.</p>
             </div>
@@ -436,114 +457,39 @@ function Dashboard() {
           </div>
         </section>
 
-        <section aria-labelledby="management-title">
-          <div className="mb-3">
-            <h2 id="management-title" className="text-[22px] font-semibold text-slate-900">
-              Management
-            </h2>
-            <p className="text-sm text-slate-500">Keep the core hostel operations close at hand.</p>
+        <section aria-labelledby="recent-activity-title">
+          <div className="mb-3 flex items-end justify-between gap-3">
+            <div>
+              <h2 id="recent-activity-title" className="text-[22px] font-semibold text-slate-900">
+                Recent Activity
+              </h2>
+              <p className="text-sm text-slate-500">Latest updates that need your attention.</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => navigate("/admissions")}
+              className="hidden text-sm font-semibold text-emerald-700 transition hover:text-emerald-800 sm:inline-flex"
+            >
+              View All
+            </button>
           </div>
 
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {managementItems.map((item) => (
+          <div className="space-y-3">
+            {activityCards.map((item) => (
               <button
                 key={item.title}
                 type="button"
                 aria-label={item.title}
                 onClick={() => navigate(item.href)}
-                className="group rounded-[22px] border border-slate-200/80 bg-white p-5 text-left shadow-sm transition duration-200 hover:-translate-y-1 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                className="flex w-full items-center justify-between rounded-2xl border border-slate-200 bg-slate-50/60 p-4 text-left transition hover:border-emerald-200 hover:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
               >
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="text-lg font-semibold text-slate-900">{item.title}</p>
-                    <p className="mt-1 text-sm text-slate-500">{item.description}</p>
-                  </div>
-                  <ArrowRight size={18} className="mt-1 text-slate-400 transition group-hover:translate-x-0.5" />
+                <div>
+                  <p className="text-base font-semibold text-slate-900">{item.title}</p>
+                  <p className="mt-1 text-sm text-slate-500">{item.description}</p>
                 </div>
-                <div className="mt-5 flex items-center justify-between rounded-2xl bg-slate-50 px-3 py-2">
-                  <span className="text-sm font-medium text-slate-500">Current count</span>
-                  <span className="text-base font-semibold text-slate-900">{item.count}</span>
-                </div>
+                <ArrowRight size={18} className="text-slate-400" />
               </button>
             ))}
-          </div>
-        </section>
-
-        <section className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
-          <div className="rounded-[26px] border border-slate-200/80 bg-white p-5 shadow-sm">
-            <div className="mb-4 flex items-center justify-between">
-              <div>
-                <h2 className="text-[22px] font-semibold text-slate-900">Recent Activity</h2>
-                <p className="text-sm text-slate-500">A simple view of what needs attention next.</p>
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              {activityCards.map((item) => (
-                <button
-                  key={item.title}
-                  type="button"
-                  aria-label={item.title}
-                  onClick={() => navigate(item.href)}
-                  className="flex w-full items-center justify-between rounded-2xl border border-slate-200 bg-slate-50/70 p-4 text-left transition hover:border-emerald-200 hover:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                >
-                  <div>
-                    <p className="text-base font-semibold text-slate-900">{item.title}</p>
-                    <p className="mt-1 text-sm text-slate-500">{item.description}</p>
-                  </div>
-                  <ArrowRight size={18} className="text-slate-400" />
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="space-y-6">
-            {isNewHostel && (
-              <div className="rounded-[26px] border border-emerald-100 bg-emerald-50/70 p-5 shadow-sm">
-                <div className="flex items-center gap-2">
-                  <CheckCircle2 size={20} className="text-emerald-700" />
-                  <h3 className="text-lg font-semibold text-slate-900">Getting Started</h3>
-                </div>
-                <p className="mt-2 text-sm text-slate-600">A few essentials will make your hostel feel ready to manage.</p>
-
-                <ul className="mt-4 space-y-3">
-                  <li className="flex items-center gap-2 text-sm text-slate-700">
-                    <CheckCircle2 size={18} className="text-emerald-600" />
-                    Hostel created
-                  </li>
-                  <li className="flex items-center gap-2 text-sm text-slate-700">
-                    <CheckCircle2 size={18} className="text-emerald-600" />
-                    Profile completed
-                  </li>
-                  <li className="flex items-center gap-2 text-sm text-slate-700">
-                    <Circle size={18} className="text-slate-400" />
-                    Add first room
-                  </li>
-                  <li className="flex items-center gap-2 text-sm text-slate-700">
-                    <Circle size={18} className="text-slate-400" />
-                    Add first resident
-                  </li>
-                  <li className="flex items-center gap-2 text-sm text-slate-700">
-                    <Circle size={18} className="text-slate-400" />
-                    Record first payment
-                  </li>
-                </ul>
-              </div>
-            )}
-
-            <div className="rounded-[26px] border border-slate-200/80 bg-white p-5 shadow-sm">
-              <h3 className="text-lg font-semibold text-slate-900">Next best step</h3>
-              <p className="mt-2 text-sm text-slate-600">
-                Add your first resident to turn this overview into an active hostel.
-              </p>
-              <button
-                type="button"
-                onClick={() => navigate("/residents")}
-                className="mt-4 inline-flex items-center rounded-2xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800"
-              >
-                Start with residents
-              </button>
-            </div>
           </div>
         </section>
       </div>

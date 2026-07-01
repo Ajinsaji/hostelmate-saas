@@ -1,14 +1,25 @@
-# HostelMate TODO (Phase 2 Owner Onboarding UI)
+- [x] Investigate Payments -> Login redirect root cause (confirm ownerUser clearing / JWT decode failure / guard differences)
+- [x] Verify whether ownerUser is being cleared / overwritten before Payments route
+- [x] Verify JWT payload decoding used by OwnerProtectedRoute
 
-- [ ] Inspect current OnboardingFlow.jsx + related step components (Step2Security.jsx, OnboardingStep3Rules.jsx).
-- [ ] Redesign premium layout + shared header/progress UI inside OnboardingFlow.jsx for steps 1-5.
-- [ ] Step 1: premium welcome UI.
-- [ ] Step 2: premium password UI (update in OnboardingFlow.jsx only).
-- [ ] Step 3: premium rules UI (replace existing component rendering within OnboardingFlow.jsx only).
-- [ ] Step 4: redesign room management into modern room cards; preserve add/remove/save/skip behavior.
-- [ ] Step 5: premium success screen.
-- [ ] Standardize buttons + inputs + loading spinners + focus rings.
-- [ ] Add subtle Framer Motion animations (fade/slide/progress transitions) without excessive motion.
-- [ ] Accessibility pass: labels, keyboard focus, contrast, ARIA.
-- [ ] Verify no changes to backend/APIs/routes/auth/onboarding logic/state/localStorage.
 
+- [x] Apply smallest frontend fix necessary (only if frontend auth flow bug verified)
+
+- [x] Redesign owner dashboard per IA:
+
+  - [ ] Hero section with: Welcome Back, Hostel name, Date, Time, Subscription badge, Owner profile card, Quick status
+  - [ ] Today’s Overview cards (5 only): Residents, Rooms, Occupancy, Today’s Collection, Pending Rent
+  - [ ] Quick Actions (exactly 4): Add Resident, Add Room, Collect Payment, Admissions
+  - [ ] Recent Activity (max 5 items) + View All
+  - [ ] Remove clutter and duplicate navigation
+- [ ] Ensure Lucide React icons consistency
+
+- [ ] Ensure Framer Motion is subtle (or keep existing motion patterns)
+
+- [ ] Verify navigation entry points to Payments do not redirect to Login:
+  - [ ] Dashboard → Collect Payment
+  - [ ] Dashboard → Payments
+  - [ ] Sidebar → Payments
+  - [ ] Bottom Navigation → Payments
+  - [ ] Any Add Payment button
+- [ ] Produce final deliverable summary

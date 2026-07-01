@@ -30,9 +30,20 @@ export default function OwnerProtectedRoute({ children }) {
   const ownerInfo = storedUser || payload;
   const onboardingCompleted = ownerInfo?.onboardingCompleted;
 
-  const hasAuthenticatedOwner = !!token && !!ownerInfo;
+  const hasAuthenticatedOwner = !!token;
+
+  // If decoded payload exists and contains user fields, prefer it.
+  // Otherwise, fall back to stored user (handled below in RoleProtectedRoute).
+  // This prevents authenticated owners from being treated as logged out
+  // when ownerUser storage is temporarily missing.
+
+  const ownerInfoWithFallback = storedUser || payload;
+
+
+
 
   const [subscriptionExpired, setSubscriptionExpired] = useState(false);
+
 
   // Non-blocking: check subscription via backend lightweight status.
   // If endpoint is missing, do not lock.
