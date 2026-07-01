@@ -2,6 +2,8 @@ const express = require("express");
 
 const router = express.Router();
 
+const ownerAuth = require("../middleware/ownerAuth");
+
 const {
   createPayment,
   getPaymentsByHostel,
@@ -11,6 +13,7 @@ const {
 } = require("../controllers/paymentController");
 
 const { uploadSingle } = require("../middleware/cloudinaryUpload");
+
 
 
 
@@ -32,13 +35,12 @@ router.post(
 // BY HOSTEL
 // ==========================
 
-const ownerAuth = require("../middleware/ownerAuth");
-
 router.get(
   "/hostel",
   ownerAuth,
   getPaymentsByHostel
 );
+
 
 
 
