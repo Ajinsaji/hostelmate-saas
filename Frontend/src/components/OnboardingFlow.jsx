@@ -3,8 +3,9 @@ import { useState, useEffect, useMemo, memo } from "react";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import axios from "axios";
-import { motion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import {
+  ArrowLeft,
   ArrowRight,
   BedDouble,
   CheckCircle,
@@ -26,13 +27,14 @@ const HOSTELMATE_GREEN = "#00b894";
 // Shared Components (stable references, defined outside main component)
 // ============================================================================
 
-const PremiumCardLayout = ({ children }) => {
+const PremiumCardLayout = ({ children, topLeftAction }) => {
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(0,184,148,0.2),_transparent_35%),linear-gradient(135deg,_#001a4d_0%,_#0b3c74_100%)] px-3 py-4 sm:px-4 sm:py-6 lg:px-6 lg:py-8">
-      <div className="mx-auto flex min-h-[calc(100vh-2rem)] w-full max-w-[800px] items-center justify-center">
-        <div className="relative w-full overflow-hidden rounded-[2rem] border border-white/20 bg-white/95 p-4 shadow-[0_40px_120px_rgba(0,0,0,0.24)] backdrop-blur sm:p-8 lg:p-10">
-          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,_rgba(0,184,148,0.14),_transparent_35%)]" />
-          <div className="relative">{children}</div>
+    <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(0,184,148,0.2),_transparent_40%),linear-gradient(135deg,_#030b16_0%,_#071d3d_55%,_#06264f_100%)] px-3 py-4 sm:px-4 sm:py-6 lg:px-6 lg:py-8">
+      <div className="mx-auto flex min-h-[calc(100vh-2rem)] w-full max-w-[860px] items-center justify-center">
+        <div className="relative w-full overflow-hidden rounded-[2rem] border border-white/10 bg-[#071425] p-4 shadow-[0_30px_90px_rgba(0,0,0,0.45)] backdrop-blur-xl sm:p-8 lg:p-10">
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,_rgba(0,184,148,0.15),_transparent_35%)]" />
+          <div className={`relative ${topLeftAction ? "pt-14 sm:pt-16" : ""}`}>{children}</div>
+          {topLeftAction ? <div className="absolute left-4 top-4 z-10">{topLeftAction}</div> : null}
         </div>
       </div>
     </div>
@@ -43,26 +45,26 @@ const Header = ({ step, title, description }) => {
   const progress = (step / 5) * 100;
 
   return (
-    <div className="mb-7 rounded-[1.6rem] border border-emerald-100/80 bg-gradient-to-br from-white via-emerald-50/70 to-slate-50 p-4 shadow-[0_12px_35px_rgba(15,23,42,0.06)] sm:p-5">
+    <div className="mb-7 rounded-[1.6rem] border border-white/10 bg-slate-900/80 p-4 shadow-[0_16px_45px_rgba(2,8,23,0.28)] backdrop-blur sm:p-5">
       <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
         <div>
-          <div className="text-[11px] font-semibold uppercase tracking-[0.3em] text-emerald-700">Owner Setup</div>
-          <div className="mt-1 text-xl font-bold text-gray-950">Step {step} of 5</div>
-          <div className="mt-1 text-sm text-gray-600 md:text-base">{description}</div>
+          <div className="text-[11px] font-semibold uppercase tracking-[0.3em] text-emerald-300">Owner Setup</div>
+          <div className="mt-1 text-xl font-bold text-white">Step {step} of 5</div>
+          <div className="mt-1 text-sm text-slate-300 md:text-base">{description}</div>
         </div>
-        <div className="inline-flex items-center gap-2 rounded-full border border-emerald-100 bg-white/90 px-3 py-1.5 text-sm font-semibold text-gray-700 shadow-sm">
+        <div className="inline-flex items-center gap-2 rounded-full border border-emerald-400/30 bg-slate-800/80 px-3 py-1.5 text-sm font-semibold text-slate-100 shadow-sm">
           <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: HOSTELMATE_GREEN }} aria-hidden />
           {title}
         </div>
       </div>
 
       <div className="mt-5">
-        <div className="flex items-center justify-between text-[11px] font-semibold uppercase tracking-[0.22em] text-gray-500">
+        <div className="flex items-center justify-between text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">
           <span>Progress</span>
           <span>{step}/5</span>
         </div>
         <div
-          className="mt-2 h-2.5 overflow-hidden rounded-full bg-gray-200"
+          className="mt-2 h-2.5 overflow-hidden rounded-full bg-slate-800"
           role="progressbar"
           aria-valuemin={0}
           aria-valuemax={100}
@@ -84,16 +86,16 @@ const Header = ({ step, title, description }) => {
             const state = s < step ? "completed" : s === step ? "current" : "upcoming";
             const dotClass =
               state === "completed"
-                ? "bg-emerald-600 shadow-[0_0_0_4px_rgba(0,184,148,0.16)]"
+                ? "bg-emerald-500 shadow-[0_0_0_4px_rgba(0,184,148,0.16)]"
                 : state === "current"
                   ? "shadow-[0_0_0_4px_rgba(0,184,148,0.16)]"
-                  : "bg-gray-300";
+                  : "bg-slate-700";
             const dotStyle = state === "current" ? { backgroundColor: HOSTELMATE_GREEN } : undefined;
 
             return (
               <div key={s} className="flex flex-col items-center">
                 <div className={`h-2.5 w-2.5 rounded-full transition-all ${dotClass}`} style={dotStyle} aria-hidden />
-                <div className="mt-1 hidden text-[11px] font-semibold text-gray-500 sm:block">
+                <div className="mt-1 hidden text-[11px] font-semibold text-slate-500 sm:block">
                   {state === "completed" ? "Completed" : state === "current" ? "Current" : "Upcoming"}
                 </div>
               </div>
@@ -107,7 +109,7 @@ const Header = ({ step, title, description }) => {
 
 const Button = ({ variant = "primary", disabled, loading, onClick, type = "button", children }) => {
   const base =
-    "inline-flex items-center justify-center gap-2 rounded-2xl font-semibold transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-[#00b894] focus-visible:ring-offset-2";
+    "inline-flex items-center justify-center gap-2 rounded-2xl font-semibold transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-[#00b894] focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950";
 
   if (variant === "secondary") {
     return (
@@ -115,7 +117,7 @@ const Button = ({ variant = "primary", disabled, loading, onClick, type = "butto
         type={type}
         onClick={onClick}
         disabled={disabled || loading}
-        className={`${base} w-full border border-gray-200 bg-white px-4 py-3 text-gray-800 hover:bg-gray-50 hover:shadow-sm disabled:cursor-not-allowed disabled:opacity-50`}
+        className={`${base} w-full border border-white/10 bg-slate-900/90 px-4 py-3 text-slate-100 hover:border-emerald-400/40 hover:bg-slate-800 hover:shadow-sm disabled:cursor-not-allowed disabled:opacity-50`}
       >
         {loading ? <Loader2 className="animate-spin" size={18} /> : null}
         {children}
@@ -128,7 +130,7 @@ const Button = ({ variant = "primary", disabled, loading, onClick, type = "butto
       type={type}
       onClick={onClick}
       disabled={disabled || loading}
-      className={`${base} w-full bg-gradient-to-r from-[#001a4d] to-[#00b894] px-4 py-3 text-white shadow-lg shadow-emerald-900/10 hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-50`}
+      className={`${base} w-full bg-gradient-to-r from-[#002f5f] via-[#0a4d7d] to-[#00b894] px-4 py-3 text-white shadow-lg shadow-emerald-900/20 hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-50`}
     >
       {loading ? <Loader2 className="animate-spin" size={18} /> : null}
       {children}
@@ -139,9 +141,9 @@ const Button = ({ variant = "primary", disabled, loading, onClick, type = "butto
 const Input = ({ id, label, required, type = "text", value, onChange, placeholder, autoComplete, min, max, description, ariaInvalid = false, ariaDescribedBy, rightSlot }) => {
   return (
     <div className="mb-4">
-      <label htmlFor={id} className="block text-sm font-semibold text-gray-800">
+      <label htmlFor={id} className="block text-sm font-semibold text-slate-100">
         {label}
-        {required ? <span className="ml-1 text-red-500">*</span> : null}
+        {required ? <span className="ml-1 text-rose-400">*</span> : null}
       </label>
       <div className="relative">
         <input
@@ -156,11 +158,11 @@ const Input = ({ id, label, required, type = "text", value, onChange, placeholde
           max={max}
           aria-invalid={ariaInvalid}
           aria-describedby={ariaDescribedBy}
-          className={`mt-2 w-full rounded-2xl border bg-white px-4 py-3 pr-12 text-gray-900 placeholder-gray-400 shadow-sm outline-none transition focus:border-[#00b894] focus:ring-2 focus:ring-[#00b894]/20 ${ariaInvalid ? "border-red-300" : "border-gray-200"}`}
+          className={`mt-2 w-full rounded-2xl border bg-slate-900/80 px-4 py-3 pr-12 text-slate-100 placeholder-slate-500 shadow-inner outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/20 ${ariaInvalid ? "border-rose-400/45" : "border-white/10"}`}
         />
         {rightSlot ? <div className="absolute right-3 top-1/2 -translate-y-1/2">{rightSlot}</div> : null}
       </div>
-      {description ? <p id={ariaDescribedBy} className="mt-2 text-sm text-gray-500">{description}</p> : null}
+      {description ? <p id={ariaDescribedBy} className="mt-2 text-sm text-slate-400">{description}</p> : null}
     </div>
   );
 };
@@ -168,9 +170,9 @@ const Input = ({ id, label, required, type = "text", value, onChange, placeholde
 const Textarea = ({ id, label, required, value, onChange, placeholder, rows = 10, maxLength, description, ariaDescribedBy }) => {
   return (
     <div className="mb-4">
-      <label htmlFor={id} className="block text-sm font-semibold text-gray-800">
+      <label htmlFor={id} className="block text-sm font-semibold text-slate-100">
         {label}
-        {required ? <span className="ml-1 text-red-500">*</span> : null}
+        {required ? <span className="ml-1 text-rose-400">*</span> : null}
       </label>
       <textarea
         id={id}
@@ -180,9 +182,9 @@ const Textarea = ({ id, label, required, value, onChange, placeholder, rows = 10
         rows={rows}
         maxLength={maxLength}
         aria-describedby={ariaDescribedBy}
-        className="mt-2 min-h-[240px] w-full resize-none overflow-auto rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-gray-900 shadow-inner outline-none transition focus:border-[#00b894] focus:bg-white focus:ring-2 focus:ring-[#00b894]/20"
+        className="mt-2 min-h-[240px] w-full resize-none overflow-auto rounded-2xl border border-white/10 bg-slate-900/70 px-4 py-3 text-slate-100 shadow-inner outline-none transition focus:border-emerald-400 focus:bg-slate-900 focus:ring-2 focus:ring-emerald-400/20"
       />
-      {description ? <p id={ariaDescribedBy} className="mt-2 text-sm text-gray-500">{description}</p> : null}
+      {description ? <p id={ariaDescribedBy} className="mt-2 text-sm text-slate-400">{description}</p> : null}
     </div>
   );
 };
@@ -202,16 +204,16 @@ const Step1Content = memo(({ storedOwner, onContinue }) => {
       className="grid gap-8 lg:grid-cols-[1.05fr_0.95fr] lg:items-center"
     >
       <div>
-        <div className="inline-flex items-center gap-2 rounded-full border border-emerald-100 bg-emerald-50 px-3 py-1.5 shadow-sm">
-          <Sparkles size={16} className="text-emerald-600" />
-          <span className="text-sm font-semibold text-emerald-700">Owner onboarding, elevated</span>
+        <div className="inline-flex items-center gap-2 rounded-full border border-emerald-400/25 bg-emerald-500/10 px-3 py-1.5 shadow-sm">
+          <Sparkles size={16} className="text-emerald-400" />
+          <span className="text-sm font-semibold text-emerald-300">Owner onboarding, elevated</span>
         </div>
 
-        <h1 className="mt-5 text-3xl font-extrabold leading-tight text-gray-950 sm:text-4xl">
+        <h1 className="mt-5 text-3xl font-extrabold leading-tight text-white sm:text-4xl">
           Welcome back, {ownerName} 👋
         </h1>
-        <p className="mt-3 max-w-xl text-base leading-7 text-gray-600 sm:text-lg">
-          Let&apos;s finish setting up your hostel with a polished, streamlined experience that feels effortless from the first step.
+        <p className="mt-3 max-w-xl text-base leading-7 text-slate-300 sm:text-lg">
+          Let&apos;s finish setting up your hostel with a polished experience that feels as premium as the rest of HostelMate.
         </p>
 
         <div className="mt-8 max-w-sm">
@@ -220,8 +222,24 @@ const Step1Content = memo(({ storedOwner, onContinue }) => {
           </Button>
         </div>
 
-        <div className="mt-5 rounded-[1.25rem] border border-emerald-100 bg-emerald-50/70 px-4 py-3 text-sm font-medium text-emerald-800 shadow-sm">
+        <div className="mt-5 rounded-[1.2rem] border border-emerald-400/20 bg-emerald-500/10 px-4 py-3 text-sm font-medium text-emerald-200 shadow-sm">
           Your progress is saved automatically so you can resume anytime across devices.
+        </div>
+
+        <div className="mt-6 rounded-[1.35rem] border border-white/10 bg-slate-900/70 p-4 shadow-[0_18px_45px_rgba(2,8,23,0.24)]">
+          <div className="text-sm font-semibold uppercase tracking-[0.26em] text-slate-400">Progress snapshot</div>
+          <div className="mt-3 flex items-center gap-2 text-sm text-slate-300">
+            <CheckCircle size={16} className="text-emerald-400" />
+            Secure your account
+          </div>
+          <div className="mt-2 flex items-center gap-2 text-sm text-slate-300">
+            <CheckCircle size={16} className="text-emerald-400" />
+            Set house rules
+          </div>
+          <div className="mt-2 flex items-center gap-2 text-sm text-slate-300">
+            <CheckCircle size={16} className="text-emerald-400" />
+            Add rooms and beds
+          </div>
         </div>
       </div>
 
@@ -229,7 +247,7 @@ const Step1Content = memo(({ storedOwner, onContinue }) => {
         initial={{ opacity: 0, scale: 0.98 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ delay: 0.05, duration: 0.35 }}
-        className="rounded-[1.75rem] border border-gray-100 bg-gradient-to-br from-white via-emerald-50/70 to-slate-50 p-6 shadow-[0_20px_60px_rgba(0,0,0,0.06)]"
+        className="rounded-[1.75rem] border border-white/10 bg-slate-900/80 p-6 shadow-[0_20px_60px_rgba(2,8,23,0.28)]"
       >
         <div className="flex items-center justify-center">
           <div className="flex h-24 w-24 items-center justify-center rounded-[1.5rem] shadow-lg" style={{ backgroundColor: HOSTELMATE_GREEN }}>
@@ -237,23 +255,25 @@ const Step1Content = memo(({ storedOwner, onContinue }) => {
           </div>
         </div>
 
-        <ul className="mt-6 space-y-3 text-sm text-gray-700">
-          <li className="flex items-start gap-3 rounded-2xl bg-white/90 px-3 py-3 shadow-sm">
-            <ShieldCheck className="mt-0.5 text-emerald-600" size={18} />
+        <ul className="mt-6 space-y-3 text-sm text-slate-200">
+          <li className="flex items-start gap-3 rounded-2xl border border-white/10 bg-slate-800/80 px-3 py-3 shadow-sm">
+            <ShieldCheck className="mt-0.5 text-emerald-400" size={18} />
             <span className="font-semibold">Secure your owner account</span>
           </li>
-          <li className="flex items-start gap-3 rounded-2xl bg-white/90 px-3 py-3 shadow-sm">
-            <KeyRound className="mt-0.5 text-emerald-600" size={18} />
+          <li className="flex items-start gap-3 rounded-2xl border border-white/10 bg-slate-800/80 px-3 py-3 shadow-sm">
+            <KeyRound className="mt-0.5 text-emerald-400" size={18} />
             <span className="font-semibold">Set house rules</span>
           </li>
-          <li className="flex items-start gap-3 rounded-2xl bg-white/90 px-3 py-3 shadow-sm">
-            <Sparkles className="mt-0.5 text-emerald-600" size={18} />
+          <li className="flex items-start gap-3 rounded-2xl border border-white/10 bg-slate-800/80 px-3 py-3 shadow-sm">
+            <Sparkles className="mt-0.5 text-emerald-400" size={18} />
             <span className="font-semibold">Add rooms and bed counts</span>
           </li>
         </ul>
 
-        <div className="mt-6 rounded-[1.25rem] border border-emerald-100 bg-[#001a4d] px-4 py-3 text-center text-sm font-semibold text-white shadow-sm">
-          Powered by <span className="ml-1 text-emerald-300">BetaMind TechSolutions</span>
+        <div className="mt-6 rounded-[1.25rem] border border-emerald-400/20 bg-slate-950/90 px-4 py-3 text-center text-sm font-semibold text-white shadow-sm">
+          <div className="text-[11px] uppercase tracking-[0.28em] text-slate-500">Powered by</div>
+          <div className="mt-1 text-emerald-300">BetaMind TechSolutions</div>
+          <div className="mt-1 text-xs font-medium text-slate-400">Building smarter hostel management.</div>
         </div>
       </motion.div>
     </motion.div>
@@ -310,25 +330,23 @@ const Step2Content = memo(
       >
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <h2 className="text-2xl font-bold text-gray-950">Secure your account</h2>
-            <p className="mt-2 text-gray-600">
+            <h2 className="text-2xl font-bold text-white">Secure your account</h2>
+            <p className="mt-2 text-slate-300">
               A strong password keeps your hostel data protected and gives you peace of mind.
             </p>
           </div>
-          <div className="rounded-[1.1rem] border border-emerald-100 bg-emerald-50 px-3 py-2 text-right shadow-sm">
-            <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-gray-500">Strength</div>
-            <div className="text-lg font-extrabold" style={{ color: HOSTELMATE_GREEN }}>
-              {strengthLabel}
-            </div>
+          <div className="rounded-[1.1rem] border border-emerald-400/20 bg-emerald-500/10 px-3 py-2 text-right shadow-sm">
+            <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400">Strength</div>
+            <div className="text-lg font-extrabold text-emerald-300">{strengthLabel}</div>
           </div>
         </div>
 
-        <div className="mt-6 rounded-[1.5rem] border border-gray-200 bg-gradient-to-br from-gray-50 to-white p-4 shadow-sm sm:p-5">
+        <div className="mt-6 rounded-[1.5rem] border border-white/10 bg-slate-900/80 p-4 shadow-[0_16px_45px_rgba(2,8,23,0.22)] sm:p-5">
           <div className="flex items-center justify-between">
-            <div className="text-sm font-semibold text-gray-700">Password strength</div>
-            <div className="text-xs font-semibold text-gray-500">{strength}/4</div>
+            <div className="text-sm font-semibold text-slate-200">Password strength</div>
+            <div className="text-xs font-semibold text-slate-400">{strength}/4</div>
           </div>
-          <div className="mt-3 h-2.5 overflow-hidden rounded-full bg-gray-200" aria-hidden>
+          <div className="mt-3 h-2.5 overflow-hidden rounded-full bg-slate-800" aria-hidden>
             <motion.div
               className="h-full rounded-full"
               style={{ backgroundColor: HOSTELMATE_GREEN }}
@@ -345,19 +363,19 @@ const Step2Content = memo(
                   className="inline-flex h-5 w-5 items-center justify-center rounded-full"
                   style={{
                     backgroundColor: item.ok ? "rgba(0,184,148,0.15)" : "rgba(107,114,128,0.15)",
-                    color: item.ok ? HOSTELMATE_GREEN : "#6b7280",
+                    color: item.ok ? HOSTELMATE_GREEN : "#94a3b8",
                   }}
                   aria-hidden
                 >
-                  {item.ok ? <CheckCircle size={14} /> : <span className="h-2 w-2 rounded-full bg-gray-400" />}
+                  {item.ok ? <CheckCircle size={14} /> : <span className="h-2 w-2 rounded-full bg-slate-500" />}
                 </span>
-                <span className={item.ok ? "font-semibold text-gray-900" : "text-gray-600"}>{item.text}</span>
+                <span className={item.ok ? "font-semibold text-slate-100" : "text-slate-400"}>{item.text}</span>
               </motion.li>
             ))}
           </ul>
         </div>
 
-        <div className="mt-6 rounded-[1.5rem] border border-gray-200 bg-white p-4 shadow-sm sm:p-5">
+        <div className="mt-6 rounded-[1.5rem] border border-white/10 bg-slate-900/70 p-4 shadow-[0_16px_45px_rgba(2,8,23,0.22)] sm:p-5">
           <Input
             id="newPassword"
             label="New Password"
@@ -374,7 +392,7 @@ const Step2Content = memo(
               <button
                 type="button"
                 onClick={() => onShowPasswordToggle(!showPassword)}
-                className="flex items-center gap-2 rounded-lg px-2 py-1 text-sm font-semibold text-gray-700 transition hover:text-gray-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#00b894]"
+                className="flex items-center gap-2 rounded-lg px-2 py-1 text-sm font-semibold text-slate-300 transition hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400"
                 aria-pressed={showPassword}
                 aria-label={showPassword ? "Hide password" : "Show password"}
               >
@@ -399,7 +417,7 @@ const Step2Content = memo(
               <button
                 type="button"
                 onClick={() => onShowConfirmPasswordToggle(!showConfirmPassword)}
-                className="flex items-center gap-2 rounded-lg px-2 py-1 text-sm font-semibold text-gray-700 transition hover:text-gray-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#00b894]"
+                className="flex items-center gap-2 rounded-lg px-2 py-1 text-sm font-semibold text-slate-300 transition hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400"
                 aria-pressed={showConfirmPassword}
                 aria-label={showConfirmPassword ? "Hide confirm password" : "Show confirm password"}
               >
@@ -409,11 +427,11 @@ const Step2Content = memo(
           />
 
           {passwordError ? (
-            <div className="mb-2 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
+            <div className="mb-2 rounded-2xl border border-rose-400/25 bg-rose-500/10 px-4 py-3 text-sm font-semibold text-rose-200">
               {passwordError}
             </div>
           ) : (
-            <div className="mb-2 text-sm text-gray-600">Tip: Use a mix of letters, numbers, and symbols.</div>
+            <div className="mb-2 text-sm text-slate-400">Tip: Use a mix of letters, numbers, and symbols.</div>
           )}
         </div>
 
@@ -442,19 +460,17 @@ const Step3Content = memo(({ rules, onRulesChange, onBack, onSave, loading }) =>
     >
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-gray-950">House rules and expectations</h2>
-          <p className="mt-2 text-gray-600">Set clear expectations for residents from day one in a way that&apos;s easy to follow.</p>
+          <h2 className="text-2xl font-bold text-white">House rules and expectations</h2>
+          <p className="mt-2 text-slate-300">Set clear expectations for residents from day one in a way that&apos;s easy to follow.</p>
         </div>
-        <div className="rounded-[1.1rem] border border-gray-200 bg-gray-50 px-3 py-2 text-right shadow-sm">
-          <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-gray-500">Characters</div>
-          <div className="text-lg font-extrabold" style={{ color: HOSTELMATE_GREEN }}>
-            {charCount}
-          </div>
+        <div className="rounded-[1.1rem] border border-white/10 bg-slate-900/80 px-3 py-2 text-right shadow-sm">
+          <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400">Characters</div>
+          <div className="text-lg font-extrabold text-emerald-300">{charCount}</div>
         </div>
       </div>
 
-      <div className="mt-6 rounded-[1.5rem] border border-gray-200 bg-white p-4 shadow-sm sm:p-5">
-        <div className="rounded-[1.25rem] border border-emerald-100 bg-emerald-50/70 px-3 py-2 text-sm text-emerald-800">
+      <div className="mt-6 rounded-[1.5rem] border border-white/10 bg-slate-900/70 p-4 shadow-[0_16px_45px_rgba(2,8,23,0.22)] sm:p-5">
+        <div className="rounded-[1.25rem] border border-emerald-400/20 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-200">
           Tip: include quiet hours, guest policy, smoking rules, and maintenance expectations.
         </div>
 
@@ -494,20 +510,20 @@ const Step4Content = memo(
         transition={{ duration: 0.35, ease: "easeOut" }}
       >
         <div>
-          <h2 className="text-2xl font-bold text-gray-950">Configure your rooms</h2>
-          <p className="mt-2 text-gray-600">
+          <h2 className="text-2xl font-bold text-white">Configure your rooms</h2>
+          <p className="mt-2 text-slate-300">
             Add room names and bed counts to shape your hostel layout in a clean, structured way.
           </p>
         </div>
 
-        <div className="mt-6 rounded-[1.5rem] border border-gray-200 bg-gradient-to-br from-gray-50 to-white p-4 shadow-sm sm:p-5">
-          <div className="rounded-[1.25rem] border border-emerald-100 bg-emerald-50/70 px-3 py-2 text-sm text-emerald-800">
+        <div className="mt-6 rounded-[1.5rem] border border-white/10 bg-slate-900/70 p-4 shadow-[0_16px_45px_rgba(2,8,23,0.22)] sm:p-5">
+          <div className="rounded-[1.25rem] border border-emerald-400/20 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-200">
             Add a room and its bed count, then continue when you are ready.
           </div>
 
           <div className="mt-4 grid gap-4 md:grid-cols-2">
             <div>
-              <label htmlFor="roomName" className="text-sm font-semibold text-gray-800">
+              <label htmlFor="roomName" className="text-sm font-semibold text-slate-100">
                 Room name
               </label>
               <input
@@ -516,12 +532,12 @@ const Step4Content = memo(
                 value={roomName}
                 onChange={(e) => onRoomNameChange(e.target.value)}
                 placeholder="e.g., Room A"
-                className="mt-2 w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-gray-900 placeholder-gray-400 shadow-sm outline-none transition focus:border-[#00b894] focus:ring-2 focus:ring-[#00b894]/20"
+                className="mt-2 w-full rounded-2xl border border-white/10 bg-slate-950/80 px-4 py-3 text-slate-100 placeholder-slate-500 shadow-sm outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/20"
                 aria-label="Room name"
               />
             </div>
             <div>
-              <label htmlFor="bedCount" className="text-sm font-semibold text-gray-800">
+              <label htmlFor="bedCount" className="text-sm font-semibold text-slate-100">
                 Bed count
               </label>
               <input
@@ -532,7 +548,7 @@ const Step4Content = memo(
                 placeholder="e.g., 8"
                 min={1}
                 inputMode="numeric"
-                className="mt-2 w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-gray-900 placeholder-gray-400 shadow-sm outline-none transition focus:border-[#00b894] focus:ring-2 focus:ring-[#00b894]/20"
+                className="mt-2 w-full rounded-2xl border border-white/10 bg-slate-950/80 px-4 py-3 text-slate-100 placeholder-slate-500 shadow-sm outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/20"
                 aria-label="Bed count"
               />
             </div>
@@ -547,15 +563,15 @@ const Step4Content = memo(
 
         <div className="mt-6">
           {rooms.length === 0 ? (
-            <div className="rounded-[1.5rem] border border-dashed border-gray-200 bg-white p-8 text-center shadow-sm">
+            <div className="rounded-[1.5rem] border border-dashed border-white/10 bg-slate-900/70 p-8 text-center shadow-sm">
               <div
                 className="mx-auto flex h-16 w-16 items-center justify-center rounded-[1.25rem]"
                 style={{ backgroundColor: "rgba(0,184,148,0.12)" }}
               >
-                <BedDouble className="text-emerald-700" size={28} />
+                <BedDouble className="text-emerald-400" size={28} />
               </div>
-              <div className="mt-4 text-lg font-extrabold text-gray-900">No rooms added yet.</div>
-              <div className="mt-2 text-sm text-gray-600">Add your first room to continue.</div>
+              <div className="mt-4 text-lg font-extrabold text-white">No rooms added yet.</div>
+              <div className="mt-2 text-sm text-slate-400">Add your first room to continue.</div>
             </div>
           ) : (
             <div className="grid gap-4 sm:grid-cols-2">
@@ -565,22 +581,22 @@ const Step4Content = memo(
                   initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.25 }}
-                  className="rounded-[1.4rem] border border-gray-100 bg-white p-5 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md"
+                  className="rounded-[1.4rem] border border-white/10 bg-slate-900/80 p-5 shadow-[0_12px_35px_rgba(2,8,23,0.22)] transition-all hover:-translate-y-0.5 hover:shadow-[0_18px_40px_rgba(2,8,23,0.28)]"
                 >
                   <div className="flex items-start justify-between gap-4">
                     <div>
-                      <div className="flex items-center gap-2 text-sm font-semibold text-gray-500">
-                        <Home size={16} className="text-emerald-600" /> Room
+                      <div className="flex items-center gap-2 text-sm font-semibold text-slate-400">
+                        <Home size={16} className="text-emerald-400" /> Room
                       </div>
-                      <div className="mt-2 text-lg font-extrabold text-gray-900">{room.name}</div>
-                      <div className="mt-2 text-sm text-gray-700">
+                      <div className="mt-2 text-lg font-extrabold text-white">{room.name}</div>
+                      <div className="mt-2 text-sm text-slate-300">
                         {room.beds} bed{room.beds > 1 ? "s" : ""}
                       </div>
                     </div>
                     <button
                       type="button"
                       onClick={() => onRemoveRoom(room.id)}
-                      className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-red-100 text-red-600 transition hover:bg-red-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-200"
+                      className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-rose-400/20 text-rose-300 transition hover:bg-rose-500/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-300"
                       aria-label={`Delete ${room.name}`}
                     >
                       <X size={18} />
@@ -629,12 +645,12 @@ const Step5Content = memo(({ loading, onComplete }) => {
         </div>
       </motion.div>
 
-      <h1 className="mt-6 text-3xl font-extrabold text-gray-950 sm:text-4xl">Your hostel is ready.</h1>
-      <p className="mx-auto mt-3 max-w-xl text-base leading-7 text-gray-600">
+      <h1 className="mt-6 text-3xl font-extrabold text-white sm:text-4xl">Your hostel is ready.</h1>
+      <p className="mx-auto mt-3 max-w-xl text-base leading-7 text-slate-300">
         Everything has been configured successfully and your setup is complete.
       </p>
 
-      <div className="mt-8 rounded-[1.5rem] border border-emerald-100 bg-emerald-50/70 px-5 py-4 text-sm text-emerald-800 shadow-sm">
+      <div className="mt-8 rounded-[1.5rem] border border-emerald-400/20 bg-emerald-500/10 px-5 py-4 text-sm text-emerald-200 shadow-sm">
         You can now continue to the dashboard and manage your hostel from a single place.
       </div>
 
@@ -660,6 +676,7 @@ function OnboardingFlow() {
   const [backendStepInitialized, setBackendStepInitialized] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [showLeaveSetupModal, setShowLeaveSetupModal] = useState(false);
 
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -899,55 +916,138 @@ function OnboardingFlow() {
   const activeStepTitle =
     currentStep === 1 ? "Welcome" : currentStep === 2 ? "Security" : currentStep === 3 ? "Rules" : currentStep === 4 ? "Rooms" : "Done";
 
+  const handleBackToLogin = () => {
+    if (storedOwner?.onboardingCompleted === true) {
+      navigate("/login", { replace: true });
+      return;
+    }
+
+    setShowLeaveSetupModal(true);
+  };
+
+  const handleLeaveSetupConfirm = () => {
+    setShowLeaveSetupModal(false);
+    navigate("/login", { replace: true });
+  };
+
   return (
-    <PremiumCardLayout>
-      <Header step={currentStep} title={activeStepTitle} description="Complete your hostel configuration" />
-      <div className="mt-8">
-        <div className="relative">
-          {currentStep === 1 && <Step1Content storedOwner={storedOwner} onContinue={() => setCurrentStep(2)} />}
-          {currentStep === 2 && (
-            <Step2Content
-              newPassword={newPassword}
-              confirmPassword={confirmPassword}
-              showPassword={showPassword}
-              showConfirmPassword={showConfirmPassword}
-              onPasswordChange={setNewPassword}
-              onConfirmPasswordChange={setConfirmPassword}
-              onShowPasswordToggle={setShowPassword}
-              onShowConfirmPasswordToggle={setShowConfirmPassword}
-              onBack={() => setCurrentStep(1)}
-              onSave={handleStep2Save}
-              loading={loading}
-            />
-          )}
-          {currentStep === 3 && (
-            <Step3Content
-              rules={rules}
-              onRulesChange={setRules}
-              onBack={() => setCurrentStep(2)}
-              onSave={handleStep3Save}
-              loading={loading}
-            />
-          )}
-          {currentStep === 4 && (
-            <Step4Content
-              rooms={rooms}
-              roomName={roomName}
-              bedCount={bedCount}
-              onRoomNameChange={setRoomName}
-              onBedCountChange={setBedCount}
-              onAddRoom={handleAddRoom}
-              onRemoveRoom={handleRemoveRoom}
-              onBack={() => setCurrentStep(3)}
-              onSkip={() => setCurrentStep(5)}
-              onSave={handleStep4Save}
-              loading={loading}
-            />
-          )}
-          {currentStep === 5 && <Step5Content loading={loading} onComplete={handleStep5Complete} />}
+    <>
+      <PremiumCardLayout
+        topLeftAction={
+          <button
+            type="button"
+            onClick={handleBackToLogin}
+            className="inline-flex items-center gap-2 rounded-full border border-emerald-400/30 bg-slate-950/80 px-3 py-2 text-sm font-semibold text-slate-100 shadow-[0_10px_30px_rgba(0,0,0,0.25)] backdrop-blur transition hover:border-emerald-400/60 hover:bg-slate-900 hover:text-emerald-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/60"
+          >
+            <ArrowLeft size={16} className="text-emerald-400" />
+            Back to Login
+          </button>
+        }
+      >
+        <Header step={currentStep} title={activeStepTitle} description="Complete your hostel configuration" />
+        <div className="mt-8">
+          <div className="relative">
+            {currentStep === 1 && <Step1Content storedOwner={storedOwner} onContinue={() => setCurrentStep(2)} />}
+            {currentStep === 2 && (
+              <Step2Content
+                newPassword={newPassword}
+                confirmPassword={confirmPassword}
+                showPassword={showPassword}
+                showConfirmPassword={showConfirmPassword}
+                onPasswordChange={setNewPassword}
+                onConfirmPasswordChange={setConfirmPassword}
+                onShowPasswordToggle={setShowPassword}
+                onShowConfirmPasswordToggle={setShowConfirmPassword}
+                onBack={() => setCurrentStep(1)}
+                onSave={handleStep2Save}
+                loading={loading}
+              />
+            )}
+            {currentStep === 3 && (
+              <Step3Content
+                rules={rules}
+                onRulesChange={setRules}
+                onBack={() => setCurrentStep(2)}
+                onSave={handleStep3Save}
+                loading={loading}
+              />
+            )}
+            {currentStep === 4 && (
+              <Step4Content
+                rooms={rooms}
+                roomName={roomName}
+                bedCount={bedCount}
+                onRoomNameChange={setRoomName}
+                onBedCountChange={setBedCount}
+                onAddRoom={handleAddRoom}
+                onRemoveRoom={handleRemoveRoom}
+                onBack={() => setCurrentStep(3)}
+                onSkip={() => setCurrentStep(5)}
+                onSave={handleStep4Save}
+                loading={loading}
+              />
+            )}
+            {currentStep === 5 && <Step5Content loading={loading} onComplete={handleStep5Complete} />}
+          </div>
         </div>
-      </div>
-    </PremiumCardLayout>
+      </PremiumCardLayout>
+
+      <AnimatePresence>
+        {showLeaveSetupModal ? (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/75 px-4 backdrop-blur-sm"
+          >
+            <motion.div
+              initial={{ opacity: 0, y: 12, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 8, scale: 0.98 }}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="leave-setup-title"
+              className="w-full max-w-md rounded-[1.75rem] border border-white/10 bg-[#071425] p-6 shadow-[0_25px_70px_rgba(0,0,0,0.45)]"
+            >
+              <div className="flex items-center gap-3">
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-emerald-400/20 bg-emerald-500/10 text-emerald-300">
+                  <Home size={22} />
+                </div>
+                <div>
+                  <h2 id="leave-setup-title" className="text-xl font-bold text-white">
+                    Leave setup?
+                  </h2>
+                  <p className="mt-1 text-sm text-slate-400">
+                    Your onboarding progress has already been saved.
+                  </p>
+                </div>
+              </div>
+
+              <p className="mt-5 text-sm leading-7 text-slate-300">
+                Your onboarding progress has already been saved. You can continue later by logging in again.
+              </p>
+
+              <div className="mt-6 grid gap-3 sm:grid-cols-2">
+                <button
+                  type="button"
+                  onClick={() => setShowLeaveSetupModal(false)}
+                  className="rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-sm font-semibold text-slate-100 transition hover:bg-slate-800"
+                >
+                  Stay Here
+                </button>
+                <button
+                  type="button"
+                  onClick={handleLeaveSetupConfirm}
+                  className="rounded-2xl bg-gradient-to-r from-[#002f5f] via-[#0a4d7d] to-[#00b894] px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-emerald-900/20 transition hover:shadow-xl"
+                >
+                  Continue to Login
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
+    </>
   );
 }
 
