@@ -80,6 +80,20 @@ api.interceptors.request.use(
       ? localStorage.getItem("adminToken")
       : localStorage.getItem("ownerToken") || localStorage.getItem("token");
 
+    const authorizationHeaderExists = !!config.headers?.Authorization;
+    const method = (config.method || "").toUpperCase();
+
+    // [API REQUEST]
+    // Only log a prefix of the token (never the full JWT)
+    // NOTE: we log both whether an Authorization header exists *before* we set it,
+    // and whether a token exists in localStorage.
+    console.log("[API REQUEST]", {
+      Method: method,
+      URL: requestUrl,
+      Authorization: authorizationHeaderExists ? "Present" : "Missing",
+      "Token Prefix": token ? String(token).slice(0, 20) + "..." : "(none)",
+      "Is Admin Request": isAdminRequest,
+    });
 
     if (token) {
       if (isTokenExpired(token)) {
@@ -109,6 +123,37 @@ api.interceptors.response.use(
     const isAdminRequest = requestUrl.includes("/api/admin");
 
     if (status === 401) {
+      const method = (error?.config?.method || "").toUpperCase();
+      const responseBody = error?.response?.data;
+
+      // [API RESPONSE ERROR]
+      console.log("[API RESPONSE ERROR]", {
+        Method: method,
+        URL: requestUrl,
+        Status: status,
+        ResponseBody: responseBody,
+        "Is Admin Request": isAdminRequest,
+      });
+
+      const reason =
+        responseBody?.message ||
+        error?.message ||
+        "(no message)";
+
+      // ***** AUTH REDIRECT TRIGGERED *****
+      console.log("***** AUTH REDIRECT TRIGGERED *****", {
+        Request: {
+          Method: method,
+          URL: requestUrl,
+        },
+        Status: status,
+        Reason: reason,
+        "Current Route": window.location.pathname,
+        "Token Exists": !!localStorage.getItem("ownerToken"),
+        "Owner Exists": !!localStorage.getItem("ownerUser"),
+        // Keep existing redirect logic unchanged.
+      });
+
       if (isAdminRequest) {
         localStorage.removeItem("adminToken");
         redirectToLogin("/admin/login");
@@ -122,4 +167,5 @@ api.interceptors.response.use(
     return Promise.reject(error);
   }
 );
+
 

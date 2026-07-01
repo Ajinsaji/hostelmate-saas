@@ -21,6 +21,7 @@ const { uploadSingle } = require("../middleware/cloudinaryUpload");
 
 router.post(
   "/create",
+  ownerAuth,
   uploadSingle("proof"),
   createPayment
 );
@@ -49,7 +50,7 @@ router.get(
 
 router.get(
   "/resident/:residentId",
-
+  ownerAuth,
   getResidentPayments
 );
 
@@ -60,6 +61,7 @@ router.get(
 
 router.put(
   "/verify/:paymentId/:entryId",
+  ownerAuth,
 
   verifyPayment
 );
@@ -72,6 +74,7 @@ router.put(
 
 router.delete(
   "/delete/:paymentId",
+  ownerAuth,
 
   deletePayment
 );

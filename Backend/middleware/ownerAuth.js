@@ -6,7 +6,7 @@ const ownerAuth = (req, res, next) => {
     if (req.user) {
       req.owner = {
         ownerId: req.user.userId,
-        hostelId: req.user.hostelId,
+        hostelId: req.user.hostelId || req.user.hostelID || req.user?.hostel?._id || null,
         role: req.user.role,
       };
     }
