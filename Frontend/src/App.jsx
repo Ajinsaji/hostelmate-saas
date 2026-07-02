@@ -4,6 +4,7 @@ import {
   Route,
   Navigate,
   useLocation,
+  useNavigate,
 } from "react-router-dom";
 import { useEffect, useState } from "react";
 
@@ -52,6 +53,7 @@ import CookProtectedRoute from "./components/CookProtectedRoute";
 import AdminProtectedRoute from "./components/AdminProtectedRoute";
 import NotificationBell from "./components/NotificationBell";
 import ServerLoadingWrapper from "./components/ServerLoadingWrapper";
+import Notifications from "./pages/Notifications";
 
 function NotificationBellHost() {
   const location = useLocation();
@@ -159,6 +161,25 @@ function RequestAutoRedirect() {
 }
 
 function App() {
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!("serviceWorker" in navigator)) return undefined;
+
+    const handleSwMessage = (event) => {
+      const route = event?.data?.route;
+      const type = event?.data?.type;
+      if (type === "FCM_NAVIGATE" && route) {
+        navigate(route);
+      }
+    };
+
+    navigator.serviceWorker.addEventListener("message", handleSwMessage);
+    return () => {
+      navigator.serviceWorker.removeEventListener("message", handleSwMessage);
+    };
+  }, [navigate]);
+
   // Pending approval UX: if user is not authenticated yet but has a pending request,
   // always open /pending-approval (except when user is already on that route).
   const token = localStorage.getItem("ownerToken") || localStorage.getItem("adminToken");
@@ -177,6 +198,7 @@ function App() {
     <ServerLoadingWrapper>
       <BrowserRouter>
         <SessionGateWrapper />
+        <NotificationBellHost />
 
         <Routes>
 
@@ -370,7 +392,7 @@ function App() {
                 variant="owner"
                 title="Pending Admissions"
                 breadcrumbs={[{ label: "Pending Admissions" }]}
-                backTo={"/owner/dashboard"}
+                backTo="/owner/dashboard"
               >
                 <PendingAdmissions />
               </DesktopShell>
@@ -378,6 +400,39 @@ function App() {
           }
         />
 
+        <Route
+          path="/notifications"
+          element={
+            <OwnerProtectedRoute>
+              <DesktopShell
+                variant="owner"
+                title="Notifications"
+                breadcrumbs={[{ label: "Notifications" }]}
+                backTo="/owner/dashboard"
+              >
+                <Notifications />
+              </DesktopShell>
+            </OwnerProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/warden/notifications"
+          element={
+            <WardenProtectedRoute>
+              <Notifications />
+            </WardenProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/cook/notifications"
+          element={
+            <CookProtectedRoute>
+              <Notifications />
+            </CookProtectedRoute>
+          }
+        />
 
         <Route
           path="/warden"
@@ -505,6 +560,22 @@ function App() {
           }
         />
         <Route
+          path="/admin/notifications"
+          element={
+            <AdminProtectedRoute>
+              <DesktopShell
+                variant="admin"
+                title="Notifications"
+                breadcrumbs={[{ label: "Notifications" }]}
+                backTo="/admin"
+              >
+                <Notifications />
+              </DesktopShell>
+            </AdminProtectedRoute>
+          }
+        />
+
+        <Route
           path="/admin/reports"
           element={
             <AdminProtectedRoute>
@@ -512,14 +583,13 @@ function App() {
                 variant="admin"
                 title="Reports"
                 breadcrumbs={[{ label: "Reports" }]}
-                backTo={"/admin"}
+                backTo="/admin"
               >
                 <Reports />
               </DesktopShell>
             </AdminProtectedRoute>
           }
         />
-
 
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>

@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { requestFcmPermissionAndToken } from "../utils/firebaseClient";
+import { getStoredUser } from "../utils/authToken";
 
 // Foreground listener + device token registration.
 // Background notifications are handled by firebase-messaging-sw.js.
@@ -11,18 +12,18 @@ export default function useFcmNotifications({ enabled = true, onIncoming } = {})
     let unsubscribe = null;
 
     async function boot() {
-      // env-guarded no-op if Firebase credentials are missing
       const token = await requestFcmPermissionAndToken();
       if (!token) return;
 
-      // Register device token with backend (endpoint is assumed to exist)
+      const user = getStoredUser();
+
       try {
         const { api } = await import("../services/api");
         await api.post(`/api/notifications/device-token`, {
           token,
           platform: "web",
-          role: user?.role || "owner",
-          hostelId: user?.hostelId || null,
+          // Backend derives userId/role/hostelId from JWT.
+          ...(user ? {} : {}),
         });
       } catch (e) {
         // ignore until wired

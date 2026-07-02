@@ -48,21 +48,20 @@ export const setAdminAuth = (token) => {
 };
 
 export const getStoredOwner = () => {
-  const owner =
+  return (
     safeJsonParse(localStorage.getItem(OWNER_USER_KEY)) ||
-    safeJsonParse(localStorage.getItem("user"));
-
-  console.log("getStoredOwner():", owner);
-
-  return owner;
+    safeJsonParse(localStorage.getItem("user")) ||
+    null
+  );
 };
-
 
 export const getStoredAdmin = () => {
   return safeJsonParse(localStorage.getItem(ADMIN_USER_KEY));
 };
 
-export const getStoredUser = getStoredOwner;
+export const getStoredUser = () => {
+  return getStoredAdmin() || getStoredOwner();
+};
 
 export const setStoredOwner = (user) => {
   try {

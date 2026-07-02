@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { Bell, CheckCheck, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import useFcmNotifications from "../hooks/useFcmNotifications";
+import useNotificationSocket from "../hooks/useNotificationSocket";
 import { playNotificationSound } from "../utils/notificationSound";
 import { api } from "../services/api";
 
@@ -35,44 +36,23 @@ function typeToUI(type) {
 }
 
 export default function NotificationBell() {
-  useFcmNotifications({
-    enabled: true,
-    onIncoming: async ({ title, body, route }) => {
-      // Best-effort realtime UX; safe no-ops if APIs are missing.
-      try {
-        // sound (autoplay-safe; silently fails if blocked)
-        playNotificationSound({ cooldownMs: 900 });
-      } catch (e) {}
-
-      try {
-        toast((t) => (
-          <div style={{ fontWeight: 800 }}>
-            {title || "HostelMate"}: {body || "New notification"}
-          </div>
-        ));
-      } catch (e) {}
-
-
-      try {
-        // prevent UI staleness
-        await Promise.all([fetchUnread(), (open ? fetchNotifications() : fetchUnread())]);
-      } catch (e) {
-        // ignore
-      }
-
-      // optionally bounce to route immediately if provided
-      // (still allow user to use dropdown to mark read)
-      if (route) {
-        // don't auto-navigate if dropdown is open
-      }
-    },
-  });
-
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [isBellAnimated, setIsBellAnimated] = useState(false);
+  const animationTimer = useRef(null);
+
+  const notificationCenterPath = useMemo(() => "/notifications", []);
+
+  const addNotificationToTop = (notification) => {
+    setNotifications((prev) => {
+      const exists = prev.some((item) => item._id === notification._id);
+      if (exists) return prev;
+      return [notification, ...prev].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    });
+  };
 
   const fetchUnread = async () => {
     try {
@@ -95,10 +75,72 @@ export default function NotificationBell() {
     }
   };
 
+  useFcmNotifications({
+    enabled: true,
+    onIncoming: async ({ title, body, route }) => {
+      try {
+        playNotificationSound({ cooldownMs: 900 });
+      } catch (e) {}
+
+      try {
+        toast((t) => (
+          <div style={{ fontWeight: 800 }}>
+            {title || "HostelMate"}: {body || "New notification"}
+          </div>
+        ));
+      } catch (e) {}
+
+      try {
+        await fetchUnread();
+        if (open) {
+          await fetchNotifications();
+        }
+      } catch (e) {
+        // ignore
+      }
+
+      if (route && !open) {
+        navigate(route);
+      }
+    },
+  });
+
+  useNotificationSocket({
+    enabled: true,
+    onNotification: ({ notification, unreadCount: socketUnread }) => {
+      if (!notification) return;
+
+      addNotificationToTop(notification);
+      setUnreadCount((prev) => (typeof socketUnread === "number" ? socketUnread : prev + 1));
+      setIsBellAnimated(true);
+      if (animationTimer.current) {
+        clearTimeout(animationTimer.current);
+      }
+      animationTimer.current = window.setTimeout(() => {
+        setIsBellAnimated(false);
+      }, 280);
+
+      try {
+        playNotificationSound({ cooldownMs: 900 });
+      } catch (e) {}
+
+      try {
+        toast.success(notification.title || "New notification", {
+          duration: 4000,
+        });
+      } catch (e) {}
+    },
+    onDisconnect: () => {
+      // keep polling fallback active
+    },
+    onError: () => {
+      // keep polling fallback active
+    },
+  });
+
   useEffect(() => {
     fetchUnread();
 
-    // Lightweight polling for unread badge even before FCM wiring is live
     const id = setInterval(() => {
       fetchUnread();
     }, 30000);
@@ -114,18 +156,32 @@ export default function NotificationBell() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
-  const markAllRead = async () => {
-    // We don't have bulk endpoint yet; mark by iterating.
-    try {
-      const unread = notifications.filter((n) => !n.isRead);
-      for (const n of unread) {
-        await api.put(`/api/notifications/read/${n._id}`);
+  useEffect(() => {
+    return () => {
+      if (animationTimer.current) {
+        clearTimeout(animationTimer.current);
       }
+    };
+  }, []);
+
+  const markAllRead = async () => {
+    try {
+      await api.put(`/api/notifications/read-all`);
       setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
       setUnreadCount(0);
       toast.success("Marked all as read");
     } catch (e) {
-      toast.error("Failed to mark all as read");
+      try {
+        const unread = notifications.filter((n) => !n.isRead);
+        for (const n of unread) {
+          await api.put(`/api/notifications/read/${n._id}`);
+        }
+        setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+        setUnreadCount(0);
+        toast.success("Marked all as read");
+      } catch (error) {
+        toast.error("Failed to mark all as read");
+      }
     }
   };
 
@@ -140,12 +196,21 @@ export default function NotificationBell() {
       // ignore
     }
 
-    const route = n?.meta?.route;
+    const route = n?.actionUrl || n?.meta?.route;
     if (route) {
-      navigate(route);
+      if (route.startsWith("http")) {
+        window.location.href = route;
+      } else {
+        navigate(route);
+      }
     }
 
     setOpen(false);
+  };
+
+  const goToNotificationCenter = () => {
+    setOpen(false);
+    navigate(notificationCenterPath);
   };
 
   return (
@@ -208,6 +273,13 @@ export default function NotificationBell() {
                 onClick={markAllRead}
               >
                 <CheckCheck size={14} color="white" />
+              </button>
+              <button
+                className="btn-icon"
+                style={{ width: 32, height: 32, background: "rgba(255,255,255,0.08)" }}
+                onClick={goToNotificationCenter}
+              >
+                <span style={{ fontSize: 12, color: "white" }}>All</span>
               </button>
               <button
                 className="btn-icon"
