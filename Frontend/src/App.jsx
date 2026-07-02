@@ -161,24 +161,36 @@ function RequestAutoRedirect() {
 }
 
 function App() {
-  const navigate = useNavigate();
+  // Service worker navigation handler must run inside a Router.
+  // We'll mount a small inner component that uses `useNavigate()` below inside <BrowserRouter/>.
 
-  useEffect(() => {
-    if (!("serviceWorker" in navigator)) return undefined;
+  function SwMessageHandler() {
+    const navigate = useNavigate();
 
-    const handleSwMessage = (event) => {
-      const route = event?.data?.route;
-      const type = event?.data?.type;
-      if (type === "FCM_NAVIGATE" && route) {
-        navigate(route);
-      }
-    };
+    useEffect(() => {
+      if (!("serviceWorker" in navigator)) return undefined;
 
-    navigator.serviceWorker.addEventListener("message", handleSwMessage);
-    return () => {
-      navigator.serviceWorker.removeEventListener("message", handleSwMessage);
-    };
-  }, [navigate]);
+      const handleSwMessage = (event) => {
+        const route = event?.data?.route;
+        const type = event?.data?.type;
+        if (type === "FCM_NAVIGATE" && route) {
+          try {
+            navigate(route);
+          } catch {
+            // fallback:
+            window.location.href = route;
+          }
+        }
+      };
+
+      navigator.serviceWorker.addEventListener("message", handleSwMessage);
+      return () => {
+        navigator.serviceWorker.removeEventListener("message", handleSwMessage);
+      };
+    }, [navigate]);
+
+    return null;
+  }
 
   // Pending approval UX: if user is not authenticated yet but has a pending request,
   // always open /pending-approval (except when user is already on that route).
@@ -198,6 +210,9 @@ function App() {
     <ServerLoadingWrapper>
       <BrowserRouter>
         <SessionGateWrapper />
+        {/* Router-bound service worker navigation handler */}
+        {/** Mounted here so it can call useNavigate() safely. */}
+        <SwMessageHandler />
         <NotificationBellHost />
 
         <Routes>
