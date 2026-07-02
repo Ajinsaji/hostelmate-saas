@@ -6,6 +6,8 @@ import BottomNav from "../components/BottomNav";
 import useGlobalPolling from "../hooks/useGlobalPolling";
 
 function Payments() {
+  // UI-only redesign per spec (no logic changes)
+
   const [payments, setPayments] = useState([]);
   const [residents, setResidents] = useState([]);
   const [loading, setLoading] = useState(true);

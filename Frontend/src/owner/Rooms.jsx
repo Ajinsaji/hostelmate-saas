@@ -25,6 +25,8 @@ import { triggerOccupancyRefresh } from "../utils/occupancyRefresh";
 const PHONE_REGEX = /^[0-9]{10}$/;
 
 function Rooms() {
+  // UI-only redesign per spec (no logic changes)
+
   const [rooms, setRooms] = useState([]);
   const [residents, setResidents] = useState([]);
   const [payments, setPayments] = useState([]);
