@@ -1,19 +1,19 @@
-import { defineConfig } from 'vite'
+import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 
-function firebaseConfigPlugin() {
+function firebaseConfigPlugin(env) {
   return {
     name: 'generate-firebase-config',
     apply: 'build',
     generateBundle() {
       const config = {
-        apiKey: process.env.VITE_FIREBASE_API_KEY || "",
-        authDomain: process.env.VITE_FIREBASE_AUTH_DOMAIN || "",
-        projectId: process.env.VITE_FIREBASE_PROJECT_ID || "",
-        storageBucket: process.env.VITE_FIREBASE_STORAGE_BUCKET || "",
-        messagingSenderId: process.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "",
-        appId: process.env.VITE_FIREBASE_APP_ID || "",
+        apiKey: env.VITE_FIREBASE_API_KEY || "",
+        authDomain: env.VITE_FIREBASE_AUTH_DOMAIN || "",
+        projectId: env.VITE_FIREBASE_PROJECT_ID || "",
+        storageBucket: env.VITE_FIREBASE_STORAGE_BUCKET || "",
+        messagingSenderId: env.VITE_FIREBASE_MESSAGING_SENDER_ID || "",
+        appId: env.VITE_FIREBASE_APP_ID || "",
       };
 
       this.emitFile({
@@ -26,24 +26,28 @@ function firebaseConfigPlugin() {
 }
 
 // https://vite.dev/config/
-export default defineConfig({
-  plugins: [
-    react(),
-    VitePWA({
-      registerType: 'prompt',
-      injectRegister: 'auto',
-      workbox: {
-        cleanupOutdatedCaches: true,
-        clientsClaim: false,
-        skipWaiting: false,
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, process.cwd(), "");
 
-        // Allow large hashed bundles (prevents build failure on Vercel)
-        maximumFileSizeToCacheInBytes: 15 * 1024 * 1024,
+  return {
+    plugins: [
+      react(),
+      VitePWA({
+        registerType: 'prompt',
+        injectRegister: 'auto',
+        workbox: {
+          cleanupOutdatedCaches: true,
+          clientsClaim: false,
+          skipWaiting: false,
 
-        // Also prevent treating those assets as build-blocking errors
-        importScripts: [],
-      },
-    }),
-    firebaseConfigPlugin(),
-  ],
+          // Allow large hashed bundles (prevents build failure on Vercel)
+          maximumFileSizeToCacheInBytes: 15 * 1024 * 1024,
+
+          // Also prevent treating those assets as build-blocking errors
+          importScripts: [],
+        },
+      }),
+      firebaseConfigPlugin(env),
+    ],
+  }
 })

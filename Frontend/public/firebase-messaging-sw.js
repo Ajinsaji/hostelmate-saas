@@ -20,12 +20,12 @@ importScripts("/firebase-config.js");
 const firebaseConfig = self.__FIREBASE_CONFIG__ || {
   // NOTE: These placeholders should be replaced during deployment.
   // The apiKey must be the Firebase Web API key (starts with "AIza").
-  apiKey: "BIV9VuYsa_WqehZNiyaepcgB-Lh1hpTs_UmUKgetlpW1Mx2DMkxpyhBrxo_izXfxjPqbD03865KzYji-S0mLh7U",
+  apiKey: "AIzaSyxxxxxxxxxxxxxxxx",
   authDomain: "hostelmate-f0de8.firebaseapp.com",
   projectId: "hostelmate-f0de8",
   storageBucket: "hostelmate-f0de8.firebasestorage.app",
   messagingSenderId: "654995812093",
-  appId: "1:654995812093:web:6cfeed4b8a6fc5a15d9894",
+  appId: "1:654995812093:web:xxxxxxxx",
 };
 
 function isValidFirebaseConfig(cfg) {
