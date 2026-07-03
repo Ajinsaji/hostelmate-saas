@@ -66,14 +66,14 @@ export default function AppUpdateBanner() {
       });
     };
 
-    navigator.serviceWorker.getRegistration().then(handleRegistration).catch(() => {});
+    navigator.serviceWorker.getRegistration("/sw.js").then(handleRegistration).catch(() => {});
 
     const onNeedRefresh = (event) => {
       const detailScriptUrl = event?.detail?.waiting?.scriptURL;
-      if (detailScriptUrl) {
+      if (detailScriptUrl && detailScriptUrl.endsWith("/sw.js")) {
         showUpdatePrompt(detailScriptUrl);
       } else {
-        navigator.serviceWorker.getRegistration().then((reg) => {
+        navigator.serviceWorker.getRegistration("/sw.js").then((reg) => {
           handleRegistration(reg);
         });
       }
@@ -99,7 +99,7 @@ export default function AppUpdateBanner() {
     setIsUpdating(true);
     markPrompted();
     try {
-      const reg = await navigator.serviceWorker.getRegistration();
+      const reg = await navigator.serviceWorker.getRegistration("/sw.js");
       if (reg?.waiting) {
         reg.waiting.postMessage({ type: "SKIP_WAITING" });
       }

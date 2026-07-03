@@ -1,0 +1,42 @@
+
+> frontend@0.0.0 build
+> vite build
+
+[36mvite v8.0.10 [32mbuilding client environment for production...[36m[39m
+[2Ktransforming...✓ 2931 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/registerSW.js                     0.13 kB
+dist/manifest.webmanifest              0.16 kB
+dist/firebase-config.js                0.27 kB
+dist/index.html                        0.76 kB │ gzip:     0.40 kB
+dist/assets/index-D48tiFOj.css        69.29 kB │ gzip:    13.36 kB
+dist/assets/index.esm-Df2NvPi8.js      0.06 kB │ gzip:     0.08 kB
+dist/assets/index.esm-CdAu8JK-.js     43.03 kB │ gzip:    13.50 kB
+dist/assets/index-CeZShHon.js      9,964.70 kB │ gzip: 2,762.12 kB
+
+[33m[plugin builtin:vite-reporter] 
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.[39m
+[33m[33m[INEFFECTIVE_DYNAMIC_IMPORT] Warning:[0m src/services/api.js is dynamically imported by src/hooks/useFcmNotifications.js, src/hooks/useSessionVerification.js but also statically imported by src/Superadmin/AddHostel.jsx, src/Superadmin/AdminDashboard.jsx, src/Superadmin/AdminPage.jsx, src/Superadmin/HostelManagement.jsx, src/Superadmin/PendingRequests.jsx, ..., dynamic import will not move module into another chunk.
+[39m
+[33m[33m[INEFFECTIVE_DYNAMIC_IMPORT] Warning:[0m src/utils/firebaseClient.js is dynamically imported by src/hooks/useFcmNotifications.js but also statically imported by src/hooks/useFcmNotifications.js, dynamic import will not move module into another chunk.
+[39m
+[33m[33m[PLUGIN_TIMINGS] Warning:[0m Your build spent significant time in plugins. Here is a breakdown:
+  - vite:css (48%)
+  - vite:build-html (19%)
+  - rolldown:vite-resolve (17%)
+  - vite:asset-import-meta-url (5%)
+  - vite:worker-import-meta-url (4%)
+See https://rolldown.rs/options/checks#plugintimings for more details.
+[39m
+[32m✓ built in 10.75s[39m
+
+PWA v1.3.0
+mode      generateSW
+precache  9 entries (9845.98 KiB)
+files generated
+  dist/sw.js
+  dist/workbox-9c191d2f.js

@@ -50,7 +50,9 @@ async function registerFirebaseServiceWorker() {
   }
 
   try {
-    const existingRegistration = await navigator.serviceWorker.getRegistration("/");
+    const existingRegistration = await navigator.serviceWorker.getRegistration(
+      "/firebase-messaging-sw.js"
+    );
 
     if (existingRegistration) {
       const scriptUrl =
@@ -64,13 +66,17 @@ async function registerFirebaseServiceWorker() {
         return existingRegistration;
       }
 
-      console.log("⚠️ Unregistering stale service worker:", scriptUrl || existingRegistration.scope);
-      await existingRegistration.unregister();
+      console.log(
+        "✓ Firebase messaging path is currently controlled by another service worker; preserving PWA service worker and registering a dedicated Firebase worker."
+      );
     }
 
-    const registration = await navigator.serviceWorker.register("/firebase-messaging-sw.js", {
-      scope: "/",
-    });
+    const registration = await navigator.serviceWorker.register(
+      "/firebase-messaging-sw.js",
+      {
+        scope: "/firebase-messaging-sw.js",
+      }
+    );
     console.log("✓ Firebase service worker registered:", registration.scope);
     return registration;
   } catch (error) {
