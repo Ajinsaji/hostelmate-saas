@@ -184,6 +184,8 @@ const getNotificationSettings = async (req, res) => {
             rooms: true,
             staff: true,
             subscription: true,
+            complaints: true,
+            reminders: true,
             system: true,
           },
           browserNotifications: true,

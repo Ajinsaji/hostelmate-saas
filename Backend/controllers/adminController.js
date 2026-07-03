@@ -181,6 +181,26 @@ const approveHostel =
       request.hostelId = String(hostel._id);
       await request.save();
 
+      // NOTIFICATION: Hostel request approved by admin (system update to all admins)
+      try {
+        const { publishNotification } = require("../utils/notificationPublisher");
+        const Admin = require("../models/Admin");
+        const superAdmins = await Admin.find({ role: { $in: ["super_admin", "admin"] } });
+        
+        for (const admin of superAdmins || []) {
+          await publishNotification({
+            userId: admin._id,
+            type: "system_update",
+            title: "Hostel Request Approved",
+            message: `${hostel.hostelName} - Pending subscription setup`,
+            meta: { route: "/admin/pending-requests", relatedId: hostel._id },
+            role: admin.role,
+          });
+        }
+      } catch (e) {
+        console.error("Hostel approval notification failed:", e?.message || e);
+      }
+
       console.log("Draft hostel created:", hostel._id);
       return res.status(200).json({
         success: true,

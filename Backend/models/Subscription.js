@@ -109,6 +109,12 @@ const subscriptionSchema = new mongoose.Schema(
     notes: {
       type: String,
     },
+
+    // NOTIFICATION TRACKING
+    lastReminderSentAt: {
+      type: Date,
+      default: null,
+    },
   },
 
   { timestamps: true }

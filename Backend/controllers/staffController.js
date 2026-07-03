@@ -44,6 +44,25 @@ const createStaff = async (req, res) => {
     const message = generateStaffWhatsAppMessage(fullName, role, username, password, loginUrl);
     const whatsappURL = generateWhatsAppURL(phone, message);
 
+    // NOTIFICATION: Staff added
+    try {
+      const { publishNotification } = require("../utils/notificationPublisher");
+      const Owner = require("../models/Owner");
+      const owner = await Owner.findOne({ hostelId, role: "owner" });
+      if (owner?._id) {
+        await publishNotification({
+          userId: owner._id,
+          hostelId,
+          type: "staff_added",
+          title: `${fullName} Added as ${role.charAt(0).toUpperCase() + role.slice(1)}`,
+          message: `New staff member ${fullName} has been added`,
+          meta: { route: "/staff", relatedId: staff._id },
+        });
+      }
+    } catch (e) {
+      console.error("Staff added notification failed:", e?.message || e);
+    }
+
     return res.status(201).json({
       success: true,
       message: "Staff created successfully",
@@ -172,6 +191,25 @@ const deleteStaff = async (req, res) => {
     const staff = await Staff.findOneAndDelete({ _id: staffId, hostelId });
     if (!staff) {
       return res.status(404).json({ success: false, message: "Staff member not found" });
+    }
+
+    // NOTIFICATION: Staff removed
+    try {
+      const { publishNotification } = require("../utils/notificationPublisher");
+      const Owner = require("../models/Owner");
+      const owner = await Owner.findOne({ hostelId, role: "owner" });
+      if (owner?._id) {
+        await publishNotification({
+          userId: owner._id,
+          hostelId,
+          type: "staff_removed",
+          title: `${staff.fullName} Removed`,
+          message: `Staff member ${staff.fullName} has been removed`,
+          meta: { route: "/staff" },
+        });
+      }
+    } catch (e) {
+      console.error("Staff removed notification failed:", e?.message || e);
     }
 
     return res.status(200).json({ success: true, message: "Staff deleted successfully" });

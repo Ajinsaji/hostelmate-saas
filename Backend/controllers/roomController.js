@@ -108,6 +108,25 @@ const createRoom =
       // 3. Re-fetch actual count to verify
       const finalBedCount = await Bed.countDocuments({ roomId: room._id });
 
+      // NOTIFICATION: Room added
+      try {
+        const { publishNotification } = require("../utils/notificationPublisher");
+        const Owner = require("../models/Owner");
+        const owner = await Owner.findOne({ hostelId, role: "owner" });
+        if (owner?._id) {
+          await publishNotification({
+            userId: owner._id,
+            hostelId,
+            type: "room_added",
+            title: `Room ${normalizedRoomNumber} Added`,
+            message: `New room ${normalizedRoomNumber} with ${totalBedsNum} beds created`,
+            meta: { route: "/rooms", relatedId: room._id },
+          });
+        }
+      } catch (e) {
+        console.error("Room added notification failed:", e?.message || e);
+      }
+
       res.status(201).json({
         success: true,
         message: "Room Created Successfully",
@@ -200,6 +219,25 @@ const deleteRoom =
         roomId,
       });
 
+      // NOTIFICATION: Room deleted
+      try {
+        const { publishNotification } = require("../utils/notificationPublisher");
+        const Owner = require("../models/Owner");
+        const owner = await Owner.findOne({ hostelId: req.owner.hostelId, role: "owner" });
+        if (owner?._id) {
+          await publishNotification({
+            userId: owner._id,
+            hostelId: req.owner.hostelId,
+            type: "room_deleted",
+            title: "Room Deleted",
+            message: "A room has been deleted",
+            meta: { route: "/rooms" },
+          });
+        }
+      } catch (e) {
+        console.error("Room deleted notification failed:", e?.message || e);
+      }
+
       res.status(200).json({
         success: true,
         message: "Room Deleted",
@@ -253,6 +291,25 @@ const editRoom = async (req, res) => {
 
 
     await room.save();
+
+    // NOTIFICATION: Room updated
+    try {
+      const { publishNotification } = require("../utils/notificationPublisher");
+      const Owner = require("../models/Owner");
+      const owner = await Owner.findOne({ hostelId: req.owner.hostelId, role: "owner" });
+      if (owner?._id) {
+        await publishNotification({
+          userId: owner._id,
+          hostelId: req.owner.hostelId,
+          type: "room_updated",
+          title: `Room ${room.roomNumber} Updated`,
+          message: "Room details have been updated",
+          meta: { route: "/rooms", relatedId: room._id },
+        });
+      }
+    } catch (e) {
+      console.error("Room updated notification failed:", e?.message || e);
+    }
 
     res.status(200).json({ success: true, message: "Room Updated", room });
   } catch (error) {

@@ -12,6 +12,8 @@ const notificationSettingSchema = new mongoose.Schema(
       rooms: { type: Boolean, default: true },
       staff: { type: Boolean, default: true },
       subscription: { type: Boolean, default: true },
+      complaints: { type: Boolean, default: true },
+      reminders: { type: Boolean, default: true },
       system: { type: Boolean, default: true },
     },
     browserNotifications: { type: Boolean, default: true },

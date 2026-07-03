@@ -259,6 +259,27 @@ const verifyPayment =
 
       await payment.save();
 
+      // NOTIFICATION: Payment verified
+      try {
+        const { publishNotification } = require("../utils/notificationPublisher");
+        const Resident = require("../models/Resident");
+        const Owner = require("../models/Owner");
+        const resident = await Resident.findById(payment.residentId);
+        const owner = await Owner.findOne({ hostelId: payment.hostelId, role: "owner" });
+        if (owner?._id) {
+          await publishNotification({
+            userId: owner._id,
+            hostelId: payment.hostelId,
+            type: "payment_verified",
+            title: `Payment Verified`,
+            message: `Payment from ${resident?.name || "resident"} has been verified`,
+            meta: { route: "/payments", paymentId: payment._id },
+          });
+        }
+      } catch (e) {
+        console.error("Payment verified notification failed:", e?.message || e);
+      }
+
       res.status(200).json({
         success: true,
         message: "Payment Verified",

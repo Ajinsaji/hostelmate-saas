@@ -5,6 +5,7 @@ const cors = require("cors");
 const path = require("path");
 const fs = require("fs");
 const { setSocketServer } = require("./utils/socketManager");
+const { startSubscriptionScheduler } = require("./utils/subscriptionScheduler");
 
 const connectDB = require("./config/db");
 
@@ -236,4 +237,7 @@ setSocketServer(server);
 
 server.listen(PORT, () => {
   console.log(`Server Running on Port ${PORT}`);
+  
+  // Start subscription scheduler after server starts
+  startSubscriptionScheduler(60 * 60 * 1000); // Run every hour
 });

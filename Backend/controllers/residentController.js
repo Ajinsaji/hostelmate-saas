@@ -218,6 +218,25 @@ const createResident =
         }
       );
 
+      // NOTIFICATION: Resident added
+      try {
+        const { publishNotification } = require("../utils/notificationPublisher");
+        const Owner = require("../models/Owner");
+        const owner = await Owner.findOne({ hostelId, role: "owner" });
+        if (owner?._id) {
+          await publishNotification({
+            userId: owner._id,
+            hostelId,
+            type: "resident_added",
+            title: `${name} Added`,
+            message: `New resident ${name} has been added to the hostel`,
+            meta: { route: "/residents", residentId: resident._id },
+          });
+        }
+      } catch (e) {
+        console.error("Resident added notification failed:", e?.message || e);
+      }
+
       res.status(201).json({
         success: true,
         message:
@@ -361,6 +380,25 @@ const checkoutResident =
           },
         }
       );
+
+      // NOTIFICATION: Resident checkout
+      try {
+        const { publishNotification } = require("../utils/notificationPublisher");
+        const Owner = require("../models/Owner");
+        const owner = await Owner.findOne({ hostelId: resident.hostelId, role: "owner" });
+        if (owner?._id) {
+          await publishNotification({
+            userId: owner._id,
+            hostelId: resident.hostelId,
+            type: "resident_checkout",
+            title: `${resident.name} Checked Out`,
+            message: `Resident ${resident.name} has checked out`,
+            meta: { route: "/residents", residentId: resident._id },
+          });
+        }
+      } catch (e) {
+        console.error("Resident checkout notification failed:", e?.message || e);
+      }
 
       res.status(200).json({
         success: true,

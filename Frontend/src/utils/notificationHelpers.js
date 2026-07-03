@@ -8,6 +8,8 @@ export const CATEGORY_LABELS = {
   staff: "Staff",
   subscription: "Subscription",
   system: "System",
+  complaints: "Complaints",
+  reminders: "Reminders",
 };
 
 export function typeToUI(type) {
@@ -20,18 +22,36 @@ export function typeToUI(type) {
       return { color: "rgba(239,68,68,0.12)", border: "rgba(239,68,68,0.25)", label: "Rejected", priorityColor: "#ef4444" };
     case "payment_uploaded":
       return { color: "rgba(20,241,217,0.12)", border: "rgba(20,241,217,0.25)", label: "Payment", priorityColor: "#14f1d9" };
+    case "payment_verified":
+      return { color: "rgba(34,197,94,0.12)", border: "rgba(34,197,94,0.25)", label: "Payment", priorityColor: "#22c55e" };
     case "subscription_alert":
       return { color: "rgba(180,83,9,0.12)", border: "rgba(180,83,9,0.25)", label: "Subscription", priorityColor: "#b45309" };
+    case "subscription_reminder":
+      return { color: "rgba(168,85,247,0.12)", border: "rgba(168,85,247,0.25)", label: "Reminder", priorityColor: "#a855f7" };
+    case "subscription_expired":
+      return { color: "rgba(239,68,68,0.12)", border: "rgba(239,68,68,0.25)", label: "Expired", priorityColor: "#ef4444" };
     case "complaint_submitted":
+      return { color: "rgba(139,92,246,0.12)", border: "rgba(139,92,246,0.25)", label: "Complaint", priorityColor: "#8b5cf6" };
+    case "complaint_raised":
       return { color: "rgba(139,92,246,0.12)", border: "rgba(139,92,246,0.25)", label: "Complaint", priorityColor: "#8b5cf6" };
     case "resident_checkout":
       return { color: "rgba(249,115,22,0.12)", border: "rgba(249,115,22,0.25)", label: "Checkout", priorityColor: "#f97316" };
+    case "resident_added":
+      return { color: "rgba(16,185,129,0.12)", border: "rgba(16,185,129,0.25)", label: "Resident", priorityColor: "#10b981" };
+    case "bed_assigned":
+      return { color: "rgba(59,130,246,0.12)", border: "rgba(59,130,246,0.25)", label: "Bed", priorityColor: "#3b82f6" };
     case "room_added":
+      return { color: "rgba(59,130,246,0.12)", border: "rgba(59,130,246,0.25)", label: "Room", priorityColor: "#3b82f6" };
+    case "room_updated":
       return { color: "rgba(59,130,246,0.12)", border: "rgba(59,130,246,0.25)", label: "Room", priorityColor: "#3b82f6" };
     case "room_deleted":
       return { color: "rgba(239,68,68,0.12)", border: "rgba(239,68,68,0.25)", label: "Room", priorityColor: "#ef4444" };
     case "staff_added":
       return { color: "rgba(34,197,94,0.12)", border: "rgba(34,197,94,0.25)", label: "Staff", priorityColor: "#22c55e" };
+    case "staff_removed":
+      return { color: "rgba(239,68,68,0.12)", border: "rgba(239,68,68,0.25)", label: "Staff", priorityColor: "#ef4444" };
+    case "reminder":
+      return { color: "rgba(168,85,247,0.12)", border: "rgba(168,85,247,0.25)", label: "Reminder", priorityColor: "#a855f7" };
     case "system_update":
       return { color: "rgba(148,163,184,0.12)", border: "rgba(148,163,184,0.25)", label: "System", priorityColor: "#94a3b8" };
     default:
