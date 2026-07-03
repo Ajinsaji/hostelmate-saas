@@ -1,4 +1,5 @@
 const { getMessaging } = require("./firebaseAdmin");
+const DeviceToken = require("../models/DeviceToken");
 
 async function sendPushToUserDevices({ userId, hostelId, title, body, data }) {
   const messaging = getMessaging();
@@ -34,8 +35,8 @@ async function sendPushToUserDevices({ userId, hostelId, title, body, data }) {
   };
 
   try {
-    const res = await messaging.sendMulticast(message);
-    
+    const res = await messaging.sendEachForMulticast(message);
+
     console.log(`[fcmService] FCM send result:`, {
       successCount: res.successCount,
       failureCount: res.failureCount,
@@ -46,7 +47,33 @@ async function sendPushToUserDevices({ userId, hostelId, title, body, data }) {
       console.warn(`[fcmService] ${res.failureCount} failures:`, res.responses);
     }
 
-    return res;
+    const invalidTokens = [];
+    res.responses.forEach((response, index) => {
+      if (!response.success) {
+        const errorCode = response.error?.code || response.error?.message || "unknown_error";
+        if (
+          errorCode === "registration-token-not-registered" ||
+          errorCode === "messaging/registration-token-not-registered" ||
+          errorCode?.endsWith("/registration-token-not-registered")
+        ) {
+          invalidTokens.push(tokens[index]);
+        }
+      }
+    });
+
+    if (invalidTokens.length > 0) {
+      console.log(`[fcmService] Removing ${invalidTokens.length} invalid device token(s)`);
+      await DeviceToken.deleteMany({ token: { $in: invalidTokens } });
+    }
+
+    return {
+      success: res.failureCount === 0,
+      successCount: res.successCount,
+      failureCount: res.failureCount,
+      total: tokens.length,
+      invalidTokens,
+      responses: res.responses,
+    };
   } catch (error) {
     console.error("[fcmService] Failed to send FCM message:", error?.message || error);
     return { success: false, error: error?.message, sent: 0 };
