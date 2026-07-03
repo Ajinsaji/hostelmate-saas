@@ -33,12 +33,12 @@ export default defineConfig(({ mode }) => {
     plugins: [
       react(),
       VitePWA({
-        registerType: 'prompt',
+        registerType: 'autoUpdate',
         injectRegister: 'auto',
         workbox: {
           cleanupOutdatedCaches: true,
-          clientsClaim: false,
-          skipWaiting: false,
+          clientsClaim: true,
+          skipWaiting: true,
 
           // Allow large hashed bundles (prevents build failure on Vercel)
           maximumFileSizeToCacheInBytes: 15 * 1024 * 1024,

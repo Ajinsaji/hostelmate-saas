@@ -9,31 +9,6 @@ import AppUpdateBanner from "./components/AppUpdateBanner";
 
 const SW_UPDATE_LOOP_GUARD_KEY = "sw_update_applied_v1";
 
-function safeRequestSwUpdate() {
-  if (!("serviceWorker" in navigator)) return;
-
-  // Avoid hammering update checks on every reload.
-  try {
-    if (sessionStorage.getItem(SW_UPDATE_LOOP_GUARD_KEY)) return;
-  } catch {
-    // ignore
-  }
-
-  navigator.serviceWorker
-    .getRegistrations()
-    .then((registrations) => {
-      registrations.forEach((registration) => {
-        // Safe: update() triggers SW fetch without throwing hard on unsupported states.
-        try {
-          registration.update();
-        } catch {
-          // ignore
-        }
-      });
-    })
-    .catch(() => {});
-}
-
 function safeReloadOnceAfterControllerChange() {
   if (!("serviceWorker" in navigator)) return;
 
@@ -62,7 +37,6 @@ function safeReloadOnceAfterControllerChange() {
 }
 
 safeReloadOnceAfterControllerChange();
-safeRequestSwUpdate();
 
 
 ReactDOM.createRoot(document.getElementById("root")).render(

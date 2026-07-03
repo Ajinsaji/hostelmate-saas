@@ -1,55 +1,84 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import AppUpdateModal from "./AppUpdateModal";
-import { APP_VERSION } from "../config/version";
 
-/**
- * HostelMate PWA update prompt.
- * Uses vite-plugin-pwa's registrationType: 'prompt' lifecycle.
- */
+const UPDATE_PROMPTED_SW_KEY = "pwa_update_prompted_sw";
+
 export default function AppUpdateBanner() {
   const [isOpen, setIsOpen] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
+  const promptedScriptUrlRef = useRef(null);
 
   useEffect(() => {
     if (!("serviceWorker" in navigator)) return;
 
-    const handleRegistration = (reg) => {
-      // If there is already a waiting service worker, show the update prompt.
+    const getPromptedScriptUrl = () => {
+      try {
+        return localStorage.getItem(UPDATE_PROMPTED_SW_KEY);
+      } catch {
+        return null;
+      }
+    };
+
+    const setPromptedScriptUrl = (scriptUrl) => {
+      try {
+        if (scriptUrl) {
+          localStorage.setItem(UPDATE_PROMPTED_SW_KEY, scriptUrl);
+        }
+      } catch {
+        // ignore
+      }
+    };
+
+    const shouldPromptFor = (scriptUrl) => {
+      if (!scriptUrl) return false;
+      const prompted = getPromptedScriptUrl();
+      return prompted !== scriptUrl;
+    };
+
+    const showUpdatePrompt = (scriptUrl) => {
+      if (!shouldPromptFor(scriptUrl)) return;
+      promptedScriptUrlRef.current = scriptUrl;
+      setIsOpen(true);
+    };
+
+    const handleWaitingState = (waitingWorker) => {
+      const scriptUrl = waitingWorker?.scriptURL || waitingWorker?.url;
+      if (!scriptUrl) return;
+      showUpdatePrompt(scriptUrl);
+    };
+
+    const handleRegistration = async (reg) => {
+      if (!reg) return;
+
       if (reg.waiting) {
-        setIsOpen(true);
+        handleWaitingState(reg.waiting);
       }
 
-      // Listen for new service worker installation
       reg.addEventListener("updatefound", () => {
-        const newWorker = reg.installing;
-        if (newWorker) {
-          newWorker.addEventListener("statechange", () => {
-            if (newWorker.state === "installed") {
-              // Prompt for updates even if controller isn't available yet.
-              // This avoids missing the update banner on Android Chrome / installed PWAs.
-              setIsOpen(true);
+        const installingWorker = reg.installing;
+        if (!installingWorker) return;
 
-            }
-          });
-        }
+        installingWorker.addEventListener("statechange", () => {
+          if (installingWorker.state === "installed" && navigator.serviceWorker.controller) {
+            handleWaitingState(installingWorker);
+          }
+        });
       });
     };
 
-    // Check existing registrations and register update triggers on them
-    navigator.serviceWorker.getRegistrations()
-      .then((regs) => {
-        regs.forEach((reg) => {
-          handleRegistration(reg);
-          // Force an update check on mount
-          reg.update().catch(() => {});
-        });
-      })
-      .catch(() => {});
+    navigator.serviceWorker.getRegistration().then(handleRegistration).catch(() => {});
 
-    // Listen to pwa:need-refresh custom event as a fallback
-    const onNeedRefresh = () => {
-      setIsOpen(true);
+    const onNeedRefresh = (event) => {
+      const detailScriptUrl = event?.detail?.waiting?.scriptURL;
+      if (detailScriptUrl) {
+        showUpdatePrompt(detailScriptUrl);
+      } else {
+        navigator.serviceWorker.getRegistration().then((reg) => {
+          handleRegistration(reg);
+        });
+      }
     };
+
     window.addEventListener("pwa:need-refresh", onNeedRefresh);
 
     return () => {
@@ -57,14 +86,23 @@ export default function AppUpdateBanner() {
     };
   }, []);
 
+  const markPrompted = () => {
+    if (!promptedScriptUrlRef.current) return;
+    try {
+      localStorage.setItem(UPDATE_PROMPTED_SW_KEY, promptedScriptUrlRef.current);
+    } catch {
+      // ignore
+    }
+  };
+
   const doUpdateNow = async () => {
     setIsUpdating(true);
+    markPrompted();
     try {
       const reg = await navigator.serviceWorker.getRegistration();
       if (reg?.waiting) {
         reg.waiting.postMessage({ type: "SKIP_WAITING" });
       }
-      // Reload after activation.
       setTimeout(() => {
         window.location.reload();
       }, 300);
@@ -74,6 +112,7 @@ export default function AppUpdateBanner() {
   };
 
   const onLater = () => {
+    markPrompted();
     setIsOpen(false);
   };
 
