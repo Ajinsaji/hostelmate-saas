@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { requestFcmPermissionAndToken } from "../utils/firebaseClient";
 import { getStoredUser } from "../utils/authToken";
 
@@ -6,6 +6,12 @@ import { getStoredUser } from "../utils/authToken";
 // Background notifications are handled by firebase-messaging-sw.js.
 
 export default function useFcmNotifications({ enabled = true, onIncoming } = {}) {
+  const onIncomingRef = useRef(onIncoming);
+
+  useEffect(() => {
+    onIncomingRef.current = onIncoming;
+  }, [onIncoming]);
+
   useEffect(() => {
     if (!enabled) return;
 
@@ -60,7 +66,7 @@ export default function useFcmNotifications({ enabled = true, onIncoming } = {})
             const title = payload?.notification?.title || "HostelMate";
             const body = payload?.notification?.body || "New notification";
 
-            onIncoming?.({
+            onIncomingRef.current?.({
               title,
               body,
               route,
@@ -84,6 +90,6 @@ export default function useFcmNotifications({ enabled = true, onIncoming } = {})
         unsubscribe?.();
       } catch (e) {}
     };
-  }, [enabled, onIncoming]);
+  }, [enabled]);
 }
 

@@ -1,6 +1,8 @@
 import { initializeApp, getApps } from "firebase/app";
 import { getMessaging, getToken } from "firebase/messaging";
 
+let cachedFcmTokenPromise = null;
+
 const hasEnv = () => {
   return Boolean(
     import.meta.env.VITE_FIREBASE_API_KEY &&
@@ -78,6 +80,11 @@ async function registerFirebaseServiceWorker() {
 }
 
 export async function requestFcmPermissionAndToken() {
+  if (cachedFcmTokenPromise) {
+    console.log("Using cached FCM token request");
+    return cachedFcmTokenPromise;
+  }
+
   // Return null when env not configured
   const messaging = getFirebaseMessagingSafe();
   if (!messaging) {
@@ -117,22 +124,37 @@ export async function requestFcmPermissionAndToken() {
     return null;
   }
 
-  try {
-    console.log("Requesting FCM token...");
-    const token = await getToken(messaging, {
-      vapidKey,
-      serviceWorkerRegistration: swRegistration,
-    });
+  const tokenPromise = (async () => {
+    try {
+      console.log("Requesting FCM token...");
+      const token = await getToken(messaging, {
+        vapidKey,
+        serviceWorkerRegistration: swRegistration,
+      });
 
-    if (!token) {
-      console.warn("✗ No FCM token returned (empty response)");
-      return null;
+      if (!token) {
+        console.warn("✗ No FCM token returned (empty response)");
+        return null;
+      }
+
+      console.log("✓ FCM token obtained:", token.substring(0, 20) + "...");
+      return token;
+    } catch (error) {
+      console.error("✗ Failed to retrieve FCM token:", error?.message || error);
+      throw error;
     }
+  })();
 
-    console.log("✓ FCM token obtained:", token.substring(0, 20) + "...");
+  cachedFcmTokenPromise = tokenPromise;
+
+  try {
+    const token = await tokenPromise;
+    if (!token) {
+      cachedFcmTokenPromise = null;
+    }
     return token;
   } catch (error) {
-    console.error("✗ Failed to retrieve FCM token:", error?.message || error);
+    cachedFcmTokenPromise = null;
     return null;
   }
 }
