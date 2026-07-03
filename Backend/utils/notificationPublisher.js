@@ -100,6 +100,13 @@ async function publishNotification({
       }).select("token");
 
       const tokenList = tokens.map((t) => t.token);
+      
+      if (tokenList.length > 0) {
+        console.log(`[publishNotification] Found ${tokenList.length} device token(s) for user ${userId}`);
+      } else {
+        console.log(`[publishNotification] No device tokens found for user ${userId} - background notifications won't be sent`);
+      }
+
       await sendPushToUserDevices({
         userId,
         hostelId,
@@ -114,9 +121,11 @@ async function publishNotification({
           },
         },
       });
+    } else {
+      console.log(`[publishNotification] Push disabled for user ${userId} (allowPush: ${allowPush}, allowCategory: ${allowCategory})`);
     }
   } catch (e) {
-    console.error("publishNotification push error:", e?.message || e);
+    console.error(`[publishNotification] Push error for user ${userId}:`, e?.message || e);
   }
 
   try {

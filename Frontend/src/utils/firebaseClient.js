@@ -37,27 +37,103 @@ export function getFirebaseMessagingSafe() {
   }
 }
 
-export async function requestFcmPermissionAndToken() {
-  // Return null when env not configured
-  const messaging = getFirebaseMessagingSafe();
-  if (!messaging) return null;
-
-  if (!("Notification" in window)) return null;
-
-  const permission = await Notification.requestPermission();
-  if (permission !== "granted") return null;
-
-  const vapidKey = import.meta.env.VITE_FIREBASE_VAPID_KEY;
-  if (!vapidKey) {
-    console.warn("Missing VITE_FIREBASE_VAPID_KEY");
+/**
+ * Register the Firebase messaging service worker explicitly.
+ * This is required for background notifications to work.
+ */
+async function registerFirebaseServiceWorker() {
+  if (!("serviceWorker" in navigator)) {
+    console.warn("Service workers not supported in this browser");
     return null;
   }
 
-  const token = await getToken(messaging, {
-    vapidKey,
-    // Service worker path is defined by default in most cases; for custom, pass swRegistration.
-  });
+  try {
+    const existingRegistration = await navigator.serviceWorker.getRegistration("/");
 
-  return token || null;
+    if (existingRegistration) {
+      const scriptUrl =
+        existingRegistration.active?.scriptURL ||
+        existingRegistration.waiting?.scriptURL ||
+        existingRegistration.installing?.scriptURL ||
+        "";
+
+      if (scriptUrl.includes("firebase-messaging-sw.js")) {
+        console.log("✓ Reusing existing Firebase service worker:", existingRegistration.scope);
+        return existingRegistration;
+      }
+
+      console.log("⚠️ Unregistering stale service worker:", scriptUrl || existingRegistration.scope);
+      await existingRegistration.unregister();
+    }
+
+    const registration = await navigator.serviceWorker.register("/firebase-messaging-sw.js", {
+      scope: "/",
+    });
+    console.log("✓ Firebase service worker registered:", registration.scope);
+    return registration;
+  } catch (error) {
+    console.error("✗ Failed to register Firebase service worker:", error);
+    return null;
+  }
+}
+
+export async function requestFcmPermissionAndToken() {
+  // Return null when env not configured
+  const messaging = getFirebaseMessagingSafe();
+  if (!messaging) {
+    console.warn("Firebase messaging not initialized (config missing)");
+    return null;
+  }
+
+  if (!("Notification" in window)) {
+    console.warn("Notifications not supported in this browser");
+    return null;
+  }
+
+  const currentPermission = Notification.permission;
+  if (currentPermission !== "granted") {
+    console.log("Requesting notification permission...");
+    const permission = await Notification.requestPermission();
+    if (permission !== "granted") {
+      console.warn("Notification permission denied by user");
+      return null;
+    }
+    console.log("✓ Notification permission granted");
+  } else {
+    console.log("✓ Notification permission already granted");
+  }
+
+  const vapidKey = import.meta.env.VITE_FIREBASE_VAPID_KEY?.trim();
+  if (!vapidKey) {
+    console.error("✗ Missing or invalid VITE_FIREBASE_VAPID_KEY - background notifications will not work");
+    return null;
+  }
+  console.log("✓ VAPID key loaded");
+
+  console.log("Registering Firebase messaging service worker...");
+  const swRegistration = await registerFirebaseServiceWorker();
+  if (!swRegistration) {
+    console.error("✗ Service worker registration failed - background notifications may not work");
+    return null;
+  }
+
+  try {
+    console.log("Requesting FCM token...");
+    const token = await getToken(messaging, {
+      vapidKey,
+      serviceWorkerRegistration: swRegistration,
+    });
+
+    if (!token) {
+      console.warn("✗ No FCM token returned (empty response)");
+      return null;
+    }
+
+    console.log("✓ FCM token obtained:", token.substring(0, 20) + "...");
+    return token;
+  } catch (error) {
+    console.error("✗ Failed to retrieve FCM token:", error?.message || error);
+    return null;
+  }
 }
 

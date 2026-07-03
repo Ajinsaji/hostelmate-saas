@@ -12,9 +12,11 @@ const registerDeviceToken = async (req, res) => {
     const userId = req.user?.userId;
 
     if (!token) {
+      console.warn("[registerDeviceToken] Missing token in request");
       return res.status(400).json({ success: false, message: "token is required" });
     }
     if (!userId) {
+      console.warn("[registerDeviceToken] Unauthorized - no userId in JWT");
       return res.status(401).json({ success: false, message: "Unauthorized" });
     }
 
@@ -22,7 +24,9 @@ const registerDeviceToken = async (req, res) => {
     const hostelId = req.user?.hostelId || null;
     const role = req.user?.role || "owner";
 
-    await DeviceToken.findOneAndUpdate(
+    console.log("[registerDeviceToken] Registering token for:", { userId, role, platform });
+
+    const result = await DeviceToken.findOneAndUpdate(
       { token },
       {
         $set: {
@@ -37,9 +41,24 @@ const registerDeviceToken = async (req, res) => {
       { upsert: true, new: true }
     );
 
-    return res.status(200).json({ success: true, message: "Device token registered" });
+    console.log(`✓ [registerDeviceToken] Device token registered:`, {
+      tokenId: result._id,
+      platform: result.platform,
+      userId: result.userId,
+    });
+
+    return res.status(200).json({ 
+      success: true, 
+      message: "Device token registered",
+      deviceTokenId: result._id,
+    });
   } catch (e) {
-    return res.status(500).json({ success: false, message: "Failed to register token", error: e?.message });
+    console.error("[registerDeviceToken] Error:", e?.message || e);
+    return res.status(500).json({ 
+      success: false, 
+      message: "Failed to register token", 
+      error: e?.message 
+    });
   }
 };
 
