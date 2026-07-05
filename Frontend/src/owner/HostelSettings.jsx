@@ -4,6 +4,7 @@ import toast from "react-hot-toast";
 import { Save, X, MapPin, Phone, MessageCircle, Building, ShieldCheck, Eye, Plus, Trash2, Clock, Loader2 } from "lucide-react";
 import useGlobalPolling from "../hooks/useGlobalPolling";
 import useOwnerRealtimeSync from "../hooks/useOwnerRealtimeSync";
+import { PageShell, GlassCard, PREMIUM_THEME } from "./PremiumUI";
 
 function HostelSettings() {
   const [hostel, setHostel] = useState(null);

@@ -1,4 +1,4 @@
-import { ArrowLeft, User, Building, Lock, LogOut, QrCode, Copy, Download, Share2, X } from "lucide-react";
+import { ArrowLeft, User, Building, Lock, LogOut, QrCode, Copy, Download, Share2, X, Sparkles } from "lucide-react";
 
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
@@ -7,6 +7,7 @@ import { api } from "../services/api";
 import useOwnerRealtimeSync from "../hooks/useOwnerRealtimeSync";
 import { clearOwnerAuth } from "../utils/authToken";
 import buildQrUrl from "../utils/buildQrUrl";
+import { PageShell, GlassCard, PREMIUM_THEME } from "./PremiumUI";
 
 
 function Profile() {
@@ -104,72 +105,32 @@ function Profile() {
   };
 
   return (
-    <div className="pb-24" style={{ minHeight: "100vh" }}>
-      <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="gradient-header mb-6 flex items-center gap-4">
-          <button className="btn-icon" style={{ background: "transparent", color: "white" }} onClick={() => navigate(-1)}>
-            <ArrowLeft size={24} />
-          </button>
+    <PageShell title="Settings" subtitle="Profile, secure access, and sharing" action={<button onClick={() => navigate(-1)} className="flex h-10 w-10 items-center justify-center rounded-full" style={{ background: "rgba(255,255,255,0.08)" }}><ArrowLeft size={18} /></button>}>
+      <GlassCard>
+        <div className="flex items-center gap-4">
+          <div className="flex h-14 w-14 items-center justify-center rounded-2xl" style={{ background: `${PREMIUM_THEME.primary}16`, color: PREMIUM_THEME.primary }}><User size={24} /></div>
           <div>
-            <h1 className="text-h1" style={{ color: "white" }}>Settings</h1>
-            <p className="text-small" style={{ color: "rgba(255,255,255,0.8)" }}>Profile & Preferences</p>
+            <h2 className="text-xl font-semibold">{ownerData.ownerName}</h2>
+            <p className="text-sm" style={{ color: PREMIUM_THEME.muted }}>{ownerData.phone}</p>
           </div>
         </div>
+      </GlassCard>
 
-        <div className="flex-col gap-4">
-        {/* User Info Card */}
-        <div className="card flex items-center gap-4 mb-4">
-          <div style={{ width: 64, height: 64, borderRadius: "50%", background: "var(--primary-light)", display: "flex", justifyContent: "center", alignItems: "center", color: "white" }}>
-            <User size={32} />
-          </div>
-          <div>
-            <h2 className="text-h2">{ownerData.ownerName}</h2>
-            <p className="text-small">{ownerData.phone}</p>
-          </div>
-        </div>
+      <GlassCard className="p-0 overflow-hidden">
+        <MenuItem icon={<Building size={20} style={{ color: PREMIUM_THEME.primary }} />} title="Hostel Settings" subtitle="Update hostel details and address" onClick={() => navigate("/owner/settings")} />
+        <div style={{ borderTop: `1px solid ${PREMIUM_THEME.border}` }} />
+        <MenuItem icon={<QrCode size={20} style={{ color: PREMIUM_THEME.primary }} />} title="View Public QR" subtitle="Share hostel admission link" onClick={() => setShowQRModal(true)} />
+        <div style={{ borderTop: `1px solid ${PREMIUM_THEME.border}` }} />
+        <MenuItem icon={<User size={20} style={{ color: PREMIUM_THEME.primary }} />} title="Owner Profile" subtitle="Manage personal information" onClick={() => navigate("/owner/profile")} />
+        <div style={{ borderTop: `1px solid ${PREMIUM_THEME.border}` }} />
+        <MenuItem icon={<Lock size={20} style={{ color: PREMIUM_THEME.primary }} />} title="Update Password" subtitle="Change your login password" onClick={() => navigate("/owner/update-password")} />
+      </GlassCard>
 
-        {/* Menu Items */}
-        <div className="card p-0 overflow-hidden mb-4">
-          <MenuItem
-            icon={<Building size={20} color="var(--primary)" />}
-            title="Hostel Settings"
-            subtitle="Update hostel details and address"
-            onClick={() => navigate("/owner/settings")}
-          />
-          <div style={{ borderBottom: "1px solid var(--border-color)" }}></div>
-
-          <MenuItem
-            icon={<QrCode size={20} color="var(--primary)" />}
-            title="View Public QR"
-            subtitle="Share hostel admission link"
-            onClick={() => setShowQRModal(true)}
-          />
-          <div style={{ borderBottom: "1px solid var(--border-color)" }}></div>
-
-          <MenuItem
-            icon={<User size={20} color="var(--primary)" />}
-            title="Owner Profile"
-            subtitle="Manage personal information"
-            onClick={() => navigate("/owner/profile")}
-          />
-          <div style={{ borderBottom: "1px solid var(--border-color)" }}></div>
-
-          <MenuItem
-            icon={<Lock size={20} color="var(--primary)" />}
-            title="Update Password"
-            subtitle="Change your login password"
-            onClick={() => navigate("/owner/update-password")}
-          />
-        </div>
-
-        <button 
-          onClick={handleLogout}
-          className="btn-primary" 
-          style={{ background: "rgba(239, 68, 68, 0.1)", color: "var(--status-pending)", display: "flex", justifyContent: "center", alignItems: "center", gap: "8px" }}
-        >
-          <LogOut size={20} /> Logout
+      <GlassCard>
+        <button onClick={handleLogout} className="flex w-full items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-semibold" style={{ background: "rgba(235,87,87,0.14)", color: PREMIUM_THEME.danger }}>
+          <LogOut size={18} /> Logout
         </button>
-      </div>
+      </GlassCard>
 
       {/* QR Modal */}
       {showQRModal && hostelData && (
@@ -299,9 +260,7 @@ function Profile() {
           </div>
         </div>
       )}
-      </div>
-
-    </div>
+    </PageShell>
   );
 }
 

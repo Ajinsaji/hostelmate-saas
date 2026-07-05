@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Bell, CheckCheck, ArrowRight } from "lucide-react";
+import { Bell, CheckCheck, ArrowRight, Search, Sparkles } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import { api } from "../services/api";
 import useNotificationSocket from "../hooks/useNotificationSocket";
+import { PageShell, GlassCard, StatusPill, EmptyState, PREMIUM_THEME } from "../owner/PremiumUI";
 
 function typeToUI(type) {
   switch (type) {
@@ -28,6 +29,8 @@ export default function Notifications() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [search, setSearch] = useState("");
+  const [filter, setFilter] = useState("all");
   const pollingRef = useRef(null);
 
   const addNotificationToTop = (notification) => {
@@ -138,81 +141,57 @@ export default function Notifications() {
     return `${unreadCount} unread notification${unreadCount === 1 ? "" : "s"}`;
   }, [loading, unreadCount]);
 
+  const filteredNotifications = useMemo(() => {
+    const term = search.toLowerCase();
+    return notifications.filter((notification) => {
+      const label = typeToUI(notification.type).label.toLowerCase();
+      const matchesFilter = filter === "all" || label === filter;
+      const matchesSearch = !term || `${notification.title || ""} ${notification.message || ""}`.toLowerCase().includes(term);
+      return matchesFilter && matchesSearch;
+    });
+  }, [notifications, search, filter]);
+
   return (
-    <div className="pb-24" style={{ minHeight: "100vh" }}>
-      <div className="gradient-header mb-6">
-        <h1 className="text-h1">Notification Center</h1>
-        <p style={{ opacity: 0.8 }}>{subtitle}</p>
-      </div>
-
-      <div className="card glass-card" style={{ background: "rgba(11,23,57,0.55)" }}>
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <Bell size={20} color="var(--primary)" />
-            <div>
-              <p className="text-h2" style={{ margin: 0 }}>Notifications</p>
-              <p className="text-small" style={{ opacity: 0.75, margin: 0 }}>
-                {notifications.length} items
-              </p>
-            </div>
+    <PageShell title="Notifications" subtitle={subtitle} action={<button disabled={saving || notifications.length === 0} onClick={markAllRead} className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold" style={{ background: PREMIUM_THEME.primary, color: "#031018", opacity: saving || notifications.length === 0 ? 0.7 : 1 }}><CheckCheck size={16} /> Mark all read</button>}>
+      <GlassCard>
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex flex-1 items-center gap-2 rounded-[16px] border px-3 py-2" style={{ borderColor: PREMIUM_THEME.border, background: "rgba(255,255,255,0.03)" }}>
+            <Search size={16} style={{ color: PREMIUM_THEME.muted }} />
+            <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search notifications" className="w-full bg-transparent text-sm outline-none" style={{ color: PREMIUM_THEME.text }} />
           </div>
-          <button className="btn-primary" disabled={saving || notifications.length === 0} onClick={markAllRead}>
-            <CheckCheck size={16} style={{ marginRight: 8 }} />
-            Mark all read
-          </button>
+          <div className="flex flex-wrap gap-2">
+            {['all', 'admissions', 'payments', 'residents', 'rooms', 'system'].map((item) => (
+              <button key={item} onClick={() => setFilter(item)} className="rounded-full px-3 py-2 text-sm font-semibold" style={{ background: filter === item ? PREMIUM_THEME.primary : "rgba(255,255,255,0.05)", color: filter === item ? "#031018" : PREMIUM_THEME.text }}>
+                {item === 'all' ? 'All' : item.charAt(0).toUpperCase() + item.slice(1)}
+              </button>
+            ))}
+          </div>
         </div>
+      </GlassCard>
 
-        {loading ? (
-          <div className="animate-pulse p-8">Loading notifications...</div>
-        ) : notifications.length === 0 ? (
-          <div className="p-8 text-center text-small" style={{ color: "rgba(255,255,255,0.7)" }}>
-            No notifications yet. Activity such as admissions, payments, and subscription alerts will appear here.
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {notifications.map((notification) => {
-              const ui = typeToUI(notification.type);
-              return (
-                <button
-                  key={notification._id}
-                  type="button"
-                  onClick={() => handleOpen(notification)}
-                  className="card"
-                  style={{
-                    width: "100%",
-                    textAlign: "left",
-                    background: ui.color,
-                    border: `1px solid ${ui.border}`,
-                    opacity: notification.isRead ? 0.75 : 1,
-                    padding: "16px",
-                    borderRadius: 18,
-                    cursor: "pointer",
-                  }}
-                >
-                  <div className="flex justify-between items-start gap-2">
-                    <div>
-                      <p className="text-small" style={{ fontWeight: 800, marginBottom: 8, color: "#fff" }}>
-                        {ui.label}
-                      </p>
-                      <p style={{ margin: 0, color: "rgba(255,255,255,0.9)", fontWeight: 600 }}>
-                        {notification.title || "HostelMate"}
-                      </p>
+      {loading ? <GlassCard className="text-center">Loading notifications...</GlassCard> : filteredNotifications.length === 0 ? <EmptyState title="No notifications" message="No matching updates right now." /> : (
+        <div className="space-y-3">
+          {filteredNotifications.map((notification) => {
+            const ui = typeToUI(notification.type);
+            return (
+              <GlassCard key={notification._id} hover className="cursor-pointer" onClick={() => handleOpen(notification)} style={{ opacity: notification.isRead ? 0.8 : 1 }}>
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <StatusPill tone={notification.isRead ? "neutral" : "warning"}>{ui.label}</StatusPill>
+                      <span className="text-xs" style={{ color: PREMIUM_THEME.muted }}>{new Date(notification.createdAt).toLocaleString()}</span>
                     </div>
-                    <ArrowRight size={18} color="white" />
+                    <h3 className="mt-2 text-lg font-semibold">{notification.title || "HostelMate"}</h3>
+                    <p className="mt-1 text-sm" style={{ color: PREMIUM_THEME.muted }}>{notification.message}</p>
                   </div>
-                  <p className="text-small" style={{ margin: "12px 0 0", color: "rgba(255,255,255,0.85)" }}>
-                    {notification.message}
-                  </p>
-                  <div className="flex justify-between items-center mt-3 text-small" style={{ color: "rgba(255,255,255,0.68)" }}>
-                    <span>{new Date(notification.createdAt).toLocaleString()}</span>
-                    {notification.isRead ? <span>Read</span> : <span>New</span>}
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        )}
-      </div>
-    </div>
+                  <ArrowRight size={18} style={{ color: PREMIUM_THEME.primary }} />
+                </div>
+              </GlassCard>
+            );
+          })}
+        </div>
+      )}
+      <BottomNav />
+    </PageShell>
   );
 }

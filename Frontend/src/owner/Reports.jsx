@@ -1,9 +1,10 @@
-import { Download, TrendingUp, TrendingDown, IndianRupee, BarChart3, Users, BedDouble } from "lucide-react";
+import { Download, TrendingUp, IndianRupee, BarChart3, Users, BedDouble } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import BottomNav from "../components/BottomNav";
 import api from "../utils/apiClient";
 import toast from "react-hot-toast";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { PageShell, GlassCard, StatCard, PREMIUM_THEME } from "./PremiumUI";
 
 function Reports() {
   const [payments, setPayments] = useState([]);
@@ -97,79 +98,76 @@ function Reports() {
   };
 
   return (
-    <div className="pb-24" style={{ minHeight: "100vh" }}>
-      <div className="gradient-header mb-6">
-        <h1 className="text-h1 mb-2">Reports & Analytics</h1>
-        <p style={{ opacity: 0.8 }}>Financial overview of your hostel</p>
+    <PageShell
+      title="Reports & analytics"
+      subtitle="Financial overview and occupancy signals"
+      action={
+        <button onClick={exportToCSV} className="rounded-full px-4 py-2 text-sm font-semibold" style={{ background: PREMIUM_THEME.primary, color: "#031018" }}>
+          Export CSV
+        </button>
+      }
+    >
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.24em]" style={{ color: PREMIUM_THEME.muted }}>Dashboard</p>
+          <p className="text-lg font-semibold">Revenue & occupancy snapshot</p>
+        </div>
+        <select className="rounded-full border px-3 py-2 text-sm outline-none" style={{ background: "rgba(255,255,255,0.05)", borderColor: PREMIUM_THEME.border, color: PREMIUM_THEME.text }} value={dateFilter} onChange={(e) => setDateFilter(e.target.value)}>
+          <option value="all">All time</option>
+          <option value="month">This month</option>
+          <option value="year">This year</option>
+        </select>
       </div>
 
-      <div className="p-4 flex-col gap-4">
-        {/* Filters */}
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="text-h3">Dashboard</h3>
-          <select className="input-field" style={{ width: "auto", padding: "8px 12px", background: "var(--surface)" }} value={dateFilter} onChange={e => setDateFilter(e.target.value)}>
-            <option value="all">All Time</option>
-            <option value="month">This Month</option>
-            <option value="year">This Year</option>
-          </select>
-        </div>
+      {loading ? <GlassCard className="text-center">Loading reports...</GlassCard> : (
+        <div className="space-y-4">
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <StatCard label="Total collection" value={`₹${reportData.totalPaid.toLocaleString("en-IN")}`} caption="Payments received" icon={<TrendingUp size={18} />} />
+            <StatCard label="Pending dues" value={`₹${reportData.pending.toLocaleString("en-IN")}`} caption="Outstanding balance" icon={<IndianRupee size={18} />} tone="blue" />
+            <StatCard label="Occupancy" value={`${stats.occupancyRate || 0}%`} caption="Current occupancy rate" icon={<Users size={18} />} />
+            <StatCard label="Rooms" value={`${stats.totalRooms || 0}`} caption="Managed rooms" icon={<BedDouble size={18} />} tone="blue" />
+          </div>
 
-        {loading && <p className="text-body text-center">Loading reports...</p>}
-
-        {!loading && (
-          <>
-            <div className="glass-card mb-4" style={{ background: "linear-gradient(135deg, var(--primary-dark), var(--primary))", color: "white" }}>
-              <p className="text-small" style={{ color: "rgba(255,255,255,0.8)" }}>Total Collection</p>
-              <div className="flex justify-between items-center mt-2">
-                <h2 style={{ fontSize: "36px", fontWeight: 700 }}>₹{reportData.totalPaid}</h2>
-                <TrendingUp size={32} color="white" style={{ opacity: 0.8 }} />
+          <div className="grid gap-4 xl:grid-cols-[1.4fr_0.8fr]">
+            <GlassCard>
+              <div className="mb-4 flex items-center gap-2">
+                <BarChart3 size={18} style={{ color: PREMIUM_THEME.primary }} />
+                <h3 className="text-lg font-semibold">Revenue trend</h3>
               </div>
-            </div>
-
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", marginBottom: "16px" }}>
-              <div className="card text-center">
-                <div className="flex justify-center mb-2"><IndianRupee color="var(--status-pending)" /></div>
-                <p className="text-small">Pending Dues</p>
-                <p className="text-h2" style={{ color: "var(--status-pending)" }}>₹{reportData.pending}</p>
-              </div>
-
-              <div className="card text-center">
-                <div className="flex justify-center mb-2"><Users color="var(--primary)" /></div>
-                <p className="text-small">Occupancy Rate</p>
-                <p className="text-h2" style={{ color: "var(--primary)" }}>{stats.occupancyRate || 0}%</p>
-              </div>
-            </div>
-
-            <div className="card mb-4">
-              <h3 className="text-h3 mb-4 flex items-center gap-2"><BarChart3 size={20}/> Revenue Chart</h3>
-              <div style={{ width: '100%', height: 250 }}>
+              <div style={{ width: "100%", height: 250 }}>
                 <ResponsiveContainer>
                   <BarChart data={reportData.chartData}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                    <XAxis dataKey="name" axisLine={false} tickLine={false} />
-                    <YAxis axisLine={false} tickLine={false} />
-                    <Tooltip cursor={{fill: 'transparent'}} />
-                    <Bar dataKey="amount" fill="var(--primary)" radius={[4, 4, 0, 0]} barSize={40} />
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.08)" />
+                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: PREMIUM_THEME.muted, fontSize: 12 }} />
+                    <YAxis axisLine={false} tickLine={false} tick={{ fill: PREMIUM_THEME.muted, fontSize: 12 }} />
+                    <Tooltip cursor={{ fill: "transparent" }} />
+                    <Bar dataKey="amount" fill={PREMIUM_THEME.primary} radius={[6, 6, 0, 0]} barSize={40} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
-            </div>
+            </GlassCard>
 
-            <div className="card mt-4">
-              <h3 className="text-h3 mb-4 flex items-center gap-2"><Download size={20}/> Export Reports</h3>
-              <button className="btn-secondary mb-3" onClick={exportToPDF}>
-                Export PDF Report
-              </button>
-              <button className="btn-secondary" onClick={exportToCSV}>
-                Export Excel (CSV)
-              </button>
+            <div className="space-y-4">
+              <GlassCard>
+                <div className="mb-3 flex items-center gap-2">
+                  <Download size={18} style={{ color: PREMIUM_THEME.primary }} />
+                  <h3 className="text-lg font-semibold">Export reports</h3>
+                </div>
+                <div className="space-y-2">
+                  <button className="w-full rounded-full px-4 py-2 text-sm font-semibold" style={{ background: "rgba(255,255,255,0.05)" }} onClick={exportToPDF}>Export PDF report</button>
+                  <button className="w-full rounded-full px-4 py-2 text-sm font-semibold" style={{ background: PREMIUM_THEME.primary, color: "#031018" }} onClick={exportToCSV}>Export Excel (CSV)</button>
+                </div>
+              </GlassCard>
+              <GlassCard>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.24em]" style={{ color: PREMIUM_THEME.muted }}>Finance pulse</p>
+                <p className="mt-2 text-sm" style={{ color: PREMIUM_THEME.muted }}>Track due amounts, revenue recovery, and growth patterns from one place.</p>
+              </GlassCard>
             </div>
-          </>
-        )}
-      </div>
-
+          </div>
+        </div>
+      )}
       <BottomNav />
-    </div>
+    </PageShell>
   );
 }
 

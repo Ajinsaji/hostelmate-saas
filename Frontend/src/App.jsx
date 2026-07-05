@@ -414,6 +414,21 @@ function App() {
             </OwnerProtectedRoute>
           }
         />
+        <Route
+          path="/pending-residents"
+          element={
+            <OwnerProtectedRoute>
+              <DesktopShell
+                variant="owner"
+                title="Pending Residents"
+                breadcrumbs={[{ label: "Pending Residents" }]}
+                backTo="/owner/dashboard"
+              >
+                <PendingAdmissions />
+              </DesktopShell>
+            </OwnerProtectedRoute>
+          }
+        />
 
         <Route
           path="/notifications"

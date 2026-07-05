@@ -7,9 +7,9 @@ import {
   Sparkles,
   Settings,
   ArrowRight,
-  Menu,
   IndianRupee,
   TrendingUp,
+  Plus,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -22,6 +22,7 @@ import buildFileUrl from "../utils/buildFileUrl";
 import BottomNav from "../components/BottomNav";
 import DashboardLayout from "./DashboardLayout";
 import SubscriptionBanner from "../components/SubscriptionBanner";
+import { PageShell, GlassCard, StatCard, StatusPill, PREMIUM_THEME } from "./PremiumUI";
 
 import useGlobalPolling from "../hooks/useGlobalPolling";
 import useOwnerRealtimeSync from "../hooks/useOwnerRealtimeSync";
@@ -365,34 +366,34 @@ function Dashboard() {
       {
         title: "Total Rooms",
         value: totalRooms,
-        trendText: "No change",
+        caption: "Rooms available",
         onClick: () => navigate("/rooms"),
-        icon: <BedDouble size={20} />,
-        iconTint: THEME.green,
+        icon: <BedDouble size={18} />,
+        tone: "green",
       },
       {
-        title: "Total Residents",
+        title: "Residents",
         value: totalResidents,
-        trendText: "No change",
+        caption: "Currently active",
         onClick: () => navigate("/residents"),
-        icon: <Users size={20} />,
-        iconTint: THEME.green,
+        icon: <Users size={18} />,
+        tone: "green",
       },
       {
-        title: "Occupancy %",
+        title: "Occupancy",
         value: `${occupancyPercent}%`,
-        trendText: "No change",
+        caption: "Live occupancy rate",
         onClick: () => navigate("/rooms"),
-        icon: <Sparkles size={20} />,
-        iconTint: THEME.blue,
+        icon: <Sparkles size={18} />,
+        tone: "blue",
       },
       {
-        title: "Today's Collection",
+        title: "Today",
         value: `₹${todayCollection}`,
-        trendText: "No change",
+        caption: "Collected today",
         onClick: () => navigate("/payments"),
-        icon: <IndianRupee size={20} />,
-        iconTint: THEME.green,
+        icon: <IndianRupee size={18} />,
+        tone: "green",
       },
     ],
     [navigate, totalRooms, totalResidents, occupancyPercent, todayCollection]
@@ -400,553 +401,190 @@ function Dashboard() {
 
   const quickActions = useMemo(
     () => [
-      { label: "Add Resident", icon: <Users size={20} />, onClick: () => navigate("/residents") },
-      { label: "Add Room", icon: <BedDouble size={20} />, onClick: () => navigate("/rooms") },
-      { label: "Collect Payment", icon: <Wallet size={20} />, onClick: () => navigate("/payments") },
-      { label: "View Reports", icon: <FileText size={20} />, onClick: () => navigate("/reports") },
+      { label: "Add Resident", icon: <Users size={18} />, onClick: () => navigate("/residents") },
+      { label: "Add Room", icon: <BedDouble size={18} />, onClick: () => navigate("/rooms") },
+      { label: "Collect Payment", icon: <Wallet size={18} />, onClick: () => navigate("/payments") },
+      { label: "View Reports", icon: <FileText size={18} />, onClick: () => navigate("/reports") },
     ],
     [navigate]
   );
 
   return (
     <DashboardLayout variant="owner" activePath="/owner/dashboard">
-      <div
-        className="min-h-[100vh] pb-8 relative overflow-hidden"
-        style={{ background: THEME.bg, color: THEME.text, paddingBottom: 112 }}
+      <PageShell
+        title="Overview"
+        subtitle={`Welcome back, ${ownerName}`}
+        action={
+          <button
+            onClick={() => navigate("/residents")}
+            className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold"
+            style={{ background: PREMIUM_THEME.primary, color: "#031018" }}
+          >
+            <Plus size={16} /> Add Resident
+          </button>
+        }
       >
-        {/* Ambient background glow layers */}
-        <div className="fixed top-0 left-0 w-96 h-96 rounded-full blur-[120px] opacity-[0.08]" style={{ background: THEME.green }} />
-        <div className="fixed bottom-0 right-0 w-96 h-96 rounded-full blur-[120px] opacity-[0.06]" style={{ background: THEME.blue }} />
-        <div className="mx-auto max-w-[1400px] px-4 sm:px-6 lg:px-8 relative z-10">
-          {!subscriptionLoading && subscriptionState && (
-            <motion.div 
-              className="mb-4"
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3 }}
-            >
-              <SubscriptionBanner
-                status={subscriptionStatus}
-                daysLeft={daysLeft}
-                warningLevel={subscriptionState.warningLevel}
-                renewalRequired={subscriptionState.renewalRequired}
-              />
-            </motion.div>
-          )}
+        {!subscriptionLoading && subscriptionState && (
+          <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25 }}>
+            <SubscriptionBanner
+              status={subscriptionStatus}
+              daysLeft={daysLeft}
+              warningLevel={subscriptionState.warningLevel}
+              renewalRequired={subscriptionState.renewalRequired}
+            />
+          </motion.div>
+        )}
 
-          {/* HERO / TOPBAR */}
-          <motion.section
-            className="rounded-[28px] border overflow-hidden relative backdrop-blur-xl"
-            style={{ 
-              borderColor: THEME.border, 
-              background: "linear-gradient(135deg, rgba(34,197,94,0.05) 0%, rgba(59,130,246,0.04) 100%), rgba(16,27,51,0.45)",
-              boxShadow: "0 8px 32px rgba(34,197,94,0.08), inset 0 1px 1px rgba(255,255,255,0.1)"
-            }}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4 }}
-          >
-            <div className="p-4 sm:p-6">
-              <div className="flex items-center justify-between gap-3">
-                <motion.button
-                  type="button"
-                  aria-label="Menu"
-                  onClick={() => toast("Menu")}
-                  className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border backdrop-blur-md hover:bg-opacity-70 transition-all"
-                  style={{ borderColor: THEME.border, background: "rgba(16,27,51,0.5)" }}
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                >
-                  <Menu size={18} style={{ color: THEME.text }} />
-                </motion.button>
-
-                {/* HostelMate Logo */}
-                <motion.div className="flex items-center gap-3" initial={{ scale: 0.9 }} animate={{ scale: 1 }} transition={{ duration: 0.4 }}>
-                  <div
-                    className="flex h-10 w-10 items-center justify-center rounded-2xl relative"
-                    style={{ background: "rgba(34,197,94,0.15)", border: `1px solid rgba(34,197,94,0.3)` }}
-                  >
-                    <div className="absolute inset-0 rounded-2xl blur-md opacity-50" style={{ background: "rgba(34,197,94,0.2)" }} />
-                    <Sparkles size={18} style={{ color: THEME.green }} className="relative z-10" />
-                  </div>
-                  <div className="leading-tight">
-                    <div className="text-[14px] font-extrabold tracking-wide">HostelMate</div>
-                    <div className="text-[11px] font-semibold" style={{ color: THEME.muted, letterSpacing: "0.18em" }}>
-                      OWNER
-                    </div>
-                  </div>
-                </motion.div>
-
-                <div className="flex items-center gap-2">
-                  {/* Notification - Glowing */}
-                  <motion.button
-                    type="button"
-                    aria-label="Notifications"
-                    onClick={() => navigate("/admissions")}
-                    className="relative inline-flex h-10 w-10 items-center justify-center rounded-2xl border backdrop-blur-md transition-all"
-                    style={{ borderColor: THEME.border, background: "rgba(16,27,51,0.5)" }}
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                  >
-                    <div className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 blur-lg transition-opacity" style={{ background: `rgba(${34},${197},${94},0.3)` }} />
-                    <Bell size={18} style={{ color: THEME.green }} className="relative z-10" />
-                    {pendingCount > 0 && (
-                      <motion.span
-                        className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-[10px] font-bold"
-                        style={{ background: THEME.green, color: "#06121f" }}
-                        initial={{ scale: 0 }}
-                        animate={{ scale: 1 }}
-                        transition={{ type: "spring", stiffness: 200 }}
-                      >
-                        {pendingCount > 99 ? "99+" : pendingCount}
-                      </motion.span>
-                    )}
-                  </motion.button>
-
-                  <motion.div
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    transition={{ duration: 0.4, delay: 0.1 }}
-                  >
-                    <Avatar name={ownerName} photoUrl={ownerPhotoUrl} size={48} />
-                  </motion.div>
-                </div>
-              </div>
-
-              <motion.div className="mt-5" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4, delay: 0.1 }}>
-                <div className="flex flex-col gap-2">
-                  <div className="text-[12px] font-semibold uppercase tracking-wider" style={{ color: THEME.muted }}>
-                    {greeting}
-                  </div>
-                  <div className="text-[26px] sm:text-[32px] font-black tracking-tight">{ownerName} 👋</div>
-
-                  <div className="mt-1 text-[13px] font-medium" style={{ color: THEME.secondary }}>
-                    Manage your hostel easily and efficiently.
-                  </div>
-
-                  <div className="mt-4 flex flex-wrap items-center gap-2">
-                    <motion.span
-                      className="inline-flex items-center gap-2 rounded-full border px-3 py-2 text-[12px] font-semibold backdrop-blur-sm"
-                      style={{ background: "rgba(34,197,94,0.08)", borderColor: "rgba(34,197,94,0.25)" }}
-                      whileHover={{ scale: 1.03 }}
-                    >
-                      {hostel?.hostelName || "HostelMate"}
-                    </motion.span>
-                    <motion.span
-                      className="inline-flex items-center gap-2 rounded-full border px-3 py-2 text-[12px] font-semibold backdrop-blur-sm"
-                      style={{ background: "rgba(59,130,246,0.08)", borderColor: "rgba(59,130,246,0.25)" }}
-                      whileHover={{ scale: 1.03 }}
-                    >
-                      <Settings size={14} style={{ color: THEME.blue }} />
-                      {subscriptionPlan}
-                    </motion.span>
-                    <motion.span
-                      className="inline-flex items-center gap-2 rounded-full border px-3 py-2 text-[12px] font-semibold backdrop-blur-sm"
-                      style={{ background: "rgba(203,213,225,0.06)", borderColor: THEME.border }}
-                      whileHover={{ scale: 1.03 }}
-                    >
-                      {dateStr}
-                    </motion.span>
-                    <motion.span
-                      className="inline-flex items-center gap-2 rounded-full border px-3 py-2 text-[12px] font-semibold backdrop-blur-sm"
-                      style={{ background: "rgba(203,213,225,0.06)", borderColor: THEME.border }}
-                      whileHover={{ scale: 1.03 }}
-                    >
-                      {timeStr}
-                    </motion.span>
-                  </div>
-                </div>
-              </motion.div>
-            </div>
-          </motion.section>
-
-          {/* SUMMARY CARDS */}
-          <motion.section 
-            className="mt-6"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, delay: 0.1 }}
-          >
-            <div className="grid grid-cols-2 gap-3 lg:gap-4">
-              {summaryCards.map((c, idx) => (
-                <motion.button
-                  key={c.title}
-                  type="button"
-                  onClick={c.onClick}
-                  className="rounded-[18px] border p-4 sm:p-5 text-left backdrop-blur-md group relative overflow-hidden"
-                  style={{ 
-                    background: "linear-gradient(135deg, rgba(16,27,51,0.6) 0%, rgba(16,27,51,0.4) 100%)",
-                    borderColor: THEME.border,
-                    boxShadow: "0 4px 16px rgba(0,0,0,0.3), inset 0 1px 1px rgba(255,255,255,0.08)"
-                  }}
-                  whileHover={{ 
-                    y: -4, 
-                    boxShadow: `0 8px 24px rgba(${idx % 2 === 0 ? '34,197,94' : '59,130,246'},0.2), inset 0 1px 1px rgba(255,255,255,0.08)`
-                  }}
-                  whileTap={{ scale: 0.98 }}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.3, delay: 0.15 + idx * 0.05 }}
-                >
-                  {/* Gradient border top */}
-                  <div 
-                    className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-green-500 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"
-                  />
-
-                  <div className="flex items-center justify-between relative z-10">
-                    <motion.div
-                      className="flex h-12 w-12 items-center justify-center rounded-[12px] backdrop-blur-md"
-                      style={{ background: "rgba(34,197,94,0.12)", border: `1px solid rgba(34,197,94,0.25)` }}
-                      whileHover={{ scale: 1.1 }}
-                    >
-                      <span style={{ color: c.iconTint }}>{c.icon}</span>
-                    </motion.div>
-                    <motion.div whileHover={{ x: 4 }}>
-                      <ArrowRight size={18} style={{ color: THEME.secondary, opacity: 0.6 }} />
-                    </motion.div>
-                  </div>
-                  <div className="mt-4 relative z-10">
-                    <div className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: THEME.muted }}>
-                      {c.title}
-                    </div>
-                    <div className="mt-2 text-[22px] sm:text-[24px] font-black">{c.value}</div>
-                    <div className="mt-2 text-[11px] font-semibold px-2 py-1 rounded-full inline-block" style={{ background: "rgba(34,197,94,0.12)", color: THEME.green }}>
-                      {c.trendText}
-                    </div>
-                  </div>
-                </motion.button>
-              ))}
-            </div>
-          </motion.section>
-
-          {/* Pending Payments + Occupancy */}
-          <motion.section 
-            className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-2"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, delay: 0.2 }}
-          >
-            {/* Pending Payments */}
-            <motion.div 
-              className="rounded-[20px] border p-5 sm:p-6 backdrop-blur-md relative overflow-hidden group"
-              style={{ 
-                background: "linear-gradient(135deg, rgba(16,27,51,0.6) 0%, rgba(16,27,51,0.4) 100%)",
-                borderColor: THEME.border,
-                boxShadow: "0 4px 16px rgba(0,0,0,0.3), inset 0 1px 1px rgba(255,255,255,0.08)"
-              }}
-              whileHover={{ y: -4 }}
-            >
-              {/* Gradient border right */}
-              <div 
-                className="absolute top-0 right-0 bottom-0 w-[1px] bg-gradient-to-b from-red-500 via-red-500 to-transparent opacity-0 group-hover:opacity-50 transition-opacity"
-              />
-              
-              <div className="flex items-center justify-between relative z-10">
-                <div>
-                  <div className="text-[14px] font-extrabold">Pending Payments</div>
-                  <div className="mt-1 text-[12px] font-semibold" style={{ color: THEME.muted }}>
-                    Current pending amount
-                  </div>
-                </div>
-                <motion.button
-                  type="button"
-                  onClick={() => navigate("/payments")}
-                  className="text-[12px] font-bold px-3 py-1 rounded-full backdrop-blur-sm transition-all"
-                  style={{ background: "rgba(34,197,94,0.15)", color: THEME.green }}
-                  whileHover={{ scale: 1.05 }}
-                >
-                  View All
-                </motion.button>
-              </div>
-
-              <motion.div className="mt-5 relative z-10" initial={{ scale: 0.95 }} animate={{ scale: 1 }} transition={{ duration: 0.4 }}>
-                <div className="flex items-baseline gap-2">
-                  <div className="text-[28px] sm:text-[32px] font-black">₹{pendingAmount}</div>
-                  <TrendingUp size={20} style={{ color: THEME.green }} className="opacity-60" />
-                </div>
-                <div className="mt-3 w-full bg-gray-700 rounded-full h-2 overflow-hidden">
-                  <motion.div 
-                    className="h-full bg-gradient-to-r from-red-500 to-orange-500"
-                    style={{ width: `${Math.min(100, (Number(pendingAmount) / 50000) * 100)}%` }}
-                    initial={{ width: 0 }}
-                    animate={{ width: `${Math.min(100, (Number(pendingAmount) / 50000) * 100)}%` }}
-                    transition={{ duration: 0.8 }}
-                  />
-                </div>
-              </motion.div>
-            </motion.div>
-
-            {/* Occupancy */}
-            <motion.div 
-              className="rounded-[20px] border p-5 sm:p-6 backdrop-blur-md relative overflow-hidden group"
-              style={{ 
-                background: "linear-gradient(135deg, rgba(16,27,51,0.6) 0%, rgba(16,27,51,0.4) 100%)",
-                borderColor: THEME.border,
-                boxShadow: "0 4px 16px rgba(0,0,0,0.3), inset 0 1px 1px rgba(255,255,255,0.08)"
-              }}
-              whileHover={{ y: -4 }}
-            >
-              {/* Gradient border top */}
-              <div 
-                className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-blue-500 to-transparent opacity-0 group-hover:opacity-50 transition-opacity"
-              />
-
-              <div className="flex items-center justify-between relative z-10">
-                <div className="text-[14px] font-extrabold">Occupancy Overview</div>
-                <div className="text-[12px] font-semibold px-3 py-1 rounded-full backdrop-blur-sm" style={{ background: "rgba(34,197,94,0.15)", color: THEME.green }}>
-                  Live
-                </div>
-              </div>
-
-              <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 relative z-10">
-                <OccupancyDonut percent={stats.occupancyRate} />
-
-                <div className="flex flex-col justify-center gap-3">
-                  <motion.div 
-                    className="rounded-[14px] border p-3 backdrop-blur-sm"
-                    style={{ background: "rgba(7,18,35,0.4)", borderColor: THEME.border }}
-                    whileHover={{ scale: 1.05 }}
-                  >
-                    <div className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: THEME.muted }}>
-                      Booked
-                    </div>
-                    <div className="mt-2 text-[18px] font-black" style={{ color: THEME.green }}>
-                      {bookedCount ?? "—"}
-                    </div>
-                  </motion.div>
-
-                  <motion.div 
-                    className="rounded-[14px] border p-3 backdrop-blur-sm"
-                    style={{ background: "rgba(7,18,35,0.4)", borderColor: THEME.border }}
-                    whileHover={{ scale: 1.05 }}
-                  >
-                    <div className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: THEME.muted }}>
-                      Vacant
-                    </div>
-                    <div className="mt-2 text-[18px] font-black" style={{ color: THEME.blue }}>
-                      {vacantCount ?? "—"}
-                    </div>
-                  </motion.div>
-                </div>
-              </div>
-            </motion.div>
-          </motion.section>
-
-          {/* Quick Actions */}
-          <motion.section 
-            className="mt-6"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, delay: 0.25 }}
-          >
-            <div className="flex items-end justify-between mb-4">
+        <div className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
+          <GlassCard hover>
+            <div className="flex items-start justify-between gap-3">
               <div>
-                <div className="text-[18px] font-extrabold">Quick Actions</div>
-                <div className="text-[12px] font-semibold" style={{ color: THEME.muted }}>
-                  Jump into the next task instantly.
-                </div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.24em]" style={{ color: PREMIUM_THEME.muted }}>
+                  Current hostel
+                </p>
+                <h2 className="mt-2 text-xl font-semibold">{hostel?.hostelName || "HostelMate"}</h2>
+                <p className="mt-2 text-sm" style={{ color: PREMIUM_THEME.muted }}>
+                  {subscriptionPlan} plan • {hostel?.city || "Ready for operations"}
+                </p>
               </div>
+              <StatusPill tone="success">Live</StatusPill>
             </div>
 
-            <div className="grid grid-cols-2 gap-3 lg:gap-4">
-              {quickActions.map((a, idx) => (
-                <motion.button
-                  key={a.label}
-                  type="button"
-                  onClick={a.onClick}
-                  className="rounded-[18px] border p-4 sm:p-5 text-left backdrop-blur-md group relative overflow-hidden"
-                  style={{ 
-                    background: "linear-gradient(135deg, rgba(16,27,51,0.6) 0%, rgba(16,27,51,0.4) 100%)",
-                    borderColor: THEME.border,
-                    boxShadow: "0 4px 16px rgba(0,0,0,0.3), inset 0 1px 1px rgba(255,255,255,0.08)"
-                  }}
-                  whileHover={{ y: -4, scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.3, delay: 0.3 + idx * 0.05 }}
-                >
-                  <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity" style={{ background: `radial-gradient(circle at top right, rgba(34,197,94,0.1), transparent)` }} />
-                  
-                  <div className="flex items-center gap-3 relative z-10">
-                    <motion.div
-                      className="flex h-12 w-12 items-center justify-center rounded-[14px] backdrop-blur-md relative"
-                      style={{ background: "linear-gradient(135deg, rgba(34,197,94,0.12) 0%, rgba(59,130,246,0.08) 100%)", border: `1px solid rgba(34,197,94,0.25)` }}
-                      whileHover={{ scale: 1.1 }}
-                    >
-                      <span style={{ color: THEME.green }}>{a.icon}</span>
-                    </motion.div>
-                    <div>
-                      <div className="text-[13px] font-bold">{a.label}</div>
-                    </div>
-                  </div>
-                  <motion.div className="mt-3 flex items-center justify-between relative z-10" whileHover={{ x: 4 }}>
-                    <div className="text-[12px] font-bold" style={{ color: THEME.green }}>
-                      {a.label === "Collect Payment" ? "₹" : "Go"}
-                    </div>
-                    <ArrowRight size={18} style={{ color: THEME.secondary, opacity: 0.7 }} />
-                  </motion.div>
-                </motion.button>
+            <div className="mt-5 flex flex-wrap items-center gap-2">
+              <StatusPill tone="info">{greeting}</StatusPill>
+              <StatusPill tone="neutral">{dateStr}</StatusPill>
+              <StatusPill tone="neutral">{timeStr}</StatusPill>
+            </div>
+          </GlassCard>
+
+          <GlassCard hover>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.24em]" style={{ color: PREMIUM_THEME.muted }}>
+                  Pending admissions
+                </p>
+                <p className="mt-2 text-3xl font-semibold">{pendingCount}</p>
+              </div>
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl" style={{ background: `${PREMIUM_THEME.primary}16`, color: PREMIUM_THEME.primary }}>
+                <Bell size={18} />
+              </div>
+            </div>
+            <button onClick={() => navigate("/admissions")} className="mt-4 inline-flex items-center gap-2 text-sm font-semibold" style={{ color: PREMIUM_THEME.primary }}>
+              Review requests <ArrowRight size={16} />
+            </button>
+          </GlassCard>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          {summaryCards.map((card) => (
+            <button key={card.title} type="button" onClick={card.onClick} className="text-left">
+              <StatCard label={card.title} value={card.value} caption={card.caption} icon={card.icon} tone={card.tone} />
+            </button>
+          ))}
+        </div>
+
+        <div className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
+          <GlassCard hover>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.24em]" style={{ color: PREMIUM_THEME.muted }}>Quick actions</p>
+                <h3 className="mt-2 text-lg font-semibold">Keep momentum going</h3>
+              </div>
+            </div>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              {quickActions.map((action) => (
+                <button key={action.label} type="button" onClick={action.onClick} className="flex items-center justify-between rounded-[20px] border p-3 text-left" style={{ borderColor: PREMIUM_THEME.border, background: "rgba(255,255,255,0.03)" }}>
+                  <span className="inline-flex items-center gap-3">
+                    <span className="flex h-10 w-10 items-center justify-center rounded-2xl" style={{ background: `${PREMIUM_THEME.primary}14`, color: PREMIUM_THEME.primary }}>{action.icon}</span>
+                    <span className="font-medium">{action.label}</span>
+                  </span>
+                  <ArrowRight size={16} style={{ color: PREMIUM_THEME.muted }} />
+                </button>
               ))}
             </div>
-          </motion.section>
+          </GlassCard>
 
-          {/* Recent Residents + Today’s Collection */}
-          {/* Recent Residents + Today's Collection */}
-          <motion.section 
-            className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-2 mb-8"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, delay: 0.3 }}
-          >
-            {/* Recent Residents */}
-            <motion.div 
-              className="rounded-[20px] border p-5 sm:p-6 backdrop-blur-md relative overflow-hidden group"
-              style={{ 
-                background: "linear-gradient(135deg, rgba(16,27,51,0.6) 0%, rgba(16,27,51,0.4) 100%)",
-                borderColor: THEME.border,
-                boxShadow: "0 4px 16px rgba(0,0,0,0.3), inset 0 1px 1px rgba(255,255,255,0.08)"
-              }}
-              whileHover={{ y: -4 }}
-            >
-              <div className="flex items-center justify-between relative z-10">
-                <div>
-                  <div className="text-[14px] font-extrabold">Recent Residents</div>
-                  <div className="text-[12px] font-semibold" style={{ color: THEME.muted }}>
-                    Maximum 5 residents
-                  </div>
+          <GlassCard hover>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.24em]" style={{ color: PREMIUM_THEME.muted }}>Occupancy</p>
+                <h3 className="mt-2 text-lg font-semibold">Capacity at a glance</h3>
+              </div>
+              <StatusPill tone="info">Live</StatusPill>
+            </div>
+            <div className="mt-4 grid gap-4 sm:grid-cols-2">
+              <OccupancyDonut percent={stats.occupancyRate} />
+              <div className="space-y-3">
+                <div className="rounded-[18px] border p-3" style={{ borderColor: PREMIUM_THEME.border, background: "rgba(255,255,255,0.03)" }}>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.24em]" style={{ color: PREMIUM_THEME.muted }}>Booked</p>
+                  <p className="mt-2 text-2xl font-semibold">{bookedCount ?? "—"}</p>
                 </div>
-                <motion.button 
-                  type="button" 
-                  onClick={() => navigate("/residents")} 
-                  className="text-[12px] font-bold px-3 py-1 rounded-full backdrop-blur-sm transition-all"
-                  style={{ background: "rgba(34,197,94,0.15)", color: THEME.green }}
-                  whileHover={{ scale: 1.05 }}
-                >
-                  View All
-                </motion.button>
-              </div>
-
-              <div className="mt-4 space-y-2 relative z-10">
-                {topResidents.length === 0 ? (
-                  <motion.div 
-                    className="rounded-[14px] border p-4 text-center backdrop-blur-sm"
-                    style={{ background: "rgba(7,18,35,0.35)", borderColor: THEME.border }}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ duration: 0.4 }}
-                  >
-                    <div className="text-[13px] font-semibold" style={{ color: THEME.secondary }}>
-                      No recent residents
-                    </div>
-                    <div className="mt-1 text-[12px] font-semibold" style={{ color: THEME.muted }}>
-                      Add a resident to get started.
-                    </div>
-                    <motion.button
-                      type="button"
-                      onClick={() => navigate("/residents")}
-                      className="mt-3 rounded-[12px] px-4 py-2 font-bold backdrop-blur-sm transition-all"
-                      style={{ background: "rgba(34,197,94,0.18)", border: `1px solid rgba(34,197,94,0.35)`, color: THEME.green }}
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                    >
-                      + Add Resident
-                    </motion.button>
-                  </motion.div>
-                ) : (
-                  topResidents.map((r, idx) => {
-                    const name = r?.name || "Resident";
-                    const room = r?.roomId?.roomNumber || r?.roomNumber || "—";
-                    const join = r?.createdAt ? new Date(r.createdAt).toLocaleDateString("en-IN") : "—";
-                    const photo = r?.profileImage || r?.photo || "";
-
-                    return (
-                      <motion.button
-                        key={r?._id || name}
-                        type="button"
-                        onClick={() => navigate("/residents")}
-                        className="w-full rounded-[14px] border p-3 text-left backdrop-blur-sm group/resident"
-                        style={{ background: "rgba(7,18,35,0.35)", borderColor: THEME.border }}
-                        whileHover={{ x: 4, y: -2 }}
-                        whileTap={{ scale: 0.98 }}
-                        initial={{ opacity: 0, x: -10 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ duration: 0.2, delay: idx * 0.05 }}
-                      >
-                        <div className="flex items-center gap-3">
-                          <Avatar name={name} photoUrl={photo} size={36} />
-                          <div className="min-w-0 flex-1">
-                            <div className="truncate text-[13px] font-bold">{name}</div>
-                            <div className="mt-1 text-[12px] font-semibold px-2 py-0.5 rounded-full inline-block" style={{ background: "rgba(59,130,246,0.12)", color: THEME.blue }}>
-                              Room {room}
-                            </div>
-                          </div>
-                          <div className="text-right">
-                            <div className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: THEME.muted }}>
-                              Joined
-                            </div>
-                            <div className="text-[12px] font-bold" style={{ color: THEME.secondary }}>
-                              {join}
-                            </div>
-                          </div>
-                        </div>
-                      </motion.button>
-                    );
-                  })
-                )}
-              </div>
-            </motion.div>
-
-            {/* Today's Collection */}
-            <motion.div 
-              className="rounded-[20px] border p-5 sm:p-6 backdrop-blur-md relative overflow-hidden group"
-              style={{ 
-                background: "linear-gradient(135deg, rgba(16,27,51,0.6) 0%, rgba(16,27,51,0.4) 100%)",
-                borderColor: THEME.border,
-                boxShadow: "0 4px 16px rgba(0,0,0,0.3), inset 0 1px 1px rgba(255,255,255,0.08)"
-              }}
-              whileHover={{ y: -4 }}
-            >
-              {/* Gradient border left */}
-              <div 
-                className="absolute top-0 left-0 bottom-0 w-[1px] bg-gradient-to-b from-green-500 via-green-500 to-transparent opacity-0 group-hover:opacity-50 transition-opacity"
-              />
-
-              <div className="flex items-start justify-between gap-3 relative z-10">
-                <div>
-                  <div className="text-[14px] font-extrabold">Today's Collection</div>
-                  <motion.div className="mt-2 text-[28px] sm:text-[32px] font-black" initial={{ scale: 0.9 }} animate={{ scale: 1 }} transition={{ duration: 0.4 }}>
-                    ₹{todayCollection}
-                  </motion.div>
-                  <div className="mt-1 text-[11px] font-bold px-2 py-1 rounded-full inline-block" style={{ background: "rgba(34,197,94,0.15)", color: THEME.green }}>
-                    +8% yesterday
-                  </div>
+                <div className="rounded-[18px] border p-3" style={{ borderColor: PREMIUM_THEME.border, background: "rgba(255,255,255,0.03)" }}>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.24em]" style={{ color: PREMIUM_THEME.muted }}>Vacant</p>
+                  <p className="mt-2 text-2xl font-semibold">{vacantCount ?? "—"}</p>
                 </div>
-                <motion.div 
-                  className="flex h-12 w-12 items-center justify-center rounded-[12px] backdrop-blur-md relative"
-                  style={{ background: "rgba(59,130,246,0.12)", border: `1px solid rgba(59,130,246,0.3)` }}
-                  whileHover={{ scale: 1.1, rotate: 10 }}
-                >
-                  <div className="absolute inset-0 rounded-[12px] blur-lg opacity-30" style={{ background: "rgba(59,130,246,0.3)" }} />
-                  <IndianRupee size={20} style={{ color: THEME.blue }} className="relative z-10" />
-                </motion.div>
               </div>
+            </div>
+          </GlassCard>
+        </div>
 
-              <motion.div 
-                className="mt-4 rounded-[14px] border p-3 backdrop-blur-sm relative z-10"
-                style={{ background: "rgba(7,18,35,0.35)", borderColor: THEME.border }}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.4, delay: 0.1 }}
-              >
+        <div className="grid gap-4 xl:grid-cols-2">
+          <GlassCard hover>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.24em]" style={{ color: PREMIUM_THEME.muted }}>Recent residents</p>
+                <h3 className="mt-2 text-lg font-semibold">Latest signups</h3>
+              </div>
+              <button onClick={() => navigate("/residents")} className="text-sm font-semibold" style={{ color: PREMIUM_THEME.primary }}>See all</button>
+            </div>
+            <div className="mt-4 space-y-3">
+              {topResidents.length === 0 ? (
+                <div className="rounded-[18px] border p-4 text-center" style={{ borderColor: PREMIUM_THEME.border, background: "rgba(255,255,255,0.03)" }}>
+                  <p className="font-medium">No recent residents yet</p>
+                  <p className="mt-1 text-sm" style={{ color: PREMIUM_THEME.muted }}>Add your first resident to get started.</p>
+                </div>
+              ) : topResidents.map((resident) => (
+                <div key={resident?._id || resident?.name} className="flex items-center justify-between rounded-[18px] border p-3" style={{ borderColor: PREMIUM_THEME.border, background: "rgba(255,255,255,0.03)" }}>
+                  <div className="flex items-center gap-3">
+                    <Avatar name={resident?.name || "Resident"} photoUrl={resident?.profileImage || resident?.photo || ""} size={42} />
+                    <div>
+                      <p className="font-medium">{resident?.name || "Resident"}</p>
+                      <p className="text-sm" style={{ color: PREMIUM_THEME.muted }}>Room {resident?.roomId?.roomNumber || resident?.roomNumber || "—"}</p>
+                    </div>
+                  </div>
+                  <StatusPill tone="info">{resident?.createdAt ? new Date(resident.createdAt).toLocaleDateString("en-IN") : "New"}</StatusPill>
+                </div>
+              ))}
+            </div>
+          </GlassCard>
+
+          <GlassCard hover>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.24em]" style={{ color: PREMIUM_THEME.muted }}>Collections</p>
+                <h3 className="mt-2 text-lg font-semibold">Today’s momentum</h3>
+              </div>
+              <StatusPill tone="success">+8% vs yesterday</StatusPill>
+            </div>
+            <div className="mt-4 rounded-[18px] border p-3" style={{ borderColor: PREMIUM_THEME.border, background: "rgba(255,255,255,0.03)" }}>
+              <div className="flex items-baseline justify-between gap-3">
+                <div>
+                  <p className="text-3xl font-semibold">₹{todayCollection}</p>
+                  <p className="mt-1 text-sm" style={{ color: PREMIUM_THEME.muted }}>Collected today</p>
+                </div>
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl" style={{ background: `${PREMIUM_THEME.accent}16`, color: PREMIUM_THEME.accent }}>
+                  <IndianRupee size={18} />
+                </div>
+              </div>
+              <div className="mt-4">
                 <LineChart values={chartTrend} />
-              </motion.div>
-            </motion.div>
-          </motion.section>
+              </div>
+            </div>
+          </GlassCard>
         </div>
 
         <BottomNav />
-      </div>
+      </PageShell>
     </DashboardLayout>
   );
 }

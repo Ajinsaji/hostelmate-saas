@@ -5,6 +5,7 @@ import buildFileUrl from "../utils/buildFileUrl";
 import useOwnerRealtimeSync, { dispatchOwnerSnapshotUpdated } from "../hooks/useOwnerRealtimeSync";
 import { Save, X, User, Phone, Mail, Image as ImageIcon, Loader2 } from "lucide-react";
 import useGlobalPolling from "../hooks/useGlobalPolling";
+import { PageShell, GlassCard, PREMIUM_THEME } from "./PremiumUI";
 
 function OwnerProfileEdit() {
   const [loading, setLoading] = useState(true);
@@ -155,95 +156,52 @@ function OwnerProfileEdit() {
   };
 
   return (
-    <div className="pb-24" style={{ minHeight: "100vh" }}>
-      <div className="gradient-header mb-6">
-        <h1 className="text-h1">Owner Profile</h1>
-        <p style={{ opacity: 0.8 }}>Edit your personal info</p>
-      </div>
-
-      <div className="p-4">
-        {loading ? (
-          <div className="card glass-card animate-pulse" style={{ background: "rgba(11,23,57,0.55)" }}>
-            Loading...
-          </div>
-        ) : (
-          <div className="card animate-slide-up" style={{ background: "rgba(11,23,57,0.55)" }}>
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-h2">Account Details</h2>
-              <button
-                className="btn-icon"
-                style={{
-                  width: 40,
-                  height: 40,
-                  background: "rgba(255,255,255,0.08)",
-                  border: "1px solid rgba(255,255,255,0.10)",
-                  color: "white",
-                }}
-                onClick={() => window.history.back()}
-              >
-                <X size={18} />
-              </button>
+    <PageShell title="Owner Profile" subtitle="Manage your personal details and profile image">
+      {loading ? (
+        <GlassCard className="text-center">Loading profile...</GlassCard>
+      ) : (
+        <GlassCard>
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.24em]" style={{ color: PREMIUM_THEME.muted }}>Account details</p>
+              <h2 className="mt-1 text-xl font-semibold">Personal profile</h2>
             </div>
-
-            <div className="flex items-center gap-4 mb-4">
-              <div
-                style={{
-                  width: 84,
-                  height: 84,
-                  borderRadius: 24,
-                  background: "rgba(15,93,70,0.25)",
-                  border: "1px solid rgba(255,255,255,0.08)",
-                  overflow: "hidden",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                {previewUrl ? (
-                  <img src={previewUrl} alt="Profile" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                ) : (
-                  <User size={36} color="var(--primary)" />
-                )}
-              </div>
-
-              <label
-                className="btn-secondary"
-                style={{ width: "auto", padding: "12px 14px", cursor: "pointer" }}
-              >
-                <ImageIcon size={18} />
-                Change Image
-                <input type="file" accept="image/*" style={{ display: "none" }} onChange={(e) => handleFile(e.target.files?.[0])} />
-              </label>
-            </div>
-
-            <div className="input-group">
-              <label className="input-label">Owner Name</label>
-              <input className="input-field" value={form.ownerName} onChange={(e) => update("ownerName", e.target.value)} />
-            </div>
-
-            <div className="input-group">
-              <label className="input-label">Phone</label>
-              <input className="input-field" value={form.phone} onChange={(e) => update("phone", e.target.value)} inputMode="tel" />
-            </div>
-
-            <div className="input-group">
-              <label className="input-label">Email</label>
-              <input className="input-field" value={form.email} onChange={(e) => update("email", e.target.value)} inputMode="email" />
-            </div>
-
-            <button
-              className="btn-primary mt-4"
-              onClick={handleSave}
-              disabled={saving}
-              style={{ opacity: saving ? 0.7 : 1, cursor: saving ? "not-allowed" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}
-            >
-              {saving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
-              {saving ? "Saving..." : "Save Profile"}
+            <button className="flex h-10 w-10 items-center justify-center rounded-full" style={{ background: "rgba(255,255,255,0.05)" }} onClick={() => window.history.back()}>
+              <X size={18} />
             </button>
           </div>
-        )}
-      </div>
-    </div>
+
+          <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-center">
+            <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-[24px] border" style={{ borderColor: PREMIUM_THEME.border, background: `${PREMIUM_THEME.primary}16` }}>
+              {previewUrl ? <img src={previewUrl} alt="Profile" className="h-full w-full object-cover" /> : <User size={32} style={{ color: PREMIUM_THEME.primary }} />}
+            </div>
+            <label className="inline-flex cursor-pointer items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold" style={{ background: "rgba(255,255,255,0.05)" }}>
+              <ImageIcon size={16} /> Change image
+              <input type="file" accept="image/*" className="hidden" onChange={(e) => handleFile(e.target.files?.[0])} />
+            </label>
+          </div>
+
+          <div className="mt-5 space-y-3">
+            <div className="rounded-[16px] border px-3 py-2" style={{ borderColor: PREMIUM_THEME.border, background: "rgba(255,255,255,0.03)" }}>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.24em]" style={{ color: PREMIUM_THEME.muted }}>Owner name</p>
+              <input className="mt-1 w-full bg-transparent text-sm outline-none" value={form.ownerName} onChange={(e) => update("ownerName", e.target.value)} style={{ color: PREMIUM_THEME.text }} />
+            </div>
+            <div className="rounded-[16px] border px-3 py-2" style={{ borderColor: PREMIUM_THEME.border, background: "rgba(255,255,255,0.03)" }}>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.24em]" style={{ color: PREMIUM_THEME.muted }}>Phone</p>
+              <input className="mt-1 w-full bg-transparent text-sm outline-none" value={form.phone} onChange={(e) => update("phone", e.target.value)} inputMode="tel" style={{ color: PREMIUM_THEME.text }} />
+            </div>
+            <div className="rounded-[16px] border px-3 py-2" style={{ borderColor: PREMIUM_THEME.border, background: "rgba(255,255,255,0.03)" }}>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.24em]" style={{ color: PREMIUM_THEME.muted }}>Email</p>
+              <input className="mt-1 w-full bg-transparent text-sm outline-none" value={form.email} onChange={(e) => update("email", e.target.value)} inputMode="email" style={{ color: PREMIUM_THEME.text }} />
+            </div>
+          </div>
+
+          <button onClick={handleSave} disabled={saving} className="mt-5 inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-semibold" style={{ background: PREMIUM_THEME.primary, color: "#031018", opacity: saving ? 0.7 : 1 }}>
+            {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />} {saving ? "Saving..." : "Save profile"}
+          </button>
+        </GlassCard>
+      )}
+    </PageShell>
   );
 }
 

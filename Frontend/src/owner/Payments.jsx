@@ -1,9 +1,10 @@
-import { CheckCircle2, AlertCircle, Clock, Plus, Trash2, Upload, Receipt, Info, FileText, Save, Loader2 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { CheckCircle2, AlertCircle, Clock, Plus, Trash2, Upload, Receipt, Info, FileText, Save, Loader2, IndianRupee, Wallet, BadgeCheck, TrendingUp } from "lucide-react";
+import { useEffect, useState, useMemo } from "react";
 import toast from "react-hot-toast";
 import api from "../utils/apiClient";
 import BottomNav from "../components/BottomNav";
 import useGlobalPolling from "../hooks/useGlobalPolling";
+import { PageShell, GlassCard, StatCard, StatusPill, EmptyState, PREMIUM_THEME } from "./PremiumUI";
 
 function Payments() {
   // UI-only redesign per spec (no logic changes)
@@ -170,219 +171,166 @@ function Payments() {
     return { totalRent, paid, balance, status };
   };
 
+  const summary = useMemo(() => {
+    const totals = payments.reduce(
+      (acc, payment) => {
+        const { totalRent, paid, balance, status } = calcTotals(payment);
+        acc.collected += paid;
+        acc.due += totalRent;
+        acc.pending += balance;
+        acc.overdue += status === "pending" ? balance : 0;
+        return acc;
+      },
+      { collected: 0, due: 0, pending: 0, overdue: 0 }
+    );
+    return totals;
+  }, [payments]);
+
   return (
-    <div className="pb-24" style={{ minHeight: "100vh" }}>
-      <div className="gradient-header mb-6">
-        <h1 className="text-h1 mb-2">Payments</h1>
-        <p style={{ opacity: 0.8 }}>Track rent and dues</p>
-        
-        <div style={{ position: "absolute", bottom: "-20px", right: "20px" }}>
-          <button 
-            className="btn-icon" 
-            style={{ width: "56px", height: "56px", background: "var(--accent)" }}
-            onClick={() => setShowAddForm(!showAddForm)}
-          >
-            <Plus size={24} color="var(--primary-dark)" />
-          </button>
-        </div>
+    <PageShell
+      title="Payments"
+      subtitle="Finance overview for rent, dues, and payment health"
+      action={
+        <button onClick={() => setShowAddForm(!showAddForm)} className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold" style={{ background: PREMIUM_THEME.primary, color: "#031018" }}>
+          <Plus size={16} /> Record payment
+        </button>
+      }
+    >
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <StatCard label="Collected" value={`₹${summary.collected.toLocaleString("en-IN")}`} caption="Total payments received" icon={<IndianRupee size={18} />} />
+        <StatCard label="Pending" value={`₹${summary.pending.toLocaleString("en-IN")}`} caption="Outstanding balance" icon={<Wallet size={18} />} tone="blue" />
+        <StatCard label="Overdue" value={`₹${summary.overdue.toLocaleString("en-IN")}`} caption="Needs follow-up" icon={<AlertCircle size={18} />} tone="blue" />
+        <StatCard label="Monthly income" value={`₹${summary.due.toLocaleString("en-IN")}`} caption="Projected rent this month" icon={<TrendingUp size={18} />} />
       </div>
 
-      <div className="p-4 flex-col gap-4">
-        {/* ADD PAYMENT FORM */}
-        {showAddForm && (
-          <div className="card animate-slide-up mb-6">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-h2">Record Payment</h2>
-              <button className="btn-icon" style={{ width: 32, height: 32 }} onClick={() => setShowAddForm(false)}>
+      <GlassCard>
+        {showAddForm ? (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.24em]" style={{ color: PREMIUM_THEME.muted }}>Record payment</p>
+                <h3 className="mt-1 text-lg font-semibold">Add a new payment entry</h3>
+              </div>
+              <button className="flex h-10 w-10 items-center justify-center rounded-full" style={{ background: "rgba(255,255,255,0.05)" }} onClick={() => setShowAddForm(false)}>
                 <Trash2 size={16} />
               </button>
             </div>
-            
-            <form onSubmit={handleSubmit}>
-              <div className="input-group">
-                <span className="input-label">Resident</span>
-                <select name="residentId" className="input-field" value={formData.residentId} onChange={handleResidentChange} required>
-                  <option value="">Select Resident</option>
-                  {residents.map(r => (
-                    <option key={r._id} value={r._id}>{r.name} (Room {r.roomId?.roomNumber || '?'})</option>
-                  ))}
-                </select>
-              </div>
 
-              <div className="flex gap-4 mb-4">
-                <div className="input-group" style={{ marginBottom: 0 }}>
-                  <span className="input-label">Month</span>
-                  <input type="month" name="month" className="input-field" value={formData.month} onChange={handleChange} required />
-                </div>
-                <div className="input-group" style={{ marginBottom: 0 }}>
-                  <span className="input-label">Total Rent Due (₹)</span>
-                  <input name="totalRent" type="number" className="input-field" value={formData.totalRent} onChange={handleChange} required />
-                </div>
-              </div>
-
-              <div className="flex gap-4 mb-4">
-                <div className="input-group" style={{ marginBottom: 0 }}>
-                  <span className="input-label">Method</span>
-                  <select name="paymentMethod" className="input-field" value={formData.paymentMethod} onChange={handleChange} required>
-                    <option value="cash">Cash</option>
-                    <option value="online">Online</option>
-                    <option value="partial">Partial</option>
+            <form onSubmit={handleSubmit} className="space-y-3">
+              <div className="grid gap-3 md:grid-cols-2">
+                <div className="rounded-[16px] border px-3 py-2" style={{ borderColor: PREMIUM_THEME.border, background: "rgba(255,255,255,0.03)" }}>
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.24em]" style={{ color: PREMIUM_THEME.muted }}>Resident</p>
+                  <select name="residentId" className="mt-1 w-full bg-transparent text-sm outline-none" value={formData.residentId} onChange={handleResidentChange} required style={{ color: PREMIUM_THEME.text }}>
+                    <option value="">Select resident</option>
+                    {residents.map((r) => (<option key={r._id} value={r._id}>{r.name} • Room {r.roomId?.roomNumber || "?"}</option>))}
                   </select>
                 </div>
-
-                <div className="input-group" style={{ marginBottom: 0 }}>
-                  <span className="input-label">Total Paid (₹)</span>
-                  <input
-                    name="amount"
-                    type="number"
-                    className="input-field"
-                    value={formData.amount}
-                    onChange={handleChange}
-                    required
-                    disabled={formData.paymentMethod === "partial"}
-                    style={formData.paymentMethod === "partial" ? { opacity: 0.75 } : undefined}
-                  />
+                <div className="rounded-[16px] border px-3 py-2" style={{ borderColor: PREMIUM_THEME.border, background: "rgba(255,255,255,0.03)" }}>
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.24em]" style={{ color: PREMIUM_THEME.muted }}>Month</p>
+                  <input type="month" name="month" className="mt-1 w-full bg-transparent text-sm outline-none" value={formData.month} onChange={handleChange} required style={{ color: PREMIUM_THEME.text }} />
                 </div>
               </div>
-
-              {formData.paymentMethod === "partial" && (
-                <div className="flex gap-4 mb-4">
-                  <div className="input-group" style={{ marginBottom: 0 }}>
-                    <span className="input-label">Cash Amount (₹)</span>
-                    <input
-                      name="cashAmount"
-                      type="number"
-                      className="input-field"
-                      value={formData.cashAmount}
-                      onChange={handleChange}
-                      required
-                    />
+              <div className="grid gap-3 md:grid-cols-2">
+                <div className="rounded-[16px] border px-3 py-2" style={{ borderColor: PREMIUM_THEME.border, background: "rgba(255,255,255,0.03)" }}>
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.24em]" style={{ color: PREMIUM_THEME.muted }}>Method</p>
+                  <select name="paymentMethod" className="mt-1 w-full bg-transparent text-sm outline-none" value={formData.paymentMethod} onChange={handleChange} required style={{ color: PREMIUM_THEME.text }}>
+                    <option value="cash">Cash</option><option value="online">Online</option><option value="partial">Partial</option>
+                  </select>
+                </div>
+                <div className="rounded-[16px] border px-3 py-2" style={{ borderColor: PREMIUM_THEME.border, background: "rgba(255,255,255,0.03)" }}>
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.24em]" style={{ color: PREMIUM_THEME.muted }}>Total rent</p>
+                  <input name="totalRent" type="number" className="mt-1 w-full bg-transparent text-sm outline-none" value={formData.totalRent} onChange={handleChange} required style={{ color: PREMIUM_THEME.text }} />
+                </div>
+              </div>
+              {formData.paymentMethod === "partial" ? (
+                <div className="grid gap-3 md:grid-cols-2">
+                  <div className="rounded-[16px] border px-3 py-2" style={{ borderColor: PREMIUM_THEME.border, background: "rgba(255,255,255,0.03)" }}>
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.24em]" style={{ color: PREMIUM_THEME.muted }}>Cash</p>
+                    <input name="cashAmount" type="number" className="mt-1 w-full bg-transparent text-sm outline-none" value={formData.cashAmount} onChange={handleChange} required style={{ color: PREMIUM_THEME.text }} />
                   </div>
-                  <div className="input-group" style={{ marginBottom: 0 }}>
-                    <span className="input-label">Online Amount (₹)</span>
-                    <input
-                      name="onlineAmount"
-                      type="number"
-                      className="input-field"
-                      value={formData.onlineAmount}
-                      onChange={handleChange}
-                      required
-                    />
+                  <div className="rounded-[16px] border px-3 py-2" style={{ borderColor: PREMIUM_THEME.border, background: "rgba(255,255,255,0.03)" }}>
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.24em]" style={{ color: PREMIUM_THEME.muted }}>Online</p>
+                    <input name="onlineAmount" type="number" className="mt-1 w-full bg-transparent text-sm outline-none" value={formData.onlineAmount} onChange={handleChange} required style={{ color: PREMIUM_THEME.text }} />
                   </div>
                 </div>
+              ) : (
+                <div className="rounded-[16px] border px-3 py-2" style={{ borderColor: PREMIUM_THEME.border, background: "rgba(255,255,255,0.03)" }}>
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.24em]" style={{ color: PREMIUM_THEME.muted }}>Paid amount</p>
+                  <input name="amount" type="number" className="mt-1 w-full bg-transparent text-sm outline-none" value={formData.amount} onChange={handleChange} required style={{ color: PREMIUM_THEME.text }} />
+                </div>
               )}
-
-              <label className="input-group mb-6 hover:border-primary" style={{ padding: "16px", border: "2px dashed rgba(0,0,0,0.1)", borderRadius: "12px", textAlign: "center", cursor: "pointer" }}>
-                <Upload size={20} color="var(--primary)" style={{ margin: "0 auto 8px" }} />
-                <span className="text-small">{proofFile ? proofFile.name : "Upload Payment Proof (Optional)"}</span>
-                <input
-                  type="file"
-                  style={{ display: "none" }}
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file && validateUploadFile(file, ["image/png", "image/jpeg", "image/jpg", ".pdf"], 5 * 1024 * 1024)) {
-                      setProofFile(file);
-                    }
-                  }}
-                />
+              <label className="flex cursor-pointer flex-col items-center justify-center rounded-[20px] border border-dashed p-4 text-center" style={{ borderColor: PREMIUM_THEME.border, background: "rgba(255,255,255,0.03)" }}>
+                <Upload size={18} style={{ color: PREMIUM_THEME.primary }} />
+                <span className="mt-2 text-sm">{proofFile ? proofFile.name : "Upload payment proof (optional)"}</span>
+                <input type="file" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if (file && validateUploadFile(file, ["image/png", "image/jpeg", "image/jpg", ".pdf"], 5 * 1024 * 1024)) setProofFile(file); }} />
               </label>
-
-              <button type="submit" className="btn-primary" disabled={savingPayment} style={{ cursor: savingPayment ? "not-allowed" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", opacity: savingPayment ? 0.7 : 1 }}>
-                {savingPayment ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
-                {savingPayment ? "Saving..." : "Add Payment Record"}
+              <button type="submit" disabled={savingPayment} className="inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-semibold" style={{ background: PREMIUM_THEME.primary, color: "#031018", opacity: savingPayment ? 0.7 : 1 }}>
+                {savingPayment ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />} {savingPayment ? "Saving..." : "Add payment"}
               </button>
             </form>
           </div>
-        )}
+        ) : null}
+      </GlassCard>
 
-        {loading && <p className="text-body text-center">Loading payments...</p>}
-
-        {!loading && payments.length === 0 && !showAddForm && (
-          <div className="text-center pt-8 pb-8">
-            <Receipt size={48} color="var(--text-muted)" style={{ opacity: 0.3, marginBottom: "16px", margin: "0 auto" }} />
-            <p className="text-body mt-4">No payment records found.<br/>Click + to add a payment.</p>
-          </div>
-        )}
-
-        {!loading && payments.map((payment) => {
-          const { totalRent, paid, balance, status } = calcTotals(payment);
-          const residentName = payment.residentId?.name || "Unknown Resident";
-
-          return (
-            <div key={payment._id} className="card animate-slide-up mb-4" style={{ padding: "16px" }}>
-              <div
-                className="flex justify-between items-center mb-4 pb-4"
-                style={{ borderBottom: "1px solid var(--border-color)" }}
-              >
-                <div>
-                  <h3 className="text-h2" style={{ marginBottom: 4 }}>{residentName}</h3>
-                  <p className="text-small flex items-center gap-2">
-                    <FileText size={14} /> Month: {payment.month || "N/A"}
-                  </p>
-                </div>
-                <div className="flex flex-col items-end gap-2">
-                  {status === "paid" && <span className="badge badge-paid"><CheckCircle2 size={12} /> Paid</span>}
-                  {status === "partial" && <span className="badge badge-partial"><Clock size={12} /> Partial</span>}
-                  {status === "pending" && <span className="badge badge-pending"><AlertCircle size={12} /> Pending</span>}
-                  
-                  <button onClick={() => deletePayment(payment._id)} className="btn-icon" style={{ width: 28, height: 28, background: "rgba(239, 68, 68, 0.1)", color: "var(--status-pending)" }}>
-                    <Trash2 size={14} />
-                  </button>
-                </div>
-              </div>
-
-              <div className="flex justify-between mb-4">
-                <div>
-                  <p className="text-small">Total Due</p>
-                  <p className="text-h3">₹{totalRent}</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-small">Paid</p>
-                  <p className="text-h3" style={{ color: "var(--status-paid)" }}>₹{paid}</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-small">Balance</p>
-                  <p className="text-h3" style={{ color: balance > 0 ? "var(--status-pending)" : "var(--text-main)" }}>
-                    ₹{Math.max(0, balance)}
-                  </p>
-                </div>
-              </div>
-
-              {/* Payment History Entries */}
-              {payment.entries?.length > 0 && (
-                <div style={{ background: "var(--bg-color)", borderRadius: 12, padding: 12, marginTop: 12 }}>
-                  <p className="text-small mb-2 flex items-center gap-1" style={{ fontWeight: 600 }}>
-                    <Info size={14} /> Payment History
-                  </p>
-                  {payment.entries.map(entry => (
-                    <div key={entry._id} className="flex justify-between items-center py-2" style={{ borderBottom: "1px solid rgba(0,0,0,0.05)" }}>
-                      <div>
-                        <p style={{ fontSize: 13, fontWeight: 500 }}>₹{entry.amount} via {entry.method}</p>
-                        <p style={{ fontSize: 11, color: "var(--text-muted)" }}>{new Date(entry.createdAt).toLocaleDateString()}</p>
-                      </div>
-                      <div>
-                        {entry.verified ? (
-                          <span className="badge badge-paid" style={{ fontSize: 10, padding: "2px 6px" }}>Verified</span>
-                        ) : (
-                          <button 
-                            onClick={() => verifyEntry(payment._id, entry._id)}
-                            style={{ fontSize: 11, padding: "4px 8px", background: "var(--primary-light)", color: "white", border: "none", borderRadius: 4, cursor: "pointer" }}
-                          >
-                            Verify
-                          </button>
-                        )}
-                      </div>
+      {loading ? <GlassCard className="text-center">Loading payments...</GlassCard> : payments.length === 0 ? <EmptyState title="No payments yet" message="Record a payment to establish a finance trail." /> : (
+        <div className="space-y-3">
+          {payments.map((payment) => {
+            const { totalRent, paid, balance, status } = calcTotals(payment);
+            const residentName = payment.residentId?.name || "Unknown Resident";
+            return (
+              <GlassCard key={payment._id} hover>
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                  <div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h3 className="text-lg font-semibold">{residentName}</h3>
+                      <StatusPill tone={status === "paid" ? "success" : status === "partial" ? "warning" : "danger"}>{status === "paid" ? "Paid" : status === "partial" ? "Partial" : "Pending"}</StatusPill>
                     </div>
-                  ))}
+                    <p className="mt-1 text-sm" style={{ color: PREMIUM_THEME.muted }}><span className="inline-flex items-center gap-1"><FileText size={14} /> {payment.month || "N/A"}</span></p>
+                    <p className="mt-1 text-sm" style={{ color: PREMIUM_THEME.muted }}>Room {payment.residentId?.roomId?.roomNumber || "—"}</p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <button onClick={() => deletePayment(payment._id)} className="rounded-full px-3 py-2 text-sm font-semibold" style={{ background: "rgba(235,87,87,0.14)", color: PREMIUM_THEME.danger }}>
+                      <Trash2 size={14} className="mr-1 inline" /> Delete
+                    </button>
+                  </div>
                 </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
-
+                <div className="mt-4 grid gap-3 md:grid-cols-3">
+                  <div className="rounded-[16px] border p-3" style={{ borderColor: PREMIUM_THEME.border, background: "rgba(255,255,255,0.03)" }}>
+                    <p className="text-sm" style={{ color: PREMIUM_THEME.muted }}>Due</p>
+                    <p className="mt-2 font-semibold">₹{totalRent}</p>
+                  </div>
+                  <div className="rounded-[16px] border p-3" style={{ borderColor: PREMIUM_THEME.border, background: "rgba(255,255,255,0.03)" }}>
+                    <p className="text-sm" style={{ color: PREMIUM_THEME.muted }}>Paid</p>
+                    <p className="mt-2 font-semibold" style={{ color: PREMIUM_THEME.primary }}>₹{paid}</p>
+                  </div>
+                  <div className="rounded-[16px] border p-3" style={{ borderColor: PREMIUM_THEME.border, background: "rgba(255,255,255,0.03)" }}>
+                    <p className="text-sm" style={{ color: PREMIUM_THEME.muted }}>Remaining</p>
+                    <p className="mt-2 font-semibold" style={{ color: balance > 0 ? PREMIUM_THEME.warning : PREMIUM_THEME.text }}>₹{Math.max(0, balance)}</p>
+                  </div>
+                </div>
+                {payment.entries?.length > 0 ? (
+                  <div className="mt-4 rounded-[16px] border p-3" style={{ borderColor: PREMIUM_THEME.border, background: "rgba(255,255,255,0.03)" }}>
+                    <p className="text-sm font-semibold">Payment history</p>
+                    <div className="mt-3 space-y-2">
+                      {payment.entries.map((entry) => (
+                        <div key={entry._id} className="flex items-center justify-between rounded-[12px] border px-3 py-2" style={{ borderColor: PREMIUM_THEME.border }}>
+                          <div>
+                            <p className="text-sm font-medium">₹{entry.amount} via {entry.method}</p>
+                            <p className="text-xs" style={{ color: PREMIUM_THEME.muted }}>{new Date(entry.createdAt).toLocaleDateString()}</p>
+                          </div>
+                          {entry.verified ? <StatusPill tone="success">Verified</StatusPill> : <button onClick={() => verifyEntry(payment._id, entry._id)} className="rounded-full px-3 py-1 text-xs font-semibold" style={{ background: "rgba(34,197,94,0.12)", color: PREMIUM_THEME.primary }}>Verify</button>}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+              </GlassCard>
+            );
+          })}
+        </div>
+      )}
       <BottomNav />
-    </div>
+    </PageShell>
   );
 }
 

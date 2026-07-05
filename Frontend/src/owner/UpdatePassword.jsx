@@ -2,6 +2,7 @@ import { useState } from "react";
 import api from "../utils/apiClient";
 import toast from "react-hot-toast";
 import { Save, X, Lock, Loader2 } from "lucide-react";
+import { PageShell, GlassCard, PREMIUM_THEME } from "./PremiumUI";
 
 function UpdatePassword() {
   const [form, setForm] = useState({
@@ -60,46 +61,44 @@ function UpdatePassword() {
   };
 
   return (
-    <div className="pb-24" style={{ minHeight: "100vh" }}>
-      <div className="gradient-header mb-6">
-        <h1 className="text-h1">Welcome to HostelMate 🎉</h1>
-        <p style={{ opacity: 0.8 }}>Please secure your account before continuing.</p>
-      </div>
-
-      <div className="p-4">
-        <div className="card animate-slide-up" style={{ background: "rgba(11,23,57,0.55)" }}>
-          <div className="flex justify-between items-center mb-4">
-            <div className="flex items-center gap-2">
-              <Lock size={18} color="var(--primary)" />
-              <h2 className="text-h2">Change Login Password</h2>
+    <PageShell title="Secure your account" subtitle="Update your login password and keep access protected">
+      <GlassCard>
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <div className="flex h-10 w-10 items-center justify-center rounded-2xl" style={{ background: `${PREMIUM_THEME.primary}16`, color: PREMIUM_THEME.primary }}>
+              <Lock size={18} />
             </div>
-            <button className="btn-icon" style={{ width: 40, height: 40 }} onClick={() => window.history.back()}>
-              <X size={18} />
-            </button>
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.24em]" style={{ color: PREMIUM_THEME.muted }}>Security</p>
+              <h2 className="text-lg font-semibold">Change login password</h2>
+            </div>
           </div>
-
-          <div className="input-group">
-            <label className="input-label">Current Password</label>
-            <input className="input-field" type="password" value={form.currentPassword} onChange={(e) => update("currentPassword", e.target.value)} />
-          </div>
-
-          <div className="input-group">
-            <label className="input-label">New Password</label>
-            <input className="input-field" type="password" value={form.newPassword} onChange={(e) => update("newPassword", e.target.value)} />
-          </div>
-
-          <div className="input-group">
-            <label className="input-label">Confirm Password</label>
-            <input className="input-field" type="password" value={form.confirmPassword} onChange={(e) => update("confirmPassword", e.target.value)} />
-          </div>
-
-          <button className="btn-primary mt-4" onClick={handleSave} disabled={saving} style={{ opacity: saving ? 0.7 : 1, cursor: saving ? "not-allowed" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}>
-            {saving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
-            {saving ? "Saving..." : "Update Password"}
+          <button className="flex h-10 w-10 items-center justify-center rounded-full" style={{ background: "rgba(255,255,255,0.05)" }} onClick={() => window.history.back()}>
+            <X size={18} />
           </button>
         </div>
-      </div>
-    </div>
+
+        <div className="mt-5 space-y-3">
+          <div className="rounded-[16px] border px-3 py-2" style={{ borderColor: PREMIUM_THEME.border, background: "rgba(255,255,255,0.03)" }}>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.24em]" style={{ color: PREMIUM_THEME.muted }}>Current password</p>
+            <input className="mt-1 w-full bg-transparent text-sm outline-none" type="password" value={form.currentPassword} onChange={(e) => update("currentPassword", e.target.value)} style={{ color: PREMIUM_THEME.text }} />
+          </div>
+          <div className="rounded-[16px] border px-3 py-2" style={{ borderColor: PREMIUM_THEME.border, background: "rgba(255,255,255,0.03)" }}>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.24em]" style={{ color: PREMIUM_THEME.muted }}>New password</p>
+            <input className="mt-1 w-full bg-transparent text-sm outline-none" type="password" value={form.newPassword} onChange={(e) => update("newPassword", e.target.value)} style={{ color: PREMIUM_THEME.text }} />
+          </div>
+          <div className="rounded-[16px] border px-3 py-2" style={{ borderColor: PREMIUM_THEME.border, background: "rgba(255,255,255,0.03)" }}>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.24em]" style={{ color: PREMIUM_THEME.muted }}>Confirm password</p>
+            <input className="mt-1 w-full bg-transparent text-sm outline-none" type="password" value={form.confirmPassword} onChange={(e) => update("confirmPassword", e.target.value)} style={{ color: PREMIUM_THEME.text }} />
+          </div>
+        </div>
+
+        <button className="mt-5 inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-semibold" onClick={handleSave} disabled={saving} style={{ background: PREMIUM_THEME.primary, color: "#031018", opacity: saving ? 0.7 : 1 }}>
+          {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+          {saving ? "Saving..." : "Update password"}
+        </button>
+      </GlassCard>
+    </PageShell>
   );
 }
 

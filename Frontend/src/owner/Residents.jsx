@@ -20,11 +20,14 @@ import {
   Upload,
   Check,
   Loader2,
+  Users,
+  AlertTriangle,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import BottomNav from "../components/BottomNav";
 import { getOccupancyChipInline, getOccupancyState } from "../utils/occupancyStyles";
 import { triggerOccupancyRefresh } from "../utils/occupancyRefresh";
+import { PageShell, GlassCard, StatusPill, EmptyState, StatCard, PREMIUM_THEME } from "./PremiumUI";
 
 
 function Residents() {
@@ -243,6 +246,20 @@ function Residents() {
       return matchesSearch && matchesStatus && matchesRoom;
     });
   }, [residents, searchQuery, filterStatus, filterRoom, paymentsByResident]);
+
+  const residentSummary = useMemo(() => {
+    const overdue = (residents || []).filter((resident) => computeResidentDueFromPayments(resident).status === "overdue").length;
+    const pending = (residents || []).filter((resident) => {
+      const due = computeResidentDueFromPayments(resident);
+      return due.status === "partial" || due.status === "overdue";
+    }).length;
+
+    return {
+      total: residents.length,
+      overdue,
+      pending,
+    };
+  }, [residents, paymentsByResident]);
 
   const closeModal = () => {
     setShowViewModal(false);
@@ -587,64 +604,51 @@ function Residents() {
   };
 
   return (
-    <div style={{ minHeight: "100vh", background: "#081028", paddingBottom: "100px", overflowX: "hidden" }}>
-      <div className="gradient-header mb-6" style={{ paddingBottom: "30px", borderBottomLeftRadius: "20px", borderBottomRightRadius: "20px" }}>
-        <h1 className="text-h1" style={{ color: "white" }}>Residents</h1>
-        <p style={{ color: "rgba(255,255,255,0.8)" }}>Manage residents</p>
+    <PageShell
+      title="Residents"
+      subtitle="Track active stays, dues, and room assignments in one calm workspace"
+      action={
+        <button
+          type="button"
+          onClick={openAddModal}
+          className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold"
+          style={{ background: PREMIUM_THEME.primary, color: "#031018" }}
+        >
+          <Plus size={16} /> Add Resident
+        </button>
+      }
+    >
+      <div className="grid gap-4 md:grid-cols-3">
+        <StatCard label="Total residents" value={residentSummary.total} caption="Live occupancy roster" icon={<Users size={18} />} />
+        <StatCard label="Overdue" value={residentSummary.overdue} caption="Follow up needed" icon={<AlertTriangle size={18} />} tone="blue" />
+        <StatCard label="Pending dues" value={residentSummary.pending} caption="Partial or overdue accounts" icon={<CreditCard size={18} />} tone="blue" />
       </div>
 
-      <div className="p-4">
-        <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 12 }}>
-          <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-            <div className="input-group" style={{ marginBottom: 0, flex: 1 }}>
-              <span className="input-label" style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <Search size={16} /> Search
-              </span>
-              <input
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search name, phone, room or bed"
-                className="input-field"
-                style={{ padding: "14px", borderRadius: "16px" }}
-              />
-            </div>
-            <button
-              type="button"
-              onClick={openAddModal}
-              style={{
-                background: "linear-gradient(135deg, rgba(34,197,94,1) 0%, rgba(16,185,129,1) 100%)",
-                color: "#fff",
-                padding: "14px 18px",
-                borderRadius: "16px",
-                fontWeight: 900,
-                display: "flex",
-                alignItems: "center",
-                gap: 8,
-                border: "none",
-                cursor: "pointer",
-                marginTop: "24px",
-                minWidth: "fit-content",
-                touchAction: "manipulation",
-              }}
-              aria-label="Add resident"
-            >
-              <Plus size={18} /> Add Resident
-            </button>
+      <GlassCard>
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex flex-1 items-center gap-2 rounded-[16px] border px-3 py-2" style={{ borderColor: PREMIUM_THEME.border, background: "rgba(255,255,255,0.03)" }}>
+            <Search size={16} style={{ color: PREMIUM_THEME.muted }} />
+            <input
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search name, phone, room or bed"
+              className="w-full bg-transparent text-sm outline-none"
+              style={{ color: PREMIUM_THEME.text }}
+            />
           </div>
-
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-            <div className="input-group" style={{ marginBottom: 0 }}>
-              <span className="input-label">Status</span>
-              <select className="input-field" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} style={{ padding: 14 }}>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="min-w-[140px] rounded-[16px] border px-3 py-2" style={{ borderColor: PREMIUM_THEME.border, background: "rgba(255,255,255,0.03)" }}>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.24em]" style={{ color: PREMIUM_THEME.muted }}>Status</p>
+              <select className="mt-1 w-full bg-transparent text-sm outline-none" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} style={{ color: PREMIUM_THEME.text }}>
                 <option value="all">All</option>
                 <option value="paid">Paid</option>
                 <option value="partial">Partial</option>
                 <option value="overdue">Overdue</option>
               </select>
             </div>
-            <div className="input-group" style={{ marginBottom: 0 }}>
-              <span className="input-label">Room</span>
-              <select className="input-field" value={filterRoom} onChange={(e) => setFilterRoom(e.target.value)} style={{ padding: 14 }}>
+            <div className="min-w-[140px] rounded-[16px] border px-3 py-2" style={{ borderColor: PREMIUM_THEME.border, background: "rgba(255,255,255,0.03)" }}>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.24em]" style={{ color: PREMIUM_THEME.muted }}>Room</p>
+              <select className="mt-1 w-full bg-transparent text-sm outline-none" value={filterRoom} onChange={(e) => setFilterRoom(e.target.value)} style={{ color: PREMIUM_THEME.text }}>
                 <option value="all">All</option>
                 {roomsList.map((rn) => (
                   <option key={rn} value={rn}>{rn}</option>
@@ -653,113 +657,85 @@ function Residents() {
             </div>
           </div>
         </div>
+      </GlassCard>
 
-        {loading ? (
-          <div className="text-center p-8 text-muted">Loading...</div>
-        ) : (
-          <div className="flex flex-col gap-3">
-            {(filteredResidents || []).map((item) => {
-              const due = computeResidentDueFromPayments(item);
-              const badge = statusBadge(due.status);
+      {loading ? (
+        <GlassCard className="text-center">Loading residents...</GlassCard>
+      ) : (
+        <div className="space-y-3">
+          {(filteredResidents || []).map((item) => {
+            const due = computeResidentDueFromPayments(item);
+            const badge = statusBadge(due.status);
+            const roomNumber = item?.roomId?.roomNumber || "N/A";
+            const bedNumber = item?.bedId?.bedNumber || "N/A";
+            const avatarUrl = item?.photo ? buildFileUrl(item.photo) : null;
 
-              const roomNumber = item?.roomId?.roomNumber || "N/A";
-              const bedNumber = item?.bedId?.bedNumber || "N/A";
-              const avatarUrl = item?.photo ? buildFileUrl(item.photo) : null;
-
-              return (
-                <div
-                  key={item._id}
-                  className="glass-card p-4 rounded-2xl"
-                  style={{
-                    background: "rgba(11,23,57,0.55)",
-                    borderColor: "rgba(255,255,255,0.08)",
-                    cursor: "pointer",
-                    touchAction: "manipulation",
-                  }}
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => openViewModal(item)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") openViewModal(item);
-                  }}
-                >
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
-                      <div
-                        style={{
-                          width: 48,
-                          height: 48,
-                          borderRadius: 18,
-                          background: "rgba(255,255,255,0.06)",
-                          border: "1px solid rgba(255,255,255,0.10)",
-                          overflow: "hidden",
-                          flexShrink: 0,
-                        }}
-                      >
-                        {avatarUrl ? (
-                          <img src={avatarUrl} alt={item?.name || "Resident"} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                        ) : (
-                          <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                            <User size={18} color="rgba(34,197,94,0.95)" />
-                          </div>
-                        )}
-                      </div>
-
-                      <div style={{ minWidth: 0 }}>
-                        <div style={{ fontWeight: 900, color: "#22c55e", fontSize: 14, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                          {item?.name || "N/A"}
-                        </div>
-                        <div className="text-small" style={{ color: "var(--text-muted)", marginTop: 3, display: "flex", gap: 8, alignItems: "center" }}>
-                          <Phone size={14} /> {item?.phone || "N/A"}
-                        </div>
-                      </div>
+            return (
+              <GlassCard
+                key={item._id}
+                hover
+                className="cursor-pointer"
+                style={{ touchAction: "manipulation" }}
+                role="button"
+                tabIndex={0}
+                onClick={() => openViewModal(item)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") openViewModal(item);
+                }}
+              >
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="flex gap-3">
+                    <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-2xl border" style={{ borderColor: PREMIUM_THEME.border, background: "rgba(255,255,255,0.04)" }}>
+                      {avatarUrl ? (
+                        <img src={avatarUrl} alt={item?.name || "Resident"} className="h-full w-full object-cover" />
+                      ) : (
+                        <User size={18} style={{ color: PREMIUM_THEME.primary }} />
+                      )}
                     </div>
-
-                    <div style={{ display: "flex", flexDirection: "column", gap: 8, alignItems: "flex-end" }}>
-                      <span className={`badge ${badge.className}`} style={{ padding: "8px 12px" }}>
-                        {badge.label}
-                      </span>
-                      <div className="text-small" style={{ color: "rgba(255,255,255,0.80)" }}>
-                        Next due: {due.nextDueDate}
+                    <div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h3 className="text-lg font-semibold">{item?.name || "N/A"}</h3>
+                        <StatusPill tone={due.status === "paid" ? "success" : due.status === "overdue" ? "danger" : "warning"}>{badge.label}</StatusPill>
                       </div>
+                      <p className="mt-1 text-sm" style={{ color: PREMIUM_THEME.muted }}>
+                        <span className="inline-flex items-center gap-1"><Phone size={14} /> {item?.phone || "N/A"}</span>
+                      </p>
+                      <p className="mt-1 text-sm" style={{ color: PREMIUM_THEME.muted }}>
+                        Room {roomNumber} • Bed {bedNumber}
+                      </p>
                     </div>
                   </div>
-
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 12 }}>
-                    <div style={{ border: "1px solid rgba(255,255,255,0.08)", borderRadius: 16, padding: 10, background: "rgba(255,255,255,0.03)" }}>
-                      <div className="text-small" style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                        <Calendar size={14} /> Join
-                      </div>
-                      <div style={{ marginTop: 4, fontWeight: 800 }}>{formatDate(item?.joinDate)}</div>
-                    </div>
-                    <div style={{ border: "1px solid rgba(255,255,255,0.08)", borderRadius: 16, padding: 10, background: "rgba(255,255,255,0.03)" }}>
-                      <div className="text-small" style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                        <BedDouble size={14} /> Room / Bed
-                      </div>
-                      <div style={{ marginTop: 4, fontWeight: 800 }}>Room {roomNumber} • Bed {bedNumber}</div>
-                    </div>
-                  </div>
-
-                  <div style={{ marginTop: 12, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
-                    <div className="text-small" style={{ color: "rgba(255,255,255,0.85)", display: "flex", gap: 8, alignItems: "center" }}>
-                      <CreditCard size={14} /> Pending: ₹{Number(due.pendingAmount || 0)}
-                    </div>
-                    <div className="text-small" style={{ color: "rgba(255,255,255,0.85)" }}>
-                      {due.status === "paid" ? "—" : due.status === "overdue" ? `Overdue ${due.overdueDays ?? 0} days` : `Remaining ${due.remainingDays ?? 0} days`}
-                    </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <StatusPill tone="info">Next due {due.nextDueDate}</StatusPill>
+                    <StatusPill tone="neutral">Pending ₹{Number(due.pendingAmount || 0)}</StatusPill>
                   </div>
                 </div>
-              );
-            })}
 
-            {(!filteredResidents || filteredResidents.length === 0) && (
-              <div className="text-center p-8 text-muted glass-card rounded-2xl shadow-sm" style={{ background: "rgba(11,23,57,0.55)", borderColor: "rgba(255,255,255,0.08)" }}>
-                No residents found.
-              </div>
-            )}
-          </div>
-        )}
-      </div>
+                <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                  <div className="rounded-[16px] border p-3" style={{ borderColor: PREMIUM_THEME.border, background: "rgba(255,255,255,0.03)" }}>
+                    <div className="flex items-center gap-2 text-sm" style={{ color: PREMIUM_THEME.muted }}>
+                      <Calendar size={14} /> Join date
+                    </div>
+                    <p className="mt-2 font-semibold">{formatDate(item?.joinDate)}</p>
+                  </div>
+                  <div className="rounded-[16px] border p-3" style={{ borderColor: PREMIUM_THEME.border, background: "rgba(255,255,255,0.03)" }}>
+                    <div className="flex items-center gap-2 text-sm" style={{ color: PREMIUM_THEME.muted }}>
+                      <CreditCard size={14} /> Due status
+                    </div>
+                    <p className="mt-2 font-semibold">
+                      {due.status === "paid" ? "All clear" : due.status === "overdue" ? `${due.overdueDays ?? 0} overdue days` : `${due.remainingDays ?? 0} days remaining`}
+                    </p>
+                  </div>
+                </div>
+              </GlassCard>
+            );
+          })}
+
+          {(!filteredResidents || filteredResidents.length === 0) && (
+            <EmptyState title="No residents found" message="Try changing the filters or add a new resident to build the roster." />
+          )}
+        </div>
+      )}
 
       {showViewModal && viewResident && (
         <div
@@ -1657,7 +1633,7 @@ function Residents() {
         </div>
       )}
       <BottomNav />
-    </div>
+    </PageShell>
   );
 }
 

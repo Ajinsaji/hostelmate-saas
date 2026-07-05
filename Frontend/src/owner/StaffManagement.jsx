@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, MessageCircle, RefreshCcw, Trash2, Unlock, ShieldCheck } from "lucide-react";
+import { Plus, MessageCircle, RefreshCcw, Trash2, Unlock, ShieldCheck, Users, Phone, Sparkles } from "lucide-react";
 import { api } from "../services/api";
 import toast from "react-hot-toast";
 import AddStaffModal from "./AddStaffModal";
+import { PageShell, GlassCard, StatusPill, EmptyState, PREMIUM_THEME } from "./PremiumUI";
 
 function StaffManagement() {
   const navigate = useNavigate();
@@ -87,79 +88,49 @@ function StaffManagement() {
   };
 
   return (
-    <div className="pb-24" style={{ padding: 16 }}>
-      <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "center", gap: 16, marginBottom: 20 }}>
-        <div>
-          <h1 className="text-h1">Staff Management</h1>
-          <p className="text-small" style={{ color: "rgba(255,255,255,0.75)" }}>
-            Add and manage wardens and cooks for your hostel.
-          </p>
-        </div>
-        <button className="btn-primary" onClick={() => setIsModalOpen(true)} style={{ minWidth: 160 }}>
-          <Plus size={18} style={{ marginRight: 8 }} /> Add Staff
-        </button>
-      </div>
-
-      <div style={{ background: "rgba(17, 24, 39, 0.9)", borderRadius: 24, border: "1px solid rgba(255,255,255,0.08)", overflow: "hidden" }}>
-        {loading ? (
-          <p className="text-small" style={{ padding: 20 }}>Loading staff...</p>
-        ) : staff.length === 0 ? (
-          <div style={{ padding: 20 }}>
-            <p className="text-small">No staff registered yet.</p>
+    <PageShell title="Staff" subtitle="Manage wardens, cooks, and house operations" action={<button onClick={() => setIsModalOpen(true)} className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold" style={{ background: PREMIUM_THEME.primary, color: "#031018" }}><Plus size={16} /> Add staff</button>}>
+      <GlassCard>
+        <div className="flex items-center gap-3">
+          <div className="flex h-11 w-11 items-center justify-center rounded-2xl" style={{ background: `${PREMIUM_THEME.primary}16`, color: PREMIUM_THEME.primary }}><Users size={18} /></div>
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.24em]" style={{ color: PREMIUM_THEME.muted }}>Team overview</p>
+            <p className="mt-1 text-lg font-semibold">{staff.length} active staff members</p>
           </div>
-        ) : (
-          staff.map((member) => (
-            <div key={member._id} style={{ display: "flex", flexDirection: "column", gap: 12, padding: 20, borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-                <div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-                    <h2 style={{ margin: 0 }}>{member.fullName}</h2>
-                    <span style={{ padding: "4px 10px", borderRadius: 999, background: "rgba(37, 211, 102, 0.14)", color: "#d1fae5", fontSize: 12, fontWeight: 600 }}>{member.role.toUpperCase()}</span>
-                  </div>
-                  <p className="text-small">Username: {member.username}</p>
-                  <p className="text-small">Phone: {member.phone}</p>
-                  <p className="text-small">Status: {member.isActive ? "Active" : "Disabled"}</p>
-                </div>
-                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                  <button className="btn-icon" onClick={() => toggleStatus(member._id, member.isActive)} title="Enable/Disable">
+        </div>
+      </GlassCard>
+
+      {loading ? <GlassCard className="text-center">Loading staff...</GlassCard> : staff.length === 0 ? <EmptyState title="No staff yet" message="Create your first team member to start managing operations." /> : (
+        <div className="space-y-3">
+          {staff.map((member) => (
+            <GlassCard key={member._id} hover>
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex gap-3">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl" style={{ background: `${PREMIUM_THEME.primary}16`, color: PREMIUM_THEME.primary }}>
                     <ShieldCheck size={18} />
-                  </button>
-                  <button className="btn-icon" onClick={() => resetPassword(member._id)} title="Reset Password">
-                    <Unlock size={18} />
-                  </button>
-                  <button className="btn-icon" onClick={() => deleteStaff(member._id)} title="Delete Staff">
-                    <Trash2 size={18} />
-                  </button>
-                  <button className="btn-icon" onClick={() => window.open(`https://wa.me/${member.phone.replace(/\D/g, "")}?text=Hello`, "_blank")} title="Open WhatsApp">
-                    <MessageCircle size={18} />
-                  </button>
+                  </div>
+                  <div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h3 className="text-lg font-semibold">{member.fullName}</h3>
+                      <StatusPill tone={member.isActive ? "success" : "danger"}>{member.role?.toUpperCase() || "STAFF"}</StatusPill>
+                    </div>
+                    <p className="mt-1 text-sm" style={{ color: PREMIUM_THEME.muted }}><span className="inline-flex items-center gap-1"><Phone size={14} /> {member.phone}</span></p>
+                    <p className="mt-1 text-sm" style={{ color: PREMIUM_THEME.muted }}>Username: {member.username}</p>
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <button className="rounded-full px-3 py-2 text-sm font-semibold" style={{ background: "rgba(255,255,255,0.05)" }} onClick={() => toggleStatus(member._id, member.isActive)}>{member.isActive ? "Deactivate" : "Activate"}</button>
+                  <button className="rounded-full px-3 py-2 text-sm font-semibold" style={{ background: "rgba(255,255,255,0.05)" }} onClick={() => resetPassword(member._id)}>Reset password</button>
+                  <button className="rounded-full px-3 py-2 text-sm font-semibold" style={{ background: "rgba(235,87,87,0.14)", color: PREMIUM_THEME.danger }} onClick={() => deleteStaff(member._id)}>Delete</button>
+                  <button className="rounded-full px-3 py-2 text-sm font-semibold" style={{ background: "rgba(45,156,219,0.16)", color: PREMIUM_THEME.accent }} onClick={() => window.open(`https://wa.me/${member.phone.replace(/\D/g, "")}?text=Hello`, "_blank")}>WhatsApp</button>
                 </div>
               </div>
-            </div>
-          ))
-        )}
-      </div>
-
-      <button
-        onClick={() => navigate(-1)}
-        style={{
-          marginTop: 24,
-          borderRadius: 14,
-          padding: "14px 18px",
-          border: "1px solid rgba(255,255,255,0.12)",
-          background: "transparent",
-          color: "white",
-          display: "inline-flex",
-          alignItems: "center",
-          gap: 8,
-          cursor: "pointer",
-        }}
-      >
-        <RefreshCcw size={18} /> Back
-      </button>
+            </GlassCard>
+          ))}
+        </div>
+      )}
 
       <AddStaffModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSubmit={handleCreate} />
-    </div>
+    </PageShell>
   );
 }
 
