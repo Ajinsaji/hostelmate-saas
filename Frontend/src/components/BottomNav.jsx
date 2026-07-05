@@ -48,6 +48,7 @@ function BottomNav() {
             width: "100%",
             maxWidth: 720,
             margin: "0 auto",
+            padding: "6px 4px 2px",
           }}
         >
           {NAV_ITEMS.map(({ key, label, icon: Icon, paths }) => {
@@ -74,6 +75,8 @@ function NavItem({ icon, text, isActive, onClick }) {
     <button
       type="button"
       onClick={onClick}
+      aria-current={isActive ? "page" : undefined}
+      title={text}
       style={{
         display: "flex",
         flexDirection: "column",
@@ -84,11 +87,12 @@ function NavItem({ icon, text, isActive, onClick }) {
         border: "none",
         background: "transparent",
         color: isActive ? "#16C47F" : "#AEB8C6",
-        fontSize: 10,
+        fontSize: 10.5,
         fontWeight: isActive ? 700 : 600,
-        padding: "8px 2px 6px",
+        letterSpacing: "0.01em",
+        padding: "8px 2px 8px",
         borderRadius: 16,
-        minHeight: 54,
+        minHeight: 60,
         transition: "all 0.2s ease",
       }}
     >
@@ -105,8 +109,9 @@ function NavItem({ icon, text, isActive, onClick }) {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          background: isActive ? "rgba(22, 196, 127, 0.15)" : "rgba(255,255,255,0.04)",
+          background: isActive ? "linear-gradient(135deg, rgba(22, 196, 127, 0.2), rgba(22, 196, 127, 0.12))" : "rgba(255,255,255,0.04)",
           color: isActive ? "#16C47F" : "#AEB8C6",
+          border: isActive ? "1px solid rgba(22, 196, 127, 0.22)" : "1px solid rgba(255,255,255,0.02)",
         }}
       >
         {icon}
