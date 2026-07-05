@@ -1,84 +1,160 @@
 const { getMessaging } = require("./firebaseAdmin");
 const DeviceToken = require("../models/DeviceToken");
 
-async function sendPushToUserDevices({ userId, hostelId, title, body, data }) {
+async function sendPushToUserDevices({
+  userId,
+  hostelId,
+  title,
+  body,
+  data = {},
+}) {
   const messaging = getMessaging();
+
   if (!messaging) {
-    console.warn("Firebase Admin SDK not initialized. FCM sending disabled.");
-    return { success: false, reason: "firebase_not_configured" };
+    console.warn("[fcmService] Firebase Admin SDK not initialized.");
+    return {
+      success: false,
+      reason: "firebase_not_initialized",
+    };
   }
 
-  // Tokens are stored in Mongo. Caller should already fetch tokens.
-  // This helper just sends a multicast.
-  const tokens = data?.tokens || [];
-  
-  if (!Array.isArray(tokens) || tokens.length === 0) {
-    console.log(`[fcmService] No device tokens found for userId ${userId}`);
-    return { success: true, sent: 0 };
+  const tokens = Array.isArray(data.tokens) ? data.tokens : [];
+
+  if (!tokens.length) {
+    console.log(
+      `[fcmService] No registered device tokens found for user ${userId}`
+    );
+    return {
+      success: true,
+      sent: 0,
+    };
   }
 
-  console.log(`[fcmService] Sending FCM to ${tokens.length} device(s) for user ${userId}`);
+  console.log(
+    `[fcmService] Sending FCM to ${tokens.length} device(s) for user ${userId}`
+  );
+
+  const payloadData = {};
+
+  Object.entries(data.payload || {}).forEach(([key, value]) => {
+    payloadData[key] =
+      typeof value === "string" ? value : JSON.stringify(value);
+  });
 
   const message = {
     tokens,
+
     notification: {
       title: title || "HostelMate",
       body: body || "New notification",
     },
-    data: Object.entries(data?.payload || {}).reduce((acc, [k, v]) => {
-      acc[k] = typeof v === "string" ? v : JSON.stringify(v);
-      return acc;
-    }, {}),
+
+    data: payloadData,
+
     android: {
       priority: "high",
+      notification: {
+        channelId: "hostelmate",
+        sound: "default",
+        defaultSound: true,
+        defaultVibrateTimings: true,
+        defaultLightSettings: true,
+        visibility: "public",
+        notificationPriority: "PRIORITY_HIGH",
+        clickAction: "OPEN_ACTIVITY_1",
+      },
+    },
+
+    webpush: {
+      headers: {
+        Urgency: "high",
+      },
+      notification: {
+        title: title || "HostelMate",
+        body: body || "New notification",
+        icon: "/logo192.png",
+        badge: "/logo192.png",
+        requireInteraction: true,
+      },
+      fcmOptions: {
+        link: payloadData.route || "/",
+      },
     },
   };
 
   try {
-    const res = await messaging.sendEachForMulticast(message);
+    const response = await messaging.sendEachForMulticast(message);
 
-    console.log(`[fcmService] FCM send result:`, {
-      successCount: res.successCount,
-      failureCount: res.failureCount,
+    console.log("[fcmService] FCM send result:", {
+      successCount: response.successCount,
+      failureCount: response.failureCount,
       total: tokens.length,
     });
 
-    if (res.failureCount > 0) {
-      console.warn(`[fcmService] ${res.failureCount} failures:`, res.responses);
+    if (response.failureCount > 0) {
+      console.warn(
+        `[fcmService] ${response.failureCount} message(s) failed`
+      );
     }
 
     const invalidTokens = [];
-    res.responses.forEach((response, index) => {
-      if (!response.success) {
-        const errorCode = response.error?.code || response.error?.message || "unknown_error";
+
+    response.responses.forEach((res, index) => {
+      if (!res.success) {
+        console.error(
+          `[fcmService] Token failed:`,
+          tokens[index],
+          res.error?.code,
+          res.error?.message
+        );
+
+        const code = res.error?.code || "";
+
         if (
-          errorCode === "registration-token-not-registered" ||
-          errorCode === "messaging/registration-token-not-registered" ||
-          errorCode?.endsWith("/registration-token-not-registered")
+          code === "messaging/registration-token-not-registered" ||
+          code === "registration-token-not-registered" ||
+          code.endsWith("/registration-token-not-registered")
         ) {
           invalidTokens.push(tokens[index]);
         }
+      } else {
+        console.log(
+          `[fcmService] Message sent successfully: ${res.messageId}`
+        );
       }
     });
 
-    if (invalidTokens.length > 0) {
-      console.log(`[fcmService] Removing ${invalidTokens.length} invalid device token(s)`);
-      await DeviceToken.deleteMany({ token: { $in: invalidTokens } });
+    if (invalidTokens.length) {
+      console.log(
+        `[fcmService] Removing ${invalidTokens.length} invalid token(s)`
+      );
+
+      await DeviceToken.deleteMany({
+        token: { $in: invalidTokens },
+      });
     }
 
     return {
-      success: res.failureCount === 0,
-      successCount: res.successCount,
-      failureCount: res.failureCount,
+      success: response.failureCount === 0,
+      successCount: response.successCount,
+      failureCount: response.failureCount,
       total: tokens.length,
       invalidTokens,
-      responses: res.responses,
+      responses: response.responses,
     };
   } catch (error) {
-    console.error("[fcmService] Failed to send FCM message:", error?.message || error);
-    return { success: false, error: error?.message, sent: 0 };
+    console.error(
+      "[fcmService] Fatal FCM error:",
+      error?.message || error
+    );
+
+    return {
+      success: false,
+      error: error?.message || String(error),
+    };
   }
 }
 
-module.exports = { sendPushToUserDevices };
-
+module.exports = {
+  sendPushToUserDevices,
+};
