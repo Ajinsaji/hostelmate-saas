@@ -6,7 +6,7 @@ import {
   useLocation,
   useNavigate,
 } from "react-router-dom";
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense, lazy } from "react";
 
 import LandingPage from "./components/LandingPage";
 import LoginPage from "./components/LoginPage";
@@ -36,13 +36,14 @@ import StaffManagement from "./owner/StaffManagement";
 import WardenDashboard from "./warden/Dashboard";
 import CookDashboard from "./cook/Dashboard";
 
-import AdminDashboard from "./Superadmin/AdminDashboard";
-import PendingRequests from "./Superadmin/PendingRequests";
-import SubscriptionControl from "./Superadmin/SubscriptionControl";
-import SubscriptionSetup from "./Superadmin/SubscriptionSetup";
-import AddHostel from "./Superadmin/AddHostel";
-import AdminProfile from "./Superadmin/AdminPage";
-import HostelManagement from "./Superadmin/HostelManagement";
+// Legacy admin page imports (replaced with Super Admin 3.0 lazy routing)
+// import AdminDashboard from "./Superadmin/AdminDashboard";
+// import PendingRequests from "./Superadmin/PendingRequests";
+// import SubscriptionControl from "./Superadmin/SubscriptionControl";
+// import SubscriptionSetup from "./Superadmin/SubscriptionSetup";
+// import AddHostel from "./Superadmin/AddHostel";
+// import AdminProfile from "./Superadmin/AdminPage";
+// import HostelManagement from "./Superadmin/HostelManagement";
 
 import DesktopShell from "./pages/_DesktopShell";
 
@@ -54,6 +55,33 @@ import AdminProtectedRoute from "./components/AdminProtectedRoute";
 import NotificationBell from "./components/NotificationBell";
 import ServerLoadingWrapper from "./components/ServerLoadingWrapper";
 import Notifications from "./pages/Notifications";
+
+// New Super Admin 3.0 Lazy Imports
+const AdminLayout = lazy(() => import("./superadmin/layouts/AdminLayout"));
+const DashboardOverview = lazy(() => import("./superadmin/views/DashboardOverview"));
+const OnboardingRequests = lazy(() => import("./superadmin/views/OnboardingRequests"));
+const HostelsList = lazy(() => import("./superadmin/views/HostelsList"));
+const HostelDetailsLayout = lazy(() => import("./superadmin/views/HostelDetailsLayout"));
+const CustomerOverview = lazy(() => import("./superadmin/views/customer-360/CustomerOverview"));
+const CustomerFinancials = lazy(() => import("./superadmin/views/customer-360/CustomerFinancials"));
+const CustomerOperations = lazy(() => import("./superadmin/views/customer-360/CustomerOperations"));
+const CustomerCommunication = lazy(() => import("./superadmin/views/customer-360/CustomerCommunication"));
+const CustomerSupport = lazy(() => import("./superadmin/views/customer-360/CustomerSupport"));
+const OwnersList = lazy(() => import("./superadmin/views/OwnersList"));
+const ResidentsList = lazy(() => import("./superadmin/views/ResidentsList"));
+const SubscriptionCenter = lazy(() => import("./superadmin/views/SubscriptionCenter"));
+const RevenueCenter = lazy(() => import("./superadmin/views/RevenueCenter"));
+const PlatformFinance = lazy(() => import("./superadmin/views/PlatformFinance"));
+const AnalyticsDashboard = lazy(() => import("./superadmin/views/AnalyticsDashboard"));
+const CustomerSuccess = lazy(() => import("./superadmin/views/CustomerSuccess"));
+const CommunicationConsole = lazy(() => import("./superadmin/views/CommunicationConsole"));
+const PlatformReports = lazy(() => import("./superadmin/views/PlatformReports"));
+const SupportDesk = lazy(() => import("./superadmin/views/SupportDesk"));
+const SystemAuditLogs = lazy(() => import("./superadmin/views/SystemAuditLogs"));
+const PlatformMonitoring = lazy(() => import("./superadmin/views/PlatformMonitoring"));
+const PlatformSettings = lazy(() => import("./superadmin/views/PlatformSettings"));
+const AdminProfile = lazy(() => import("./superadmin/views/AdminProfile"));
+const LoadingState = lazy(() => import("./superadmin/components/feedback/LoadingState"));
 
 function NotificationBellHost() {
   const location = useLocation();
@@ -484,142 +512,47 @@ function App() {
         <Route path="/h/:hostelCode" element={<PublicHostelPage />} />
 
         <Route path="/admin/login" element={<AdminLogin />} />
+        
+        {/* Super Admin 3.0 Lazy Loaded Nested Routes */}
         <Route
           path="/admin"
           element={
             <AdminProtectedRoute>
-              <DesktopShell
-                variant="admin"
-                title="Admin"
-                breadcrumbs={[{ label: "Admin" }]}
-                backTo={"/admin"}
-              >
-                <AdminDashboard />
-              </DesktopShell>
+              <Suspense fallback={<LoadingState />}>
+                <AdminLayout />
+              </Suspense>
             </AdminProtectedRoute>
           }
-        />
-        <Route
-          path="/admin/pending-requests"
-          element={
-            <AdminProtectedRoute>
-              <DesktopShell
-                variant="admin"
-                title="Pending Requests"
-                breadcrumbs={[{ label: "Pending Requests" }]}
-                backTo={"/admin"}
-              >
-                <PendingRequests />
-              </DesktopShell>
-            </AdminProtectedRoute>
-          }
-        />
-        <Route
-          path="/admin/subscription-setup/:hostelId"
-          element={
-            <AdminProtectedRoute>
-              <DesktopShell
-                variant="admin"
-                title="Subscription Setup"
-                breadcrumbs={[{ label: "Subscription Setup" }]}
-                backTo={"/admin"}
-              >
-                <SubscriptionSetup />
-              </DesktopShell>
-            </AdminProtectedRoute>
-          }
-        />
-        <Route
-          path="/admin/subscriptions"
-          element={
-            <AdminProtectedRoute>
-              <DesktopShell
-                variant="admin"
-                title="Subscriptions"
-                breadcrumbs={[{ label: "Subscriptions" }]}
-                backTo={"/admin"}
-              >
-                <SubscriptionControl />
-              </DesktopShell>
-            </AdminProtectedRoute>
-          }
-        />
-        <Route
-          path="/admin/add-hostel"
-          element={
-            <AdminProtectedRoute>
-              <DesktopShell
-                variant="admin"
-                title="Add Hostel"
-                breadcrumbs={[{ label: "Add Hostel" }]}
-                backTo={"/admin"}
-              >
-                <AddHostel />
-              </DesktopShell>
-            </AdminProtectedRoute>
-          }
-        />
-        <Route
-          path="/admin/hostels"
-          element={
-            <AdminProtectedRoute>
-              <DesktopShell
-                variant="admin"
-                title="Hostel Management"
-                breadcrumbs={[{ label: "Hostel Management" }]}
-                backTo={"/admin"}
-              >
-                <HostelManagement />
-              </DesktopShell>
-            </AdminProtectedRoute>
-          }
-        />
-        <Route
-          path="/admin/profile"
-          element={
-            <AdminProtectedRoute>
-              <DesktopShell
-                variant="admin"
-                title="Profile"
-                breadcrumbs={[{ label: "Profile" }]}
-                backTo={"/admin"}
-              >
-                <AdminProfile />
-              </DesktopShell>
-            </AdminProtectedRoute>
-          }
-        />
-        <Route
-          path="/admin/notifications"
-          element={
-            <AdminProtectedRoute>
-              <DesktopShell
-                variant="admin"
-                title="Notifications"
-                breadcrumbs={[{ label: "Notifications" }]}
-                backTo="/admin"
-              >
-                <Notifications />
-              </DesktopShell>
-            </AdminProtectedRoute>
-          }
-        />
-
-        <Route
-          path="/admin/reports"
-          element={
-            <AdminProtectedRoute>
-              <DesktopShell
-                variant="admin"
-                title="Reports"
-                breadcrumbs={[{ label: "Reports" }]}
-                backTo="/admin"
-              >
-                <Reports />
-              </DesktopShell>
-            </AdminProtectedRoute>
-          }
-        />
+        >
+          <Route index element={<Navigate to="dashboard" replace />} />
+          <Route path="dashboard" element={<DashboardOverview />} />
+          <Route path="requests" element={<OnboardingRequests />} />
+          <Route path="hostels" element={<HostelsList />} />
+          
+          <Route path="hostels/:id" element={<HostelDetailsLayout />}>
+            <Route index element={<Navigate to="overview" replace />} />
+            <Route path="overview" element={<CustomerOverview />} />
+            <Route path="financials" element={<CustomerFinancials />} />
+            <Route path="operations" element={<CustomerOperations />} />
+            <Route path="communication" element={<CustomerCommunication />} />
+            <Route path="support" element={<CustomerSupport />} />
+          </Route>
+          
+          <Route path="owners" element={<OwnersList />} />
+          <Route path="residents" element={<ResidentsList />} />
+          <Route path="subscriptions" element={<SubscriptionCenter />} />
+          <Route path="revenue" element={<RevenueCenter />} />
+          <Route path="finance" element={<PlatformFinance />} />
+          <Route path="analytics" element={<AnalyticsDashboard />} />
+          <Route path="customer-success" element={<CustomerSuccess />} />
+          <Route path="communication" element={<CommunicationConsole />} />
+          <Route path="reports" element={<PlatformReports />} />
+          <Route path="support" element={<SupportDesk />} />
+          <Route path="audit" element={<SystemAuditLogs />} />
+          <Route path="monitoring" element={<PlatformMonitoring />} />
+          <Route path="settings" element={<PlatformSettings />} />
+          <Route path="profile" element={<AdminProfile />} />
+        </Route>
 
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>

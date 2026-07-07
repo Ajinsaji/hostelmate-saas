@@ -1,0 +1,25 @@
+[
+  {
+    "ticketId": "#1042",
+    "subject": "Printer connectivity in lobby offline",
+    "category": "Technical Support",
+    "status": "resolved",
+    "priority": "Medium",
+    "assignedAdmin": "Vijay Prasad",
+    "history": [
+      { "sender": "Owner Rajesh", "message": "The network printer is not responding to warden commands.", "time": "2d ago" },
+      { "sender": "Admin Vijay", "message": "Please restart the gateway device. Session was closed automatically.", "time": "1d ago" }
+    ]
+  },
+  {
+    "ticketId": "#1099",
+    "subject": "Refund query for checkout resident",
+    "category": "Billing",
+    "status": "open",
+    "priority": "High",
+    "assignedAdmin": "Rajesh S.",
+    "history": [
+      { "sender": "Owner Rajesh", "message": "How do we adjust security deposits for premature checkout?", "time": "5h ago" }
+    ]
+  }
+]

@@ -1,0 +1,30 @@
+{
+  "mrr": { "value": "₹2,48,500", "trend": "+14.2%", "direction": "up" },
+  "arr": { "value": "₹29,82,000", "trend": "+16.8%", "direction": "up" },
+  "todayRevenue": { "value": "₹12,400", "trend": "+8.4%", "direction": "up" },
+  "monthlyProfit": { "value": "₹2,13,720", "trend": "+15.1%", "direction": "up" },
+  "platformExpenses": { "value": "₹34,780", "trend": "+4.2%", "direction": "down" },
+  "pendingRenewals": { "value": "8 Renewals", "trend": "Due", "direction": "neutral" },
+  "expectedRevenue": { "value": "₹2,72,500", "trend": "+10%", "direction": "up" },
+  "subscriptionGrowth": { "value": "+12.6%", "trend": "Active", "direction": "up" },
+  "revenueTrend": [
+    { "month": "Jan", "value": 150000 },
+    { "month": "Feb", "value": 168000 },
+    { "month": "Mar", "value": 192000 },
+    { "month": "Apr", "value": 210000 },
+    { "month": "May", "value": 235000 },
+    { "month": "Jun", "value": 248500 }
+  ],
+  "revenueByPlan": [
+    { "name": "Basic Plan", "value": 35, "color": "#FBBF24" },
+    { "name": "Pro Plan", "value": 65, "color": "#10B981" }
+  ],
+  "monthlyGrowth": [
+    { "month": "Jan", "percentage": 8.2 },
+    { "month": "Feb", "percentage": 9.5 },
+    { "month": "Mar", "percentage": 11.2 },
+    { "month": "Apr", "percentage": 12.0 },
+    { "month": "May", "percentage": 14.1 },
+    { "month": "Jun", "percentage": 14.2 }
+  ]
+}

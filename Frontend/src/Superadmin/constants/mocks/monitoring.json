@@ -1,0 +1,15 @@
+{
+  "databaseUsage": { "percent": 35, "label": "35MB / 100MB" },
+  "cloudinaryStorage": { "percent": 42, "label": "8.4GB / 20GB" },
+  "firebaseStatus": "Operational",
+  "apiLatency": "124ms",
+  "serverMemory": { "percent": 48, "label": "1.92GB / 4.0GB" },
+  "cpuLoad": { "percent": 24, "label": "Core 0, 1 normal" },
+  "activeSockets": 942,
+  "cronJobs": "Active",
+  "queues": {
+    "notifications": 0,
+    "whatsapp": 0,
+    "emails": 2
+  }
+}

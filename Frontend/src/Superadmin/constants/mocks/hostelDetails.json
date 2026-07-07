@@ -1,0 +1,38 @@
+{
+  "id": "1",
+  "logo": "A",
+  "name": "Apex Boys PG",
+  "uniqueCode": "RMH482",
+  "qrCode": "https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=RMH482",
+  "owner": "Rajesh Kumar",
+  "plan": "Pro Plan",
+  "status": "active",
+  "businessHealthScore": 92,
+  "occupancy": "85%",
+  "residents": 128,
+  "rooms": 32,
+  "revenue": "₹42,000",
+  "expenses": "₹8,500",
+  "profit": "₹33,500",
+  "lastLogin": "2 hours ago",
+  "subscriptionStatus": "active",
+  "details": {
+    "city": "Bangalore",
+    "district": "Bangalore Urban",
+    "state": "Karnataka",
+    "country": "India",
+    "address": "4th Block, Koramangala, near Sony World Crossing",
+    "postalCode": "560034"
+  },
+  "featureFlags": {
+    "publicAdmission": true,
+    "automaticFines": true,
+    "whatsappIntegration": true,
+    "biometricLogs": false
+  },
+  "branding": {
+    "primaryColor": "#0F7A5E",
+    "logoUrl": null,
+    "customDomain": "apex.hostelmate.com"
+  }
+}
