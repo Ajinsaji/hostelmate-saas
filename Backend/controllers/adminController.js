@@ -1225,42 +1225,64 @@ const getSystemHealth = async (req, res) => {
 // ==========================
 // Module.exports
 // ==========================
-module.exports = {
+// ==========================
+// Phase 4.1: Dashboard 3.0 endpoints (thin controllers)
+// ==========================
+const { getDashboardOverview } = require("../services/dashboard/overviewService");
+const { getRevenueMetrics: getDashboardRevenue } = require("../services/dashboard/revenueService");
+const { getMonitoring: getDashboardMonitoring } = require("../services/dashboard/monitoringService");
 
-  getDashboardStats,
-
-  getAllRequests,
-
-  approveHostel,
-
-  rejectRequest,
-
-  getAllHostels,
-
-  getPendingHostels,
-
-  deleteHostel,
-
-  updateSubscription,
-
-  getSubscriptions,
-
-  addHostel,
-
-  editHostelLocation,
-
-  resendWhatsApp,
-
-  resetOwnerTempPassword,
-
-  getAdminProfile,
-
-  updateAdminProfile,
-
-  finalizeHostelActivation,
-
-  changeAdminPassword,
-
-  getSystemHealth,
+const getDashboardOverviewHandler = async (req, res) => {
+  try {
+    const data = await getDashboardOverview();
+    return res.status(200).json({ success: true, ...data });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: "Failed to load dashboard overview", error: error?.message || String(error) });
+  }
 };
+
+const getDashboardRevenueHandler = async (req, res) => {
+  try {
+    const data = await getDashboardRevenue();
+    return res.status(200).json({ success: true, ...data });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: "Failed to load dashboard revenue", error: error?.message || String(error) });
+  }
+};
+
+const getDashboardMonitoringHandler = async (req, res) => {
+  try {
+    const data = await getDashboardMonitoring();
+    return res.status(200).json({ success: true, ...data });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: "Failed to load dashboard monitoring", error: error?.message || String(error) });
+  }
+};
+
+module.exports = {
+  getDashboardStats,
+  getAllRequests,
+  approveHostel,
+  rejectRequest,
+  getAllHostels,
+  getPendingHostels,
+  deleteHostel,
+  updateSubscription,
+  getSubscriptions,
+  addHostel,
+  editHostelLocation,
+  resendWhatsApp,
+  resetOwnerTempPassword,
+  getAdminProfile,
+  updateAdminProfile,
+  finalizeHostelActivation,
+  changeAdminPassword,
+  getSystemHealth,
+  getDashboardOverview: getDashboardOverviewHandler,
+  getDashboardRevenue: getDashboardRevenueHandler,
+  getDashboardMonitoring: getDashboardMonitoringHandler,
+};
+
+
+
 

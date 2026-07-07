@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import financeMock from "../constants/mocks/finance.json";
+import { api } from "../../services/api";
 
 export function useRevenueMetrics() {
   const [data, setData] = useState(null);
@@ -7,20 +7,30 @@ export function useRevenueMetrics() {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
+    let mounted = true;
+
+    (async () => {
       try {
-        setData(financeMock);
+        const res = await api.get("/api/admin/dashboard/revenue");
+        if (!mounted) return;
+        setData(res?.data || null);
       } catch (err) {
-        setError(err.message || "Failed to load revenue metrics");
+        if (!mounted) return;
+        setError(err?.response?.data?.message || err.message || "Failed to load revenue metrics");
       } finally {
+        if (!mounted) return;
         setLoading(false);
       }
-    }, 200);
+    })();
 
-    return () => clearTimeout(timer);
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   return { data, loading, error };
 }
 
 export default useRevenueMetrics;
+
+

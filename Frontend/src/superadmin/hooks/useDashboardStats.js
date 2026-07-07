@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import dashboardMock from "../constants/mocks/dashboard.json";
+import { api } from "../../services/api";
 
 export function useDashboardStats() {
   const [data, setData] = useState(null);
@@ -7,20 +7,30 @@ export function useDashboardStats() {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
+    let mounted = true;
+
+    (async () => {
       try {
-        setData(dashboardMock);
+        const res = await api.get("/api/admin/dashboard/overview");
+        if (!mounted) return;
+        setData(res?.data || null);
       } catch (err) {
-        setError(err.message || "Failed to load dashboard stats");
+        if (!mounted) return;
+        setError(err?.response?.data?.message || err.message || "Failed to load dashboard stats");
       } finally {
+        if (!mounted) return;
         setLoading(false);
       }
-    }, 250);
+    })();
 
-    return () => clearTimeout(timer);
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   return { data, loading, error };
 }
 
 export default useDashboardStats;
+
+

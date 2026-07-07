@@ -25,22 +25,34 @@ const {
   finalizeHostelActivation,
   changeAdminPassword,
   getSystemHealth,
+  getDashboardOverview,
+  getDashboardRevenue,
+  getDashboardMonitoring,
 } = require("../controllers/adminController");
 
 
 const { uploadFields } = require("../middleware/cloudinaryUpload");
 
 // ==========================
-// DASHBOARD
+// DASHBOARD (legacy)
 // ==========================
 
 router.get("/dashboard", getDashboardStats);
+
+// ==========================
+// DASHBOARD 3.0 (Phase 4.1)
+// ==========================
+
+router.get("/dashboard/overview", getDashboardOverview);
+router.get("/dashboard/revenue", getDashboardRevenue);
+router.get("/dashboard/monitoring", getDashboardMonitoring);
 
 // ==========================
 // SYSTEM HEALTH
 // ==========================
 
 router.get("/system-health", getSystemHealth);
+
 
 // ==========================
 // REQUESTS

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import monitoringMock from "../constants/mocks/monitoring.json";
+import { api } from "../../services/api";
 
 export function usePlatformMonitoring() {
   const [data, setData] = useState(null);
@@ -7,20 +7,30 @@ export function usePlatformMonitoring() {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
+    let mounted = true;
+
+    (async () => {
       try {
-        setData(monitoringMock);
+        const res = await api.get("/api/admin/dashboard/monitoring");
+        if (!mounted) return;
+        setData(res?.data || null);
       } catch (err) {
-        setError(err.message || "Failed to load platform telemetry metrics");
+        if (!mounted) return;
+        setError(err?.response?.data?.message || err.message || "Failed to load platform telemetry metrics");
       } finally {
+        if (!mounted) return;
         setLoading(false);
       }
-    }, 150);
+    })();
 
-    return () => clearTimeout(timer);
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   return { data, loading, error };
 }
 
 export default usePlatformMonitoring;
+
+
