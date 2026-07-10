@@ -28,8 +28,7 @@ const {
   getDashboardOverview,
   getDashboardRevenue,
   getDashboardMonitoring,
-  // Executive summary
-  getExecutiveSummary,
+
   // Admin subscriptions listing
   getAdminSubscriptions,
   // Phase 4.2A exports
@@ -50,6 +49,11 @@ const {
   getHealthScoreHandler,
 } = require("../controllers/customerHealthController");
 
+const {
+  getExecutiveSummaryHandler,
+} = require("../controllers/executiveSummaryController");
+
+
 const resolvedHealthScoreHandler =
   typeof getHealthScoreHandler === "function" ? getHealthScoreHandler : null;
 
@@ -68,6 +72,12 @@ router.get("/dashboard", getDashboardStats);
 router.get("/dashboard/overview", getDashboardOverview);
 router.get("/dashboard/revenue", getDashboardRevenue);
 router.get("/dashboard/monitoring", getDashboardMonitoring);
+router.get("/dashboard/executive-summary", getExecutiveSummaryHandler);
+
+
+
+
+
 
 // ==========================
 // SYSTEM HEALTH

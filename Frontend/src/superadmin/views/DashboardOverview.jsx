@@ -125,7 +125,8 @@ export const DashboardOverview = React.memo(() => {
           Platform Health & Operations
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
-          {platformKpiCards.map((card, idx) => (
+          {(platformKpiCards ?? []).map((card, idx) => (
+
             <StatCard
               key={idx}
               title={card.title}
@@ -200,7 +201,8 @@ export const DashboardOverview = React.memo(() => {
           </div>
 
           <div className="flex justify-between text-[9px] font-bold text-white/40 pt-3 border-t border-white/5 select-none">
-            {revenueData?.revenueTrend.map((t, idx) => (
+            {(Array.isArray(revenueData?.revenueTrend) ? revenueData.revenueTrend : []).map((t, idx) => (
+
               <span key={idx}>{t.month}</span>
             ))}
           </div>
@@ -212,7 +214,7 @@ export const DashboardOverview = React.memo(() => {
         {/* Trial Conversion Funnel */}
         <SectionCard title="Trial Conversion Funnel" subtitle="Platform signup conversion flows">
           <div className="space-y-3.5">
-            {healthData?.funnel.map((step, idx) => (
+            {(healthData?.funnel ?? []).map((step, idx) => (
               <div key={idx} className="space-y-1">
                 <div className="flex justify-between text-xs font-semibold text-white/80">
                   <span>{step.step}</span>
@@ -229,19 +231,38 @@ export const DashboardOverview = React.memo(() => {
         {/* Churn Risk list */}
         <SectionCard title="Customer Churn Risk" subtitle="Hostels requiring urgent oversight">
           <div className="space-y-3">
-            {healthData?.churnRisk.map((item, idx) => (
-              <div key={idx} className="flex justify-between items-start border-b border-white/5 pb-2 last:border-b-0">
+            {healthData?.renewalRisk ? (
+              <div className="flex justify-between items-start border-b border-white/5 pb-2 last:border-b-0">
                 <div>
-                  <p className="text-xs font-bold text-white">{item.name}</p>
-                  <p className="text-[10px] text-white/40 mt-0.5">{item.reason}</p>
+                  <p className="text-xs font-bold text-white">Renewal Candidates</p>
+                  <p className="text-[10px] text-white/40 mt-0.5">Due renewals requiring attention</p>
                 </div>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded" style={{ color: COLORS.error, background: COLORS.errorBg }}>
-                  {item.riskLevel} Churn
+                <span
+                  className="text-[10px] font-bold px-2 py-0.5 rounded"
+                  style={{ color: COLORS.error, background: COLORS.errorBg }}
+                >
+                  {healthData?.renewalRisk?.renewalCandidates ?? 0} Renewals
                 </span>
               </div>
-            ))}
+            ) : null}
+
+            {healthData?.churnRisk ? (
+              <div className="flex justify-between items-start border-b border-white/5 pb-2 last:border-b-0">
+                <div>
+                  <p className="text-xs font-bold text-white">Last Reminder Missing</p>
+                  <p className="text-[10px] text-white/40 mt-0.5">Where reminders are not logged</p>
+                </div>
+                <span
+                  className="text-[10px] font-bold px-2 py-0.5 rounded"
+                  style={{ color: COLORS.error, background: COLORS.errorBg }}
+                >
+                  {healthData?.churnRisk?.lastReminderMissingCount ?? 0} Risk
+                </span>
+              </div>
+            ) : null}
           </div>
         </SectionCard>
+
 
         {/* Performance High/Low lists */}
         <SectionCard title="Customer Success Score" subtitle="NPS & customer success telemetry" className="md:col-span-2 lg:col-span-1">
@@ -251,15 +272,21 @@ export const DashboardOverview = React.memo(() => {
                 <p className="text-xs font-bold text-white">NPS Support Satisfaction</p>
                 <p className="text-[10px] text-white/40 mt-0.5">Average ticket ratings</p>
               </div>
-              <span className="text-xl font-extrabold text-emerald-400">{healthData?.supportSatisfaction}</span>
+              {healthData?.supportSatisfaction !== undefined ? (
+                <span className="text-xl font-extrabold text-emerald-400">{healthData.supportSatisfaction}</span>
+              ) : (
+                <span className="text-xl font-extrabold text-emerald-400">—</span>
+              )}
             </div>
-            
+
             <div className="space-y-2">
               <p className="text-[10px] font-bold text-white/30 uppercase tracking-wider">Top Performing Customers</p>
-              {healthData?.topPerforming.map((top, idx) => (
+              {(healthData?.topPerformingHostels ?? []).map((top, idx) => (
+
                 <div key={idx} className="flex justify-between text-xs">
-                  <span className="text-slate-300 truncate max-w-[150px]">{top.name}</span>
-                  <span className="font-bold text-emerald-400">{top.healthScore}/100</span>
+                  <span className="text-slate-300 truncate max-w-[150px]">{top.hostelName}</span>
+                  <span className="font-bold text-emerald-400">{top.performanceScore}</span>
+
                 </div>
               ))}
             </div>
@@ -275,7 +302,8 @@ export const DashboardOverview = React.memo(() => {
           subtitle="Recent platform activity logs"
           className="lg:col-span-2"
         >
-          <Timeline items={statsData?.actionCenter} />
+          <Timeline items={statsData?.actionCenter ?? []} />
+
         </SectionCard>
 
         {/* Telemetry Telemetry */}

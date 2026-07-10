@@ -13,7 +13,7 @@ export function usePlatformMonitoring() {
       try {
         const res = await api.get("/api/admin/dashboard/monitoring");
         if (!mounted) return;
-        setData(res?.data || null);
+        setData(res?.data?.data ?? res?.data ?? null);
       } catch (err) {
         if (!mounted) return;
         setError(err?.response?.data?.message || err.message || "Failed to load platform telemetry metrics");

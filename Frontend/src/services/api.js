@@ -76,9 +76,11 @@ api.interceptors.request.use(
 
     // Admin and owner tokens must not cross-redirect each other.
     // Admin requests should only ever read adminToken.
+    // Fallback to generic token keys if adminToken is missing (prevents Authorization: Missing).
     const token = isAdminRequest
-      ? localStorage.getItem("adminToken")
+      ? localStorage.getItem("adminToken") || localStorage.getItem("token")
       : localStorage.getItem("ownerToken") || localStorage.getItem("token");
+
 
     const authorizationHeaderExists = !!config.headers?.Authorization;
     const method = (config.method || "").toUpperCase();
