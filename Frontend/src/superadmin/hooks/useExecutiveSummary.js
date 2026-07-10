@@ -1,7 +1,5 @@
-import { useState, useEffect } from "react";
-import dashboardMock from "../constants/mocks/dashboard.json";
-import financeMock from "../constants/mocks/finance.json";
-import monitoringMock from "../constants/mocks/monitoring.json";
+import { useEffect, useState } from "react";
+import { api } from "../../services/api";
 
 export function useExecutiveSummary() {
   const [data, setData] = useState(null);
@@ -9,33 +7,34 @@ export function useExecutiveSummary() {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    // Simulate API call delay
-    const timer = setTimeout(() => {
+    let mounted = true;
+
+    (async () => {
       try {
-        // Build summary dynamically from mock files to simulate AI/aggregate engines
-        const summaryText = `Platform summary: Revenue increased by ${financeMock.mrr.trend}. ${dashboardMock.activeHostels.value} active hostels on platform. ${financeMock.pendingRenewals.value} are due this cycle. Platform health is at ${dashboardMock.platformHealthScore.value} with database utilization at ${monitoringMock.databaseUsage.percent}%.`;
-        
-        setData({
-          summary: summaryText,
-          raw: {
-            revenueGrowth: financeMock.mrr.trend,
-            activeHostels: dashboardMock.activeHostels.value,
-            pendingRenewals: financeMock.pendingRenewals.value,
-            healthScore: dashboardMock.platformHealthScore.value,
-            dbUsage: monitoringMock.databaseUsage.percent
-          }
-        });
+        setLoading(true);
+        setError(null);
+
+        const res = await api.get("/api/admin/dashboard/executive-summary");
+        if (!mounted) return;
+
+        // Preserve hook contract: {summary, ...} payload shape is expected by DashboardOverview
+        setData(res?.data?.data ?? res?.data ?? null);
       } catch (err) {
-        setError(err.message || "Failed to load summary");
+        if (!mounted) return;
+        setError(err?.response?.data?.message || err?.message || "Failed to load executive summary");
       } finally {
+        if (!mounted) return;
         setLoading(false);
       }
-    }, 300);
+    })();
 
-    return () => clearTimeout(timer);
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   return { data, loading, error };
 }
 
 export default useExecutiveSummary;
+

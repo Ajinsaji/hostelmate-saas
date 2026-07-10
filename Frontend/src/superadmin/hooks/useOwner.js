@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import ownerProfileMock from "../constants/mocks/ownerProfile.json";
+import { api } from "../../services/api";
 
 export function useOwner(ownerId) {
   const [data, setData] = useState(null);
@@ -7,20 +7,31 @@ export function useOwner(ownerId) {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
+    let mounted = true;
+
+    (async () => {
       try {
-        setData(ownerProfileMock);
+        if (!ownerId) throw new Error("Hostel id missing");
+        // Customer 360 uses useOwner(id) where id is hostelId
+        const res = await api.get(`/api/admin/hostels/${ownerId}/owner`);
+        if (!mounted) return;
+        setData(res?.data?.data || null);
       } catch (err) {
-        setError(err.message || "Failed to load owner profile");
+        if (!mounted) return;
+        setError(err?.response?.data?.message || err.message || "Failed to load owner profile");
       } finally {
+        if (!mounted) return;
         setLoading(false);
       }
-    }, 150);
+    })();
 
-    return () => clearTimeout(timer);
+    return () => {
+      mounted = false;
+    };
   }, [ownerId]);
 
   return { data, loading, error };
 }
 
 export default useOwner;
+

@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
-import { api } from "../../../services/api";
+import { api } from "../../services/api";
 
-export function useSubscription(hostelId) {
-  const [data, setData] = useState(null);
+export function useSubscriptions() {
+  const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -13,19 +13,15 @@ export function useSubscription(hostelId) {
       setLoading(true);
       setError(null);
       try {
-        if (!hostelId) {
-          setData(null);
-          return;
-        }
+        const res = await api.get("/api/admin/subscriptions");
+        const payload = res?.data;
 
-        const res = await api.get(`/api/admin/hostels/${hostelId}/subscription`);
-        if (!cancelled) setData(res?.data?.data ?? res?.data ?? null);
+        const list = payload?.data ?? payload?.subscriptions ?? [];
+        if (!cancelled) setData(Array.isArray(list) ? list : []);
       } catch (err) {
         if (!cancelled) {
           setError(
-            err?.response?.data?.message ||
-              err?.message ||
-              "Failed to load subscription status"
+            err?.response?.data?.message || err?.message || "Failed to load subscriptions"
           );
         }
       } finally {
@@ -34,14 +30,13 @@ export function useSubscription(hostelId) {
     }
 
     run();
-
     return () => {
       cancelled = true;
     };
-  }, [hostelId]);
+  }, []);
 
   return { data, loading, error };
 }
 
-export default useSubscription;
+export default useSubscriptions;
 

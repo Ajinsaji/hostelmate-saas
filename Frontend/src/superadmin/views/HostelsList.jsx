@@ -11,17 +11,8 @@ import QuickActionButton from "../components/widgets/QuickActionButton";
 import Drawer from "../components/drawers/Drawer";
 import useHostels from "../hooks/useHostels";
 import { COLORS } from "../constants/theme";
-import { 
-  Building, 
-  Users, 
-  Settings, 
-  Download, 
-  Trash2, 
-  ShieldAlert, 
-  Sparkles, 
-  Eye, 
-  ChevronDown 
-} from "lucide-react";
+import { Download, Eye, ChevronDown } from "lucide-react";
+
 
 export const HostelsList = React.memo(() => {
   const navigate = useNavigate();
@@ -68,24 +59,10 @@ export const HostelsList = React.memo(() => {
   const [showColDropdown, setShowColDropdown] = useState(false);
   const [bulkDrawerOpen, setBulkDrawerOpen] = useState(false);
 
-  // Sorting helper
-  const handleSort = (field) => {
-    if (sortField === field) {
-      setSortOrder(sortOrder === "asc" ? "desc" : "asc");
-    } else {
-      setSortField(field);
-      setSortOrder("asc");
-    }
-  };
+
 
   // Selection helpers
-  const handleSelectAll = (e) => {
-    if (e.target.checked) {
-      setSelectedIds(filteredHostels.map((h) => h.id));
-    } else {
-      setSelectedIds([]);
-    }
-  };
+
 
   const handleSelectRow = (e, id) => {
     e.stopPropagation();
@@ -237,9 +214,9 @@ export const HostelsList = React.memo(() => {
               }
             ]} 
             onFilterChange={(key, val) => {
-              if (key === "plan") setFilterPlan(val);
-              if (key === "status") setFilterStatus(val);
+              setFilters((prev) => ({ ...prev, [key]: val }));
             }}
+
           />
         </div>
 

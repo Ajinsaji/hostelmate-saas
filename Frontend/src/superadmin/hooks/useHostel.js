@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import hostelDetailsMock from "../constants/mocks/hostelDetails.json";
+import { api } from "../../services/api";
 
 export function useHostel(id) {
   const [data, setData] = useState(null);
@@ -7,21 +7,30 @@ export function useHostel(id) {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
+    let mounted = true;
+
+    (async () => {
       try {
-        // In the future this will fetch `/api/superadmin/hostels/${id}`
-        setData({ ...hostelDetailsMock, id });
+        if (!id) throw new Error("Hostel id missing");
+        const res = await api.get(`/api/admin/hostels/${id}`);
+        if (!mounted) return;
+        setData(res?.data?.data || null);
       } catch (err) {
-        setError(err.message || "Failed to load hostel details");
+        if (!mounted) return;
+        setError(err?.response?.data?.message || err.message || "Failed to load hostel details");
       } finally {
+        if (!mounted) return;
         setLoading(false);
       }
-    }, 200);
+    })();
 
-    return () => clearTimeout(timer);
+    return () => {
+      mounted = false;
+    };
   }, [id]);
 
   return { data, loading, error };
 }
 
 export default useHostel;
+

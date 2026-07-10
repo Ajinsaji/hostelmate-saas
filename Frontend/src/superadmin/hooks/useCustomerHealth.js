@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
-import analyticsMock from "../constants/mocks/analytics.json";
-import csMock from "../constants/mocks/customerSuccess.json";
+import { api } from "../../services/api";
 
 export function useCustomerHealth() {
   const [data, setData] = useState(null);
@@ -8,23 +7,39 @@ export function useCustomerHealth() {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      try {
-        setData({
-          ...analyticsMock,
-          ...csMock
-        });
-      } catch (err) {
-        setError(err.message || "Failed to load customer health metrics");
-      } finally {
-        setLoading(false);
-      }
-    }, 300);
+    let isMounted = true;
 
-    return () => clearTimeout(timer);
+    async function load() {
+      try {
+        setLoading(true);
+        setError(null);
+
+        const res = await api.get("/api/admin/customer-health");
+        const payload = res?.data?.data ?? res?.data;
+
+        if (isMounted) {
+          setData(payload);
+        }
+      } catch (err) {
+        if (isMounted) {
+          setError(err?.response?.data?.message || err.message || "Failed to load customer health metrics");
+        }
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
+      }
+    }
+
+    load();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   return { data, loading, error };
 }
 
 export default useCustomerHealth;
+

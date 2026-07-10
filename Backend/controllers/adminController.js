@@ -762,7 +762,6 @@ const updateSubscription =
 const getSubscriptions =
   async (req, res) => {
     try {
-
       const subscriptions =
         await Subscription.find().populate(
           "hostelId"
@@ -770,16 +769,75 @@ const getSubscriptions =
 
       res.status(200).json({
         success: true,
-
         subscriptions,
       });
-
     } catch (error) {
-
       res.status(500).json(error);
-
     }
   };
+
+// ==========================
+// GET SUBSCRIPTIONS (ADMIN LISTING)
+// GET /api/admin/subscriptions
+// ==========================
+const getAdminSubscriptions = async (req, res) => {
+  try {
+    const { page = 1, pageSize = 25, search = "", sortField = "createdAt", sortOrder = "desc" } = req.query || {};
+
+    const pageNum = Number.isFinite(parseInt(page, 10)) ? parseInt(page, 10) : 1;
+    const sizeNum = Number.isFinite(parseInt(pageSize, 10)) ? parseInt(pageSize, 10) : 25;
+
+    const skip = (pageNum - 1) * sizeNum;
+
+    const sort = { [sortField]: sortOrder === "asc" ? 1 : -1 };
+
+    const query = {};
+    if (search) {
+      // Best-effort search across subscription fields + hostelName (populated later)
+      query.$or = [
+        { planType: { $regex: search, $options: "i" } },
+        { subscriptionStatus: { $regex: search, $options: "i" } },
+        { notes: { $regex: search, $options: "i" } },
+      ];
+    }
+
+    const [total, subscriptions] = await Promise.all([
+      Subscription.countDocuments(query),
+      Subscription.find(query)
+        .populate("hostelId")
+        .sort(sort)
+        .skip(skip)
+        .limit(sizeNum),
+    ]);
+
+    // Map to UI-friendly keys used by SubscriptionCenter
+    const data = (subscriptions || []).map((s) => {
+      const hostel = s.hostelId;
+      const expiry = s.subscriptionEndDate ? new Date(s.subscriptionEndDate).toISOString().slice(0, 10) : "";
+      return {
+        hostelName: hostel?.hostelName || "",
+        plan: s.planType || "",
+        expiry,
+        status: s.subscriptionStatus || "",
+        subscriptionId: s._id,
+        hostelId: hostel?._id,
+      };
+    });
+
+    res.status(200).json({
+      success: true,
+      data,
+      pagination: {
+        total,
+        page: pageNum,
+        pageSize: sizeNum,
+      },
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Failed to load subscriptions", error: error?.message || String(error) });
+  }
+};
+
 
 // ==========================
 // ADD HOSTEL (SUPERADMIN)
@@ -1259,6 +1317,9 @@ const getDashboardMonitoringHandler = async (req, res) => {
   }
 };
 
+// Hostels CRM (Phase 4.2A)
+const hostelAdminController = require("./hostelAdminController");
+
 module.exports = {
   getDashboardStats,
   getAllRequests,
@@ -1278,9 +1339,18 @@ module.exports = {
   finalizeHostelActivation,
   changeAdminPassword,
   getSystemHealth,
+
   getDashboardOverview: getDashboardOverviewHandler,
   getDashboardRevenue: getDashboardRevenueHandler,
   getDashboardMonitoring: getDashboardMonitoringHandler,
+
+  // Admin subscriptions listing
+  getAdminSubscriptions,
+
+  // Phase 4.2A exports
+  getHostels: hostelAdminController.getHostels,
+  getHostelById: hostelAdminController.getHostel,
+  getHostelOwner: hostelAdminController.getOwner,
 };
 
 

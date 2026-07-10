@@ -84,8 +84,8 @@ export const DashboardOverview = React.memo(() => {
         subtitle="HostelMate Enterprise SaaS Commanding Center"
         actions={
           <div className="flex gap-2">
-            <QuickActionButton label="Requests Wizard" icon={<CheckSquare size={14} />} variant="primary" onClick={() => console.log("Open wizard")} />
-            <QuickActionButton label="Billing Finance" icon={<DollarSign size={14} />} variant="secondary" onClick={() => console.log("Finance logs")} />
+            <QuickActionButton label="Requests Wizard" icon={<CheckSquare size={14} />} variant="primary" onClick={() => {}} />
+            <QuickActionButton label="Billing Finance" icon={<DollarSign size={14} />} variant="secondary" onClick={() => {}} />
           </div>
         }
       />

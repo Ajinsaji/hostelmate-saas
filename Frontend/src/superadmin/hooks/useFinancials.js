@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import financialsMock from "../constants/mocks/financials.json";
+import { useEffect, useState } from "react";
+import { api } from "../../services/api";
 
 export function useFinancials(hostelId) {
   const [data, setData] = useState(null);
@@ -7,20 +7,39 @@ export function useFinancials(hostelId) {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      try {
-        setData(financialsMock);
-      } catch (err) {
-        setError(err.message || "Failed to load financials");
-      } finally {
-        setLoading(false);
-      }
-    }, 200);
+    let cancelled = false;
 
-    return () => clearTimeout(timer);
+    async function run() {
+      setLoading(true);
+      setError(null);
+      try {
+        if (!hostelId) {
+          setData(null);
+          return;
+        }
+
+        const res = await api.get(`/api/admin/hostels/${hostelId}/financials`);
+        if (!cancelled) setData(res?.data?.data ?? res?.data ?? null);
+      } catch (err) {
+        if (!cancelled) {
+          setError(
+            err?.response?.data?.message || err?.message || "Failed to load financials"
+          );
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
+    run();
+
+    return () => {
+      cancelled = true;
+    };
   }, [hostelId]);
 
   return { data, loading, error };
 }
 
 export default useFinancials;
+

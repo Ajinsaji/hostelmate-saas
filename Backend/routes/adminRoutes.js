@@ -28,8 +28,30 @@ const {
   getDashboardOverview,
   getDashboardRevenue,
   getDashboardMonitoring,
+  // Executive summary
+  getExecutiveSummary,
+  // Admin subscriptions listing
+  getAdminSubscriptions,
+  // Phase 4.2A exports
+  getHostels,
+  getHostelById,
+  getHostelOwner,
+  // NOTE: Phase 4.2B handlers are implemented in hostelAdminController
+  // and imported separately below to avoid module.exports mismatch.
 } = require("../controllers/adminController");
 
+const {
+  getHostelFinancials,
+  getHostelSubscription,
+} = require("../controllers/hostelAdminController");
+
+const {
+  getCustomerHealthHandler,
+  getHealthScoreHandler,
+} = require("../controllers/customerHealthController");
+
+const resolvedHealthScoreHandler =
+  typeof getHealthScoreHandler === "function" ? getHealthScoreHandler : null;
 
 const { uploadFields } = require("../middleware/cloudinaryUpload");
 
@@ -53,13 +75,27 @@ router.get("/dashboard/monitoring", getDashboardMonitoring);
 
 router.get("/system-health", getSystemHealth);
 
+// ==========================
+// CUSTOMER HEALTH (Phase 4.3.6)
+// ==========================
+router.get("/customer-health", getCustomerHealthHandler);
+
+// ==========================
+// HEALTH SCORE (Phase 4.3.7)
+// ==========================
+if (typeof resolvedHealthScoreHandler !== "function") {
+  throw new Error("Health score handler is missing or not a function");
+}
+router.get("/health-score", resolvedHealthScoreHandler);
+
+
+
 
 // ==========================
 // REQUESTS
 // ==========================
 
 router.get("/requests", getAllRequests);
-
 
 router.put("/approve/:id", approveHostel);
 
@@ -69,7 +105,6 @@ router.post(
   "/finalize-hostel-activation/:hostelId",
   finalizeHostelActivation
 );
-
 
 // ==========================
 // HOSTELS
@@ -89,7 +124,11 @@ router.put("/hostels/:ownerId/reset-password", resetOwnerTempPassword);
 // SUBSCRIPTIONS
 // ==========================
 
+// Legacy endpoint (admin subscriptions object list)
 router.get("/subscriptions", getSubscriptions);
+
+// Super Admin listing for Subscription Center
+router.get("/admin/subscriptions", getAdminSubscriptions);
 
 router.put("/subscription/update/:id", updateSubscription);
 
@@ -106,6 +145,23 @@ router.post(
 
 // EDIT HOSTEL (ADMIN)
 router.put("/hostels/edit/:id", editHostelLocation);
+
+// ==========================
+// HOSTELS CRM (Phase 4.2A)
+// ==========================
+
+router.get("/hostels", getHostels);
+
+router.get("/hostels/:id", getHostelById);
+
+router.get("/hostels/:id/owner", getHostelOwner);
+
+// ==========================
+// HOSTEL FINANCIALS & SUBSCRIPTION (Phase 4.2B)
+// ==========================
+
+router.get("/hostels/:id/financials", getHostelFinancials);
+router.get("/hostels/:id/subscription", getHostelSubscription);
 
 // ==========================
 // ADMIN PROFILE
