@@ -40,6 +40,7 @@ async function getHostelDirectory({
 
   const query = { pendingActivation: false };
 
+
   // Filters
   if (filters.status) {
     // status maps to Hostel.subscriptionStatus/approvalStatus loosely
