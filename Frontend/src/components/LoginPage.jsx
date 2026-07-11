@@ -3,8 +3,9 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, User, Lock, Eye, EyeOff, Loader2 } from "lucide-react";
 
-import axios from "axios";
 import toast from "react-hot-toast";
+
+import { api } from "../services/api";
 import { setOwnerAuth, setStoredOwner } from "../utils/authToken";
 
 function LoginPage() {
@@ -46,8 +47,8 @@ function LoginPage() {
 
     setLoading(true);
     try {
-      const response = await axios.post(
-        `${import.meta.env.VITE_API_URL}/api/owner/login`,
+      const response = await api.post(
+        "/api/owner/login",
         payload
       );
 
@@ -306,8 +307,8 @@ function LoginPage() {
                     setTrackLoading(true);
                     setTrackError("");
                     try {
-                      const res = await axios.get(
-                        `${import.meta.env.VITE_API_URL}/api/hostel-request/status/${encodeURIComponent(phone)}`
+const res = await api.get(
+                        `/api/hostel-request/status/${encodeURIComponent(phone)}`
                       );
 
                       const found = res?.data?.success;
