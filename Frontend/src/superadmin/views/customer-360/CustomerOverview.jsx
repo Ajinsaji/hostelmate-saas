@@ -60,20 +60,21 @@ export const CustomerOverview = React.memo(() => {
             </div>
             
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {health?.breakdown.map((item, idx) => (
-                <div key={idx} className="space-y-1">
-                  <div className="flex justify-between text-xs text-slate-300">
-                    <span>{item.factor}</span>
-                    <span className="font-bold text-white">{item.points}/100</span>
+              {Array.isArray(health?.breakdown) &&
+                health.breakdown.map((item, idx) => (
+                  <div key={idx} className="space-y-1">
+                    <div className="flex justify-between text-xs text-slate-300">
+                      <span>{item.factor}</span>
+                      <span className="font-bold text-white">{item.points}/100</span>
+                    </div>
+                    <div className="h-1.5 w-full rounded-full bg-white/5 overflow-hidden">
+                      <div
+                        className="h-full rounded-full bg-emerald-500"
+                        style={{ width: `${item.points}%` }}
+                      />
+                    </div>
                   </div>
-                  <div className="h-1.5 w-full rounded-full bg-white/5 overflow-hidden">
-                    <div 
-                      className="h-full rounded-full bg-emerald-500" 
-                      style={{ width: `${item.points}%` }}
-                    />
-                  </div>
-                </div>
-              ))}
+                ))}
             </div>
 
             <div className="mt-4 p-3.5 rounded-xl border border-white/5 bg-white/[0.01]">
