@@ -79,11 +79,21 @@ export const CustomerOverview = React.memo(() => {
 
             <div className="mt-4 p-3.5 rounded-xl border border-white/5 bg-white/[0.01]">
               <p className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider mb-2">Improvement Actions</p>
-              <ul className="list-disc list-inside text-xs text-slate-400 space-y-1">
-                {health?.suggestions.map((s) => (
-                  <li key={s.id}>{s.text}</li>
-                ))}
-              </ul>
+              {(() => {
+                const suggestions = Array.isArray(health?.suggestions)
+                  ? health.suggestions
+                  : [];
+
+                if (suggestions.length === 0) return null;
+
+                return (
+                  <ul className="list-disc list-inside text-xs text-slate-400 space-y-1">
+                    {suggestions.map((s) => (
+                      <li key={s.id ?? s.text}>{s.text}</li>
+                    ))}
+                  </ul>
+                );
+              })()}
             </div>
           </div>
         </SectionCard>
