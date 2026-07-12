@@ -46,6 +46,8 @@ export function useHostels() {
           data: (payload?.hostels || payload?.data || []).map((h) => ({
             ...h,
             // Normalize API fields to match existing HostelsList expectations
+            // HostelsList navigates using `row.id`, so always provide a stable id.
+            id: h?.id ?? h?._id ?? h?.hostelId,
             name: h?.hostelName ?? h?.name,
             owner: h?.ownerName ?? h?.owner,
             plan: h?.planType ?? h?.plan,
