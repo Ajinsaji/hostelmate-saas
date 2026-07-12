@@ -325,7 +325,21 @@ export const HostelsList = React.memo(() => {
                 )}
 
                 {visibleColumns.occupancy && (
-                  <td className="px-4 py-4 text-xs text-slate-400">{row.occupancy}</td>
+                  <td className="px-4 py-4 text-xs text-slate-400">
+                    {(() => {
+                      const o = row.occupancy;
+                      if (o && typeof o === "object") {
+                        const total = o?.totalBeds;
+                        const occupied = o?.occupiedBeds;
+                        const vacant = o?.vacantBeds;
+                        if ([total, occupied, vacant].every((v) => typeof v === "number")) {
+                          return `${occupied}/${total}`;
+                        }
+                        return `${o?.occupiedBeds ?? ""}/${o?.totalBeds ?? ""}`.trim();
+                      }
+                      return o;
+                    })()}
+                  </td>
                 )}
 
                 {visibleColumns.revenue && (
