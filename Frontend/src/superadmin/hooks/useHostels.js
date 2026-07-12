@@ -43,7 +43,14 @@ export function useHostels() {
         setState((prev) => ({
           ...prev,
           success: true,
-          data: payload?.data || [],
+          data: (payload?.hostels || payload?.data || []).map((h) => ({
+            ...h,
+            // Normalize API fields to match existing HostelsList expectations
+            name: h?.hostelName ?? h?.name,
+            owner: h?.ownerName ?? h?.owner,
+            plan: h?.planType ?? h?.plan,
+            status: h?.subscriptionStatus ?? h?.status,
+          })),
           pagination: payload?.pagination || prev.pagination,
           meta: payload?.meta || prev.meta,
           error: null,
