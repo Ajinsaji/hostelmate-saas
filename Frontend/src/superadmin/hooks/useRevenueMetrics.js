@@ -11,12 +11,25 @@ export function useRevenueMetrics() {
 
     (async () => {
       try {
+        setLoading(true);
+        setError(null);
+
         const res = await api.get("/api/admin/dashboard/revenue");
         if (!mounted) return;
-        setData(res?.data?.data ?? res?.data ?? null);
+
+        const payload = res?.data?.data ?? res?.data ?? null;
+
+        // Empty state: treat missing/empty payload as no data (without breaking existing UI)
+        if (!payload || (typeof payload === "object" && Object.keys(payload).length === 0)) {
+          setData(null);
+          return;
+        }
+
+        setData(payload);
       } catch (err) {
         if (!mounted) return;
         setError(err?.response?.data?.message || err.message || "Failed to load revenue metrics");
+        setData(null);
       } finally {
         if (!mounted) return;
         setLoading(false);
@@ -32,5 +45,6 @@ export function useRevenueMetrics() {
 }
 
 export default useRevenueMetrics;
+
 
 

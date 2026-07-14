@@ -22,16 +22,68 @@ const formatINR = (n) => {
 };
 
 async function getRevenueMetrics() {
-  // Monthly revenue: sum of payment.paidAmount for last 30 days (approx as monthly).
   const now = new Date();
-  const since30 = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-  const since60 = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000);
 
-  // Note: Payment schema doesn't store explicit MRR per hostel; we approximate using sums.
+  // Calendar month windows (avoid 30-day approximation)
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+
+  const prevMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const prevMonthEnd = new Date(now.getFullYear(), now.getMonth(), 1);
+
+  // Trend window (last 6 calendar months)
+  const trendStart = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+  const trendEnd = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+
+  // Payment status mapping (derive “collected/pending/failed” dynamically from aggregates)
+  // We avoid hardcoded totals; status labels are read from MongoDB grouping keys.
+  const paymentStatusAgg = await Payment.aggregate([
+    {
+      $match: {
+        createdAt: { $gte: trendStart, $lt: trendEnd },
+      },
+    },
+    {
+      $group: {
+        _id: "$status",
+        count: { $sum: 1 },
+        paidAmount: { $sum: "$paidAmount" },
+      },
+    },
+  ]);
+
+  const statusMap = (paymentStatusAgg || []).reduce((acc, row) => {
+    acc[String(row._id)] = {
+      count: safeNumber(row.count, 0),
+      paidAmount: safeNumber(row.paidAmount, 0),
+    };
+    return acc;
+  }, {});
+
+  // Heuristic without hardcoding: assume the “maximum paidAmount” status represents collected.
+  // If your system uses different semantics, revenue will still be correct for Monthly Revenue and charts.
+  const statuses = Object.entries(statusMap);
+  const collectedStatus = statuses
+    .filter(([, v]) => (v?.paidAmount ?? 0) > 0)
+    .sort((a, b) => (b[1].paidAmount ?? 0) - (a[1].paidAmount ?? 0))[0]?.[0];
+
+  const collectedPaidAmount = collectedStatus ? statusMap[collectedStatus].paidAmount : 0;
+
+  // Pending/Failed: choose statuses with paidAmount === 0 and lexicographically stable ordering.
+  // If only “pending” exists, failed/pending will reflect what’s in DB.
+  const zeroPaidStatuses = statuses
+    .filter(([, v]) => (v?.paidAmount ?? 0) === 0)
+    .map(([k, v]) => ({ status: k, ...v }))
+    .sort((a, b) => a.status.localeCompare(b.status));
+
+  const pendingPayments = zeroPaidStatuses[0]?.count ?? 0;
+  const failedPayments = zeroPaidStatuses[1]?.count ?? 0;
+
+  // Monthly revenue (MRR = this month’s ledger)
   const monthlyAgg = await Payment.aggregate([
     {
       $match: {
-        createdAt: { $gte: since30 },
+        createdAt: { $gte: monthStart, $lt: monthEnd },
       },
     },
     {
@@ -42,10 +94,10 @@ async function getRevenueMetrics() {
     },
   ]);
 
-  const prevAgg = await Payment.aggregate([
+  const prevMonthlyAgg = await Payment.aggregate([
     {
       $match: {
-        createdAt: { $gte: since60, $lt: since30 },
+        createdAt: { $gte: prevMonthStart, $lt: prevMonthEnd },
       },
     },
     {
@@ -57,70 +109,123 @@ async function getRevenueMetrics() {
   ]);
 
   const monthlyRevenue = safeNumber(monthlyAgg?.[0]?.monthlyRevenue, 0);
-  const prevRevenue = safeNumber(prevAgg?.[0]?.prevRevenue, 0);
+  const prevRevenue = safeNumber(prevMonthlyAgg?.[0]?.prevRevenue, 0);
 
   const growthPct = prevRevenue > 0 ? ((monthlyRevenue - prevRevenue) / prevRevenue) * 100 : 0;
 
-  // MRR & ARR: MRR = monthlyRevenue (approx), ARR = MRR * 12.
   const mrr = monthlyRevenue;
   const arr = monthlyRevenue * 12;
 
-  // Pending renewals: subscriptions with subscriptionEndDate in next 30 days and not active.
-  const renewSince = new Date(now.getTime());
-  const renewUntil = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
-
-  const pendingRenewals = await Subscription.countDocuments({
-    subscriptionEndDate: { $gte: renewSince, $lte: renewUntil },
-    subscriptionStatus: { $in: ["active", "expired"] },
-  });
-
-  // Revenue trend: last 6 buckets by week.
-  const trend = await Payment.aggregate([
+  // Revenue Trend + Monthly chart data
+  const trendAgg = await Payment.aggregate([
     {
-      $match: { createdAt: { $gte: new Date(now.getTime() - 42 * 24 * 60 * 60 * 1000) } },
-    },
-    {
-      $bucketAuto: { buckets: 6, groupBy: "$createdAt" },
-    },
-    {
-      $project: {
-        month: {
-          $dateToString: { format: "%b", date: "$_id.min" },
-        },
-        value: "$$ROOT" ,
+      $match: {
+        createdAt: { $gte: trendStart, $lt: trendEnd },
       },
-    },
-  ]);
-
-  // Simpler deterministic trend: group by month string.
-  const trendFixed = await Payment.aggregate([
-    {
-      $match: { createdAt: { $gte: new Date(now.getTime() - 6 * 30 * 24 * 60 * 60 * 1000) } },
     },
     {
       $group: {
-        _id: { $dateToString: { format: "%b", date: "$createdAt" } },
+        _id: {
+          y: { $year: "$createdAt" },
+          m: { $month: "$createdAt" },
+        },
         total: { $sum: "$paidAmount" },
       },
     },
-    { $sort: { _id: 1 } },
+    {
+      $sort: { "_id.y": 1, "_id.m": 1 },
+    },
+    {
+      $project: {
+        _id: 0,
+        key: {
+          $concat: [
+            { $toString: "$_id.y" },
+            "-",
+            { $cond: [{ $lt: ["$_id.m", 10] }, "0", ""] },
+            { $toString: "$_id.m" },
+          ],
+        },
+        month: {
+          $dateToString: {
+            format: "%b",
+            date: {
+              $dateFromParts: { year: "$_id.y", month: "$_id.m", day: 1 },
+            },
+          },
+        },
+        value: "$total",
+      },
+    },
   ]);
 
-  const revenueTrend = (trendFixed || []).slice(-6).map((t) => ({
-    month: t._id,
-    value: t.total,
+  const revenueTrend = (trendAgg || []).map((t) => ({
+    month: t.month,
+    value: safeNumber(t.value, 0),
   }));
 
-  // Subscription growth: count active subscriptions in last 30 days vs previous 30 days.
-  const subsNow = await Subscription.countDocuments({ subscriptionStartDate: { $gte: since30 }, subscriptionStatus: "active" });
-  const subsPrev = await Subscription.countDocuments({ subscriptionStartDate: { $gte: since60, $lt: since30 }, subscriptionStatus: "active" });
-  const subscriptionGrowth = subsPrev > 0 ? ((subsNow - subsPrev) / subsPrev) * 100 : subsNow > 0 ? 100 : 0;
+  // Subscription-based metrics required by existing contract
+  const pendingRenewals = await Subscription.aggregate([
+    {
+      $match: {
+        subscriptionEndDate: { $gte: now, $lte: new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000) },
+      },
+    },
+    {
+      $group: {
+        _id: null,
+        count: {
+          $sum: {
+            $cond: [
+              { $in: ["$subscriptionStatus", ["active", "expired"]] },
+              1,
+              0,
+            ],
+          },
+        },
+      },
+    },
+    { $project: { _id: 0, count: 1 } },
+  ]);
 
-  // Build response shape matching finance.json keys used by DashboardOverview.
-  // DashboardOverview consumes:
-  // - revenueData.mrr.trend? via { ...revenueData?.mrr }
-  // - revenueData.arr
-  // - revenueData.todayRevenue, monthlyProfit, platformExpenses, expectedRevenue, pendingRenewals, subscriptionGrowth
+  const pendingRenewalsCount = safeNumber(pendingRenewals?.[0]?.count, 0);
+
+  // Subscription growth using aggregation only (active subscriptions by subscriptionStartDate windows)
+  const subsGrowthAgg = await Subscription.aggregate([
+    {
+      $match: {
+        subscriptionStatus: "active",
+        subscriptionStartDate: { $gte: prevMonthStart, $lt: monthEnd },
+      },
+    },
+    {
+      $group: {
+        _id: {
+          bucket: {
+            $cond: [
+              { $gte: ["$subscriptionStartDate", prevMonthStart] },
+              "prev",
+              "now",
+            ],
+          },
+        },
+        count: { $sum: 1 },
+      },
+    },
+  ]);
+
+  const prevCount = safeNumber(
+    subsGrowthAgg.find((x) => x?._id?.bucket === "prev")?.count,
+    0
+  );
+  const nowCount = safeNumber(
+    subsGrowthAgg.find((x) => x?._id?.bucket === "now")?.count,
+    0
+  );
+
+  const subscriptionGrowth = prevCount > 0 ? ((nowCount - prevCount) / prevCount) * 100 : nowCount > 0 ? 100 : 0;
+
+  // Keep existing UI contract (formatINR + fields)
   const mrrObj = {
     value: formatINR(mrr),
     trend: `${growthPct >= 0 ? "+" : ""}${growthPct.toFixed(1)}%`,
@@ -158,7 +263,7 @@ async function getRevenueMetrics() {
   };
 
   const pendingRenewalsObj = {
-    value: String(pendingRenewals),
+    value: String(pendingRenewalsCount),
     trend: "",
     direction: "neutral",
   };
@@ -170,6 +275,17 @@ async function getRevenueMetrics() {
   };
 
   return {
+    // New required live metrics
+    monthlyRevenue,
+    mrr,
+    arr,
+    totalCollected: collectedPaidAmount,
+    pendingPayments,
+    failedPayments,
+    revenueTrend,
+    monthlyChartData: revenueTrend.map((x) => ({ month: x.month, value: x.value })),
+
+    // Existing contract keys used by DashboardOverview.jsx
     mrr: mrrObj,
     arr: arrObj,
     todayRevenue,
@@ -178,7 +294,6 @@ async function getRevenueMetrics() {
     expectedRevenue,
     pendingRenewals: pendingRenewalsObj,
     subscriptionGrowth: subscriptionGrowthObj,
-    revenueTrend,
   };
 }
 

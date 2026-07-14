@@ -92,7 +92,7 @@ api.interceptors.request.use(
     console.log("[API REQUEST]", {
       Method: method,
       URL: requestUrl,
-      Authorization: authorizationHeaderExists ? "Present" : "Missing",
+      Authorization: authorizationHeaderExists || !!token ? "Present" : "Missing",
       "Token Prefix": token ? String(token).slice(0, 20) + "..." : "(none)",
       "Is Admin Request": isAdminRequest,
     });

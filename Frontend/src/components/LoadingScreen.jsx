@@ -259,7 +259,8 @@ function LoadingScreen() {
       </div>
 
       {/* CSS Animations */}
-      <style jsx>{`
+      <style>{`
+
         @keyframes slideUp {
           from {
             opacity: 0;

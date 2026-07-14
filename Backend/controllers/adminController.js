@@ -1293,25 +1293,43 @@ const { getMonitoring: getDashboardMonitoring } = require("../services/dashboard
 const getDashboardOverviewHandler = async (req, res) => {
   try {
     const data = await getDashboardOverview();
-    return res.status(200).json({ success: true, ...data });
+    return res.status(200).json({
+      success: true,
+      data,
+    });
   } catch (error) {
-    return res.status(500).json({ success: false, message: "Failed to load dashboard overview", error: error?.message || String(error) });
+    return res.status(500).json({
+      success: false,
+      message: "Failed to load dashboard overview",
+      error: error?.message || String(error),
+    });
   }
 };
 
 const getDashboardRevenueHandler = async (req, res) => {
   try {
     const data = await getDashboardRevenue();
-    return res.status(200).json({ success: true, ...data });
+    return res.status(200).json({
+      success: true,
+      data,
+    });
   } catch (error) {
-    return res.status(500).json({ success: false, message: "Failed to load dashboard revenue", error: error?.message || String(error) });
+    return res.status(500).json({
+      success: false,
+      message: "Failed to load dashboard revenue",
+      error: error?.message || String(error),
+    });
   }
 };
+
 
 const getDashboardMonitoringHandler = async (req, res) => {
   try {
     const data = await getDashboardMonitoring();
-    return res.status(200).json({ success: true, ...data });
+    return res.status(200).json({
+      success: true,
+      data,
+    });
   } catch (error) {
     return res.status(500).json({ success: false, message: "Failed to load dashboard monitoring", error: error?.message || String(error) });
   }
