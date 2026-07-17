@@ -782,47 +782,134 @@ const getSubscriptions =
 // ==========================
 const getAdminSubscriptions = async (req, res) => {
   try {
-    const { page = 1, pageSize = 25, search = "", sortField = "createdAt", sortOrder = "desc" } = req.query || {};
+    const {
+      page = 1,
+      pageSize = 25,
+      search = "",
+      sortField = "createdAt",
+      sortOrder = "desc",
+      status,
+      plan,
+      expiry,
+    } = req.query || {};
 
     const pageNum = Number.isFinite(parseInt(page, 10)) ? parseInt(page, 10) : 1;
     const sizeNum = Number.isFinite(parseInt(pageSize, 10)) ? parseInt(pageSize, 10) : 25;
-
     const skip = (pageNum - 1) * sizeNum;
 
-    const sort = { [sortField]: sortOrder === "asc" ? 1 : -1 };
+    const safeSortField = ["createdAt", "updatedAt", "subscriptionEndDate"].includes(sortField)
+      ? sortField
+      : "createdAt";
+    const safeSortOrder = String(sortOrder).toLowerCase() === "asc" ? 1 : -1;
 
-    const query = {};
+    const match = {};
+    if (status) match.subscriptionStatus = status;
+    if (plan) match.planType = plan;
+
+    if (expiry) {
+      // expiry supports exact-date or prefix (YYYY-MM) best-effort
+      const expiryStr = String(expiry);
+      match.subscriptionEndDate = {
+        $gte: new Date(expiryStr),
+        $lt: new Date(`${expiryStr}T23:59:59.999Z`),
+      };
+    }
+
     if (search) {
-      // Best-effort search across subscription fields + hostelName (populated later)
-      query.$or = [
+      // Best-effort search across subscription fields.
+      // Hostel search is done after $lookup.
+      match.$or = [
         { planType: { $regex: search, $options: "i" } },
         { subscriptionStatus: { $regex: search, $options: "i" } },
+        { transactionId: { $regex: search, $options: "i" } },
         { notes: { $regex: search, $options: "i" } },
       ];
     }
 
-    const [total, subscriptions] = await Promise.all([
-      Subscription.countDocuments(query),
-      Subscription.find(query)
-        .populate("hostelId")
-        .sort(sort)
-        .skip(skip)
-        .limit(sizeNum),
-    ]);
+    const pipeline = [
+      { $match: match },
+      {
+        $lookup: {
+          from: "hostels",
+          localField: "hostelId",
+          foreignField: "_id",
+          as: "hostel",
+        },
+      },
+      { $unwind: { path: "$hostel", preserveNullAndEmptyArrays: true } },
+      ...(search
+        ? [
+            {
+              $match: {
+                $or: [
+                  { "hostel.hostelName": { $regex: search, $options: "i" } },
+                  { "hostel.ownerName": { $regex: search, $options: "i" } },
+                ],
+              },
+            },
+          ]
+        : []),
+      {
+        $addFields: {
+          daysRemaining: {
+            $cond: {
+              if: { $ifNull: ["$subscriptionEndDate", false] },
+              then: {
+                $floor: {
+                  $dateDiff: {
+                    startDate: "$$NOW",
+                    endDate: "$subscriptionEndDate",
+                    unit: "day",
+                  },
+                },
+              },
+              else: null,
+            },
+          },
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          subscriptionId: "$_id",
+          hostelId: "$hostelId",
+          hostelName: "$hostel.hostelName",
+          ownerName: "$hostel.ownerName",
+          planType: "$planType",
+          amount: "$amount",
+          subscriptionStatus: "$subscriptionStatus",
+          subscriptionStartDate: "$subscriptionStartDate",
+          subscriptionEndDate: "$subscriptionEndDate",
+          residentLimit: "$residentLimit",
+          currentResidentCount: "$currentResidentCount",
+          isTrial: "$isTrial",
+          isFreeAccess: "$isFreeAccess",
+          paymentMethod: "$paymentMethod",
+          transactionId: "$transactionId",
+          createdAt: "$createdAt",
+          updatedAt: "$updatedAt",
+          daysRemaining: 1,
+        },
+      },
+      { $sort: { [safeSortField]: safeSortOrder } },
+      {
+        $facet: {
+          data: [
+            { $skip: skip },
+            { $limit: sizeNum },
+          ],
+          total: [{ $count: "count" }],
+        },
+      },
+    ];
 
-    // Map to UI-friendly keys used by SubscriptionCenter
-    const data = (subscriptions || []).map((s) => {
-      const hostel = s.hostelId;
-      const expiry = s.subscriptionEndDate ? new Date(s.subscriptionEndDate).toISOString().slice(0, 10) : "";
-      return {
-        hostelName: hostel?.hostelName || "",
-        plan: s.planType || "",
-        expiry,
-        status: s.subscriptionStatus || "",
-        subscriptionId: s._id,
-        hostelId: hostel?._id,
-      };
-    });
+    const [result] = await Subscription.aggregate(pipeline);
+
+    console.log("AGGREGATION RESULT:");
+    console.dir(result, { depth: null });
+
+    const data = result?.data || [];
+    const total = result?.total?.[0]?.count || 0;
 
     res.status(200).json({
       success: true,

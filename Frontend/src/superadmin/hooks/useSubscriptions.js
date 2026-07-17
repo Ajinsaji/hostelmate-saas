@@ -16,13 +16,11 @@ export function useSubscriptions() {
         const res = await api.get("/api/admin/subscriptions");
         const payload = res?.data;
 
-        const list = payload?.data ?? payload?.subscriptions ?? [];
+        const list = payload?.data ?? [];
         if (!cancelled) setData(Array.isArray(list) ? list : []);
       } catch (err) {
         if (!cancelled) {
-          setError(
-            err?.response?.data?.message || err?.message || "Failed to load subscriptions"
-          );
+          setError(err?.response?.data?.message || err?.message || "Failed to load subscriptions");
         }
       } finally {
         if (!cancelled) setLoading(false);
