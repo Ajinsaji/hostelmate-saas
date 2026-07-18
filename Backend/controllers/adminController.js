@@ -98,120 +98,78 @@ const getAllRequests =
 // APPROVE HOSTEL
 // ==========================
 
-const approveHostel =
-  async (req, res) => {
-    try {
-      console.log("NEW DRAFT-ONLY APPROVE FLOW ACTIVE");
-      const request = await HostelRequest.findById(req.params.id);
+const approveHostel = async (req, res) => {
+  try {
+    const request = await HostelRequest.findById(req.params.id);
 
-      if (!request) {
-        return res.status(404).json({
-          success: false,
-          message: "Request not found",
-        });
-      }
-
-      // ==========================
-      // CRITICAL IDEMPOTENCY FIX
-      // ==========================
-      // Prevent duplicate draft hostels.
-      // Search by:
-      // - requestId (best-effort via request._id if stored elsewhere)
-      // - owner phone
-      // - pendingActivation=true
-
-      const existingDraft = await Hostel.findOne({
-        phone: request.phone,
-        pendingActivation: true,
-      }).lean();
-
-      if (existingDraft) {
-        return res.status(200).json({
-          success: false,
-          activationAlreadyStarted: true,
-          hostelId: existingDraft._id,
-          message: "Activation already started",
-        });
-      }
-
-      // GENERATE PUBLIC URL AND QR
-      const uniqueCode =
-        "RMH" +
-        Date.now().toString().slice(-6) +
-        Math.random().toString(36).substring(2, 5).toUpperCase();
-
-      const frontendUrl = process.env.FRONTEND_URL;
-      const publicUrl = `${frontendUrl}/h/${uniqueCode}`;
-      const qrFilename = `${uniqueCode}-QR.png`;
-
-      const qrResult = await generateQRCode(publicUrl, qrFilename);
-      if (!qrResult.success) {
-        console.error("QR Generation failed:", qrResult.error);
-        return res.status(500).json({
-          success: false,
-          message: "Failed to generate QR code: " + qrResult.error,
-        });
-      }
-
-      // CREATE DRAFT HOSTEL ONLY (no Owner, no Subscription, no activation)
-      const hostel = await Hostel.create({
-        hostelName: request.hostelName,
-        ownerName: request.ownerName,
-        ownerPhoto: request.ownerPhoto || "",
-        phone: request.phone,
-        address: request.hostelAddress,
-
-        state: request.state || "",
-        district: request.district || "",
-        city: request.city || "",
-        pincode: request.pincode || "",
-        hostelType: request.hostelType || "",
-
-        uniqueCode,
-        publicUrl,
-        qrCodeUrl: qrResult.url,
-        isPublic: true,
-
-        // IMPORTANT: draft-only gating for SaaS onboarding
-        pendingActivation: true,
+    if (!request) {
+      return res.status(404).json({
+        success: false,
+        message: "Request not found",
       });
-
-      // update request status -> activation_pending and store draft hostel link
-      request.status = "activation_pending";
-      request.hostelId = String(hostel._id);
-      await request.save();
-
-      // NOTIFICATION: Hostel request approved by admin (system update to all admins)
-      try {
-        const { publishNotification } = require("../utils/notificationPublisher");
-        const Admin = require("../models/Admin");
-        const superAdmins = await Admin.find({ role: { $in: ["super_admin", "admin"] } });
-        
-        for (const admin of superAdmins || []) {
-          await publishNotification({
-            userId: admin._id,
-            type: "system_update",
-            title: "Hostel Request Approved",
-            message: `${hostel.hostelName} - Pending subscription setup`,
-            meta: { route: "/admin/pending-requests", relatedId: hostel._id },
-            role: admin.role,
-          });
-        }
-      } catch (e) {
-        console.error("Hostel approval notification failed:", e?.message || e);
-      }
-
-      console.log("Draft hostel created:", hostel._id);
-      return res.status(200).json({
-        success: true,
-        hostelId: hostel._id,
-        requiresSubscriptionSetup: true,
-      });
-    } catch (error) {
-      console.log(error);
-      res.status(500).json(error);
     }
-  };
+
+    const existingDraft = await Hostel.findOne({
+      phone: request.phone,
+    }).lean();
+
+    if (existingDraft) {
+      return res.status(200).json({
+        success: false,
+        activationAlreadyStarted: true,
+        hostelId: existingDraft._id,
+        message: "Hostel already exists",
+      });
+    }
+
+    const { approveHostelRegistration } = require("../services/onboardingService");
+    const result = await approveHostelRegistration({
+      hostelName: request.hostelName,
+      ownerName: request.ownerName,
+      email: request.email || "",
+      phone: request.phone,
+      city: request.city || "",
+      address: request.hostelAddress || "",
+      coverImage: request.coverImage || "",
+      logo: request.logo || "",
+      aadhaarFile: request.aadhaarFile || "",
+      licensePhoto: request.licensePhoto || ""
+    });
+
+    request.status = "activated";
+    request.hostelId = String(result.hostel._id);
+    await request.save();
+
+    // NOTIFICATION: Hostel request approved by admin
+    try {
+      const { publishNotification } = require("../utils/notificationPublisher");
+      const Admin = require("../models/Admin");
+      const superAdmins = await Admin.find({ role: { $in: ["super_admin", "admin"] } });
+      
+      for (const admin of superAdmins || []) {
+        await publishNotification({
+          userId: admin._id,
+          type: "system_update",
+          title: "Hostel Request Approved",
+          message: `${result.hostel.name} - Activated`,
+          meta: { route: "/admin/hostels", relatedId: result.hostel._id },
+          role: admin.role,
+        });
+      }
+    } catch (e) {
+      console.error("Hostel approval notification failed:", e?.message || e);
+    }
+
+    return res.status(200).json({
+      success: true,
+      hostelId: result.hostel._id,
+      requiresSubscriptionSetup: false,
+    });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json(error);
+  }
+};
 
 // ==========================
 // FINALIZE HOSTEL ACTIVATION
@@ -952,7 +910,6 @@ const addHostel = async (req, res) => {
       });
     }
 
-    // Check for duplicate owner phone
     const existingOwner = await Owner.findOne({ phone });
     if (existingOwner) {
       return res.status(400).json({
@@ -962,98 +919,31 @@ const addHostel = async (req, res) => {
     }
 
     const getUploadedFileUrl = require("../utils/getUploadedFileUrl");
-
-    // Uploads (support Cloudinary secure URLs or legacy filenames)
     const aadhaarFileName = getUploadedFileUrl(req.files?.aadhaarFile?.[0]) || req.files?.aadhaarFile?.[0]?.filename;
     const ownerPhotoFileName = getUploadedFileUrl(req.files?.ownerPhoto?.[0]) || req.files?.ownerPhoto?.[0]?.filename;
     const licensePhotoFileName = getUploadedFileUrl(req.files?.licensePhoto?.[0]) || req.files?.licensePhoto?.[0]?.filename;
+
+    const { approveHostelRegistration } = require("../services/onboardingService");
+    const result = await approveHostelRegistration({
+      hostelName,
+      ownerName,
+      email: req.body.email || "",
+      phone,
+      city,
+      address: hostelAddress,
+      coverImage: ownerPhotoFileName,
+      logo: "",
+      aadhaarFile: aadhaarFileName,
+      licensePhoto: licensePhotoFileName
+    });
 
     const subPayload =
       typeof subscription === "string"
         ? JSON.parse(subscription)
         : subscription || {};
 
-    const ownerPassword = req.body.ownerPassword || "123456";
-
-    // TODO(migration): password plaintext fallback exists for legacy owners.
-    // Newly created owners should always use bcrypt for `Owner.password`.
-    const bcryptjs = require("bcryptjs");
-    const hashedOwnerPassword = await bcryptjs.hash(ownerPassword, 10);
-
-
-    // ==========================
-    // GENERATE PUBLIC URL + QR (match approveHostel)
-    // ==========================
-    const uniqueCode =
-      "RMH" +
-      Date.now().toString().slice(-6) +
-      Math.random().toString(36).substring(2, 5).toUpperCase();
-
-    const frontendUrl =
-      process.env.FRONTEND_URL ||
-      "https://hostelmate-saas.vercel.app";
-
-    const publicUrl = `${frontendUrl}/h/${uniqueCode}`;
-
-    const qrFilename = `${uniqueCode}-QR.png`;
-
-    // Generate QR code with error handling
-    const qrResult = await generateQRCode(publicUrl, qrFilename);
-    if (!qrResult.success) {
-      console.error('QR Generation failed:', qrResult.error);
-      return res.status(500).json({
-        success: false,
-        message: "Failed to generate QR code: " + qrResult.error,
-      });
-    }
-
-    // Create hostel
-    const hostel = await Hostel.create({
-      hostelName,
-      ownerName,
-      phone,
-      address: hostelAddress,
-
-      state: state || "",
-      district: district || "",
-      city: city || "",
-      pincode: pincode || "",
-      hostelType: hostelType || "",
-      uniqueCode: uniqueCode,
-      publicUrl: publicUrl,
-      qrCodeUrl: qrResult.url,
-      isPublic: true,
-
-      // Admin-created hostels must be immediately login-able.
-      // NOTE: loginOwner() gates on hostel.pendingActivation.
-      pendingActivation: false,
-
-      subscriptionStatus: subPayload.subscriptionStatus || "trial",
-      planType: subPayload.planType || "Basic",
-      subscriptionStartDate: subPayload.subscriptionStartDate,
-      subscriptionEndDate: subPayload.subscriptionEndDate,
-      isFreeAccess: Boolean(subPayload.isFreeAccess),
-      licensePhoto: licensePhotoFileName,
-    });
-
-
-    // Create owner
-    const owner = await Owner.create({
-      hostelId: hostel._id,
-      ownerName,
-      phone,
-      // Store bcrypt hash in `password`. tempPassword remains plaintext.
-      password: hashedOwnerPassword,
-      tempPassword: ownerPassword,
-      profileImage: ownerPhotoFileName || "",
-      role: "owner",
-      status: "active",
-    });
-
-
-    // Create subscription
     const subscriptionDoc = await Subscription.create({
-      hostelId: hostel._id,
+      hostelId: result.hostel._id,
       planType: subPayload.planType || "Basic",
       subscriptionStatus: subPayload.subscriptionStatus || "trial",
       isTrial: subPayload.isTrial ?? true,
@@ -1071,13 +961,13 @@ const addHostel = async (req, res) => {
     return res.status(201).json({
       success: true,
       message: "Hostel added successfully",
-      hostel,
-      ownerId: owner._id,
+      hostel: result.hostel,
+      ownerId: result.owner._id,
       subscription: subscriptionDoc,
-      publicUrl,
-      qrCodeUrl: qrResult.url,
-      qrCodeFullUrl: qrResult.url,
-      uniqueCode,
+      publicUrl: result.publicLink,
+      qrCodeUrl: result.qrCode,
+      qrCodeFullUrl: result.qrCode,
+      uniqueCode: result.hostel.slug,
     });
   } catch (error) {
     console.log(error);

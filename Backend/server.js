@@ -198,6 +198,13 @@ app.use(
   notificationRoutes
 );
 
+// AI ANALYTICS
+const aiAnalyticsRoutes = require("./routes/aiAnalyticsRoutes");
+app.use(
+  "/api/dashboard",
+  aiAnalyticsRoutes
+);
+
 
 
 // ==========================

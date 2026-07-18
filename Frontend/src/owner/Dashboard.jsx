@@ -127,7 +127,14 @@ function OccupancyDonut({ percent }) {
 }
 
 function LineChart({ values }) {
-  const safe = Array.isArray(values) && values.length ? values : [10, 14, 12, 18, 16, 22];
+  const safe = Array.isArray(values) && values.length ? values : [];
+  if (safe.length === 0) {
+    return (
+      <div className="flex h-[120px] w-full items-center justify-center text-sm" style={{ color: THEME.muted }}>
+        No Data
+      </div>
+    );
+  }
   const w = 360;
   const h = 120;
   const pad = 14;
@@ -200,11 +207,11 @@ function Dashboard() {
   const [subscriptionLoading, setSubscriptionLoading] = useState(true);
 
   const [stats, setStats] = useState({
-    residents: "-",
-    rooms: "-",
-    occupancyRate: "-",
-    pendingRent: "-",
-    todayCollection: "-",
+    residents: 0,
+    rooms: 0,
+    occupancyRate: 0,
+    pendingRent: 0,
+    todayCollection: 0,
   });
 
   const [pendingCount, setPendingCount] = useState(0);
@@ -355,8 +362,8 @@ function Dashboard() {
 
   const chartTrend = useMemo(() => {
     const base = Number(stats.todayCollection) || 0;
+    if (base === 0) return [];
     const k = base > 0 ? Math.max(0.25, Math.min(3.5, base / 500)) : 1;
-    // Keep "trend" derived from existing todayCollection; no API calls.
     const v0 = Math.max(4, Math.round(8 * k));
     return [v0 - 2, v0 + 1, v0 - 1, v0 + 3, v0 + 2, v0 + 4];
   }, [stats.todayCollection]);
@@ -564,7 +571,6 @@ function Dashboard() {
                 <p className="text-[11px] font-semibold uppercase tracking-[0.24em]" style={{ color: PREMIUM_THEME.muted }}>Collections</p>
                 <h3 className="mt-2 text-lg font-semibold">Today’s momentum</h3>
               </div>
-              <StatusPill tone="success">+8% vs yesterday</StatusPill>
             </div>
             <div className="mt-4 rounded-[18px] border p-3" style={{ borderColor: PREMIUM_THEME.border, background: "rgba(255,255,255,0.03)" }}>
               <div className="flex items-baseline justify-between gap-3">

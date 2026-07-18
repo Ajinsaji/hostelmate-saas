@@ -6,7 +6,10 @@ const PublicAdmission = require("../models/PublicAdmission");
 const getPublicHostel = async (req, res) => {
   try {
     const { uniqueCode } = req.params;
-    const hostel = await Hostel.findOne({ uniqueCode, isPublic: true });
+    const hostel = await Hostel.findOne({
+      $or: [{ uniqueCode: uniqueCode }, { slug: uniqueCode }],
+      isPublic: true 
+    });
 
     if (!hostel) {
       return res.status(404).json({ success: false, message: "Hostel not found" });
@@ -56,7 +59,10 @@ const getPublicHostel = async (req, res) => {
 const submitAdmission = async (req, res) => {
   try {
     const { uniqueCode } = req.params;
-    const hostel = await Hostel.findOne({ uniqueCode, isPublic: true });
+    const hostel = await Hostel.findOne({
+      $or: [{ uniqueCode: uniqueCode }, { slug: uniqueCode }],
+      isPublic: true 
+    });
 
     if (!hostel) {
       return res.status(404).json({ success: false, message: "Hostel not found" });

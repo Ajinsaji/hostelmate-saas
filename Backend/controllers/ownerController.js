@@ -306,43 +306,91 @@ const transferOwnership = async (req, res) => {
 const getDashboardStats = async (req, res) => {
   try {
     const { hostelId, ownerId } = req.owner;
-    const rooms = await Room.find({ hostelId });
-    const residentsCount = await Resident.countDocuments({ hostelId, status: "active" });
-    
-    let totalBeds = 0;
-    rooms.forEach(room => { totalBeds += room.totalBeds; });
-    
-    const pendingPayments = await Payment.find({ hostelId, status: { $in: ["pending", "partial"] } });
-    let pendingRent = 0;
-    pendingPayments.forEach(p => { pendingRent += (p.balance || 0); });
-    
+    const mongoose = require("mongoose");
+    const hId = new mongoose.Types.ObjectId(hostelId);
+
+    const [
+      residentsAgg,
+      roomsAgg,
+      paymentsAgg,
+      hostel,
+      owner
+    ] = await Promise.all([
+      Resident.aggregate([
+        { $match: { hostelId: hId, status: "active" } },
+        { $count: "count" }
+      ]),
+      Room.aggregate([
+        { $match: { hostelId: hId } },
+        { $group: {
+            _id: null,
+            totalRooms: { $sum: 1 },
+            totalBeds: { $sum: "$totalBeds" },
+            occupiedBeds: { $sum: "$occupiedBeds" }
+          }
+        }
+      ]),
+      Payment.aggregate([
+        { $match: { hostelId: hId } },
+        { $group: {
+            _id: null,
+            totalRevenue: {
+              $sum: {
+                $cond: [{ $in: ["$status", ["completed", "success"]] }, "$paidAmount", 0]
+              }
+            },
+            pendingRent: {
+              $sum: {
+                $cond: [{ $in: ["$status", ["pending", "partial"]] }, "$balance", 0]
+              }
+            }
+          }
+        }
+      ]),
+      Hostel.findById(hostelId),
+      Owner.findById(ownerId)
+    ]);
+
+    // Calculate today's collection separately as array elements can be complex to match in top-level group
     const startOfDay = new Date();
     startOfDay.setHours(0, 0, 0, 0);
     const endOfDay = new Date();
     endOfDay.setHours(23, 59, 59, 999);
     
-    const payments = await Payment.find({ hostelId });
-    let todayCollection = 0;
-    payments.forEach(p => {
-      p.entries.forEach(entry => {
-        if (entry.createdAt >= startOfDay && entry.createdAt <= endOfDay) {
-          todayCollection += entry.amount;
-        }
-      });
-    });
+    const todayAgg = await Payment.aggregate([
+      { $match: { hostelId: hId } },
+      { $unwind: "$entries" },
+      { $match: { "entries.createdAt": { $gte: startOfDay, $lte: endOfDay } } },
+      { $group: { _id: null, todayCollection: { $sum: "$entries.amount" } } }
+    ]);
 
-    const hostel = await Hostel.findById(hostelId);
-    const owner = await Owner.findById(ownerId);
+    const residentsCount = residentsAgg[0]?.count || 0;
+    const roomStats = roomsAgg[0] || { totalRooms: 0, totalBeds: 0, occupiedBeds: 0 };
+    const paymentStats = paymentsAgg[0] || { totalRevenue: 0, pendingRent: 0 };
+    const todayCollection = todayAgg[0]?.todayCollection || 0;
+
+    const totalBeds = roomStats.totalBeds || 0;
+    const occupiedBeds = roomStats.occupiedBeds || 0;
+    const vacantBeds = totalBeds > 0 ? totalBeds - occupiedBeds : 0;
+    const occupancyRate = totalBeds > 0 ? Math.round((occupiedBeds / totalBeds) * 100) : 0;
+    const vacancyRate = totalBeds > 0 ? 100 - occupancyRate : 0;
+
+    const expenses = 0; // Returning 0 as Expense data model is empty
 
     res.status(200).json({
       success: true,
       stats: {
         residents: residentsCount,
-        rooms: rooms.length,
+        rooms: roomStats.totalRooms,
         totalBeds,
-        occupancyRate: totalBeds > 0 ? Math.round((residentsCount / totalBeds) * 100) : 0,
-        pendingRent,
+        occupiedBeds,
+        vacancy: vacantBeds,
+        occupancyRate,
+        vacancyRate,
+        pendingRent: paymentStats.pendingRent,
         todayCollection,
+        revenue: paymentStats.totalRevenue,
+        expenses
       },
       hostel,
       owner: owner
@@ -360,7 +408,7 @@ const getDashboardStats = async (req, res) => {
     });
 
   } catch (error) {
-    res.status(500).json(error);
+    res.status(500).json({ success: false, error: error.message });
   }
 };
 
@@ -419,6 +467,19 @@ const approveAdmission = async (req, res) => {
       return res.status(400).json({ success: false, message: "Missing room preference" });
     }
 
+    // Assign a Bed in the preferred room
+    const bed = await Bed.findOne({ roomId, status: "vacant" });
+    if (!bed) {
+      return res.status(400).json({ success: false, message: "No vacant beds available in the preferred room" });
+    }
+
+    // Generate a Resident ID (using MongoDB ObjectId, as no custom field exists in Schema)
+    // Or we can just let mongoose create the _id.
+    const room = await Room.findById(roomId);
+    if (!room || room.occupiedBeds >= room.totalBeds) {
+      return res.status(400).json({ success: false, message: "Room is already full" });
+    }
+
     // Create resident (bed assignment/occupancy is handled by Bed model rules)
     const resident = await Resident.create({
       hostelId,
@@ -428,9 +489,13 @@ const approveAdmission = async (req, res) => {
       emergencyContact: admission.emergencyContact,
       address: admission.address,
       roomId,
+      bedId: bed._id,
+      monthlyRent: room.rentPerBed || 0,
+      depositAmount: 0,
+      joinDate: new Date(),
       status: "active",
-      aadhaarPhoto: admission.idProofFile,
-      userPhoto: admission.photoFile,
+      idProof: admission.idProofFile,
+      photo: admission.photoFile,
 
       // Immutable consent snapshot copied from PublicAdmission at approval time
       rulesVersionId: admission.rulesVersionId,
@@ -444,6 +509,16 @@ const approveAdmission = async (req, res) => {
     admission.status = "Approved";
     await admission.save();
 
+    // Update Bed
+    bed.status = "occupied";
+    bed.residentId = resident._id;
+    await bed.save();
+
+    // Update Room
+    await Room.findByIdAndUpdate(roomId, {
+      $inc: { occupiedBeds: 1 }
+    });
+
     // Notification for this approval
     try {
       const { publishNotification } = require("../utils/notificationPublisher");
@@ -451,7 +526,8 @@ const approveAdmission = async (req, res) => {
         userId: req.owner?.ownerId,
         hostelId,
         type: "resident_approved",
-        message: "Resident approved",
+        title: "Resident Approved",
+        message: `Resident ${resident.name} approved and assigned to room ${room.roomNumber}`,
         meta: {
           route: "/admissions",
           residentId: resident?._id || null,
@@ -462,12 +538,9 @@ const approveAdmission = async (req, res) => {
       console.error("Resident approval notification failed:", e?.message || e);
     }
 
-    // NOTE: This system previously used Bed allocation when manually creating residents.
-
-    // Public admissions need bed allocation too; keep minimal correctness for now.
-
     res.status(200).json({ success: true, message: "Admission approved & Resident created", resident });
   } catch (error) {
+    console.log(error);
     res.status(500).json(error);
   }
 };

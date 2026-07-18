@@ -144,6 +144,11 @@ const hostelSchema = new mongoose.Schema({
     type: Boolean,
     default: true,
   },
+
+  slug: String,
+  publicLink: String,
+  publicRegistrationLink: String,
+  qrCode: String,
 });
 
 

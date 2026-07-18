@@ -18,11 +18,32 @@ export const OnboardingRequests = React.memo(() => {
     { key: "status", label: "Status" }
   ];
 
-  const mockData = [
-    { id: 1, hostelName: "RMH Hostel #2", ownerName: "Rajesh Kumar", phone: "9876543210", city: "Bangalore", status: "pending" },
-    { id: 2, hostelName: "Blue Hills Residency", ownerName: "Anita Sharma", phone: "9876543211", city: "Delhi", status: "pending" },
-    { id: 3, hostelName: "Saraswati Niwas", ownerName: "Vijay Prasad", phone: "9876543212", city: "Pune", status: "approved" }
-  ];
+  const [data, setData] = React.useState([]);
+  const [loading, setLoading] = React.useState(true);
+  const [error, setError] = React.useState(null);
+
+  React.useEffect(() => {
+    const fetchRequests = async () => {
+      try {
+        const response = await fetch('/api/v1/admin/requests', {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        });
+        const result = await response.json();
+        if (result.success) {
+          setData(result.requests || []);
+        } else {
+          setError(result.message || 'Failed to fetch requests');
+        }
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchRequests();
+  }, []);
 
   return (
     <PageContainer>
@@ -40,21 +61,29 @@ export const OnboardingRequests = React.memo(() => {
       </div>
 
       <ContentContainer>
-        <SaaSTable 
-          headers={headers} 
-          data={mockData}
-          renderRow={(row, idx) => (
-            <tr key={row.id || idx} className="border-b border-white/5 last:border-b-0 hover:bg-white/[0.02] transition">
-              <td className="px-6 py-4 text-xs font-bold text-white">{row.hostelName}</td>
-              <td className="px-6 py-4 text-xs text-slate-300">{row.ownerName}</td>
-              <td className="px-6 py-4 text-xs text-slate-400">{row.phone}</td>
-              <td className="px-6 py-4 text-xs text-slate-400">{row.city}</td>
-              <td className="px-6 py-4 text-xs">
-                <StatusBadge status={row.status} />
-              </td>
-            </tr>
-          )}
-        />
+        {loading ? (
+          <div className="p-8 text-center text-slate-400">Loading requests...</div>
+        ) : error ? (
+          <div className="p-8 text-center text-red-400">{error}</div>
+        ) : data.length === 0 ? (
+          <div className="p-8 text-center text-slate-400">No Data</div>
+        ) : (
+          <SaaSTable 
+            headers={headers} 
+            data={data}
+            renderRow={(row, idx) => (
+              <tr key={row._id || idx} className="border-b border-white/5 last:border-b-0 hover:bg-white/[0.02] transition">
+                <td className="px-6 py-4 text-xs font-bold text-white">{row.hostelName}</td>
+                <td className="px-6 py-4 text-xs text-slate-300">{row.ownerName}</td>
+                <td className="px-6 py-4 text-xs text-slate-400">{row.phone}</td>
+                <td className="px-6 py-4 text-xs text-slate-400">{row.city}</td>
+                <td className="px-6 py-4 text-xs">
+                  <StatusBadge status={row.status} />
+                </td>
+              </tr>
+            )}
+          />
+        )}
       </ContentContainer>
     </PageContainer>
   );
