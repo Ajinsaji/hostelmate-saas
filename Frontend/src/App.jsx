@@ -16,6 +16,8 @@ import OnboardingFlow from "./components/OnboardingFlow";
 
 import AdminLogin from "./components/AdminLogin";
 import PublicHostelPage from "./components/PublicHostelPage";
+import PublicHostel from "./pages/PublicHostel";
+import PublicHostelRegister from "./pages/PublicHostelRegister";
 
 import Dashboard from "./owner/Dashboard";
 import Rooms from "./owner/Rooms";
@@ -510,6 +512,9 @@ function App() {
         />
 
         <Route path="/h/:hostelCode" element={<PublicHostelPage />} />
+        <Route path="/hostel/:slug" element={<PublicHostel />} />
+        <Route path="/hostel/:slug/register" element={<PublicHostelRegister />} />
+        <Route path="/hostel/:slug/apply" element={<PublicHostelRegister />} />
 
         <Route path="/admin/login" element={<AdminLogin />} />
         

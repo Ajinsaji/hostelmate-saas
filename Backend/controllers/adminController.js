@@ -13,6 +13,8 @@ const Payment = require("../models/Payment");
 const Notification = require("../models/Notification");
 const DeviceToken = require("../models/DeviceToken");
 const PublicAdmission = require("../models/PublicAdmission");
+const SupportTicket = require("../models/SupportTicket");
+const AuditLog = require("../models/AuditLog");
 
 const { generateQRCode } = require('../utils/qrCodeService');
 const { sendApprovalMessages } = require('../utils/messageService');
@@ -1342,12 +1344,147 @@ module.exports = {
   // Admin subscriptions listing
   getAdminSubscriptions,
 
-  // Phase 4.2A exports
+// Phase 4.2A exports
   getHostels: hostelAdminController.getHostels,
   getHostelById: hostelAdminController.getHostel,
   getHostelOwner: hostelAdminController.getOwner,
 };
 
+// ==========================
+// OWNERS CRM & RESIDENTS ROLL
+// ==========================
 
+const getAllOwnersList = async (req, res) => {
+  try {
+    const owners = await Owner.find().select("ownerName hostelName phone email");
+    
+    // Transform to match frontend table expectations
+    const data = owners.map(o => ({
+      name: o.ownerName,
+      hostel: o.hostelName || "N/A",
+      phone: o.phone,
+      email: o.email
+    }));
 
+    res.status(200).json({ success: true, data });
+  } catch (error) {
+    console.error("Error fetching owners:", error);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+};
 
+const getAllResidentsList = async (req, res) => {
+  try {
+    const residents = await Resident.find().populate("hostel", "name").select("name room phone");
+    
+    // Transform to match frontend table expectations
+    const data = residents.map(r => ({
+      name: r.name,
+      hostelName: r.hostel ? r.hostel.name : "N/A",
+      room: r.room || "N/A",
+      phone: r.phone
+    }));
+
+    res.status(200).json({ success: true, data });
+  } catch (error) {
+    console.error("Error fetching residents:", error);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
+module.exports.getAllOwnersList = getAllOwnersList;
+module.exports.getAllResidentsList = getAllResidentsList;
+
+// ==========================
+// SUPER ADMIN MODULES
+// ==========================
+
+const getBusinessBI = async (req, res) => {
+  try {
+    const totalHostels = await Hostel.countDocuments();
+    const totalResidents = await Resident.countDocuments();
+    const revenue = await Payment.aggregate([
+      { $match: { status: "Paid" } },
+      { $group: { _id: null, total: { $sum: "$amount" } } }
+    ]);
+    
+    res.status(200).json({
+      success: true,
+      data: {
+        totalHostels,
+        totalResidents,
+        totalRevenue: revenue.length > 0 ? revenue[0].total : 0,
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Server Error" });
+  }
+};
+
+const getCustomerSuccess = async (req, res) => {
+  try {
+    const activeHostels = await Hostel.countDocuments({ status: "active" });
+    const inactiveHostels = await Hostel.countDocuments({ status: { $ne: "active" } });
+    
+    res.status(200).json({
+      success: true,
+      data: {
+        activeHostels,
+        inactiveHostels,
+        healthScore: 92,
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Server Error" });
+  }
+};
+
+const getCommunications = async (req, res) => {
+  try {
+    const notifications = await Notification.find().sort({ createdAt: -1 }).limit(100);
+    res.status(200).json({ success: true, data: notifications });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Server Error" });
+  }
+};
+
+const getSupportTickets = async (req, res) => {
+  try {
+    const tickets = await SupportTicket.find().populate("hostel", "name").populate("createdBy", "ownerName").sort({ createdAt: -1 });
+    res.status(200).json({ success: true, data: tickets });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Server Error" });
+  }
+};
+
+const getAuditTrails = async (req, res) => {
+  try {
+    const logs = await AuditLog.find().sort({ timestamp: -1 }).limit(100);
+    res.status(200).json({ success: true, data: logs });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Server Error" });
+  }
+};
+
+const getSystemSettings = async (req, res) => {
+  try {
+    res.status(200).json({
+      success: true,
+      data: {
+        maintenanceMode: false,
+        registrationOpen: true,
+        defaultTrialDays: 14,
+        platformFeePercentage: 2
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Server Error" });
+  }
+};
+
+module.exports.getBusinessBI = getBusinessBI;
+module.exports.getCustomerSuccess = getCustomerSuccess;
+module.exports.getCommunications = getCommunications;
+module.exports.getSupportTickets = getSupportTickets;
+module.exports.getAuditTrails = getAuditTrails;
+module.exports.getSystemSettings = getSystemSettings;

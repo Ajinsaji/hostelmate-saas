@@ -35,6 +35,14 @@ const {
   getHostels,
   getHostelById,
   getHostelOwner,
+  getAllOwnersList,
+  getAllResidentsList,
+  getBusinessBI,
+  getCustomerSuccess,
+  getCommunications,
+  getSupportTickets,
+  getAuditTrails,
+  getSystemSettings,
   // NOTE: Phase 4.2B handlers are implemented in hostelAdminController
   // and imported separately below to avoid module.exports mismatch.
 } = require("../controllers/adminController");
@@ -74,10 +82,22 @@ router.get("/dashboard/revenue", getDashboardRevenue);
 router.get("/dashboard/monitoring", getDashboardMonitoring);
 router.get("/dashboard/executive-summary", getExecutiveSummaryHandler);
 
+// ==========================
+// OWNERS & RESIDENTS
+// ==========================
 
+router.get("/owners", getAllOwnersList);
+router.get("/residents", getAllResidentsList);
 
-
-
+// ==========================
+// SUPER ADMIN MODULES
+// ==========================
+router.get("/business-bi", getBusinessBI);
+router.get("/customer-success", getCustomerSuccess);
+router.get("/communications", getCommunications);
+router.get("/support", getSupportTickets);
+router.get("/audit-trails", getAuditTrails);
+router.get("/settings", getSystemSettings);
 
 // ==========================
 // SYSTEM HEALTH

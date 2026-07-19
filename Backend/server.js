@@ -1,4 +1,14 @@
 require("dotenv").config();
+
+// Fail-fast for missing critical environment variables
+const criticalEnvs = ["MONGO_URI", "JWT_SECRET"];
+const missingEnvs = criticalEnvs.filter(env => !process.env[env]);
+if (missingEnvs.length > 0) {
+  console.error(`\x1b[31m[FATAL] Missing required environment variables: ${missingEnvs.join(", ")}\x1b[0m`);
+  console.error("Please provide them in your .env file or environment configuration. Exiting...");
+  process.exit(1);
+}
+
 const http = require("http");
 const express = require("express");
 const cors = require("cors");

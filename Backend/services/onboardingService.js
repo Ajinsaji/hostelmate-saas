@@ -40,8 +40,11 @@ const approveHostelRegistration = async ({
     const publicLink = `${process.env.FRONTEND_URL}/hostel/${slug}`;
     const publicRegistrationLink = `${process.env.FRONTEND_URL}/hostel/${slug}/apply`;
     
-    // 3. Generate QR Code (Mocking this for now until qrGenerator is confirmed)
-    const qrCode = `QR_CODE_FOR_${slug}`; // await generateQR(publicRegistrationLink);
+    // 3. Generate QR Code
+    const { generateQRCode } = require("../utils/qrCodeService");
+    const qrFilename = `${slug}-QR.png`;
+    const qrResult = await generateQRCode(publicRegistrationLink, qrFilename);
+    const qrCode = qrResult.success ? qrResult.url : `QR_CODE_FOR_${slug}`;
 
     // 4. Create Hostel
     const newHostel = new Hostel({

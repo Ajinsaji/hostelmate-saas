@@ -119,11 +119,24 @@ function Profile() {
       <GlassCard className="p-0 overflow-hidden">
         <MenuItem icon={<Building size={20} style={{ color: PREMIUM_THEME.primary }} />} title="Hostel Settings" subtitle="Update hostel details and address" onClick={() => navigate("/owner/settings")} />
         <div style={{ borderTop: `1px solid ${PREMIUM_THEME.border}` }} />
+        <MenuItem icon={<Sparkles size={20} style={{ color: PREMIUM_THEME.primary }} />} title="Subscription Info" subtitle="View active plan and billing" onClick={() => toast("Subscription details coming soon!")} />
+        <div style={{ borderTop: `1px solid ${PREMIUM_THEME.border}` }} />
         <MenuItem icon={<QrCode size={20} style={{ color: PREMIUM_THEME.primary }} />} title="View Public QR" subtitle="Share hostel admission link" onClick={() => setShowQRModal(true)} />
         <div style={{ borderTop: `1px solid ${PREMIUM_THEME.border}` }} />
         <MenuItem icon={<User size={20} style={{ color: PREMIUM_THEME.primary }} />} title="Owner Profile" subtitle="Manage personal information" onClick={() => navigate("/owner/profile")} />
         <div style={{ borderTop: `1px solid ${PREMIUM_THEME.border}` }} />
         <MenuItem icon={<Lock size={20} style={{ color: PREMIUM_THEME.primary }} />} title="Update Password" subtitle="Change your login password" onClick={() => navigate("/owner/update-password")} />
+        <div style={{ borderTop: `1px solid ${PREMIUM_THEME.border}` }} />
+        <div className="flex items-center justify-between p-4 px-6" style={{ background: "rgba(255,255,255,0.02)" }}>
+          <div>
+            <h3 className="text-sm font-medium" style={{ color: "#ffffff" }}>Push Notifications</h3>
+            <p className="text-xs" style={{ color: "rgba(255,255,255,0.6)" }}>Receive alerts for new residents</p>
+          </div>
+          <label className="relative inline-flex cursor-pointer items-center">
+            <input type="checkbox" className="peer sr-only" defaultChecked />
+            <div className="peer h-6 w-11 rounded-full bg-slate-700 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-green-500 peer-checked:after:translate-x-full peer-checked:after:border-white peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-green-300"></div>
+          </label>
+        </div>
       </GlassCard>
 
       <GlassCard>

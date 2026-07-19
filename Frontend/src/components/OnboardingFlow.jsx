@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, memo } from "react";
 
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
-import axios from "axios";
+import { api } from "../services/api";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   ArrowLeft,
@@ -781,10 +781,9 @@ function OnboardingFlow() {
         return;
       }
 
-      const response = await axios.put(
-        `${import.meta.env.VITE_API_URL}/api/owner/password/update`,
-        { newPassword, confirmPassword },
-        { headers: { Authorization: `Bearer ${token}` } }
+      const response = await api.put(
+        `/api/owner/password/update`,
+        { newPassword, confirmPassword }
       );
 
       if (response?.data?.success) {
@@ -809,10 +808,9 @@ function OnboardingFlow() {
 
     setLoading(true);
     try {
-      const response = await axios.put(
-        `${import.meta.env.VITE_API_URL}/api/owner/onboarding/rules`,
-        { rules },
-        { headers: { Authorization: `Bearer ${token}` } }
+      const response = await api.put(
+        `/api/owner/onboarding/rules`,
+        { rules }
       );
 
       if (response.data.success) {
@@ -856,10 +854,9 @@ function OnboardingFlow() {
 
     setLoading(true);
     try {
-      const response = await axios.put(
-        `${import.meta.env.VITE_API_URL}/api/owner/onboarding/complete-rooms`,
-        { rooms },
-        { headers: { Authorization: `Bearer ${token}` } }
+      const response = await api.put(
+        `/api/owner/onboarding/complete-rooms`,
+        { rooms }
       );
 
       if (response.data.success) {
@@ -878,10 +875,9 @@ function OnboardingFlow() {
   const handleStep5Complete = async () => {
     setLoading(true);
     try {
-      const response = await axios.put(
-        `${import.meta.env.VITE_API_URL}/api/owner/onboarding/complete`,
-        {},
-        { headers: { Authorization: `Bearer ${token}` } }
+      const response = await api.put(
+        `/api/owner/onboarding/complete`,
+        {}
       );
 
       if (response.data.success) {
