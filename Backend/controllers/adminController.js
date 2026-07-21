@@ -181,7 +181,6 @@ const approveHostel = async (req, res) => {
 const finalizeHostelActivation = async (req, res) => {
   try {
     const { hostelId } = req.params;
-    console.log("FINALIZE ACTIVATION START", hostelId);
     const { planType, amount, startDate, endDate, isTrial, isFreeAccess, notes } = req.body || {};
 
     if (!hostelId) {
@@ -195,7 +194,6 @@ const finalizeHostelActivation = async (req, res) => {
 
     // Generate temp password and hash it
     const tempPassword = `HM${Math.floor(1000 + Math.random() * 9000)}@`;
-    console.log("Generated temp password:", tempPassword);
 
     const bcryptjs = require("bcryptjs");
     const hashedPassword = await bcryptjs.hash(tempPassword, 10);
@@ -864,9 +862,6 @@ const getAdminSubscriptions = async (req, res) => {
     ];
 
     const [result] = await Subscription.aggregate(pipeline);
-
-    console.log("AGGREGATION RESULT:");
-    console.dir(result, { depth: null });
 
     const data = result?.data || [];
     const total = result?.total?.[0]?.count || 0;

@@ -1,4 +1,5 @@
 import React from "react";
+import { api } from "../../services/api";
 import PageContainer from "../layouts/PageContainer";
 import SectionHeader from "../layouts/SectionHeader";
 import ContentContainer from "../layouts/ContentContainer";
@@ -25,19 +26,15 @@ export const OnboardingRequests = React.memo(() => {
   React.useEffect(() => {
     const fetchRequests = async () => {
       try {
-        const response = await fetch('/api/v1/admin/requests', {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          }
-        });
-        const result = await response.json();
+        const response = await api.get('/api/admin/requests');
+        const result = response.data;
         if (result.success) {
           setData(result.requests || []);
         } else {
           setError(result.message || 'Failed to fetch requests');
         }
       } catch (err) {
-        setError(err.message);
+        setError(err.response?.data?.message || err.message);
       } finally {
         setLoading(false);
       }
@@ -53,10 +50,10 @@ export const OnboardingRequests = React.memo(() => {
       />
 
       <div className="flex flex-col sm:flex-row gap-4 mb-6">
-        <SearchBar placeholder="Search requests..." onChange={(v) => console.log(v)} />
+        <SearchBar placeholder="Search requests..." onChange={() => {}} />
         <FilterBar 
           filters={[{ key: "status", label: "Status", options: [{ label: "Pending", value: "pending" }, { label: "Approved", value: "approved" }] }]} 
-          onFilterChange={(k, v) => console.log(k, v)}
+          onFilterChange={() => {}}
         />
       </div>
 

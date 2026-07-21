@@ -33,6 +33,8 @@ async function getMonitoring() {
   // API/DB reachability + ping latency (independent of Mongo availability for uptime)
   let apiHealth = { simulated: false, uptime: process.uptime(), latency: null };
 
+  let serverStatusData = null;
+
   // If Mongo is connected, perform existing Mongo statistics queries.
   if (mongoReady) {
     const mb2 = (bytesOrNumber) => {
@@ -40,8 +42,6 @@ async function getMonitoring() {
       if (!Number.isFinite(n)) return "0";
       return (n / (1024 * 1024)).toFixed(2);
     };
-
-    let serverStatusData = null;
     try {
       const stats = await mongoose.connection.db.stats();
       dataSizeMB = mb2(stats?.dataSize);

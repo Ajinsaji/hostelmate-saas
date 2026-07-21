@@ -190,6 +190,8 @@ function RequestAutoRedirect() {
   return shouldRedirect ? <Navigate to="/request-status" replace /> : null;
 }
 
+import PwaUpdateModal from "./components/feedback/PwaUpdateModal";
+
 function App() {
   // Service worker navigation handler must run inside a Router.
   // We'll mount a small inner component that uses `useNavigate()` below inside <BrowserRouter/>.
@@ -238,6 +240,7 @@ function App() {
 
   return (
     <ServerLoadingWrapper>
+      <PwaUpdateModal />
       <BrowserRouter>
         <SessionGateWrapper />
         {/* Router-bound service worker navigation handler */}

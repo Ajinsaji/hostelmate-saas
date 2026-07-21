@@ -4,8 +4,6 @@ const HostelRequest = require("../models/HostelRequest");
 // CREATE REQUEST
 const createRequest = async (req, res) => {
   try {
-    console.log("REQ BODY:", req.body);
-    console.log("REQ FILES:", req.files);
     const {
       ownerName,
       phone,
