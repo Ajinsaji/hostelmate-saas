@@ -5,6 +5,10 @@ const loginAdmin = async (req, res) => {
   try {
     const { username, email, password } = req.body;
 
+    if (!password || (!username && !email)) {
+      return res.status(400).json({ success: false, message: "Missing required fields" });
+    }
+
     console.log("========== ADMIN LOGIN ATTEMPT ==========");
     console.log("USERNAME:", username);
     console.log("EMAIL:", email);
@@ -41,7 +45,7 @@ const loginAdmin = async (req, res) => {
       typeof storedPassword === "string" && /^\$2[aby]\$/.test(storedPassword);
 
     if (looksLikeBcrypt) {
-      const bcrypt = require("bcrypt");
+      const bcrypt = require("bcryptjs");
       isMatch = await bcrypt.compare(password, storedPassword);
     } else {
       // plaintext fallback (for legacy admin records)

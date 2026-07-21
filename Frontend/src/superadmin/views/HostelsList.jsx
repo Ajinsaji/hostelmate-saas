@@ -11,7 +11,7 @@ import QuickActionButton from "../components/widgets/QuickActionButton";
 import Drawer from "../components/drawers/Drawer";
 import useHostels from "../hooks/useHostels";
 import { COLORS } from "../constants/theme";
-import { Download, Eye, ChevronDown } from "lucide-react";
+import { Download, Eye, ChevronDown, Link, QrCode } from "lucide-react";
 
 
 export const HostelsList = React.memo(() => {
@@ -40,7 +40,6 @@ export const HostelsList = React.memo(() => {
   });
 
   
-  // Column visibility settings
   const [visibleColumns, setVisibleColumns] = useState({
     logo: true,
     name: true,
@@ -50,9 +49,10 @@ export const HostelsList = React.memo(() => {
     residents: true,
     occupancy: true,
     revenue: true,
+    storage: true,
     healthScore: true,
-    lastLogin: true,
-    createdDate: true,
+    lastLogin: false,
+    createdDate: false,
     actions: true
   });
   
@@ -183,6 +183,24 @@ export const HostelsList = React.memo(() => {
     alert(`Simulating dynamic export of current list to ${type.toUpperCase()} file...`);
   };
 
+  const tableHeaders = useMemo(() => {
+    const cols = [];
+    if (visibleColumns.logo) cols.push({ key: "logo", label: "Logo", align: "center" });
+    if (visibleColumns.name) cols.push({ key: "name", label: "Name & Location" });
+    if (visibleColumns.owner) cols.push({ key: "owner", label: "Owner" });
+    if (visibleColumns.plan) cols.push({ key: "plan", label: "Subscription" });
+    if (visibleColumns.status) cols.push({ key: "status", label: "Status" });
+    if (visibleColumns.residents) cols.push({ key: "residents", label: "Residents", align: "center" });
+    if (visibleColumns.occupancy) cols.push({ key: "occupancy", label: "Occupancy", align: "center" });
+    if (visibleColumns.revenue) cols.push({ key: "revenue", label: "Revenue", align: "right" });
+    if (visibleColumns.storage) cols.push({ key: "storage", label: "Storage", align: "center" });
+    if (visibleColumns.healthScore) cols.push({ key: "healthScore", label: "Health Score", align: "center" });
+    if (visibleColumns.lastLogin) cols.push({ key: "lastLogin", label: "Last Login" });
+    if (visibleColumns.createdDate) cols.push({ key: "createdDate", label: "Created Date" });
+    if (visibleColumns.actions) cols.push({ key: "actions", label: "Actions", align: "center" });
+    return cols;
+  }, [visibleColumns]);
+
   return (
     <PageContainer>
       <SectionHeader 
@@ -268,7 +286,10 @@ export const HostelsList = React.memo(() => {
       {/* Grid Table */}
       <ContentContainer>
         <SaaSTable 
-          headers={[]} // passed custom column render
+          headers={[
+            { key: "select", label: "", align: "left", className: "w-10" },
+            ...tableHeaders
+          ]}
           data={filteredHostels}
           loading={loading}
           renderRow={(row, idx) => {
@@ -343,11 +364,17 @@ export const HostelsList = React.memo(() => {
                 )}
 
                 {visibleColumns.revenue && (
-                  <td className="px-4 py-4 text-xs font-bold text-emerald-400">{row.revenue}</td>
+                  <td className="px-4 py-4 text-right text-xs font-bold text-emerald-400">{row.revenue}</td>
+                )}
+
+                {visibleColumns.storage && (
+                  <td className="px-4 py-4 text-center text-xs text-slate-300">
+                    {row.storageUsage ?? '0'} / {row.storageLimit ?? '10GB'}
+                  </td>
                 )}
 
                 {visibleColumns.healthScore && (
-                  <td className="px-4 py-4 text-xs">
+                  <td className="px-4 py-4 text-center text-xs">
                     <span 
                       className="font-bold text-[10px] px-2 py-0.5 rounded border"
                       style={{ 
@@ -369,13 +396,30 @@ export const HostelsList = React.memo(() => {
                 )}
 
                 {visibleColumns.actions && (
-                  <td className="px-4 py-4" onClick={(e) => e.stopPropagation()}>
-                    <button 
-                      onClick={() => navigate(`/admin/hostels/${row.id}`)}
-                      className="p-1.5 rounded-lg border border-white/5 hover:bg-white/5 text-slate-400 hover:text-white transition"
-                    >
-                      <Eye size={12} />
-                    </button>
+                  <td className="px-4 py-4 text-center" onClick={(e) => e.stopPropagation()}>
+                    <div className="flex items-center justify-center gap-1.5">
+                      <button 
+                        onClick={() => navigate(`/admin/hostels/${row.id}`)}
+                        className="p-1.5 rounded-lg border border-white/5 hover:bg-white/5 text-slate-400 hover:text-emerald-400 transition"
+                        title="View Dashboard"
+                      >
+                        <Eye size={12} />
+                      </button>
+                      <button 
+                        onClick={() => alert('Generating Public Link...')}
+                        className="p-1.5 rounded-lg border border-white/5 hover:bg-white/5 text-slate-400 hover:text-blue-400 transition"
+                        title="Public Link"
+                      >
+                        <Link size={12} />
+                      </button>
+                      <button 
+                        onClick={() => alert('Generating QR Code...')}
+                        className="p-1.5 rounded-lg border border-white/5 hover:bg-white/5 text-slate-400 hover:text-purple-400 transition"
+                        title="Generate QR"
+                      >
+                        <QrCode size={12} />
+                      </button>
+                    </div>
                   </td>
                 )}
               </tr>

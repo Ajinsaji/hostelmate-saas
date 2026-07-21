@@ -14,6 +14,18 @@ const auditLogSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
+  actionType: {
+    type: String, // CREATE, UPDATE, DELETE, etc.
+  },
+  entity: {
+    type: String, // e.g., 'Payment', 'Resident', 'Room' (same as targetModel but explicit)
+  },
+  oldValue: {
+    type: mongoose.Schema.Types.Mixed,
+  },
+  newValue: {
+    type: mongoose.Schema.Types.Mixed,
+  },
   targetId: {
     type: mongoose.Schema.Types.ObjectId,
   },

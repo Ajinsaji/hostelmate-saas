@@ -41,6 +41,7 @@ async function getMonitoring() {
       return (n / (1024 * 1024)).toFixed(2);
     };
 
+    let serverStatusData = null;
     try {
       const stats = await mongoose.connection.db.stats();
       dataSizeMB = mb2(stats?.dataSize);
@@ -48,6 +49,8 @@ async function getMonitoring() {
       collections = stats?.collections ?? 0;
       objects = stats?.objects ?? 0;
       storageStats = stats;
+      
+      serverStatusData = await mongoose.connection.db.admin().serverStatus();
     } catch {
       dataSizeMB = "0";
       storageSizeMB = "0";
@@ -140,6 +143,7 @@ async function getMonitoring() {
     totalPayments,
 
     apiHealth,
+    serverStatusData
   };
 }
 

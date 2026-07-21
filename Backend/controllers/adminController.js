@@ -1356,14 +1356,57 @@ module.exports = {
 
 const getAllOwnersList = async (req, res) => {
   try {
-    const owners = await Owner.find().select("ownerName hostelName phone email");
+    const owners = await Owner.find().select("ownerName hostelName phone email hostelId").lean();
     
-    // Transform to match frontend table expectations
-    const data = owners.map(o => ({
-      name: o.ownerName,
-      hostel: o.hostelName || "N/A",
-      phone: o.phone,
-      email: o.email
+    // Calculate extra metrics for each owner
+    const data = await Promise.all(owners.map(async (o) => {
+      let daysRemaining = 0;
+      let residentCount = 0;
+      let occupancyPercent = 0;
+      let monthlyRevenue = 0;
+      let storageUsage = "1.2 GB"; // Mocked storage usage as actual size calculation might be complex
+      
+      if (o.hostelId) {
+        const sub = await Subscription.findOne({ hostelId: o.hostelId }).lean();
+        if (sub && sub.subscriptionEndDate) {
+          const diff = new Date(sub.subscriptionEndDate) - new Date();
+          daysRemaining = Math.max(0, Math.floor(diff / (1000 * 60 * 60 * 24)));
+        }
+        
+        residentCount = await Resident.countDocuments({ hostelId: o.hostelId, status: "active" });
+        
+        const rooms = await Room.find({ hostelId: o.hostelId }).lean();
+        let totalBeds = 0;
+        let occupiedBeds = 0;
+        rooms.forEach((r) => {
+          totalBeds += Number(r.totalBeds || 0);
+          occupiedBeds += Number(r.occupiedBeds || 0);
+        });
+        
+        if (totalBeds > 0) {
+          occupancyPercent = Math.round((occupiedBeds / totalBeds) * 100);
+        }
+        
+        const payments = await Payment.aggregate([
+          { $match: { hostelId: o.hostelId, status: "Paid" } },
+          { $group: { _id: null, total: { $sum: "$amount" } } }
+        ]);
+        if (payments.length > 0) {
+          monthlyRevenue = payments[0].total; // Simplified as total revenue for now
+        }
+      }
+
+      return {
+        name: o.ownerName,
+        hostel: o.hostelName || "N/A",
+        phone: o.phone,
+        email: o.email,
+        daysRemaining,
+        storageUsage,
+        residentCount,
+        occupancyPercent,
+        monthlyRevenue
+      };
     }));
 
     res.status(200).json({ success: true, data });
@@ -1375,12 +1418,11 @@ const getAllOwnersList = async (req, res) => {
 
 const getAllResidentsList = async (req, res) => {
   try {
-    const residents = await Resident.find().populate("hostel", "name").select("name room phone");
+    const residents = await Resident.find().populate("hostelId", "hostelName").select("name room phone hostelId");
     
-    // Transform to match frontend table expectations
     const data = residents.map(r => ({
       name: r.name,
-      hostelName: r.hostel ? r.hostel.name : "N/A",
+      hostelName: r.hostelId ? r.hostelId.hostelName : "N/A",
       room: r.room || "N/A",
       phone: r.phone
     }));
@@ -1426,12 +1468,24 @@ const getCustomerSuccess = async (req, res) => {
     const activeHostels = await Hostel.countDocuments({ status: "active" });
     const inactiveHostels = await Hostel.countDocuments({ status: { $ne: "active" } });
     
+    // Add missing metrics
+    const trialToPaidConversion = 45; // Mocked percentage for now
+    const retentionRate = 95; // Mocked percentage
+    const renewalProbability = 80; // Mocked percentage
+    const churnPrediction = 5; // Mocked percentage
+    const dormantHostels = await Hostel.countDocuments({ status: "dormant" });
+
     res.status(200).json({
       success: true,
       data: {
         activeHostels,
         inactiveHostels,
         healthScore: 92,
+        trialToPaidConversion,
+        retentionRate,
+        renewalProbability,
+        churnPrediction,
+        dormantHostels
       }
     });
   } catch (error) {
@@ -1450,7 +1504,7 @@ const getCommunications = async (req, res) => {
 
 const getSupportTickets = async (req, res) => {
   try {
-    const tickets = await SupportTicket.find().populate("hostel", "name").populate("createdBy", "ownerName").sort({ createdAt: -1 });
+    const tickets = await SupportTicket.find().populate("hostel", "name").populate("createdBy", "ownerName").sort({ createdAt: -1 }).lean();
     res.status(200).json({ success: true, data: tickets });
   } catch (error) {
     res.status(500).json({ success: false, message: "Server Error" });
@@ -1459,7 +1513,7 @@ const getSupportTickets = async (req, res) => {
 
 const getAuditTrails = async (req, res) => {
   try {
-    const logs = await AuditLog.find().sort({ timestamp: -1 }).limit(100);
+    const logs = await AuditLog.find().sort({ timestamp: -1 }).limit(100).lean();
     res.status(200).json({ success: true, data: logs });
   } catch (error) {
     res.status(500).json({ success: false, message: "Server Error" });
@@ -1488,3 +1542,5 @@ module.exports.getCommunications = getCommunications;
 module.exports.getSupportTickets = getSupportTickets;
 module.exports.getAuditTrails = getAuditTrails;
 module.exports.getSystemSettings = getSystemSettings;
+module.exports.getAllOwnersList = getAllOwnersList;
+module.exports.getAllResidentsList = getAllResidentsList;
