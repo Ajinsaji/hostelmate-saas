@@ -9,23 +9,48 @@ import {
   X,
   Menu,
   Activity,
-  LogOut
+  LogOut,
+  UserCheck,
+  Users,
+  Wallet,
+  Landmark,
+  BarChart3,
+  LineChart,
+  MessageCircle,
+  ShieldAlert,
+  User
 } from "lucide-react";
 import AdminSidebar from "./AdminSidebar";
 import AdminHeader from "./AdminHeader";
 import AdminFooter from "./AdminFooter";
 import SupportBanner from "./SupportBanner";
+import AdminRightDrawer from "../components/AdminRightDrawer";
+import CommandPalette from "../components/CommandPalette";
+import { DrawerProvider } from "../contexts/DrawerContext";
 import { COLORS } from "../constants/theme";
 
 export const AdminLayout = React.memo(() => {
   const navigate = useNavigate();
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [paletteOpen, setPaletteOpen] = useState(false);
 
   // Close mobile sidebar on route change
   useEffect(() => {
     setMobileMenuOpen(false);
   }, [location.pathname]);
+
+  // Command Palette global shortcut
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setPaletteOpen(true);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
 
   const handleLogout = () => {
     localStorage.removeItem("adminToken");
@@ -42,11 +67,15 @@ export const AdminLayout = React.memo(() => {
   ];
 
   return (
-    <div 
-      className="min-h-screen flex flex-col font-sans"
-      style={{ background: COLORS.background, color: COLORS.textMain }}
-    >
-      {/* Top Banner Mode warning indicator */}
+    <DrawerProvider>
+      <div 
+        className="min-h-screen flex flex-col font-sans"
+        style={{ background: COLORS.background, color: COLORS.textMain }}
+      >
+        <CommandPalette isOpen={paletteOpen} onClose={() => setPaletteOpen(false)} />
+        <AdminRightDrawer />
+        
+        {/* Top Banner Mode warning indicator */}
       <SupportBanner />
 
       <div className="flex flex-1 relative">
@@ -155,6 +184,7 @@ export const AdminLayout = React.memo(() => {
         })}
       </nav>
     </div>
+    </DrawerProvider>
   );
 });
 

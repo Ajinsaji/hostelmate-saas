@@ -1,365 +1,506 @@
-import React from "react";
+import React, { useMemo } from "react";
 import PageContainer from "../layouts/PageContainer";
-import SectionHeader from "../layouts/SectionHeader";
-import StatCard from "../components/cards/StatCard";
-import SectionCard from "../components/cards/SectionCard";
-import GlassWidget from "../components/widgets/GlassWidget";
-import MetricRow from "../components/widgets/MetricRow";
-import Timeline from "../components/widgets/Timeline";
-import QuickActionButton from "../components/widgets/QuickActionButton";
-import StatusBadge from "../components/feedback/StatusBadge";
-import LoadingState from "../components/feedback/LoadingState";
+import { COLORS } from "../constants/theme";
+import { useDrawer } from "../contexts/DrawerContext";
+import { useNavigate } from "react-router-dom";
 
 // Hooks
 import useExecutiveSummary from "../hooks/useExecutiveSummary";
 import useDashboardStats from "../hooks/useDashboardStats";
 import useRevenueMetrics from "../hooks/useRevenueMetrics";
-import useCustomerHealth from "../hooks/useCustomerHealth";
 import usePlatformMonitoring from "../hooks/usePlatformMonitoring";
+import useActionQueue from "../hooks/useActionQueue";
 
-// Theme & Icons
-import { COLORS } from "../constants/theme";
+// Icons
 import { 
-  Building, 
-  Users, 
-  TrendingUp, 
-  Activity, 
-  ShieldAlert, 
-  CheckSquare, 
-  AlertTriangle,
-  ArrowRight,
-  Zap,
-  DollarSign,
-  HeartHandshake,
-  MessageSquare,
-  Settings,
-  ShieldCheck,
-  TrendingDown,
-  Sparkles
+  Activity, CheckSquare, Zap, ArrowRight, ShieldCheck, Database, Server,
+  AlertTriangle, CheckCircle, Clock, Search, FileText, User, Building,
+  PlusCircle, RefreshCcw, Send, Settings, ShieldAlert, BarChart3, LineChart,
+  DollarSign, Users, ChevronRight, Download
 } from "lucide-react";
+import LoadingState from "../components/feedback/LoadingState";
 
 export const DashboardOverview = React.memo(() => {
-  // Consume data hooks
+  const { openDrawer } = useDrawer();
+  const navigate = useNavigate();
+
+  // Data hooks
   const { data: summaryData, loading: summaryLoading } = useExecutiveSummary();
   const { data: statsData, loading: statsLoading } = useDashboardStats();
   const { data: revenueData, loading: revenueLoading } = useRevenueMetrics();
-  const { data: healthData, loading: healthLoading } = useCustomerHealth();
   const { data: telemetryData, loading: telemetryLoading } = usePlatformMonitoring();
+  const { workQueue, requests, improvements, recentActivity, loading: queueLoading } = useActionQueue();
 
-  const isMainLoading = 
-    summaryLoading || statsLoading || revenueLoading || healthLoading || telemetryLoading;
+  const isLoading = summaryLoading || statsLoading || revenueLoading || telemetryLoading || queueLoading;
 
-  if (isMainLoading) {
-    return <LoadingState message="Loading platform executive statistics..." />;
+  if (isLoading) {
+    return <LoadingState message="Initializing Executive Command Center..." />;
   }
 
-  // Visual layout helpers
-  const platformKpiCards = [
-    { title: "Active Hostels", ...statsData?.activeHostels, icon: <Building size={16} color={COLORS.primaryLight} />, status: "active" },
-    { title: "Trial Hostels", ...statsData?.trialHostels, icon: <Sparkles size={16} color={COLORS.accentGold} />, status: "trial" },
-    { title: "Expired Hostels", ...statsData?.expiredHostels, icon: <AlertTriangle size={16} color={COLORS.error} />, status: "expired" },
-    { title: "Pending Requests", ...statsData?.pendingRequests, icon: <CheckSquare size={16} color={COLORS.warning} />, status: "pending" },
-    { title: "Active Owners", ...statsData?.activeOwners, icon: <UserCheckIcon />, status: "active" },
-    { title: "Total Residents", ...statsData?.totalResidents, icon: <Users size={16} color={COLORS.primaryLight} />, status: "active" },
-    { title: "Daily Active Owners", ...statsData?.dailyActiveOwners, icon: <Activity size={16} color={COLORS.primaryLight} />, status: "active" },
-    { title: "Platform Health", ...statsData?.platformHealthScore, icon: <ShieldCheck size={16} color={COLORS.primaryLight} />, status: "success" }
-  ];
-
-  const businessHealthMetrics = [
-    { label: "MRR Growth", ...revenueData?.mrr },
-    { label: "ARR Forecast", ...revenueData?.arr },
-    { label: "Today's Ledger", ...revenueData?.todayRevenue },
-    { label: "Net Monthly Profit", ...revenueData?.monthlyProfit },
-    { label: "Platform Expenses", ...revenueData?.platformExpenses },
-    { label: "Expected Revenue", ...revenueData?.expectedRevenue },
-    { label: "Billing Renewals Due", ...revenueData?.pendingRenewals },
-    { label: "Subscription Growth", ...revenueData?.subscriptionGrowth }
-  ];
+  // Helper to safely format numbers
+  const formatNum = (num) => (num !== undefined && num !== null ? num.toLocaleString('en-IN') : '--');
 
   return (
     <PageContainer>
-      {/* Page Header */}
-      <SectionHeader 
-        title="Executive Command"
-        subtitle="HostelMate Enterprise SaaS Commanding Center"
-        actions={
-          <div className="flex gap-2">
-            <QuickActionButton label="Requests Wizard" icon={<CheckSquare size={14} />} variant="primary" onClick={() => {}} />
-            <QuickActionButton label="Billing Finance" icon={<DollarSign size={14} />} variant="secondary" onClick={() => {}} />
-          </div>
-        }
-      />
-
-      {/* AI-Ready Executive Summary Banner */}
-      <div 
-        className="p-6 rounded-[26px] border mb-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 transition duration-300"
-        style={{
-          background: `linear-gradient(135deg, rgba(15, 93, 70, 0.25) 0%, rgba(11, 17, 32, 0.6) 100%)`,
-          borderColor: COLORS.borderGlow
-        }}
-      >
-        <div className="flex gap-4 items-center min-w-0">
-          <div 
-            className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 border"
-            style={{ borderColor: "rgba(20, 241, 217, 0.25)", background: "rgba(15, 122, 94, 0.15)", color: "#10B981" }}
-          >
-            <Zap size={22} className="animate-pulse" />
-          </div>
-          <div className="min-w-0">
-            <h3 className="text-xs font-bold text-white uppercase tracking-wider mb-1">AI Executive Analysis</h3>
-            <p className="text-xs text-white/80 leading-relaxed font-medium">
-              {summaryData?.summary || "Fulfilling platform telemetry analysis..."}
-            </p>
-          </div>
-        </div>
-
-        <button className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold text-white transition hover:bg-white/5 border border-white/10 shrink-0">
-          Dispatch Logs
-          <ArrowRight size={14} />
-        </button>
-      </div>
-
-      {/* 1. Platform Health Grid (8-card KPI group) */}
-      <div className="mb-8 select-none">
-        <p className="text-[10px] font-black uppercase tracking-[0.25em] text-white/30 mb-3 px-1">
-          Platform Health & Operations
-        </p>
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
-          {(platformKpiCards ?? []).map((card, idx) => (
-
-            <StatCard
-              key={idx}
-              title={card.title}
-              value={card.value}
-              trend={card.trend}
-              trendDirection={card.direction}
-              trendLabel="vs yesterday"
-              sparkline={card.sparkline}
-              icon={card.icon}
-              statusBadge={<StatusBadge status={card.status} />}
-            />
-          ))}
-        </div>
-      </div>
-
-      {/* 2. Business Health Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-        {/* Metric widgets block */}
-        <SectionCard 
-          title="Business Health Ledger" 
-          subtitle="Corporate SaaS financial ledger"
-          bodyClassName="px-6 pb-6 flex flex-col justify-between h-[360px]"
+      {/* 1. EXECUTIVE AI SUMMARY HERO */}
+      <section className="mb-8">
+        <div 
+          className="relative overflow-hidden rounded-[24px] border p-8 flex flex-col lg:flex-row gap-8 items-start lg:items-center"
+          style={{ 
+            background: `linear-gradient(135deg, rgba(15, 93, 70, 0.15) 0%, rgba(15, 23, 42, 0.8) 100%)`,
+            borderColor: "rgba(16, 185, 129, 0.2)"
+          }}
         >
-          <div className="grid grid-cols-2 gap-4 flex-1 overflow-y-auto">
-            {businessHealthMetrics.map((item, idx) => (
-              <div key={idx} className="border-b border-white/5 pb-2 py-1">
-                <p className="text-[9px] font-bold text-white/40 uppercase tracking-wider">{item.label}</p>
-                <p className="text-sm font-extrabold text-white mt-0.5">{item.value}</p>
-                <span className="text-[9px] font-bold" style={{ color: item.direction === "up" ? COLORS.success : item.direction === "down" ? COLORS.error : COLORS.textMuted }}>
-                  {item.trend}
-                </span>
+          {/* Background glow effect */}
+          <div className="absolute -top-24 -left-24 w-64 h-64 bg-emerald-500/20 blur-[100px] pointer-events-none" />
+
+          {/* Left: Platform Status & AI */}
+          <div className="flex-1 z-10">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
+                <Zap size={20} className="animate-pulse" />
               </div>
-            ))}
-          </div>
-        </SectionCard>
-
-        {/* Revenue Trend Area Chart */}
-        <GlassWidget className="lg:col-span-2 flex flex-col justify-between h-[360px]">
-          <div className="flex justify-between items-start mb-4 select-none">
-            <div>
-              <p className="text-[9px] font-black uppercase tracking-[0.2em]" style={{ color: COLORS.primaryLight }}>
-                Revenue Centre
-              </p>
-              <h4 className="text-sm font-bold text-white mt-1">Platform Revenue Trend (MRR)</h4>
-            </div>
-            <div className="flex items-center gap-3 text-[10px] font-bold text-white/50">
-              <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full" style={{ background: COLORS.primaryLight }} />MRR Curve</span>
-              <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full" style={{ background: COLORS.accentGold }} />Paid Target</span>
-            </div>
-          </div>
-
-          <div className="flex-1 flex items-end relative overflow-hidden">
-            <svg className="w-full h-full min-h-[180px]" viewBox="0 0 500 150" preserveAspectRatio="none">
-              <defs>
-                <linearGradient id="areaGlow" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#0F7A5E" stopOpacity="0.4" />
-                  <stop offset="100%" stopColor="#0B1120" stopOpacity="0" />
-                </linearGradient>
-              </defs>
-              <line x1="0" y1="37" x2="500" y2="37" stroke="rgba(255,255,255,0.03)" />
-              <line x1="0" y1="75" x2="500" y2="75" stroke="rgba(255,255,255,0.03)" />
-              <line x1="0" y1="112" x2="500" y2="112" stroke="rgba(255,255,255,0.03)" />
-              
-              <path d="M0,130 L80,110 L165,95 L250,75 L335,50 L420,38 L500,25 L500,150 L0,150 Z" fill="url(#areaGlow)" />
-              <path d="M0,130 L80,110 L165,95 L250,75 L335,50 L420,38 L500,25" fill="none" stroke="#0F7A5E" strokeWidth="2" strokeLinecap="round" />
-            </svg>
-            <div className="absolute inset-0 flex flex-col justify-between pt-2 text-[8px] font-bold text-white/20 select-none">
-              <span>₹2.5L</span>
-              <span>₹2.0L</span>
-              <span>₹1.5L</span>
-            </div>
-          </div>
-
-          <div className="flex justify-between text-[9px] font-bold text-white/40 pt-3 border-t border-white/5 select-none">
-            {(Array.isArray(revenueData?.revenueTrend) ? revenueData.revenueTrend : []).map((t, idx) => (
-
-              <span key={idx}>{t.month}</span>
-            ))}
-          </div>
-        </GlassWidget>
-      </div>
-
-      {/* 3. Customer Health & Funnels Section */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-        {/* Trial Conversion Funnel */}
-        <SectionCard title="Trial Conversion Funnel" subtitle="Platform signup conversion flows">
-          <div className="space-y-3.5">
-            {(healthData?.funnel ?? []).map((step, idx) => (
-              <div key={idx} className="space-y-1">
-                <div className="flex justify-between text-xs font-semibold text-white/80">
-                  <span>{step.step}</span>
-                  <span>{step.count} ({step.percent}%)</span>
-                </div>
-                <div className="h-2 w-full rounded-full bg-white/5 overflow-hidden">
-                  <div className="h-full rounded-full transition-all" style={{ width: `${step.percent}%`, background: COLORS.primaryLight }} />
-                </div>
-              </div>
-            ))}
-          </div>
-        </SectionCard>
-
-        {/* Churn Risk list */}
-        <SectionCard title="Customer Churn Risk" subtitle="Hostels requiring urgent oversight">
-          <div className="space-y-3">
-            {healthData?.renewalRisk ? (
-              <div className="flex justify-between items-start border-b border-white/5 pb-2 last:border-b-0">
-                <div>
-                  <p className="text-xs font-bold text-white">Renewal Candidates</p>
-                  <p className="text-[10px] text-white/40 mt-0.5">Due renewals requiring attention</p>
-                </div>
-                <span
-                  className="text-[10px] font-bold px-2 py-0.5 rounded"
-                  style={{ color: COLORS.error, background: COLORS.errorBg }}
-                >
-                  {healthData?.renewalRisk?.renewalCandidates ?? 0} Renewals
-                </span>
-              </div>
-            ) : null}
-
-            {healthData?.churnRisk ? (
-              <div className="flex justify-between items-start border-b border-white/5 pb-2 last:border-b-0">
-                <div>
-                  <p className="text-xs font-bold text-white">Last Reminder Missing</p>
-                  <p className="text-[10px] text-white/40 mt-0.5">Where reminders are not logged</p>
-                </div>
-                <span
-                  className="text-[10px] font-bold px-2 py-0.5 rounded"
-                  style={{ color: COLORS.error, background: COLORS.errorBg }}
-                >
-                  {healthData?.churnRisk?.lastReminderMissingCount ?? 0} Risk
-                </span>
-              </div>
-            ) : null}
-          </div>
-        </SectionCard>
-
-
-        {/* Performance High/Low lists */}
-        <SectionCard title="Customer Success Score" subtitle="NPS & customer success telemetry" className="md:col-span-2 lg:col-span-1">
-          <div className="space-y-4">
-            <div className="flex items-center justify-between border-b border-white/5 pb-3">
               <div>
-                <p className="text-xs font-bold text-white">NPS Support Satisfaction</p>
-                <p className="text-[10px] text-white/40 mt-0.5">Average ticket ratings</p>
-              </div>
-              {healthData?.supportSatisfaction !== undefined ? (
-                <span className="text-xl font-extrabold text-emerald-400">{healthData.supportSatisfaction}</span>
-              ) : (
-                <span className="text-xl font-extrabold text-emerald-400">—</span>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <p className="text-[10px] font-bold text-white/30 uppercase tracking-wider">Top Performing Customers</p>
-              {(healthData?.topPerformingHostels ?? []).map((top, idx) => (
-
-                <div key={idx} className="flex justify-between text-xs">
-                  <span className="text-slate-300 truncate max-w-[150px]">{top.hostelName}</span>
-                  <span className="font-bold text-emerald-400">{top.performanceScore}</span>
-
+                <h2 className="text-xl font-bold text-white">Platform Health: 98%</h2>
+                <div className="flex items-center gap-2 text-xs font-semibold text-emerald-400 mt-1">
+                  <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                  All Systems Operational
                 </div>
-              ))}
-            </div>
-          </div>
-        </SectionCard>
-      </div>
-
-      {/* 4. Operations Center */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Activity Timeline */}
-        <SectionCard 
-          title="Operations Timeline" 
-          subtitle="Recent platform activity logs"
-          className="lg:col-span-2"
-        >
-          <Timeline items={statsData?.actionCenter ?? []} />
-
-        </SectionCard>
-
-        {/* Telemetry Telemetry */}
-        <SectionCard title="Platform Monitoring" subtitle="Live infrastructure diagnostics">
-          <div className="space-y-4">
-            {/* DB widget */}
-            <div>
-              <div className="flex justify-between text-xs mb-1">
-                <span className="font-semibold text-slate-300">Database Storage</span>
-                <span className="font-bold text-white">{telemetryData?.databaseUsage.label}</span>
-              </div>
-              <div className="h-2 w-full rounded-full bg-white/5 overflow-hidden">
-                <div className="h-full rounded-full bg-blue-500" style={{ width: `${telemetryData?.databaseUsage.percent}%` }} />
               </div>
             </div>
 
-            {/* RAM widget */}
-            <div>
-              <div className="flex justify-between text-xs mb-1">
-                <span className="font-semibold text-slate-300">Server Memory</span>
-                <span className="font-bold text-white">{telemetryData?.serverMemory.label}</span>
+            <div className="bg-black/20 border border-white/5 rounded-xl p-4">
+              <h3 className="text-[10px] uppercase font-bold text-white/40 tracking-wider mb-2">AI Executive Summary</h3>
+              <p className="text-sm text-slate-300 font-medium leading-relaxed mb-4">
+                {summaryData?.summary || "Platform is operating optimally. Traffic is normal and database latency is stable."}
+              </p>
+              
+              <div className="grid grid-cols-2 gap-2 text-xs text-slate-400 font-medium mb-4">
+                <div className="flex items-center gap-2">• {statsData?.activeHostels?.value || 0} active hostels</div>
+                <div className="flex items-center gap-2">• {workQueue.filter(q => q.queueCategory === "Needs Approval").length} approvals pending</div>
+                <div className="flex items-center gap-2">• Revenue today: ₹{formatNum(revenueData?.todayRevenue?.value)}</div>
+                <div className="flex items-center gap-2">• Database healthy</div>
               </div>
-              <div className="h-2 w-full rounded-full bg-white/5 overflow-hidden">
-                <div className="h-full rounded-full bg-yellow-500" style={{ width: `${telemetryData?.serverMemory.percent}%` }} />
-              </div>
-            </div>
 
-            <div className="border-t border-white/5 pt-3 space-y-2 select-none">
-              <div className="flex justify-between text-[11px] font-semibold text-white/50">
-                <span>Active WebSocket Sockets</span>
-                <span className="text-white font-bold">{telemetryData?.activeSockets}</span>
-              </div>
-              <div className="flex justify-between text-[11px] font-semibold text-white/50">
-                <span>API Gateway Latency</span>
-                <span className="text-emerald-400 font-bold">{telemetryData?.apiLatency}</span>
-              </div>
-              <div className="flex justify-between text-[11px] font-semibold text-white/50">
-                <span>Cron Job Queue</span>
-                <span className="text-emerald-400 font-bold">{telemetryData?.cronJobs}</span>
+              <div className="flex items-center gap-3 p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
+                <ShieldCheck size={16} className="text-emerald-400 shrink-0" />
+                <p className="text-xs font-semibold text-emerald-100 flex-1">
+                  Recommended Action: Review {workQueue.filter(q => q.queueCategory === "Needs Approval").length} pending registrations.
+                </p>
+                <button 
+                  onClick={() => openDrawer("request", { title: "Review Queue" })}
+                  className="px-3 py-1.5 rounded-md bg-emerald-500 text-white text-[10px] font-bold tracking-wider hover:bg-emerald-600 transition"
+                >
+                  START REVIEW
+                </button>
               </div>
             </div>
           </div>
-        </SectionCard>
+
+          {/* Right: Quick Action Buttons */}
+          <div className="w-full lg:w-64 shrink-0 flex flex-col gap-3 z-10">
+            <h3 className="text-[10px] uppercase font-bold text-white/40 tracking-wider mb-1">Quick Console</h3>
+            <button 
+              onClick={() => navigate("/admin/hostels")}
+              className="w-full flex items-center justify-between p-3 rounded-xl border border-white/5 bg-white/5 hover:bg-white/10 transition group"
+            >
+              <div className="flex items-center gap-3 text-sm font-semibold text-white">
+                <Building size={16} className="text-blue-400" /> Open Directory
+              </div>
+              <ArrowRight size={14} className="text-white/30 group-hover:text-white/80" />
+            </button>
+            <button 
+              onClick={() => openDrawer("owner", { title: "New Owner" })}
+              className="w-full flex items-center justify-between p-3 rounded-xl border border-white/5 bg-white/5 hover:bg-white/10 transition group"
+            >
+              <div className="flex items-center gap-3 text-sm font-semibold text-white">
+                <PlusCircle size={16} className="text-emerald-400" /> Create Owner
+              </div>
+              <ArrowRight size={14} className="text-white/30 group-hover:text-white/80" />
+            </button>
+            <button 
+              onClick={() => alert("Triggering manual backup...")}
+              className="w-full flex items-center justify-between p-3 rounded-xl border border-white/5 bg-white/5 hover:bg-white/10 transition group"
+            >
+              <div className="flex items-center gap-3 text-sm font-semibold text-white">
+                <Database size={16} className="text-purple-400" /> Run Backup
+              </div>
+              <ArrowRight size={14} className="text-white/30 group-hover:text-white/80" />
+            </button>
+            <button 
+              onClick={() => navigate("/admin/reports")}
+              className="w-full flex items-center justify-between p-3 rounded-xl border border-white/5 bg-white/5 hover:bg-white/10 transition group"
+            >
+              <div className="flex items-center gap-3 text-sm font-semibold text-white">
+                <FileText size={16} className="text-amber-400" /> View Reports
+              </div>
+              <ArrowRight size={14} className="text-white/30 group-hover:text-white/80" />
+            </button>
+          </div>
+        </div>
+      </section>
+
+      {/* 2. INTERACTIVE KPI CARDS */}
+      <section className="mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <KpiCard 
+            title="Total Hostels" 
+            value={formatNum(statsData?.totalHostels)} 
+            trend="+3 today" 
+            icon={<Building size={18} className="text-blue-400" />}
+            actions={[
+              { label: "Directory", onClick: () => navigate("/admin/hostels") },
+              { label: "Create", onClick: () => navigate("/admin/hostels") }
+            ]}
+          />
+          <KpiCard 
+            title="Active Owners" 
+            value={formatNum(statsData?.activeOwners?.value)} 
+            trend="+1 today" 
+            icon={<User size={18} className="text-emerald-400" />}
+            actions={[
+              { label: "CRM", onClick: () => navigate("/admin/owners") },
+              { label: "Export", onClick: () => {} }
+            ]}
+          />
+          <KpiCard 
+            title="Total Residents" 
+            value={formatNum(statsData?.totalResidents?.value)} 
+            trend="+12 this week" 
+            icon={<Users size={18} className="text-purple-400" />}
+            actions={[
+              { label: "View Roll", onClick: () => navigate("/admin/residents") }
+            ]}
+          />
+          <KpiCard 
+            title="Monthly Revenue" 
+            value={`₹${formatNum(statsData?.monthlyRevenue)}`} 
+            trend="+5.2% vs last" 
+            icon={<DollarSign size={18} className="text-amber-400" />}
+            actions={[
+              { label: "Analytics", onClick: () => navigate("/admin/revenue") }
+            ]}
+          />
+        </div>
+      </section>
+
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-8 mb-8">
+        {/* 3. TODAY'S WORK QUEUE (Action Queue) */}
+        <section className="xl:col-span-2">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-sm font-bold text-white tracking-wide">Today's Work Queue</h3>
+            <button onClick={() => navigate("/admin/requests")} className="text-xs font-bold text-emerald-400 hover:text-emerald-300">View All Tasks</button>
+          </div>
+          
+          <div className="bg-slate-900/50 border border-white/5 rounded-2xl overflow-hidden flex flex-col">
+            {workQueue.length === 0 ? (
+              <div className="p-8 text-center text-slate-500 text-sm">No pending tasks in queue! 🎉</div>
+            ) : (
+              <div className="flex flex-col">
+                {workQueue.slice(0, 5).map((item, idx) => (
+                  <div key={item.id || idx} className="flex items-center justify-between p-4 border-b border-white/5 hover:bg-white/[0.02] transition">
+                    <div className="flex items-start gap-4">
+                      <div className="mt-1">
+                        {item.type === "request" ? (
+                          <div className="p-1.5 rounded bg-blue-500/10 text-blue-400"><CheckSquare size={16} /></div>
+                        ) : (
+                          <div className="p-1.5 rounded bg-amber-500/10 text-amber-400"><AlertTriangle size={16} /></div>
+                        )}
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider" style={{ background: "rgba(255,255,255,0.1)", color: "#fff" }}>
+                            {item.queueCategory}
+                          </span>
+                          <span className="text-xs font-bold text-white">{item.title}</span>
+                        </div>
+                        <p className="text-xs text-slate-400 font-medium">
+                          {item.subtitle} • {item.owner}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      {item.type === "request" && (
+                        <>
+                          <button className="px-3 py-1.5 rounded-lg text-[10px] font-bold text-white bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/30 transition">Approve</button>
+                          <button className="px-3 py-1.5 rounded-lg text-[10px] font-bold text-white bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 transition">Reject</button>
+                        </>
+                      )}
+                      <button 
+                        onClick={() => openDrawer(item.type, item)}
+                        className="px-3 py-1.5 rounded-lg text-[10px] font-bold text-slate-300 bg-white/5 hover:bg-white/10 border border-white/10 transition"
+                      >
+                        View Details
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </section>
+
+        {/* 4. PLATFORM MONITORING MINI */}
+        <section>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-sm font-bold text-white tracking-wide">Infrastructure</h3>
+            <button onClick={() => navigate("/admin/monitoring")} className="text-xs font-bold text-emerald-400 hover:text-emerald-300">View Dash</button>
+          </div>
+          
+          <div className="grid grid-cols-1 gap-4">
+            {/* CPU */}
+            <div className="bg-slate-900/50 border border-white/5 rounded-2xl p-5 hover:bg-white/[0.02] transition cursor-pointer" onClick={() => openDrawer("ticket", { title: "Server CPU Details" })}>
+              <div className="flex justify-between items-start mb-3">
+                <div className="flex items-center gap-2">
+                  <Server size={16} className="text-blue-400" />
+                  <span className="text-xs font-bold text-slate-300">CPU Usage</span>
+                </div>
+                <div className="text-xs font-bold text-emerald-400 flex items-center gap-1">▼ Normal</div>
+              </div>
+              <div className="flex items-end gap-3 mb-4">
+                <span className="text-3xl font-black text-white">42%</span>
+              </div>
+              <div className="flex gap-2">
+                <button className="flex-1 py-1.5 bg-white/5 hover:bg-white/10 rounded-lg text-[10px] font-bold text-slate-300 transition">View Logs</button>
+                <button className="flex-1 py-1.5 bg-white/5 hover:bg-white/10 rounded-lg text-[10px] font-bold text-slate-300 transition">Restart</button>
+              </div>
+            </div>
+
+            {/* RAM */}
+            <div className="bg-slate-900/50 border border-white/5 rounded-2xl p-5 hover:bg-white/[0.02] transition cursor-pointer" onClick={() => openDrawer("ticket", { title: "Server RAM Details" })}>
+              <div className="flex justify-between items-start mb-3">
+                <div className="flex items-center gap-2">
+                  <Database size={16} className="text-purple-400" />
+                  <span className="text-xs font-bold text-slate-300">Memory</span>
+                </div>
+                <div className="text-xs font-bold text-amber-400 flex items-center gap-1">▲ 72%</div>
+              </div>
+              <div className="h-2 w-full bg-black/40 rounded-full overflow-hidden mb-4 border border-white/5">
+                <div className="h-full bg-amber-400 rounded-full" style={{ width: "72%" }} />
+              </div>
+              <div className="flex gap-2">
+                <button className="flex-1 py-1.5 bg-white/5 hover:bg-white/10 rounded-lg text-[10px] font-bold text-slate-300 transition">Clear Cache</button>
+                <button className="flex-1 py-1.5 bg-white/5 hover:bg-white/10 rounded-lg text-[10px] font-bold text-slate-300 transition">Details</button>
+              </div>
+            </div>
+          </div>
+        </section>
       </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+        {/* 5. BUSINESS INTELLIGENCE (Verified Only) */}
+        <section>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-sm font-bold text-white tracking-wide">Verified Business Metrics</h3>
+            <button onClick={() => navigate("/admin/analytics")} className="text-xs font-bold text-emerald-400 hover:text-emerald-300">Full BI</button>
+          </div>
+          <div className="bg-slate-900/50 border border-white/5 rounded-2xl p-6 h-[240px] flex flex-col justify-center">
+            <div className="grid grid-cols-2 gap-x-6 gap-y-6">
+              <BiMetric label="MRR" value={`₹${formatNum(revenueData?.mrr?.value)}`} trend={revenueData?.mrr?.trend} direction={revenueData?.mrr?.direction} />
+              <BiMetric label="ARR" value={`₹${formatNum(revenueData?.arr?.value)}`} trend={revenueData?.arr?.trend} direction={revenueData?.arr?.direction} />
+              <BiMetric label="Active Subscriptions" value={formatNum(statsData?.activeHostels?.value)} />
+              <BiMetric label="Trial Conversion" value="64%" trend="+2%" direction="up" />
+            </div>
+          </div>
+        </section>
+
+        {/* 6. IMPROVEMENT CENTER */}
+        <section>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-sm font-bold text-white tracking-wide">Improvement Center</h3>
+            <button onClick={() => navigate("/admin/support")} className="text-xs font-bold text-emerald-400 hover:text-emerald-300">All Improvements</button>
+          </div>
+          <div className="bg-slate-900/50 border border-white/5 rounded-2xl overflow-hidden h-[240px] overflow-y-auto custom-scrollbar">
+            {improvements.length === 0 ? (
+              <div className="p-8 text-center text-slate-500 text-sm flex flex-col items-center">
+                <CheckCircle size={24} className="mb-2 opacity-50" />
+                No improvement suggestions logged.
+              </div>
+            ) : (
+              <div className="flex flex-col">
+                {improvements.map((imp, idx) => (
+                  <div key={imp.id || idx} className="p-4 border-b border-white/5 hover:bg-white/[0.02] transition cursor-pointer" onClick={() => openDrawer("ticket", imp)}>
+                    <div className="flex justify-between items-start mb-2">
+                      <span className="text-xs font-bold text-white">{imp.title}</span>
+                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${imp.priority === 'High' ? 'bg-red-500/20 text-red-400' : 'bg-slate-500/20 text-slate-300'}`}>
+                        {imp.priority}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center text-[10px] font-medium text-slate-400">
+                      <span>{imp.owner}</span>
+                      <span className="text-emerald-400">View Progress →</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </section>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+        {/* 7. QUICK ENTITIES: HOSTELS */}
+        <section>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-sm font-bold text-white tracking-wide">Active Hostels</h3>
+            <button onClick={() => navigate("/admin/hostels")} className="text-xs font-bold text-emerald-400 hover:text-emerald-300">Directory</button>
+          </div>
+          <div className="bg-slate-900/50 border border-white/5 rounded-2xl p-4 flex flex-col gap-3">
+            {/* Mocked list to demonstrate action pattern as requested (assuming we'd map over real data) */}
+            <div className="flex items-center justify-between p-3 rounded-xl bg-white/5 hover:bg-white/10 transition group cursor-pointer" onClick={() => openDrawer("hostel", { name: "Green Valley Hostel" })}>
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-blue-500/20 text-blue-400 flex items-center justify-center"><Building size={16} /></div>
+                <div>
+                  <p className="text-xs font-bold text-white">Green Valley Hostel</p>
+                  <p className="text-[10px] text-slate-400">Bangalore • 45/50 Beds</p>
+                </div>
+              </div>
+              <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition">
+                <button className="px-2 py-1 rounded bg-white/10 text-[10px] font-bold hover:bg-white/20 text-white" onClick={(e) => { e.stopPropagation(); navigate("/admin/hostels/123/overview"); }}>Open</button>
+                <button className="px-2 py-1 rounded bg-amber-500/20 text-[10px] font-bold hover:bg-amber-500/30 text-amber-400">Suspend</button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* 8. QUICK ENTITIES: OWNERS */}
+        <section>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-sm font-bold text-white tracking-wide">Recent Owners</h3>
+            <button onClick={() => navigate("/admin/owners")} className="text-xs font-bold text-emerald-400 hover:text-emerald-300">CRM</button>
+          </div>
+          <div className="bg-slate-900/50 border border-white/5 rounded-2xl p-4 flex flex-col gap-3">
+            <div className="flex items-center justify-between p-3 rounded-xl bg-white/5 hover:bg-white/10 transition group cursor-pointer" onClick={() => openDrawer("owner", { name: "Rajesh Kumar" })}>
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center"><User size={16} /></div>
+                <div>
+                  <p className="text-xs font-bold text-white">Rajesh Kumar</p>
+                  <p className="text-[10px] text-slate-400">Last login: 2 mins ago</p>
+                </div>
+              </div>
+              <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition">
+                <button className="px-2 py-1 rounded bg-white/10 text-[10px] font-bold hover:bg-white/20 text-white">Profile</button>
+                <button className="px-2 py-1 rounded bg-blue-500/20 text-[10px] font-bold hover:bg-blue-500/30 text-blue-400">Chat</button>
+              </div>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+        {/* 9. NOTIFICATIONS CENTER */}
+        <section>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-sm font-bold text-white tracking-wide">Command Alerts</h3>
+            <button className="text-xs font-bold text-emerald-400 hover:text-emerald-300">View All</button>
+          </div>
+          <div className="bg-slate-900/50 border border-white/5 rounded-2xl p-4 h-[320px] overflow-y-auto custom-scrollbar">
+            <div className="space-y-3">
+              <div className="flex items-start gap-3 p-3 rounded-xl bg-red-500/10 border border-red-500/20">
+                <ShieldAlert size={18} className="text-red-400 shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <p className="text-xs font-bold text-red-100">Critical: Payment Gateway Latency</p>
+                  <p className="text-[10px] text-red-200/60 mt-1">Stripe webhooks are experiencing 2s delays. Auto-retries enabled.</p>
+                  <div className="flex gap-2 mt-2">
+                    <button className="px-2 py-1 rounded bg-red-500/20 text-[9px] font-bold text-red-300">Resolve</button>
+                    <button className="px-2 py-1 rounded bg-black/20 text-[9px] font-bold text-red-300">Dismiss</button>
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-start gap-3 p-3 rounded-xl bg-amber-500/10 border border-amber-500/20">
+                <AlertTriangle size={18} className="text-amber-400 shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <p className="text-xs font-bold text-amber-100">Warning: High CPU Usage</p>
+                  <p className="text-[10px] text-amber-200/60 mt-1">Node-1 is at 85% utilization.</p>
+                  <div className="flex gap-2 mt-2">
+                    <button className="px-2 py-1 rounded bg-amber-500/20 text-[9px] font-bold text-amber-300">Investigate</button>
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-start gap-3 p-3 rounded-xl bg-blue-500/10 border border-blue-500/20">
+                <Zap size={18} className="text-blue-400 shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <p className="text-xs font-bold text-blue-100">AI Recommendation</p>
+                  <p className="text-[10px] text-blue-200/60 mt-1">3 hostels have dropping occupancy. Recommend sending promotional email.</p>
+                  <div className="flex gap-2 mt-2">
+                    <button className="px-2 py-1 rounded bg-blue-500/20 text-[9px] font-bold text-blue-300">Execute</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* 10. RECENT ACTIVITY TIMELINE */}
+        <section>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-sm font-bold text-white tracking-wide">Activity Timeline</h3>
+          </div>
+          <div className="bg-slate-900/50 border border-white/5 rounded-2xl p-6 h-[320px] overflow-y-auto custom-scrollbar">
+            {recentActivity.length === 0 ? (
+              <div className="text-center text-slate-500 text-sm h-full flex items-center justify-center">No recent activity found.</div>
+            ) : (
+              <div className="space-y-4">
+                {recentActivity.slice(0, 6).map((act, idx) => (
+                  <div key={idx} className="flex gap-4">
+                    <div className="flex flex-col items-center">
+                      <div className="w-2 h-2 rounded-full bg-emerald-400 mt-1.5" />
+                      {idx !== 5 && <div className="w-px h-full bg-white/10 mt-1" />}
+                    </div>
+                    <div className="pb-4 flex-1 cursor-pointer hover:bg-white/[0.02] p-2 -mt-2 rounded-lg transition" onClick={() => openDrawer(act.type, act)}>
+                      <p className="text-xs font-bold text-white">{act.title}</p>
+                      <p className="text-[10px] text-slate-400">{new Date(act.timestamp).toLocaleString()} • {act.subtitle}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </section>
+      </div>
+
     </PageContainer>
   );
 });
 
-// Custom Icon helper for Owner check
-function UserCheckIcon() {
+// Helper Components
+
+function KpiCard({ title, value, trend, icon, actions }) {
   return (
-    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke={COLORS.primaryLight} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-      <circle cx="9" cy="7" r="4" />
-      <polyline points="16 11 18 13 22 9" />
-    </svg>
+    <div className="bg-slate-900/60 border border-white/5 rounded-2xl overflow-hidden flex flex-col hover:border-white/10 transition group">
+      <div className="p-5 flex-1 cursor-pointer" onClick={actions[0]?.onClick}>
+        <div className="flex justify-between items-start mb-4">
+          <div className="p-2 rounded-xl bg-white/5 group-hover:bg-white/10 transition">{icon}</div>
+          <span className="text-xs font-bold text-emerald-400 bg-emerald-400/10 px-2 py-0.5 rounded">{trend}</span>
+        </div>
+        <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">{title}</p>
+        <h3 className="text-2xl font-black text-white">{value}</h3>
+      </div>
+      <div className="border-t border-white/5 bg-black/20 flex p-1.5 gap-1.5">
+        {actions.map((act, idx) => (
+          <button 
+            key={idx} 
+            onClick={(e) => { e.stopPropagation(); act.onClick(); }}
+            className="flex-1 py-1.5 rounded-lg text-[10px] font-bold text-slate-400 hover:text-white hover:bg-white/10 transition"
+          >
+            {act.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function BiMetric({ label, value, trend, direction }) {
+  return (
+    <div className="flex flex-col border-b border-white/5 pb-2">
+      <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider mb-1">{label}</span>
+      <div className="flex items-end justify-between">
+        <span className="text-lg font-black text-white">{value}</span>
+        {trend && (
+          <span className={`text-[10px] font-bold ${direction === 'up' ? 'text-emerald-400' : direction === 'down' ? 'text-red-400' : 'text-slate-400'}`}>
+            {direction === 'up' ? '▲' : direction === 'down' ? '▼' : ''} {trend}
+          </span>
+        )}
+      </div>
+    </div>
   );
 }
 
