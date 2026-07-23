@@ -14,6 +14,7 @@ const {
   getAllHostels,
   getPendingHostels,
   deleteHostel,
+  bulkHostelAction,
   updateSubscription,
   getSubscriptions,
   addHostel,
@@ -36,13 +37,23 @@ const {
   getHostelById,
   getHostelOwner,
   getAllOwnersList,
+  setOwnerStatus,
+  forceResetOwnerPassword,
   getAllResidentsList,
   getBusinessBI,
   getCustomerSuccess,
   getCommunications,
+  markCommunicationRead,
+  deleteCommunication,
   getSupportTickets,
   getAuditTrails,
+  generateReport,
   getSystemSettings,
+  updateSystemSettings,
+  runBackup,
+  getBackups,
+  downloadBackup,
+  impersonateOwner,
   // NOTE: Phase 4.2B handlers are implemented in hostelAdminController
   // and imported separately below to avoid module.exports mismatch.
 } = require("../controllers/adminController");
@@ -50,6 +61,7 @@ const {
 const {
   getHostelFinancials,
   getHostelSubscription,
+  getHostelSupportTickets,
 } = require("../controllers/hostelAdminController");
 
 const {
@@ -87,6 +99,8 @@ router.get("/dashboard/executive-summary", getExecutiveSummaryHandler);
 // ==========================
 
 router.get("/owners", getAllOwnersList);
+router.put("/owners/:id/status", setOwnerStatus);
+router.post("/owners/:id/reset-password", forceResetOwnerPassword);
 router.get("/residents", getAllResidentsList);
 
 // ==========================
@@ -95,9 +109,17 @@ router.get("/residents", getAllResidentsList);
 router.get("/business-bi", getBusinessBI);
 router.get("/customer-success", getCustomerSuccess);
 router.get("/communications", getCommunications);
+router.put("/communications/:id/read", markCommunicationRead);
+router.delete("/communications/:id", deleteCommunication);
 router.get("/support", getSupportTickets);
 router.get("/audit-trails", getAuditTrails);
+router.post("/reports/generate", generateReport);
 router.get("/settings", getSystemSettings);
+router.put("/settings", updateSystemSettings);
+router.post("/backup", runBackup);
+router.get("/backups", getBackups);
+router.get("/backup/:id/download", downloadBackup);
+router.post("/impersonate", impersonateOwner);
 
 // ==========================
 // SYSTEM HEALTH
@@ -144,7 +166,9 @@ router.get("/hostels", getAllHostels);
 
 router.get("/pending-hostels", getPendingHostels);
 
-router.delete("/hostels/delete/:id", deleteHostel);
+router.delete("/hostels/:id", deleteHostel);
+
+router.post("/hostels/bulk-action", bulkHostelAction);
 
 router.post("/hostels/:ownerId/resend-whatsapp", resendWhatsApp);
 
@@ -192,6 +216,7 @@ router.get("/hostels/:id/owner", getHostelOwner);
 
 router.get("/hostels/:id/financials", getHostelFinancials);
 router.get("/hostels/:id/subscription", getHostelSubscription);
+router.get("/hostels/:id/support", getHostelSupportTickets);
 
 // ==========================
 // ADMIN PROFILE

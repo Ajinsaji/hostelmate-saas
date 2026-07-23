@@ -1,3 +1,4 @@
+const { logger } = require("../utils/logger");
 const Room =
   require("../models/Room");
 
@@ -124,7 +125,7 @@ const createRoom =
           });
         }
       } catch (e) {
-        console.error("Room added notification failed:", e?.message || e);
+        logger.error("Room added notification failed:", e?.message || e);
       }
 
       res.status(201).json({
@@ -235,7 +236,7 @@ const deleteRoom =
           });
         }
       } catch (e) {
-        console.error("Room deleted notification failed:", e?.message || e);
+        logger.error("Room deleted notification failed:", e?.message || e);
       }
 
       res.status(200).json({
@@ -308,7 +309,7 @@ const editRoom = async (req, res) => {
         });
       }
     } catch (e) {
-      console.error("Room updated notification failed:", e?.message || e);
+      logger.error("Room updated notification failed:", e?.message || e);
     }
 
     res.status(200).json({ success: true, message: "Room Updated", room });

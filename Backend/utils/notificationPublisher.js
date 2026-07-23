@@ -1,3 +1,4 @@
+const { logger } = require("./logger");
 const Notification = require("../models/Notification");
 const NotificationSetting = require("../models/NotificationSetting");
 const DeviceToken = require("../models/DeviceToken");
@@ -102,9 +103,9 @@ async function publishNotification({
       const tokenList = tokens.map((t) => t.token);
       
       if (tokenList.length > 0) {
-        console.log(`[publishNotification] Found ${tokenList.length} device token(s) for user ${userId}`);
+        logger.info(`[publishNotification] Found ${tokenList.length} device token(s) for user ${userId}`);
       } else {
-        console.log(`[publishNotification] No device tokens found for user ${userId} - background notifications won't be sent`);
+        logger.info(`[publishNotification] No device tokens found for user ${userId} - background notifications won't be sent`);
       }
 
       await sendPushToUserDevices({
@@ -122,16 +123,16 @@ async function publishNotification({
         },
       });
     } else {
-      console.log(`[publishNotification] Push disabled for user ${userId} (allowPush: ${allowPush}, allowCategory: ${allowCategory})`);
+      logger.info(`[publishNotification] Push disabled for user ${userId} (allowPush: ${allowPush}, allowCategory: ${allowCategory})`);
     }
   } catch (e) {
-    console.error(`[publishNotification] Push error for user ${userId}:`, e?.message || e);
+    logger.error(`[publishNotification] Push error for user ${userId}:`, e?.message || e);
   }
 
   try {
     await emitNotificationToUser({ userId, notification });
   } catch (e) {
-    console.error("publishNotification socket error:", e?.message || e);
+    logger.error("publishNotification socket error:", e?.message || e);
   }
 
   return notification;

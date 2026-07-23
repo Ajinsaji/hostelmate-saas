@@ -1,3 +1,4 @@
+const { logger } = require("../utils/logger");
 const bcrypt = require("bcryptjs");
 const Staff = require("../models/Staff");
 const Room = require("../models/Room");
@@ -60,7 +61,7 @@ const createStaff = async (req, res) => {
         });
       }
     } catch (e) {
-      console.error("Staff added notification failed:", e?.message || e);
+      logger.error("Staff added notification failed:", e?.message || e);
     }
 
     return res.status(201).json({
@@ -70,7 +71,7 @@ const createStaff = async (req, res) => {
       whatsappURL,
     });
   } catch (error) {
-    console.error("CREATE STAFF ERROR:", error);
+    logger.error("CREATE STAFF ERROR:", error);
     return res.status(500).json({ success: false, message: "Unable to create staff", details: error.message });
   }
 };
@@ -81,7 +82,7 @@ const getStaffByHostel = async (req, res) => {
     const staff = await Staff.find({ hostelId }).sort({ role: 1, fullName: 1 });
     return res.status(200).json({ success: true, staff });
   } catch (error) {
-    console.error("GET STAFF ERROR:", error);
+    logger.error("GET STAFF ERROR:", error);
     return res.status(500).json({ success: false, message: "Unable to load staff", details: error.message });
   }
 };
@@ -124,7 +125,7 @@ const updateStaff = async (req, res) => {
 
     return res.status(200).json({ success: true, staff });
   } catch (error) {
-    console.error("UPDATE STAFF ERROR:", error);
+    logger.error("UPDATE STAFF ERROR:", error);
     return res.status(500).json({ success: false, message: "Unable to update staff", details: error.message });
   }
 };
@@ -153,7 +154,7 @@ const resetStaffPassword = async (req, res) => {
 
     return res.status(200).json({ success: true, message: "Password reset successfully", staff, whatsappURL });
   } catch (error) {
-    console.error("RESET STAFF PASSWORD ERROR:", error);
+    logger.error("RESET STAFF PASSWORD ERROR:", error);
     return res.status(500).json({ success: false, message: "Unable to reset password", details: error.message });
   }
 };
@@ -178,7 +179,7 @@ const updateStaffStatus = async (req, res) => {
 
     return res.status(200).json({ success: true, staff });
   } catch (error) {
-    console.error("UPDATE STAFF STATUS ERROR:", error);
+    logger.error("UPDATE STAFF STATUS ERROR:", error);
     return res.status(500).json({ success: false, message: "Unable to update staff status", details: error.message });
   }
 };
@@ -209,12 +210,12 @@ const deleteStaff = async (req, res) => {
         });
       }
     } catch (e) {
-      console.error("Staff removed notification failed:", e?.message || e);
+      logger.error("Staff removed notification failed:", e?.message || e);
     }
 
     return res.status(200).json({ success: true, message: "Staff deleted successfully" });
   } catch (error) {
-    console.error("DELETE STAFF ERROR:", error);
+    logger.error("DELETE STAFF ERROR:", error);
     return res.status(500).json({ success: false, message: "Unable to delete staff", details: error.message });
   }
 };
@@ -275,7 +276,7 @@ const getStaffDashboard = async (req, res) => {
 
     return res.status(403).json({ success: false, message: "Forbidden" });
   } catch (error) {
-    console.error("STAFF DASHBOARD ERROR:", error);
+    logger.error("STAFF DASHBOARD ERROR:", error);
     return res.status(500).json({ success: false, message: "Unable to load dashboard", details: error.message });
   }
 };

@@ -1,99 +1,40 @@
 import React from "react";
 import { useParams } from "react-router-dom";
-import ContentContainer from "../../layouts/ContentContainer";
-import SectionHeader from "../../layouts/SectionHeader";
-import SectionCard from "../../components/cards/SectionCard";
-import SaaSTable from "../../components/tables/SaaSTable";
-import useOwner from "../../hooks/useOwner";
-import { COLORS } from "../../constants/theme";
-import { User, Phone, Mail, MapPin, Laptop, Smartphone } from "lucide-react";
+import useHostel from "../../hooks/useHostel";
+import { Loader2, AlertCircle, Building, Mail, Phone, MapPin } from "lucide-react";
 
-export const CustomerOwner = React.memo(() => {
+export default function CustomerOwner() {
   const { id } = useParams();
-  const { data: owner } = useOwner(id);
+  const { data, loading, error } = useHostel(id);
 
-  const deviceHeaders = [
-    { key: "name", label: "Device Name" },
-    { key: "os", label: "OS Version" },
-    { key: "ip", label: "IP Address" },
-    { key: "lastActive", label: "Last Active" }
-  ];
+  if (loading) return <div className="p-12 flex items-center justify-center text-emerald-500"><Loader2 className="animate-spin" size={32} /></div>;
+  if (error || !data) return <div className="p-12 text-center text-rose-400 bg-rose-500/10 border border-rose-500/20 rounded-xl m-6 flex flex-col items-center"><AlertCircle size={32} className="mb-2" /> Failed to load owner data.</div>;
+  if (!data.owner) return <div className="p-12 text-center text-slate-400 border border-white/5 rounded-xl m-6">No owner profile associated with this hostel.</div>;
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      {/* Profile summary */}
-      <SectionCard title="Owner Profile" subtitle="Contact and authentication details">
-        <div className="flex flex-col items-center text-center pb-4 border-b border-white/5 mb-4">
-          <img 
-            src={owner?.photo} 
-            alt={owner?.name} 
-            className="w-20 h-20 rounded-full object-cover border border-white/10 mb-3"
-          />
-          <h4 className="text-sm font-bold text-white">{owner?.name}</h4>
-          <p className="text-[10px] text-slate-400 mt-0.5">Last Active: {owner?.lastActive}</p>
+    <div className="p-6 space-y-6">
+      <div className="bg-slate-900/50 border border-white/5 p-6 rounded-2xl flex gap-6">
+        <div className="w-24 h-24 rounded-full bg-emerald-500/10 text-emerald-400 flex items-center justify-center text-3xl font-bold border border-emerald-500/20 shrink-0">
+          {data.owner.name ? data.owner.name.charAt(0) : "U"}
         </div>
-
-        <div className="space-y-3.5">
-          <div className="flex gap-3 text-xs text-slate-300">
-            <Phone size={14} className="shrink-0 text-slate-400" />
-            <span>{owner?.phone}</span>
+        <div className="flex-1 space-y-4">
+          <div>
+            <h2 className="text-xl font-bold text-white">{data.owner.name}</h2>
+            <p className="text-slate-400 text-sm flex items-center gap-2 mt-1"><Building size={14}/> {data.owner.company || "Independent"}</p>
           </div>
-          <div className="flex gap-3 text-xs text-slate-300">
-            <Mail size={14} className="shrink-0 text-slate-400" />
-            <span className="truncate">{owner?.email}</span>
-          </div>
-          <div className="flex gap-3 text-xs text-slate-300">
-            <MapPin size={14} className="shrink-0 text-slate-400" />
-            <span>{owner?.address}</span>
-          </div>
-        </div>
-
-        <div className="mt-4 pt-4 border-t border-white/5">
-          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Emergency Contact</p>
-          <p className="text-xs text-white">{owner?.emergencyContact.name} ({owner?.emergencyContact.relation})</p>
-          <p className="text-xs text-slate-400 mt-1">{owner?.emergencyContact.phone}</p>
-        </div>
-      </SectionCard>
-
-      {/* Platform usage & Devices */}
-      <div className="lg:col-span-2 space-y-6">
-        <SectionCard title="Telemetry Devices Log" subtitle="Authenticated login session browser details">
-          <SaaSTable 
-            headers={deviceHeaders} 
-            data={owner?.devices || []}
-            renderRow={(row, idx) => (
-              <tr key={idx} className="border-b border-white/5 last:border-b-0 text-xs">
-                <td className="px-6 py-4 text-white font-semibold flex items-center gap-2">
-                  {row.name.includes("iPhone") ? <Smartphone size={14} /> : <Laptop size={14} />}
-                  {row.name}
-                </td>
-                <td className="px-6 py-4 text-slate-300">{row.os}</td>
-                <td className="px-6 py-4 text-slate-400 font-mono">{row.ip}</td>
-                <td className="px-6 py-4 text-slate-400">{row.lastActive}</td>
-              </tr>
-            )}
-          />
-        </SectionCard>
-
-        <SectionCard title="Platform Usage telemetry" subtitle="Activity metrics logs">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-            <div className="p-4 rounded-xl border border-white/5 bg-white/[0.01]">
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Weekly Logins</p>
-              <p className="text-xl font-extrabold text-white mt-1">{owner?.platformUsage.weeklyLogins} sessions</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="flex items-center gap-3 text-sm text-slate-300">
+              <Mail size={16} className="text-slate-500" /> {data.owner.email || "No email"}
             </div>
-            <div className="p-4 rounded-xl border border-white/5 bg-white/[0.01]">
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Avg Session Time</p>
-              <p className="text-xl font-extrabold text-white mt-1">{owner?.platformUsage.averageSession}</p>
+            <div className="flex items-center gap-3 text-sm text-slate-300">
+              <Phone size={16} className="text-slate-500" /> {data.owner.phone || "No phone"}
             </div>
-            <div className="p-4 rounded-xl border border-white/5 bg-white/[0.01]">
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Core Features Active</p>
-              <p className="text-xs text-white font-semibold mt-1">{owner?.platformUsage.featuresUsed.join(", ")}</p>
+            <div className="flex items-center gap-3 text-sm text-slate-300 col-span-1 md:col-span-2">
+              <MapPin size={16} className="text-slate-500" /> {data.owner.address || "No address"}
             </div>
           </div>
-        </SectionCard>
+        </div>
       </div>
     </div>
   );
-});
-
-export default CustomerOwner;
+}

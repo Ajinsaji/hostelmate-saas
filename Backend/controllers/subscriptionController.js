@@ -1,3 +1,4 @@
+const { logger } = require("../utils/logger");
 const Hostel = require("../models/Hostel");
 const Subscription = require("../models/Subscription");
 const getSubscriptionStatus = require("../utils/getSubscriptionStatus");
@@ -71,7 +72,7 @@ const getSubscriptionStatusEndpoint = async (req, res) => {
       isTrial: mergedHostel.isTrial === true,
     });
   } catch (e) {
-    console.error("getSubscriptionStatus error:", e);
+    logger.error("getSubscriptionStatus error:", e);
     // fail open: unblock UI rather than lock it out
     return res.status(200).json({
       success: true,

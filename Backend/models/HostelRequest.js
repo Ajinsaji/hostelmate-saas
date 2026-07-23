@@ -41,6 +41,18 @@ const hostelRequestSchema = new mongoose.Schema(
       lowercase: true,
       enum: ["pending", "activation_pending", "approved", "activated", "rejected"],
     },
+    email: String,
+    company: String,
+    assignedTo: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Admin"
+    },
+    rejectionReason: String,
+    timeline: [{
+      action: String,
+      date: { type: Date, default: Date.now },
+      by: String
+    }]
   },
   { timestamps: true }
 );

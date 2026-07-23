@@ -1,3 +1,4 @@
+const { logger } = require("../utils/logger");
 const Resident = require("../models/Resident");
 
 const Bed = require("../models/Bed");
@@ -234,7 +235,7 @@ const createResident =
           });
         }
       } catch (e) {
-        console.error("Resident added notification failed:", e?.message || e);
+        logger.error("Resident added notification failed:", e?.message || e);
       }
 
       res.status(201).json({
@@ -244,7 +245,7 @@ const createResident =
         resident,
       });
     } catch (error) {
-      console.log(error);
+      logger.info(error);
 
       res.status(500).json(error);
     }
@@ -397,7 +398,7 @@ const checkoutResident =
           });
         }
       } catch (e) {
-        console.error("Resident checkout notification failed:", e?.message || e);
+        logger.error("Resident checkout notification failed:", e?.message || e);
       }
 
       res.status(200).json({

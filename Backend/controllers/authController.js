@@ -3,67 +3,65 @@ const Admin = require("../models/Admin");
 
 const loginAdmin = async (req, res) => {
   try {
+    const { logger } = require("../utils/logger");
     const { username, email, password } = req.body;
 
     if (!password || (!username && !email)) {
       return res.status(400).json({ success: false, message: "Missing required fields" });
     }
 
-    console.log("========== ADMIN LOGIN ATTEMPT ==========");
-    console.log("USERNAME:", username);
-    console.log("EMAIL:", email);
-
     // Find admin by username OR email (do not include password in the query)
     const admin = await Admin.findOne({
       $or: [{ username }, { email }],
     });
 
-    console.log("ADMIN FOUND:", admin ? {
-      id: admin._id,
-      username: admin.username,
-      email: admin.email,
-      role: admin.role
-    } : null);
-
-    console.log("PASSWORD HASH EXISTS:", !!admin?.password);
-
     if (!admin) {
-      console.log("INVALID CREDENTIALS REASON");
-      console.log("REASON: ADMIN NOT FOUND");
+      logger.warn({ username, email }, "Admin login failed: Admin not found");
       return res.status(400).json({
         success: false,
         message: "Invalid Credentials",
       });
     }
 
-    // Password comparison (supports BOTH plaintext and bcrypt-hashed passwords)
-    const storedPassword = admin.password;
+    // STRICT BCRYPT CHECK - NO PLAINTEXT FALLBACK
+    const bcrypt = require("bcryptjs");
     let isMatch = false;
 
-    // bcrypt hashes typically start with $2a/$2b/$2y
-    const looksLikeBcrypt =
-      typeof storedPassword === "string" && /^\$2[aby]\$/.test(storedPassword);
-
-    if (looksLikeBcrypt) {
-      const bcrypt = require("bcryptjs");
-      isMatch = await bcrypt.compare(password, storedPassword);
-    } else {
-      // plaintext fallback (for legacy admin records)
-      isMatch = password === storedPassword;
+    if (admin.password) {
+      isMatch = await bcrypt.compare(password, admin.password);
     }
 
-    console.log("PASSWORD MATCH:", isMatch);
-
     if (!isMatch) {
-      console.log("INVALID CREDENTIALS REASON");
-      if (admin && !isMatch) {
-        console.log("REASON: PASSWORD MISMATCH");
-      }
+      logger.warn({ username, email }, "Admin login failed: Password mismatch");
+      
+      // Track Failed Login
+      const AuditLog = require("../models/AuditLog");
+      await AuditLog.create({
+        adminId: admin._id,
+        action: "FAILED_LOGIN",
+        details: "Invalid password attempt",
+        ipAddress: req.ip || req.connection.remoteAddress,
+        timestamp: new Date()
+      });
+
       return res.status(400).json({
         success: false,
         message: "Invalid Credentials",
       });
     }
+
+    // Track successful login
+    admin.lastLogin = new Date();
+    admin.loginHistory.push({
+      ip: req.ip || req.connection.remoteAddress,
+      location: "Unknown",
+      device: req.headers["user-agent"] || "Unknown Device",
+      time: new Date(),
+      status: "SUCCESS"
+    });
+    // Keep max 50 history entries
+    if (admin.loginHistory.length > 50) admin.loginHistory.shift();
+    await admin.save();
 
     const secret = process.env.JWT_SECRET;
     if (!secret) {
@@ -91,7 +89,7 @@ const loginAdmin = async (req, res) => {
       admin: adminData,
     });
   } catch (error) {
-    console.log(error);
+    logger.info(error);
     return res.status(500).json({
       success: false,
       message: error?.message || "Internal Server Error",

@@ -1,3 +1,4 @@
+const { logger } = require("../utils/logger");
 const HostelRequest = require("../models/HostelRequest");
 
 
@@ -84,7 +85,7 @@ const createRequest = async (req, res) => {
       }
     }
 
-    console.log("Saving hostel request...");
+    logger.info("Saving hostel request...");
     const request =
       await HostelRequest.create({
         ownerName,
@@ -103,7 +104,7 @@ const createRequest = async (req, res) => {
         status: "pending",
       });
 
-    console.log("Hostel request saved successfully");
+    logger.info("Hostel request saved successfully");
 
     res.status(201).json({
       success: true,
@@ -112,7 +113,7 @@ const createRequest = async (req, res) => {
       requestId: request?._id || request?.id,
     });
   } catch (error) {
-    console.error("CREATE REQUEST ERROR:", error);
+    logger.error("CREATE REQUEST ERROR:", error);
 
     res.status(500).json({
       success: false,
@@ -134,8 +135,8 @@ const checkRequestStatus = async (req, res) => {
       .replace(/[\s-]/g, "")
       .replace(/^\+/, "");
 
-    console.log("Incoming phone:", req.params.phone);
-    console.log("Normalized phone:", phone);
+    logger.info("Incoming phone:", req.params.phone);
+    logger.info("Normalized phone:", phone);
 
 
     // const latestRequests = await HostelRequest
@@ -144,13 +145,13 @@ const checkRequestStatus = async (req, res) => {
     //   .limit(5)
     //   .select("phone ownerPhone mobile contactNumber hostelName status");
 
-    // console.log("Latest HostelRequests:", latestRequests);
+    // logger.info("Latest HostelRequests:", latestRequests);
 
     const request = await HostelRequest
       .findOne({ phone })
       .sort({ createdAt: -1 });
 
-    console.log("Found request:", request);
+    logger.info("Found request:", request);
 
 
 
@@ -171,7 +172,7 @@ const checkRequestStatus = async (req, res) => {
       submittedAt: request.createdAt,
     });
   } catch (error) {
-    console.error("checkRequestStatus error:", error);
+    logger.error("checkRequestStatus error:", error);
 
     return res.status(500).json({
       success: false,
@@ -200,7 +201,7 @@ const cancelRequest = async (req, res) => {
     });
 
   } catch (error) {
-    console.error("Cancel Request Error:", error);
+    logger.error("Cancel Request Error:", error);
 
     res.status(500).json({
       success: false,
@@ -229,7 +230,7 @@ const deleteRequest = async (req, res) => {
       message: "Request deleted successfully",
     });
   } catch (error) {
-    console.error("DELETE REQUEST ERROR:", error);
+    logger.error("DELETE REQUEST ERROR:", error);
 
     return res.status(500).json({
       success: false,

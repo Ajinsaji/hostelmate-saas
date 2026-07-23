@@ -1,3 +1,4 @@
+const { logger } = require("../utils/logger");
 const mongoose = require("mongoose");
 const Hostel = require("../models/Hostel");
 const Owner = require("../models/Owner");
@@ -71,7 +72,7 @@ const approveHostelRegistration = async ({
     // 5. Generate Temporary Password
     const tempPassword = crypto.randomBytes(4).toString("hex"); // e.g. 8 chars
     const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(tempPassword, salt);
+    const hashedPassword = await bcrypt.hash( salt);
 
     // 6. Create Owner
     const newOwner = new Owner({
@@ -105,7 +106,7 @@ const approveHostelRegistration = async ({
         email: newOwner.email,
         phone: newOwner.phone,
       },
-      tempPassword,
+      
       publicLink,
       publicRegistrationLink,
       qrCode
@@ -113,7 +114,7 @@ const approveHostelRegistration = async ({
   } catch (error) {
     await session.abortTransaction();
     session.endSession();
-    console.error("Error in onboardingService:", error);
+    logger.error("Error in onboardingService:", error);
     throw error;
   }
 };

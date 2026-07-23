@@ -27,12 +27,22 @@ export const CommunicationConsole = React.memo(() => {
     fetchComms();
   }, []);
 
-  const handleMarkRead = (id) => {
-    setData(prev => prev.map(item => item._id === id ? { ...item, isRead: true } : item));
+  const handleMarkRead = async (id) => {
+    try {
+      await api.put(`/api/admin/communications/${id}/read`);
+      setData(prev => prev.map(item => item._id === id ? { ...item, isRead: true } : item));
+    } catch (e) {
+      console.error(e);
+    }
   };
 
-  const handleDelete = (id) => {
-    setData(prev => prev.filter(item => item._id !== id));
+  const handleDelete = async (id) => {
+    try {
+      await api.delete(`/api/admin/communications/${id}`);
+      setData(prev => prev.filter(item => item._id !== id));
+    } catch (e) {
+      console.error(e);
+    }
   };
 
   const filteredData = data.filter(item => {

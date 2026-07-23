@@ -4,13 +4,18 @@ require("dotenv").config();
 const criticalEnvs = ["MONGO_URI", "JWT_SECRET"];
 const missingEnvs = criticalEnvs.filter(env => !process.env[env]);
 if (missingEnvs.length > 0) {
-  console.error(`\x1b[31m[FATAL] Missing required environment variables: ${missingEnvs.join(", ")}\x1b[0m`);
-  console.error("Please provide them in your .env file or environment configuration. Exiting...");
+  logger.error(`\x1b[31m[FATAL] Missing required environment variables: ${missingEnvs.join(", ")}\x1b[0m`);
+  logger.error("Please provide them in your .env file or environment configuration. Exiting...");
   process.exit(1);
 }
 
 const http = require("http");
 const express = require("express");
+const helmet = require("helmet");
+const rateLimit = require("express-rate-limit");
+const pinoHttp = require("pino-http");
+const { logger } = require("./utils/logger");
+
 const cors = require("cors");
 const path = require("path");
 const fs = require("fs");
@@ -80,7 +85,7 @@ app.use(
       ) {
         callback(null, true);
       } else {
-        console.log("Blocked by CORS:", origin);
+        logger.info("Blocked by CORS:", origin);
         callback(new Error("Blocked by CORS"));
       }
     },
@@ -91,6 +96,22 @@ app.use(
 
 app.use(express.json());
 
+// Security Middleware
+app.use(helmet());
+
+// Rate Limiting
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 2000, // limit each IP to 2000 requests per windowMs in production
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+app.use(limiter);
+
+// Pino Request Logger
+app.use(pinoHttp({ logger }));
+
+
 // ==========================
 // AUTO-CREATE UPLOADS FOLDER
 // ==========================
@@ -98,7 +119,7 @@ app.use(express.json());
 const uploadsPath = path.join(__dirname, "uploads");
 if (!fs.existsSync(uploadsPath)) {
   fs.mkdirSync(uploadsPath, { recursive: true });
-  console.log("✓ Uploads folder created at startup");
+  logger.info("✓ Uploads folder created at startup");
 }
 
 app.use(
@@ -244,6 +265,11 @@ app.get("/api/health", (req, res) => {
 
 
 // ==========================
+// ERROR HANDLER
+// ==========================
+app.use(require("./middleware/errorHandler"));
+
+// ==========================
 // SERVER
 // ==========================
 
@@ -253,7 +279,7 @@ const server = http.createServer(app);
 setSocketServer(server);
 
 server.listen(PORT, () => {
-  console.log(`Server Running on Port ${PORT}`);
+  logger.info(`Server Running on Port ${PORT}`);
   
   // Start subscription scheduler after server starts
   startSubscriptionScheduler(60 * 60 * 1000); // Run every hour

@@ -1,3 +1,4 @@
+const { logger } = require("../utils/logger");
 const Hostel = require("../models/Hostel");
 const Room = require("../models/Room");
 const PublicAdmission = require("../models/PublicAdmission");
@@ -42,7 +43,7 @@ const getPublicHostel = async (req, res) => {
       })),
     };
 
-    console.log("Public hostel response:", {
+    logger.info("Public hostel response:", {
       rulesText: publicData.rulesText,
       currentRulesVersion: publicData.currentRulesVersion,
       rulesVersionNumber: publicData.rulesVersionNumber,
@@ -50,7 +51,7 @@ const getPublicHostel = async (req, res) => {
 
     res.status(200).json({ success: true, hostel: publicData });
   } catch (error) {
-    console.log(error);
+    logger.info(error);
     res.status(500).json({ success: false, message: "Server error" });
   }
 };
@@ -85,7 +86,7 @@ const submitAdmission = async (req, res) => {
       signedAt,
     } = req.body;
 
-    console.log("Admission req.body:", {
+    logger.info("Admission req.body:", {
       residentName,
       phone,
       email,
@@ -182,14 +183,14 @@ const submitAdmission = async (req, res) => {
       }
     } catch (e) {
       // never break admission flow
-      console.error("Admission submit notification failed:", e?.message || e);
+      logger.error("Admission submit notification failed:", e?.message || e);
     }
 
     res.status(201).json({ success: true, message: "Admission request submitted", admission });
 
 
   } catch (error) {
-    console.log(error);
+    logger.info(error);
     res.status(500).json({ success: false, message: "Server error" });
   }
 };

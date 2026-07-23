@@ -1,3 +1,4 @@
+const { logger } = require("../utils/logger");
 const Payment = require("../models/Payment");
 const Resident = require("../models/Resident");
 const { Parser } = require("json2csv");
@@ -51,7 +52,7 @@ const getRevenueReport = async (req, res) => {
 
     return sendReport(res, data, format, "revenue-report");
   } catch (error) {
-    console.error("Error generating revenue report:", error);
+    logger.error("Error generating revenue report:", error);
     res.status(500).json({ success: false, message: "Server error" });
   }
 };
@@ -77,7 +78,7 @@ const getResidentReport = async (req, res) => {
 
     return sendReport(res, data, format, "resident-report");
   } catch (error) {
-    console.error("Error generating resident report:", error);
+    logger.error("Error generating resident report:", error);
     res.status(500).json({ success: false, message: "Server error" });
   }
 };

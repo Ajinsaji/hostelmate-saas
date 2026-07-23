@@ -1,3 +1,4 @@
+const { logger } = require("../utils/logger");
 const Payment = require("../models/Payment");
 
 const Resident = require("../models/Resident");
@@ -112,7 +113,7 @@ const createPayment =
           });
         }
       } catch (e) {
-        console.error("Payment notification failed:", e?.message || e);
+        logger.error("Payment notification failed:", e?.message || e);
       }
 
       res.status(200).json({
@@ -161,7 +162,7 @@ const createPayment =
           newPayment,
       });
     } catch (error) {
-      console.log(error);
+      logger.info(error);
 
       res.status(500).json(error);
     }
@@ -277,7 +278,7 @@ const verifyPayment =
           });
         }
       } catch (e) {
-        console.error("Payment verified notification failed:", e?.message || e);
+        logger.error("Payment verified notification failed:", e?.message || e);
       }
 
       res.status(200).json({

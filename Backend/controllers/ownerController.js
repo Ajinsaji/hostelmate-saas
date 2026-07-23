@@ -1,3 +1,4 @@
+const { logger } = require("../utils/logger");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
 const Owner = require("../models/Owner");
@@ -18,16 +19,19 @@ const PublicAdmission = require("../models/PublicAdmission");
 const loginOwner = async (req, res) => {
   try {
     const { email, phone, password, username } = req.body || {};
-    console.log("LOGIN ATTEMPT");
-    console.log("Username entered:", username, "Email entered:", email, "Phone entered:", phone);
+    logger.info("LOGIN ATTEMPT");
+    logger.info("Username entered:", username, "Email entered:", email, "Phone entered:", phone);
 
 
-    const looksLikeBcryptHash = (val) => typeof val === "string" && /^\$2[aby]\$\d{2}\$/.test(val);
+    
 
     const safePasswordCompare = async (plain, stored) => {
       if (!stored) return false;
-      if (looksLikeBcryptHash(stored)) return bcrypt.compare(plain, stored);
-      return plain === stored;
+      if (looksLikeBcryptHash(stored)) {
+        return bcrypt.compare(plain, stored);
+      }
+      logger.info("SECURITY WARNING: Non-bcrypt password blocked.");
+      return false; // Strict bcrypt only, no plaintext fallback
     };
 
 
@@ -67,9 +71,9 @@ const loginOwner = async (req, res) => {
       };
 
       const ownerCandidate = await Owner.findOne(query);
-      console.log("Owner found:", ownerCandidate?.username, "Phone:", ownerCandidate?.phone);
-      console.log("Stored hash exists:", !!ownerCandidate?.password);
-      console.log("Owner candidate debug:", {
+      logger.info("Owner found:", ownerCandidate?.username, "Phone:", ownerCandidate?.phone);
+      logger.info("Stored hash exists:", !!ownerCandidate?.password);
+      logger.info("Owner candidate debug:", {
         _id: ownerCandidate?._id,
         phone: ownerCandidate?.phone,
         email: ownerCandidate?.email,
@@ -78,7 +82,7 @@ const loginOwner = async (req, res) => {
 
       if (ownerCandidate) {
         const ok = await safePasswordCompare(password, ownerCandidate.password);
-        console.log("Password match:", ok);
+        logger.info("Password match:", ok);
         if (ok) owner = ownerCandidate;
       }
 
@@ -163,12 +167,12 @@ const loginOwner = async (req, res) => {
       onboardingStep: owner?.onboardingStep || 1,
     };
 
-    console.log("===== LOGIN RESPONSE =====");
-    console.log("Owner onboardingStep:", owner?.onboardingStep);
-    console.log("Owner onboardingCompleted:", owner?.onboardingCompleted);
-    console.log("Owner firstLogin:", owner?.firstLogin);
-    console.log("Owner rulesConfigured:", owner?.rulesConfigured);
-    console.log("Owner roomsConfigured:", owner?.roomsConfigured);
+    logger.info("===== LOGIN RESPONSE =====");
+    logger.info("Owner onboardingStep:", owner?.onboardingStep);
+    logger.info("Owner onboardingCompleted:", owner?.onboardingCompleted);
+    logger.info("Owner firstLogin:", owner?.firstLogin);
+    logger.info("Owner rulesConfigured:", owner?.rulesConfigured);
+    logger.info("Owner roomsConfigured:", owner?.roomsConfigured);
 
 
     const secret = process.env.JWT_SECRET || "change_me_secret";
@@ -535,12 +539,12 @@ const approveAdmission = async (req, res) => {
         },
       });
     } catch (e) {
-      console.error("Resident approval notification failed:", e?.message || e);
+      logger.error("Resident approval notification failed:", e?.message || e);
     }
 
     res.status(200).json({ success: true, message: "Admission approved & Resident created", resident });
   } catch (error) {
-    console.log(error);
+    logger.info(error);
     res.status(500).json(error);
   }
 };
@@ -574,7 +578,7 @@ const rejectAdmission = async (req, res) => {
         },
       });
     } catch (e) {
-      console.error("Resident rejection notification failed:", e?.message || e);
+      logger.error("Resident rejection notification failed:", e?.message || e);
     }
 
     res.status(200).json({ success: true, message: "Admission rejected" });
@@ -676,7 +680,7 @@ const updateHostelSettings = async (req, res) => {
       return res.status(404).json({ success: false, message: "Hostel not found" });
     }
 
-    console.log("Saved hostel rules:", updated.rulesText);
+    logger.info("Saved hostel rules:", updated.rulesText);
 
     res.status(200).json({
       success: true,
@@ -684,7 +688,7 @@ const updateHostelSettings = async (req, res) => {
       hostel: updated,
     });
   } catch (e) {
-    console.error("updateHostelSettings error:", e);
+    logger.error("updateHostelSettings error:", e);
     return res.status(500).json({
       success: false,
       message: "Failed to update hostel settings",
@@ -714,7 +718,7 @@ const updateOwnerProfile = async (req, res) => {
     const getUploadedFileUrl = require("../utils/getUploadedFileUrl");
     if (req.files?.profileImage?.[0]) {
       if (process.env.NODE_ENV !== "production") {
-        console.log("profileImage upload:", req.files.profileImage[0]?.path, req.files.profileImage[0]?.secure_url);
+        logger.info("profileImage upload:", req.files.profileImage[0]?.path, req.files.profileImage[0]?.secure_url);
       }
       updates.profileImage =
         req.files.profileImage[0]?.secure_url ||
@@ -727,7 +731,7 @@ const updateOwnerProfile = async (req, res) => {
 
     return res.status(200).json({ success: true, message: "Profile updated", data: { owner: updated } });
   } catch (e) {
-    console.error("updateOwnerProfile error:", e);
+    logger.error("updateOwnerProfile error:", e);
     return res.status(500).json({ success: false, message: "Failed to update profile", data: null });
   }
 };
@@ -737,14 +741,14 @@ const updateOwnerPassword = async (req, res) => {
     const { ownerId } = req.owner;
 
 
-    const looksLikeBcryptHash = (val) => typeof val === "string" && /^\$2[aby]\$\d{2}\$/.test(val);
+    
 
-    // bcrypt hash => bcrypt.compare
-    // else => plaintext fallback (legacy records)
     const safePasswordCompare = async (plain, stored) => {
       if (!stored) return false;
-      if (looksLikeBcryptHash(stored)) return bcrypt.compare(plain, stored);
-      return plain === stored;
+      if (looksLikeBcryptHash(stored)) {
+        return bcrypt.compare(plain, stored);
+      }
+      return false; // Strict bcrypt only
     };
 
     const { currentPassword, newPassword, confirmPassword } = req.body || {};
@@ -791,7 +795,7 @@ const updateOwnerPassword = async (req, res) => {
     owner.updatedAt = new Date();
     await owner.save();
 
-    console.log("OWNER AFTER PASSWORD:", owner.onboardingStep);
+    logger.info("OWNER AFTER PASSWORD:", owner.onboardingStep);
 
     return res.status(200).json({ success: true, message: "Password updated", data: {
 
@@ -801,7 +805,7 @@ const updateOwnerPassword = async (req, res) => {
       onboardingCompleted: owner.onboardingCompleted,
     } });
   } catch (e) {
-    console.error("updateOwnerPassword error:", e);
+    logger.error("updateOwnerPassword error:", e);
     return res.status(500).json({ success: false, message: "Failed to update password", data: null });
   }
 };
@@ -864,7 +868,7 @@ const saveOnboardingRules = async (req, res) => {
       ),
     ]);
 
-    console.log("OWNER AFTER RULES:", updatedOwner?.onboardingStep);
+    logger.info("OWNER AFTER RULES:", updatedOwner?.onboardingStep);
 
     return res.status(200).json({
 
@@ -877,7 +881,7 @@ const saveOnboardingRules = async (req, res) => {
       },
     });
   } catch (e) {
-    console.error("saveOnboardingRules error:", e);
+    logger.error("saveOnboardingRules error:", e);
     return res.status(500).json({ success: false, message: "Failed to save rules", data: null });
   }
 };
@@ -973,7 +977,7 @@ const completeOnboardingRooms = async (req, res) => {
       },
     });
   } catch (e) {
-    console.error("completeOnboardingRooms error:", e);
+    logger.error("completeOnboardingRooms error:", e);
     return res.status(500).json({ success: false, message: "Failed to complete onboarding", data: null });
   }
 };
@@ -1013,7 +1017,7 @@ const completeOnboarding = async (req, res) => {
       },
     });
   } catch (e) {
-    console.error("completeOnboarding error:", e);
+    logger.error("completeOnboarding error:", e);
     return res.status(500).json({ success: false, message: "Failed to complete onboarding", data: null });
   }
 };

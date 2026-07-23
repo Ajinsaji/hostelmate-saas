@@ -1,3 +1,4 @@
+const { logger } = require("./logger");
 const axios = require("axios");
 
 // Normalize phone to E.164-like with country code for India.
@@ -92,7 +93,7 @@ const sendOwnerWhatsApp = async (payload) => {
 
   // Temporary debug logs for WhatsApp onboarding delivery
   // eslint-disable-next-line no-console
-  console.log("STARTING WHATSAPP ONBOARDING", {
+  logger.info("STARTING WHATSAPP ONBOARDING", {
     ownerPhone: phone,
     normalizedPhone,
     ownerName: payload.ownerName,
@@ -125,7 +126,7 @@ const sendOwnerWhatsApp = async (payload) => {
   };
 
   // eslint-disable-next-line no-console
-  console.log("[Meta WhatsApp] Sending onboarding", {
+  logger.info("[Meta WhatsApp] Sending onboarding", {
     normalizedPhone,
     to,
     url,
@@ -142,9 +143,9 @@ const sendOwnerWhatsApp = async (payload) => {
     });
 
     // eslint-disable-next-line no-console
-    console.log("[Meta WhatsApp] Provider response", resp?.data);
+    logger.info("[Meta WhatsApp] Provider response", resp?.data);
     // eslint-disable-next-line no-console
-    console.log("WHATSAPP SENT SUCCESS");
+    logger.info("WHATSAPP SENT SUCCESS");
 
     return {
       success: true,
@@ -154,9 +155,9 @@ const sendOwnerWhatsApp = async (payload) => {
     };
   } catch (err) {
     // eslint-disable-next-line no-console
-    console.error("WHATSAPP SEND FAILED", err?.response?.data || err?.message);
+    logger.error("WHATSAPP SEND FAILED", err?.response?.data || err?.message);
     // eslint-disable-next-line no-console
-    console.error("[Meta WhatsApp] Send failed", {
+    logger.error("[Meta WhatsApp] Send failed", {
       message: err?.message,
       response: err?.response?.data,
       status: err?.response?.status,

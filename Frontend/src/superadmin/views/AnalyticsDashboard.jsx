@@ -63,7 +63,7 @@ export const AnalyticsDashboard = React.memo(() => {
 
   const distributionData = [
     { name: "Active Residents", value: data.totalResidents || 0 },
-    { name: "Available Capacity", value: (data.totalHostels || 0) * 50 } // mock capacity formula
+    { name: "Available Capacity", value: data.totalCapacity ? data.totalCapacity - (data.totalResidents || 0) : 0 }
   ];
   const COLORS = ["#10b981", "#334155"];
 

@@ -1,3 +1,4 @@
+const { logger } = require("./logger");
 const { getMessaging } = require("./firebaseAdmin");
 const DeviceToken = require("../models/DeviceToken");
 
@@ -21,7 +22,7 @@ async function sendPushToUserDevices({
   const tokens = Array.isArray(data.tokens) ? data.tokens : [];
 
   if (!tokens.length) {
-    console.log(
+    logger.info(
       `[fcmService] No registered device tokens found for user ${userId}`
     );
     return {
@@ -30,7 +31,7 @@ async function sendPushToUserDevices({
     };
   }
 
-  console.log(
+  logger.info(
     `[fcmService] Sending FCM to ${tokens.length} device(s) for user ${userId}`
   );
 
@@ -85,7 +86,7 @@ async function sendPushToUserDevices({
   try {
     const response = await messaging.sendEachForMulticast(message);
 
-    console.log("[fcmService] FCM send result:", {
+    logger.info("[fcmService] FCM send result:", {
       successCount: response.successCount,
       failureCount: response.failureCount,
       total: tokens.length,
@@ -101,7 +102,7 @@ async function sendPushToUserDevices({
 
     response.responses.forEach((res, index) => {
       if (!res.success) {
-        console.error(
+        logger.error(
           `[fcmService] Token failed:`,
           tokens[index],
           res.error?.code,
@@ -118,14 +119,14 @@ async function sendPushToUserDevices({
           invalidTokens.push(tokens[index]);
         }
       } else {
-        console.log(
+        logger.info(
           `[fcmService] Message sent successfully: ${res.messageId}`
         );
       }
     });
 
     if (invalidTokens.length) {
-      console.log(
+      logger.info(
         `[fcmService] Removing ${invalidTokens.length} invalid token(s)`
       );
 
@@ -143,7 +144,7 @@ async function sendPushToUserDevices({
       responses: response.responses,
     };
   } catch (error) {
-    console.error(
+    logger.error(
       "[fcmService] Fatal FCM error:",
       error?.message || error
     );

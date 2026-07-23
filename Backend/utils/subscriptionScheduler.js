@@ -1,3 +1,4 @@
+const { logger } = require("./logger");
 const Subscription = require("../models/Subscription");
 const Admin = require("../models/Admin");
 const Owner = require("../models/Owner");
@@ -49,7 +50,7 @@ async function checkSubscriptionStatus() {
           await sub.save();
         }
       } catch (e) {
-        console.error(
+        logger.error(
           "Subscription reminder notification failed:",
           e?.message || e
         );
@@ -87,18 +88,18 @@ async function checkSubscriptionStatus() {
         sub.subscriptionStatus = "expired";
         await sub.save();
       } catch (e) {
-        console.error(
+        logger.error(
           "Subscription expired notification failed:",
           e?.message || e
         );
       }
     }
 
-    console.log(
+    logger.info(
       `Subscription check completed: ${expiringSubscriptions.length} reminders, ${expiredSubscriptions.length} expired`
     );
   } catch (error) {
-    console.error("Subscription scheduler error:", error?.message || error);
+    logger.error("Subscription scheduler error:", error?.message || error);
   }
 }
 
@@ -107,7 +108,7 @@ async function checkSubscriptionStatus() {
  * Runs every 1 hour by default
  */
 function startSubscriptionScheduler(intervalMs = 60 * 60 * 1000) {
-  console.log("Starting subscription scheduler...");
+  logger.info("Starting subscription scheduler...");
   
   // Run immediately on startup
   checkSubscriptionStatus();

@@ -1,6 +1,7 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import PageContainer from "../layouts/PageContainer";
 import { COLORS } from "../constants/theme";
+import BackupManagerModal from "../components/modals/BackupManagerModal";
 import { useDrawer } from "../contexts/DrawerContext";
 import { useNavigate } from "react-router-dom";
 
@@ -10,6 +11,8 @@ import useDashboardStats from "../hooks/useDashboardStats";
 import useRevenueMetrics from "../hooks/useRevenueMetrics";
 import usePlatformMonitoring from "../hooks/usePlatformMonitoring";
 import useActionQueue from "../hooks/useActionQueue";
+import useHostels from "../hooks/useHostels";
+import useOwners from "../hooks/useOwners";
 
 // Icons
 import { 
@@ -23,6 +26,10 @@ import LoadingState from "../components/feedback/LoadingState";
 export const DashboardOverview = React.memo(() => {
   const { openDrawer } = useDrawer();
   const navigate = useNavigate();
+  
+  const { data: hostelsData } = useHostels({ page: 1, pageSize: 3 });
+  const { data: ownersData } = useOwners();
+  const [isBackupModalOpen, setIsBackupModalOpen] = useState(false);
 
   // Data hooks
   const { data: summaryData, loading: summaryLoading } = useExecutiveSummary();
@@ -120,7 +127,7 @@ export const DashboardOverview = React.memo(() => {
               <ArrowRight size={14} className="text-white/30 group-hover:text-white/80" />
             </button>
             <button 
-              onClick={() => alert("Triggering manual backup...")}
+              onClick={() => setIsBackupModalOpen(true)}
               className="w-full flex items-center justify-between p-3 rounded-xl border border-white/5 bg-white/5 hover:bg-white/10 transition group"
             >
               <div className="flex items-center gap-3 text-sm font-semibold text-white">
@@ -347,20 +354,23 @@ export const DashboardOverview = React.memo(() => {
             <button onClick={() => navigate("/admin/hostels")} className="text-xs font-bold text-emerald-400 hover:text-emerald-300">Directory</button>
           </div>
           <div className="bg-slate-900/50 border border-white/5 rounded-2xl p-4 flex flex-col gap-3">
-            {/* Mocked list to demonstrate action pattern as requested (assuming we'd map over real data) */}
-            <div className="flex items-center justify-between p-3 rounded-xl bg-white/5 hover:bg-white/10 transition group cursor-pointer" onClick={() => openDrawer("hostel", { name: "Green Valley Hostel" })}>
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-blue-500/20 text-blue-400 flex items-center justify-center"><Building size={16} /></div>
-                <div>
-                  <p className="text-xs font-bold text-white">Green Valley Hostel</p>
-                  <p className="text-[10px] text-slate-400">Bangalore • 45/50 Beds</p>
+            {hostelsData?.slice(0, 3).map((hostel, idx) => (
+              <div key={idx} className="flex items-center justify-between p-3 rounded-xl bg-white/5 hover:bg-white/10 transition group cursor-pointer" onClick={() => openDrawer("hostel", { name: hostel.name })}>
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-blue-500/20 text-blue-400 flex items-center justify-center"><Building size={16} /></div>
+                  <div>
+                    <p className="text-xs font-bold text-white">{hostel.name}</p>
+                    <p className="text-[10px] text-slate-400">{hostel.city} • {hostel.plan || 'Basic'}</p>
+                  </div>
+                </div>
+                <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition">
+                  <button className="px-2 py-1 rounded bg-white/10 text-[10px] font-bold hover:bg-white/20 text-white" onClick={(e) => { e.stopPropagation(); navigate(`/admin/hostels/${hostel.id || hostel._id}`); }}>Open</button>
                 </div>
               </div>
-              <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition">
-                <button className="px-2 py-1 rounded bg-white/10 text-[10px] font-bold hover:bg-white/20 text-white" onClick={(e) => { e.stopPropagation(); navigate("/admin/hostels/123/overview"); }}>Open</button>
-                <button className="px-2 py-1 rounded bg-amber-500/20 text-[10px] font-bold hover:bg-amber-500/30 text-amber-400">Suspend</button>
-              </div>
-            </div>
+            ))}
+            {(!hostelsData || hostelsData.length === 0) && (
+              <p className="text-xs text-slate-400 text-center py-2">No active hostels found.</p>
+            )}
           </div>
         </section>
 
@@ -371,19 +381,23 @@ export const DashboardOverview = React.memo(() => {
             <button onClick={() => navigate("/admin/owners")} className="text-xs font-bold text-emerald-400 hover:text-emerald-300">CRM</button>
           </div>
           <div className="bg-slate-900/50 border border-white/5 rounded-2xl p-4 flex flex-col gap-3">
-            <div className="flex items-center justify-between p-3 rounded-xl bg-white/5 hover:bg-white/10 transition group cursor-pointer" onClick={() => openDrawer("owner", { name: "Rajesh Kumar" })}>
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center"><User size={16} /></div>
-                <div>
-                  <p className="text-xs font-bold text-white">Rajesh Kumar</p>
-                  <p className="text-[10px] text-slate-400">Last login: 2 mins ago</p>
+            {ownersData?.slice(0, 3).map((owner, idx) => (
+              <div key={idx} className="flex items-center justify-between p-3 rounded-xl bg-white/5 hover:bg-white/10 transition group cursor-pointer" onClick={() => openDrawer("owner", { name: owner.ownerName })}>
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-purple-500/20 text-purple-400 flex items-center justify-center"><User size={16} /></div>
+                  <div>
+                    <p className="text-xs font-bold text-white">{owner.ownerName}</p>
+                    <p className="text-[10px] text-slate-400">{owner.hostelName}</p>
+                  </div>
+                </div>
+                <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition">
+                  <button className="px-2 py-1 rounded bg-white/10 text-[10px] font-bold hover:bg-white/20 text-white" onClick={(e) => { e.stopPropagation(); navigate("/admin/owners"); }}>CRM</button>
                 </div>
               </div>
-              <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition">
-                <button className="px-2 py-1 rounded bg-white/10 text-[10px] font-bold hover:bg-white/20 text-white">Profile</button>
-                <button className="px-2 py-1 rounded bg-blue-500/20 text-[10px] font-bold hover:bg-blue-500/30 text-blue-400">Chat</button>
-              </div>
-            </div>
+            ))}
+            {(!ownersData || ownersData.length === 0) && (
+              <p className="text-xs text-slate-400 text-center py-2">No active owners found.</p>
+            )}
           </div>
         </section>
       </div>
@@ -460,6 +474,10 @@ export const DashboardOverview = React.memo(() => {
         </section>
       </div>
 
+      <BackupManagerModal 
+        isOpen={isBackupModalOpen} 
+        onClose={() => setIsBackupModalOpen(false)} 
+      />
     </PageContainer>
   );
 });

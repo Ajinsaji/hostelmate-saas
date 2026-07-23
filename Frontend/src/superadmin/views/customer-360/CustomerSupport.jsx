@@ -7,12 +7,14 @@ import useSupport from "../../hooks/useSupport";
 import { COLORS } from "../../constants/theme";
 import { ShieldAlert, HelpCircle } from "lucide-react";
 
+import toast from "react-hot-toast";
+
 export const CustomerSupport = React.memo(() => {
   const { id } = useParams();
   const { data: tickets } = useSupport(id);
 
   const handleSupportAction = () => {
-    alert("Starting secure remote support debugging terminal console...");
+    toast.error("Warden Terminal is not enabled for your environment.", { icon: "🔒" });
   };
 
   const headers = [

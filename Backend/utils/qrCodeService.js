@@ -1,3 +1,4 @@
+const { logger } = require("./logger");
 const QRCode = require("qrcode");
 const path = require("path");
 const fs = require("fs");
@@ -34,7 +35,7 @@ const generateQRCode = async (data, filename) => {
     });
 
     if (!fs.existsSync(qrPath)) {
-      console.error("✗ QR file not found after generation:", qrPath);
+      logger.error("✗ QR file not found after generation:", qrPath);
     }
 
     // Upload to Cloudinary (folder: hostelmate/qr)
@@ -52,7 +53,7 @@ const generateQRCode = async (data, filename) => {
       filename,
     };
   } catch (error) {
-    console.error("✗ QR Code Generation Upload Error:", error?.message || error);
+    logger.error("✗ QR Code Generation Upload Error:", error?.message || error);
     return {
       success: false,
       error: error?.message || String(error),

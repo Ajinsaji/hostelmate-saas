@@ -59,6 +59,26 @@ const adminSchema = new mongoose.Schema({
     type: Date,
     default: Date.now,
   },
+
+  twoFactorEnabled: {
+    type: Boolean,
+    default: false,
+  },
+
+  loginHistory: [{
+    ip: String,
+    location: String,
+    device: String,
+    time: Date,
+    status: String
+  }],
+
+  activeSessions: [{
+    device: String,
+    ip: String,
+    location: String,
+    time: Date
+  }]
 });
 
 module.exports = mongoose.model("Admin", adminSchema);

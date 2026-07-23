@@ -1,44 +1,23 @@
 import React from "react";
 import { useParams } from "react-router-dom";
-import SectionCard from "../../components/cards/SectionCard";
-import SaaSTable from "../../components/tables/SaaSTable";
-import useAudit from "../../hooks/useAudit";
-import { COLORS } from "../../constants/theme";
+import useHostel from "../../hooks/useHostel";
+import { Loader2, AlertCircle, ShieldAlert } from "lucide-react";
+import Timeline from "../../components/widgets/Timeline";
 
-export const CustomerAudit = React.memo(() => {
+export default function CustomerAudit() {
   const { id } = useParams();
-  const { data: logs } = useAudit(id);
+  const { data, loading, error } = useHostel(id);
 
-  const headers = [
-    { key: "timestamp", label: "Timestamp" },
-    { key: "admin", label: "Admin Account" },
-    { key: "action", label: "Action" },
-    { key: "before", label: "Before State" },
-    { key: "after", label: "After State" },
-    { key: "ip", label: "IP/Location" }
-  ];
+  if (loading) return <div className="p-12 flex items-center justify-center text-emerald-500"><Loader2 className="animate-spin" size={32} /></div>;
+  if (error || !data) return <div className="p-12 text-center text-rose-400 bg-rose-500/10 border border-rose-500/20 rounded-xl m-6"><AlertCircle size={32} className="mx-auto mb-2" /> Failed to load audit logs.</div>;
+  if (!data.auditLogs || data.auditLogs.length === 0) return <div className="p-12 text-center text-slate-400 border border-white/5 rounded-xl m-6">No security or audit events recorded.</div>;
 
   return (
-    <SectionCard title="SaaS Security Audit Trails" subtitle="System modification history logs for this customer">
-      <SaaSTable 
-        headers={headers} 
-        data={logs || []}
-        renderRow={(row, idx) => (
-          <tr key={idx} className="border-b border-white/5 last:border-b-0 text-xs">
-            <td className="px-6 py-4 text-slate-400 font-mono">{row.timestamp}</td>
-            <td className="px-6 py-4 text-white font-semibold">{row.admin}</td>
-            <td className="px-6 py-4 text-slate-300 font-bold">{row.action}</td>
-            <td className="px-6 py-4 text-rose-400 font-mono truncate max-w-[150px]">{row.before}</td>
-            <td className="px-6 py-4 text-emerald-400 font-mono truncate max-w-[150px]">{row.after}</td>
-            <td className="px-6 py-4 text-slate-400 font-mono">
-              <p>{row.ip}</p>
-              <p className="text-[9px] text-slate-500">{row.browser}</p>
-            </td>
-          </tr>
-        )}
-      />
-    </SectionCard>
+    <div className="p-6 max-w-4xl">
+      <div className="bg-slate-900/50 border border-white/5 p-6 rounded-2xl">
+        <h3 className="text-lg font-bold text-white flex items-center gap-2 mb-6"><ShieldAlert size={18} className="text-amber-400"/> Audit Trail & Security Events</h3>
+        <Timeline items={data.auditLogs} />
+      </div>
+    </div>
   );
-});
-
-export default CustomerAudit;
+}

@@ -1,3 +1,5 @@
+const { logger } = require("./logger");
+const notificationService = require("./Notification/NotificationService");
 /**
  * Format phone number to include country code
  * @param {string} phone - Phone number (10 digits for India)
@@ -113,7 +115,7 @@ const sendApprovalMessages = async (phone, ownerName, hostelName, ownerEmail, te
 
     return { success: true, whatsappURL, message };
   } catch (error) {
-    console.error("❌ Message Service Error:", error);
+    logger.error("❌ Message Service Error:", error);
     return { success: false, error: error.message };
   }
 };

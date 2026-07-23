@@ -6,7 +6,8 @@ import {
   useLocation,
   useNavigate,
 } from "react-router-dom";
-import { useEffect, useState, Suspense, lazy } from "react";
+import { useEffect, useState, Suspense, lazy } from 'react';
+import ErrorBoundary from './components/ErrorBoundary';
 
 import LandingPage from "./components/LandingPage";
 import LoginPage from "./components/LoginPage";
@@ -65,11 +66,18 @@ const OnboardingRequests = lazy(() => import("./superadmin/views/OnboardingReque
 const HostelsList = lazy(() => import("./superadmin/views/HostelsList"));
 const HostelDetailsLayout = lazy(() => import("./superadmin/views/HostelDetailsLayout"));
 const CustomerOverview = lazy(() => import("./superadmin/views/customer-360/CustomerOverview"));
-const CustomerFinancials = lazy(() => import("./superadmin/views/customer-360/CustomerFinancials"));
-const CustomerOperations = lazy(() => import("./superadmin/views/customer-360/CustomerOperations"));
-const CustomerCommunication = lazy(() => import("./superadmin/views/customer-360/CustomerCommunication"));
+const CustomerOwner = lazy(() => import("./superadmin/views/customer-360/CustomerOwner"));
+const CustomerRooms = lazy(() => import("./superadmin/views/customer-360/CustomerRooms"));
+const CustomerResidents = lazy(() => import("./superadmin/views/customer-360/CustomerResidents"));
+const CustomerPayments = lazy(() => import("./superadmin/views/customer-360/CustomerPayments"));
+const CustomerSubscription = lazy(() => import("./superadmin/views/customer-360/CustomerSubscription"));
+const CustomerRevenue = lazy(() => import("./superadmin/views/customer-360/CustomerRevenue"));
+const CustomerStorage = lazy(() => import("./superadmin/views/customer-360/CustomerStorage"));
+const CustomerHealth = lazy(() => import("./superadmin/views/customer-360/CustomerHealth"));
+const CustomerAudit = lazy(() => import("./superadmin/views/customer-360/CustomerAudit"));
 const CustomerSupport = lazy(() => import("./superadmin/views/customer-360/CustomerSupport"));
 const OwnersList = lazy(() => import("./superadmin/views/OwnersList"));
+const CreateOwnerWizard = lazy(() => import("./superadmin/views/CreateOwnerWizard"));
 const ResidentsList = lazy(() => import("./superadmin/views/ResidentsList"));
 const SubscriptionCenter = lazy(() => import("./superadmin/views/SubscriptionCenter"));
 const RevenueCenter = lazy(() => import("./superadmin/views/RevenueCenter"));
@@ -241,6 +249,7 @@ function App() {
   return (
     <ServerLoadingWrapper>
       <PwaUpdateModal />
+      <ErrorBoundary>
       <BrowserRouter>
         <SessionGateWrapper />
         {/* Router-bound service worker navigation handler */}
@@ -540,13 +549,20 @@ function App() {
           <Route path="hostels/:id" element={<HostelDetailsLayout />}>
             <Route index element={<Navigate to="overview" replace />} />
             <Route path="overview" element={<CustomerOverview />} />
-            <Route path="financials" element={<CustomerFinancials />} />
-            <Route path="operations" element={<CustomerOperations />} />
-            <Route path="communication" element={<CustomerCommunication />} />
+            <Route path="owner" element={<CustomerOwner />} />
+            <Route path="rooms" element={<CustomerRooms />} />
+            <Route path="residents" element={<CustomerResidents />} />
+            <Route path="payments" element={<CustomerPayments />} />
+            <Route path="subscription" element={<CustomerSubscription />} />
+            <Route path="revenue" element={<CustomerRevenue />} />
+            <Route path="storage" element={<CustomerStorage />} />
+            <Route path="health" element={<CustomerHealth />} />
+            <Route path="audit" element={<CustomerAudit />} />
             <Route path="support" element={<CustomerSupport />} />
           </Route>
           
           <Route path="owners" element={<OwnersList />} />
+          <Route path="owners/new" element={<CreateOwnerWizard />} />
           <Route path="residents" element={<ResidentsList />} />
           <Route path="subscriptions" element={<SubscriptionCenter />} />
           <Route path="revenue" element={<RevenueCenter />} />
@@ -565,9 +581,9 @@ function App() {
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
     </BrowserRouter>
+    </ErrorBoundary>
     </ServerLoadingWrapper>
   );
 }
 
 export default App;
-

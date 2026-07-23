@@ -1,3 +1,4 @@
+const { logger } = require('./logger');
 const jwt = require("jsonwebtoken");
 const Notification = require("../models/Notification");
 
@@ -66,7 +67,7 @@ async function emitNotificationToUser({ userId, notification }) {
       unreadCount,
     });
   } catch (e) {
-    console.error("emitNotificationToUser error:", e?.message || e);
+    logger.error("emitNotificationToUser error:", e?.message || e);
   }
 }
 

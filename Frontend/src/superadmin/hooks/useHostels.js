@@ -1,14 +1,15 @@
 import { useState, useEffect } from "react";
 import { api } from "../../services/api";
 
-export function useHostels() {
+export function useHostels(params = {}) {
   const [state, setState] = useState({
     success: true,
     data: [],
     pagination: {
       total: 0,
-      page: 1,
-      pageSize: 25,
+      page: params.page || 1,
+      pageSize: params.pageSize || 25,
+      totalPages: 1
     },
     meta: {
       filters: {},
@@ -20,16 +21,18 @@ export function useHostels() {
 
   useEffect(() => {
     let mounted = true;
+    setState(prev => ({ ...prev, loading: true }));
 
     (async () => {
       try {
         const res = await api.get("/api/admin/hostels", {
           params: {
-            page: 1,
-            pageSize: 25,
-            search: "",
-            sortField: "createdAt",
-            sortOrder: "desc",
+            page: params.page || 1,
+            pageSize: params.pageSize || 25,
+            search: params.search || "",
+            sortField: params.sortField || "createdAt",
+            sortOrder: params.sortOrder || "desc",
+            ...params.filters
           },
         });
 
@@ -76,7 +79,7 @@ export function useHostels() {
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [params.page, params.pageSize, params.search, params.sortField, params.sortOrder, JSON.stringify(params.filters)]);
 
   return {
     success: state.success,

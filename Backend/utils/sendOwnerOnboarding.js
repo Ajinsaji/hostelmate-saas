@@ -1,3 +1,4 @@
+const { logger } = require("./logger");
 // Wrapper/helper to orchestrate owner onboarding messaging payload
 // NOTE: Provider integration will stay inside sendOwnerWhatsApp.js
 
@@ -38,7 +39,7 @@ const sendOwnerOnboarding = async ({
   };
 
   // eslint-disable-next-line no-console
-  console.log("Owner onboarding payload prepared:", payload);
+  logger.info("Owner onboarding payload prepared:", payload);
 
   return sendOwnerWhatsApp(payload);
 };

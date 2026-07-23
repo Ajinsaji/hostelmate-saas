@@ -8,6 +8,8 @@ import QuickActionButton from "../../components/widgets/QuickActionButton";
 import MetricRow from "../../components/widgets/MetricRow";
 import useHostel from "../../hooks/useHostel";
 import useHealthScore from "../../hooks/useHealthScore";
+import { api } from "../../../services/api";
+import toast from "react-hot-toast";
 import { COLORS } from "../../constants/theme";
 import { 
   ShieldAlert, 
@@ -24,16 +26,45 @@ export const CustomerOverview = React.memo(() => {
   const { data: hostel } = useHostel(id);
   const { data: health } = useHealthScore(id);
 
-  const handleAction = (act) => {
-    alert(`Action executed: [${act}] on hostel ${id}`);
+  const handleAction = async (act) => {
+    try {
+      if (act === "call") {
+        window.location.href = `tel:${hostel?.owner?.phone || hostel?.phone}`;
+      } else if (act === "email") {
+        window.location.href = `mailto:${hostel?.owner?.email || hostel?.email}`;
+      } else if (act === "whatsapp") {
+        window.open(`https://wa.me/${(hostel?.owner?.phone || hostel?.phone || '').replace('+', '')}`, '_blank');
+      } else if (act === "impersonate") {
+        const toastId = toast.loading("Initiating secure impersonation session...");
+        const res = await api.post("/api/admin/impersonate", { ownerId: hostel?.owner?._id });
+        if (res.data.success) {
+          toast.success("Impersonation started", { id: toastId });
+        } else {
+          toast.error("Impersonation failed", { id: toastId });
+        }
+      } else if (act === "extend" || act === "suspend") {
+        const toastId = toast.loading(`Executing ${act}...`);
+        const res = await api.post("/api/admin/hostels/bulk-action", {
+          action: act,
+          hostelIds: [id]
+        });
+        if (res.data.success) {
+          toast.success(`Action ${act} completed`, { id: toastId });
+        } else {
+          toast.error(`Action ${act} failed`, { id: toastId });
+        }
+      }
+    } catch (e) {
+      toast.error(`Error executing ${act}`);
+    }
   };
 
   return (
     <div className="space-y-6">
       {/* KPI metrics row */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <StatCard title="Rooms" value={hostel?.rooms || "0"} trend="Active" trendDirection="neutral" />
-        <StatCard title="Residents" value={hostel?.residents || "0"} trend="Occupied" trendDirection="neutral" />
+        <StatCard title="Rooms" value={Array.isArray(hostel?.rooms) ? hostel.rooms.length : (hostel?.roomsCount || hostel?.rooms || "0")} trend="Active" trendDirection="neutral" />
+        <StatCard title="Residents" value={Array.isArray(hostel?.residents) ? hostel.residents.length : (hostel?.residentsCount || hostel?.residents || "0")} trend="Occupied" trendDirection="neutral" />
         <StatCard title="Monthly Revenue" value={hostel?.revenue || "₹0"} trend="+6.2%" trendDirection="up" />
         <StatCard title="Health Rating" value={`${health?.score || 0}/100`} trend={health?.trend} trendDirection="up" />
       </div>

@@ -106,12 +106,42 @@ async function getHostelSubscription(req, res) {
   }
 }
 
+async function getHostelSupportTickets(req, res) {
+  try {
+    const { id } = req.params;
+    if (!id) {
+      return res.status(400).json({ success: false, message: "Hostel id is required" });
+    }
+    const SupportTicket = require("../models/SupportTicket");
+    const data = await SupportTicket.find({ hostel: id })
+      .populate("assignedTo", "name")
+      .populate("createdBy", "ownerName")
+      .sort({ createdAt: -1 })
+      .lean();
+    
+    // Map to expected format
+    const formattedData = data.map(ticket => ({
+      ticketId: ticket._id.toString().substring(0, 8).toUpperCase(),
+      subject: ticket.title,
+      category: ticket.category,
+      priority: ticket.priority,
+      assignedAdmin: ticket.assignedTo ? ticket.assignedTo.name : "Unassigned",
+      status: ticket.status
+    }));
+
+    return res.status(200).json({ success: true, data: formattedData });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: "Failed to load support tickets", error: error?.message });
+  }
+}
+
 module.exports = {
   getHostels,
   getHostel,
   getOwner,
   getHostelFinancials,
   getHostelSubscription,
+  getHostelSupportTickets,
 };
 
 

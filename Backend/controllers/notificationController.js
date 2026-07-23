@@ -1,3 +1,4 @@
+const { logger } = require("../utils/logger");
 const Notification = require("../models/Notification");
 const DeviceToken = require("../models/DeviceToken");
 const NotificationSetting = require("../models/NotificationSetting");
@@ -24,7 +25,7 @@ const registerDeviceToken = async (req, res) => {
     const hostelId = req.user?.hostelId || null;
     const role = req.user?.role || "owner";
 
-    console.log("[registerDeviceToken] Registering token for:", { userId, role, platform });
+    logger.info("[registerDeviceToken] Registering token for:", { userId, role, platform });
 
     const result = await DeviceToken.findOneAndUpdate(
       { token },
@@ -41,7 +42,7 @@ const registerDeviceToken = async (req, res) => {
       { upsert: true, new: true }
     );
 
-    console.log(`✓ [registerDeviceToken] Device token registered:`, {
+    logger.info(`✓ [registerDeviceToken] Device token registered:`, {
       tokenId: result._id,
       platform: result.platform,
       userId: result.userId,
@@ -53,7 +54,7 @@ const registerDeviceToken = async (req, res) => {
       deviceTokenId: result._id,
     });
   } catch (e) {
-    console.error("[registerDeviceToken] Error:", e?.message || e);
+    logger.error("[registerDeviceToken] Error:", e?.message || e);
     return res.status(500).json({ 
       success: false, 
       message: "Failed to register token", 

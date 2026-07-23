@@ -35,7 +35,18 @@ export const CommandPalette = React.memo(({ isOpen, onClose }) => {
     { id: "h2", type: "Owner", name: "Open Owner Directory", icon: User, action: () => { navigate("/admin/owners"); onClose(); } },
     { id: "h3", type: "Report", name: "Generate Report", icon: FileText, action: () => { navigate("/admin/reports"); onClose(); } },
     { id: "h4", type: "Monitoring", name: "View Monitoring", icon: Activity, action: () => { navigate("/admin/monitoring"); onClose(); } },
-    { id: "h5", type: "System", name: "Backup Database", icon: Server, action: () => { alert("Triggering backup..."); onClose(); } },
+    { id: "h5", type: "System", name: "Backup Database", icon: Server, action: async () => { 
+      try {
+        const { api } = await import("../../services/api");
+        const { default: toast } = await import("react-hot-toast");
+        const tid = toast.loading("Triggering backup...");
+        await api.post("/api/admin/backup");
+        toast.success("Backup completed", { id: tid });
+      } catch (e) {
+        // failed
+      }
+      onClose(); 
+    } },
     { id: "h6", type: "Settings", name: "Platform Settings", icon: Settings, action: () => { navigate("/admin/settings"); onClose(); } },
     { id: "h7", type: "Revenue", name: "Go to Revenue", icon: FileText, action: () => { navigate("/admin/revenue"); onClose(); } }
   ];

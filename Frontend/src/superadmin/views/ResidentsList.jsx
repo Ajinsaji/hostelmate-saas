@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import PageContainer from "../layouts/PageContainer";
 import SectionHeader from "../layouts/SectionHeader";
 import ContentContainer from "../layouts/ContentContainer";
@@ -36,9 +36,9 @@ export const ResidentsList = React.memo(() => {
     fetchResidents();
   }, []);
 
-  const handleAction = (action, id) => {
+  const handleAction = useCallback((action, id) => {
     toast.success(`${action} initiated for resident`);
-  };
+  }, []);
 
   const renderRow = (row, idx) => {
     return (

@@ -30,10 +30,6 @@ const ownerSchema = new mongoose.Schema(
       required: true,
     },
 
-    tempPassword: {
-      type: String,
-    },
-
     username: {
       type: String,
       trim: true,
