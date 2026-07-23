@@ -39,6 +39,7 @@ export const DashboardOverview = React.memo(() => {
 
   // Helper to safely format numbers
   const formatNum = (num) => (num !== undefined && num !== null ? num.toLocaleString('en-IN') : '--');
+  const safeRender = (val) => typeof val === 'object' && val !== null ? (val.name || val.title || 'Unknown') : val;
 
   return (
     <PageContainer>
@@ -215,7 +216,7 @@ export const DashboardOverview = React.memo(() => {
                           <span className="text-xs font-bold text-white">{item.title}</span>
                         </div>
                         <p className="text-xs text-slate-400 font-medium">
-                          {item.subtitle} • {item.owner}
+                          {safeRender(item.subtitle)} • {safeRender(item.owner)}
                         </p>
                       </div>
                     </div>
@@ -327,7 +328,7 @@ export const DashboardOverview = React.memo(() => {
                       </span>
                     </div>
                     <div className="flex justify-between items-center text-[10px] font-medium text-slate-400">
-                      <span>{imp.owner}</span>
+                      <span>{safeRender(imp.owner)}</span>
                       <span className="text-emerald-400">View Progress →</span>
                     </div>
                   </div>
@@ -448,8 +449,8 @@ export const DashboardOverview = React.memo(() => {
                       {idx !== 5 && <div className="w-px h-full bg-white/10 mt-1" />}
                     </div>
                     <div className="pb-4 flex-1 cursor-pointer hover:bg-white/[0.02] p-2 -mt-2 rounded-lg transition" onClick={() => openDrawer(act.type, act)}>
-                      <p className="text-xs font-bold text-white">{act.title}</p>
-                      <p className="text-[10px] text-slate-400">{new Date(act.timestamp).toLocaleString()} • {act.subtitle}</p>
+                      <p className="text-xs font-bold text-white">{safeRender(act.title)}</p>
+                      <p className="text-[10px] text-slate-400">{new Date(act.timestamp).toLocaleString()} • {safeRender(act.subtitle)}</p>
                     </div>
                   </div>
                 ))}
