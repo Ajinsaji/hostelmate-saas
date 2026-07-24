@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const bcrypt = require("bcryptjs");
 
 const ownerSchema = new mongoose.Schema(
   {
@@ -84,6 +85,15 @@ const ownerSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+// Auto-hash password before save if it was modified and is not already a bcrypt hash
+ownerSchema.pre("save", async function () {
+  if (!this.isModified("password")) return;
+  // Skip if already a bcrypt hash
+  if (this.password && /^\$2[aby]\$\d{2}\$.{53}$/.test(this.password)) return;
+  const salt = await bcrypt.genSalt(10);
+  this.password = await bcrypt.hash(this.password, salt);
+});
 
 module.exports = mongoose.model("Owner", ownerSchema);
 
