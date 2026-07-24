@@ -27,10 +27,17 @@ const errorHandler = (err, req, res, next) => {
 
   // Mongoose Duplicate Key (E11000)
   if (err.code === 11000) {
-    statusCode = 400;
-    message = 'Duplicate field value entered';
     const field = Object.keys(err.keyValue)[0];
-    errors = [{ field, message: The \ is already taken. }];
+    return res.status(409).json({
+        success: false,
+        message: "Duplicate value",
+        errors: [
+            {
+                field,
+                message: `The ${field} is already taken.`,
+            },
+        ],
+    });
   }
 
   // JWT Errors
