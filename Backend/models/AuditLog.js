@@ -4,11 +4,15 @@ const auditLogSchema = new mongoose.Schema({
   hostelId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "Hostel",
-    required: true,
+    required: false,
   },
   userId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "Owner", // or Staff/Admin depending on who did it
+  },
+  adminId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Admin",
   },
   action: {
     type: String,
@@ -34,6 +38,9 @@ const auditLogSchema = new mongoose.Schema({
   },
   details: {
     type: mongoose.Schema.Types.Mixed, // flexible JSON payload
+  },
+  ipAddress: {
+    type: String,
   },
   timestamp: {
     type: Date,

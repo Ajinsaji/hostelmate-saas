@@ -17,7 +17,7 @@ const loginAdmin = async (req, res) => {
 
     if (!admin) {
       logger.warn({ username, email }, "Admin login failed: Admin not found");
-      return res.status(400).json({
+      return res.status(401).json({
         success: false,
         message: "Invalid Credentials",
       });
@@ -34,17 +34,21 @@ const loginAdmin = async (req, res) => {
     if (!isMatch) {
       logger.warn({ username, email }, "Admin login failed: Password mismatch");
       
-      // Track Failed Login
-      const AuditLog = require("../models/AuditLog");
-      await AuditLog.create({
-        adminId: admin._id,
-        action: "FAILED_LOGIN",
-        details: "Invalid password attempt",
-        ipAddress: req.ip || req.connection.remoteAddress,
-        timestamp: new Date()
-      });
+      // Track Failed Login safely without blocking auth response
+      try {
+        const AuditLog = require("../models/AuditLog");
+        await AuditLog.create({
+          adminId: admin._id,
+          action: "FAILED_LOGIN",
+          details: "Invalid password attempt",
+          ipAddress: req.ip || req.connection.remoteAddress,
+          timestamp: new Date()
+        });
+      } catch (auditErr) {
+        logger.error({ auditErr: auditErr.message }, "AuditLog creation failed during admin login failure");
+      }
 
-      return res.status(400).json({
+      return res.status(401).json({
         success: false,
         message: "Invalid Credentials",
       });
