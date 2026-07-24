@@ -11,6 +11,12 @@ const Resident = require("../models/Resident");
 const Payment = require("../models/Payment");
 const PublicAdmission = require("../models/PublicAdmission");
 
+// Utility: detect bcrypt hash format ($2a$, $2b$, $2y$ prefix, 60 chars)
+const looksLikeBcryptHash = (str) => {
+  if (!str || typeof str !== 'string') return false;
+  return /^\$2[aby]\$\d{2}\$.{53}$/.test(str);
+};
+
 // ==========================
 // OWNER/STAFF LOGIN
 // Supports owner, warden, cook
@@ -156,7 +162,7 @@ const loginOwner = async (req, res) => {
       });
     }
 
-    const needsOnboarding = !!owner.firstLogin || !owner.onboardingCompleted;
+    const needsOnboarding = owner ? (!!owner.firstLogin || !owner.onboardingCompleted) : false;
 
     const payload = {
       userId,
