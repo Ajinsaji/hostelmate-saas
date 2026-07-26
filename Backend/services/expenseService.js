@@ -40,7 +40,7 @@ async function createExpense(data, userContext = {}) {
 
   const expenseNumber = data.expenseNumber || (await generateExpenseNumber(hostelId));
 
-  const expenseDate = data.expenseDate ? new Date(data.expenseDate) : new Date();
+
 
   const expense = await Expense.create({
     ...data,

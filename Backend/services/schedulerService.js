@@ -176,34 +176,6 @@ async function processNextJob(workerId = "worker-1") {
 
 
 
-    await AuditLog.create({
-      hostelId: job.hostelId,
-      action: `Background Job ${job.jobType} (${job._id}) Completed Successfully`,
-      actionType: "JOB_COMPLETE",
-      entity: "Job",
-      targetId: job._id,
-      timestamp: new Date(),
-    });
-
-    return job;
-  } catch (err) {
-    logger.error(`[SchedulerEngine] Job ${job._id} (${job.jobType}) failed: ${err.message}`);
-
-    job.error = err.message || "Execution error";
-    if (job.attempts < job.maxRetries) {
-      job.status = "Retrying";
-      // Exponential backoff for retry: 2^attempts * 1 minute
-      const delayMinutes = Math.pow(2, job.attempts);
-      job.scheduledAt = new Date(Date.now() + delayMinutes * 60 * 1000);
-    } else {
-      job.status = "Failed";
-    }
-    await job.save();
-
-    return job;
-  }
-}
-
 /**
  * Run Scheduler Worker Cycle
  */

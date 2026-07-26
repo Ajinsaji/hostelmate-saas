@@ -364,12 +364,6 @@ app.use(
   publicRoutes
 );
 
-// NOTIFICATIONS
-const notificationRoutes = require("./routes/notificationRoutes");
-app.use(
-  "/api/notifications",
-  notificationRoutes
-);
 
 // AI ANALYTICS
 const aiAnalyticsRoutes = require("./routes/aiAnalyticsRoutes");

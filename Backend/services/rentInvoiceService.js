@@ -27,7 +27,7 @@ async function createRentInvoice(data, userContext = {}) {
 
 
   const invoiceNumber = data.invoiceNumber || (await generateInvoiceNumber(hostelId));
-  const issueDate = data.issueDate ? new Date(data.issueDate) : new Date();
+
 
   // Due Date default = 5th of current/next month if not specified
   let dueDate = data.dueDate ? new Date(data.dueDate) : null;
