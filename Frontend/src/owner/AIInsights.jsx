@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import api from "../../utils/api";
+import api from "../utils/apiClient";
 import { toast } from "react-toastify";
 import InsightScoreCard from "../components/ai/InsightScoreCard";
 import ForecastChart from "../components/ai/ForecastChart";

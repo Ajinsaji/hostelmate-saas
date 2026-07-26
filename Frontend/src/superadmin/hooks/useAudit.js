@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import api from "../../utils/api";
+import { useState, useCallback, useEffect } from "react";
+import api from "../../utils/apiClient";
 
 export function useAudit(hostelId, page = 1, limit = 50, filters = {}) {
   const [data, setData] = useState([]);

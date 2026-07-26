@@ -21,8 +21,23 @@ import {
 import toast from "react-hot-toast";
 import api from "../utils/apiClient";
 import VisualFloorPlan from "./VisualFloorPlan";
+import { OwnerLayout } from "../design-system/layouts/OwnerLayout";
+import { PageContainer } from "../design-system/layouts/PageContainer";
+import { Section } from "../design-system/layouts/Section";
+import { CardGrid } from "../design-system/layouts/CardGrid";
+import { Button } from "../design-system/components/Button";
+import FilterChip from "../design-system/components/FilterChip";
+import { KPICard } from "../design-system/components/KPICard";
+import RoomCard from "../design-system/components/RoomCard";
+import RoomDetailsDrawer from "../design-system/components/RoomDetailsDrawer";
+import { AISearchBar } from "../design-system/components/AISearchBar";
+import { EmptyState } from "../design-system/components/EmptyState";
+import { LoadingSkeleton } from "../design-system/components/LoadingSkeleton";
+
 
 export const Rooms = () => {
+  const [showDrawer, setShowDrawer] = useState(false);
+  const [selectedRoom, setSelectedRoom] = useState(null);
   const [activeTab, setActiveTab] = useState("rooms"); // rooms | buildings | floorplan | maintenance
   const [rooms, setRooms] = useState([]);
   const [buildings, setBuildings] = useState([]);
@@ -191,309 +206,144 @@ export const Rooms = () => {
   });
 
   return (
-    <div className="min-h-screen bg-[#081028] text-white p-4 sm:p-6 lg:p-8">
-      <div className="max-w-7xl mx-auto space-y-8">
+    
+    <OwnerLayout>
+      <PageContainer>
+        <Section className="py-4">
+          
+          {/* Top Search Area */}
+          <div className="flex flex-col gap-4 mb-8">
+            <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
+              <h1 className="text-2xl font-bold text-gray-900">Room Management</h1>
+              <div className="flex gap-2">
+                <Button variant="secondary" onClick={() => setShowAddBuildingModal(true)}>
+                  <Building2 size={18} /> Add Building
+                </Button>
+                <Button variant="secondary" onClick={() => setShowAddFloorModal(true)}>
+                  <Layers size={18} /> Add Floor
+                </Button>
+                <Button variant="primary" onClick={() => setShowAddRoomModal(true)}>
+                  <Plus size={18} /> Add Room
+                </Button>
+              </div>
+            </div>
+            
+            <AISearchBar 
+              placeholder="Ask HostelMate AI (e.g., 'Show rooms nearing full occupancy')..."
+              onSearch={(q) => console.log('AI Search:', q)} 
+            />
+            
+            {/* Building Tabs */}
+            <div className="flex items-center gap-2 overflow-x-auto pb-2 border-b border-gray-100">
+              <button 
+                onClick={() => setFilterBuilding("")}
+                className={`px-4 py-2 text-sm font-semibold whitespace-nowrap transition-colors ${!filterBuilding ? 'text-emerald-600 border-b-2 border-emerald-500' : 'text-gray-500 hover:text-gray-700'}`}
+              >
+                All Buildings
+              </button>
+              {buildings.map(b => (
+                <button 
+                  key={b._id}
+                  onClick={() => setFilterBuilding(b._id)}
+                  className={`px-4 py-2 text-sm font-semibold whitespace-nowrap transition-colors ${filterBuilding === b._id ? 'text-emerald-600 border-b-2 border-emerald-500' : 'text-gray-500 hover:text-gray-700'}`}
+                >
+                  {b.buildingName}
+                </button>
+              ))}
+            </div>
 
-        {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-white/10 pb-6">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-black text-white flex items-center gap-3">
-              <BedDouble className="text-emerald-400" /> Enterprise Room & Bed Management
-            </h1>
-            <p className="text-slate-400 text-sm mt-1">
-              Building & floor hierarchy, automatic bed capacity generation, visual floor plans, and maintenance tracking.
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <button
-              onClick={() => setShowAddBuildingModal(true)}
-              className="bg-white/10 hover:bg-white/20 text-slate-200 font-bold px-3.5 py-2 rounded-xl text-xs flex items-center gap-1.5 transition"
-            >
-              <Building2 className="w-4 h-4" /> Add Building
-            </button>
-            <button
-              onClick={() => setShowAddFloorModal(true)}
-              className="bg-white/10 hover:bg-white/20 text-slate-200 font-bold px-3.5 py-2 rounded-xl text-xs flex items-center gap-1.5 transition"
-            >
-              <Layers className="w-4 h-4" /> Add Floor
-            </button>
-            <button
-              onClick={() => setShowAddRoomModal(true)}
-              className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-4 py-2 rounded-xl text-xs flex items-center gap-2 shadow-lg shadow-emerald-500/20 transition"
-            >
-              <Plus className="w-4 h-4" /> Create Room
-            </button>
-          </div>
-        </div>
-
-        {/* Statistics KPI Cards */}
-        {roomStats && bedStats && (
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3">
-            <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-3.5">
-              <span className="text-[10px] font-bold text-slate-400 uppercase">Buildings</span>
-              <div className="text-xl font-black text-white mt-1">{buildings.length}</div>
-            </div>
-            <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-3.5">
-              <span className="text-[10px] font-bold text-slate-400 uppercase">Floors</span>
-              <div className="text-xl font-black text-white mt-1">{floors.length}</div>
-            </div>
-            <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-3.5">
-              <span className="text-[10px] font-bold text-slate-400 uppercase">Rooms</span>
-              <div className="text-xl font-black text-white mt-1">{roomStats.totalRooms}</div>
-            </div>
-            <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-3.5">
-              <span className="text-[10px] font-bold text-slate-400 uppercase">Total Beds</span>
-              <div className="text-xl font-black text-white mt-1">{bedStats.totalBeds}</div>
-            </div>
-            <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-3.5">
-              <span className="text-[10px] font-bold text-slate-400 uppercase">Occupied</span>
-              <div className="text-xl font-black text-emerald-400 mt-1">{bedStats.occupiedBeds}</div>
-            </div>
-            <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-3.5">
-              <span className="text-[10px] font-bold text-slate-400 uppercase">Vacant</span>
-              <div className="text-xl font-black text-blue-400 mt-1">{bedStats.vacantBeds}</div>
-            </div>
-            <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-3.5">
-              <span className="text-[10px] font-bold text-slate-400 uppercase">Maintenance</span>
-              <div className="text-xl font-black text-amber-400 mt-1">{bedStats.maintenanceBeds}</div>
-            </div>
-            <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-3.5">
-              <span className="text-[10px] font-bold text-slate-400 uppercase">Occupancy %</span>
-              <div className="text-xl font-black text-teal-400 mt-1">{bedStats.occupancyRate}%</div>
-            </div>
-          </div>
-        )}
-
-        {/* Tab Navigation */}
-        <div className="flex border-b border-white/10 text-xs font-bold gap-6">
-          <button
-            onClick={() => setActiveTab("rooms")}
-            className={`pb-3 border-b-2 transition ${activeTab === "rooms" ? "border-emerald-400 text-emerald-400" : "border-transparent text-slate-400 hover:text-white"}`}
-          >
-            Rooms & Beds List
-          </button>
-          <button
-            onClick={() => setActiveTab("floorplan")}
-            className={`pb-3 border-b-2 transition ${activeTab === "floorplan" ? "border-emerald-400 text-emerald-400" : "border-transparent text-slate-400 hover:text-white"}`}
-          >
-            Visual Floor Plan
-          </button>
-          <button
-            onClick={() => setActiveTab("buildings")}
-            className={`pb-3 border-b-2 transition ${activeTab === "buildings" ? "border-emerald-400 text-emerald-400" : "border-transparent text-slate-400 hover:text-white"}`}
-          >
-            Buildings & Floors ({buildings.length})
-          </button>
-          <button
-            onClick={() => setActiveTab("maintenance")}
-            className={`pb-3 border-b-2 transition ${activeTab === "maintenance" ? "border-emerald-400 text-emerald-400" : "border-transparent text-slate-400 hover:text-white"}`}
-          >
-            Maintenance Log ({maintenanceLogs.length})
-          </button>
-        </div>
-
-        {/* TAB 1: ROOMS LIST */}
-        {activeTab === "rooms" && (
-          <div className="space-y-4">
-            {/* Toolbar */}
-            <div className="bg-white/[0.02] border border-white/10 rounded-2xl p-4 flex flex-col md:flex-row gap-4 items-center justify-between">
-              <div className="relative w-full md:w-80">
-                <Search className="absolute left-3.5 top-3 w-4 h-4 text-slate-400" />
+            {/* Floor & Status Filters */}
+            <div className="flex flex-col sm:flex-row gap-4 items-center justify-between mt-2">
+              <div className="relative w-full sm:w-80">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
                 <input
                   type="text"
                   placeholder="Search room number..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="w-full bg-white/5 border border-white/10 rounded-xl pl-10 pr-4 py-2 text-xs text-white focus:outline-none"
+                  className="w-full pl-11 pr-4 py-2 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#6C4CF5]/20 focus:border-[#6C4CF5] transition-all shadow-sm"
                 />
               </div>
-
-              <div className="flex flex-wrap items-center gap-3 w-full md:w-auto text-xs">
-                <select
-                  value={filterBuilding}
-                  onChange={(e) => setFilterBuilding(e.target.value)}
-                  className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white focus:outline-none"
-                >
-                  <option value="" className="bg-slate-900">All Buildings</option>
-                  {buildings.map((b) => (
-                    <option key={b._id} value={b._id} className="bg-slate-900">{b.buildingName}</option>
-                  ))}
-                </select>
-
-                <select
-                  value={filterStatus}
-                  onChange={(e) => setFilterStatus(e.target.value)}
-                  className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white focus:outline-none"
-                >
-                  <option value="" className="bg-slate-900">All Statuses</option>
-                  <option value="Vacant" className="bg-slate-900">Vacant</option>
-                  <option value="Partially Occupied" className="bg-slate-900">Partially Occupied</option>
-                  <option value="Fully Occupied" className="bg-slate-900">Fully Occupied</option>
-                  <option value="Under Maintenance" className="bg-slate-900">Under Maintenance</option>
-                </select>
-              </div>
-            </div>
-
-            {/* Table */}
-            <div className="bg-white/[0.02] border border-white/10 rounded-2xl overflow-hidden text-xs">
-              <table className="w-full text-left">
-                <thead className="bg-white/5 text-slate-400 font-bold uppercase border-b border-white/10">
-                  <tr>
-                    <th className="p-4">Room #</th>
-                    <th className="p-4">Building & Floor</th>
-                    <th className="p-4">Type</th>
-                    <th className="p-4">Beds (Occupied/Total)</th>
-                    <th className="p-4">Rent (₹)</th>
-                    <th className="p-4">Status</th>
-                    <th className="p-4 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-white/5 text-slate-300">
-                  {filteredRooms.length > 0 ? (
-                    filteredRooms.map((room) => (
-                      <tr key={room._id} className="hover:bg-white/[0.02]">
-                        <td className="p-4 font-bold text-white">Room {room.roomNumber}</td>
-                        <td className="p-4">
-                          <div>{room.buildingId?.buildingName || "Default Building"}</div>
-                          <div className="text-[10px] text-slate-400">Floor {room.floor || "1"}</div>
-                        </td>
-                        <td className="p-4">{room.roomType}</td>
-                        <td className="p-4">
-                          <span className="font-bold text-emerald-400">{room.occupiedBeds}</span> / {room.capacity}
-                        </td>
-                        <td className="p-4 font-bold text-white">₹{room.monthlyRent || room.rentPerBed}</td>
-                        <td className="p-4">
-                          <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
-                            room.status === "Vacant" ? "bg-blue-500/20 text-blue-300 border-blue-500/30" :
-                            room.status === "Fully Occupied" ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/30" :
-                            room.status === "Partially Occupied" ? "bg-purple-500/20 text-purple-300 border-purple-500/30" :
-                            "bg-amber-500/20 text-amber-300 border-amber-500/30"
-                          }`}>
-                            {room.status}
-                          </span>
-                        </td>
-                        <td className="p-4 text-right">
-                          <div className="flex justify-end gap-2">
-                            <button
-                              onClick={() => {
-                                setMaintenanceForm({ targetType: "Room", targetId: room._id, reason: "", cost: 0 });
-                                setShowMaintenanceModal(true);
-                              }}
-                              className="p-1.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 rounded-lg"
-                              title="Maintenance"
-                            >
-                              <Wrench className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={() => handleDeleteRoom(room._id)}
-                              className="p-1.5 bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 rounded-lg"
-                              title="Soft Delete"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan="7" className="p-8 text-center text-slate-500">No rooms found.</td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
-
-        {/* TAB 2: VISUAL FLOOR PLAN */}
-        {activeTab === "floorplan" && <VisualFloorPlan />}
-
-        {/* TAB 3: BUILDINGS & FLOORS */}
-        {activeTab === "buildings" && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs">
-            <div className="bg-white/[0.02] border border-white/10 rounded-2xl p-6 space-y-4">
-              <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
-                <Building2 className="text-emerald-400" /> Buildings List
-              </h3>
-              <div className="space-y-2">
-                {buildings.map((b) => (
-                  <div key={b._id} className="p-3 bg-white/5 border border-white/5 rounded-xl flex justify-between items-center">
-                    <div>
-                      <div className="font-bold text-white">{b.buildingName} ({b.buildingCode})</div>
-                      <div className="text-[10px] text-slate-400">{b.address || "Main Address"}</div>
-                    </div>
-                    <span className="px-2 py-0.5 rounded-full text-[10px] bg-emerald-500/20 text-emerald-300 font-bold">{b.status}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="bg-white/[0.02] border border-white/10 rounded-2xl p-6 space-y-4">
-              <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
-                <Layers className="text-blue-400" /> Floors List
-              </h3>
-              <div className="space-y-2">
-                {floors.map((f) => (
-                  <div key={f._id} className="p-3 bg-white/5 border border-white/5 rounded-xl flex justify-between items-center">
-                    <div>
-                      <div className="font-bold text-white">{f.floorName} (Floor #{f.floorNumber})</div>
-                      <div className="text-[10px] text-slate-400">{f.buildingId?.buildingName || "Building"}</div>
-                    </div>
-                    <span className="px-2 py-0.5 rounded-full text-[10px] bg-blue-500/20 text-blue-300 font-bold">{f.status}</span>
-                  </div>
-                ))}
+              <div className="flex flex-wrap gap-2 w-full sm:w-auto overflow-x-auto">
+                <FilterChip label="All Status" isActive={!filterStatus} onClick={() => setFilterStatus("")} />
+                <FilterChip label="Available" isActive={filterStatus === "Vacant"} onClick={() => setFilterStatus("Vacant")} />
+                <FilterChip label="Partially Occupied" isActive={filterStatus === "Partially Occupied"} onClick={() => setFilterStatus("Partially Occupied")} />
+                <FilterChip label="Full" isActive={filterStatus === "Fully Occupied"} onClick={() => setFilterStatus("Fully Occupied")} />
+                <FilterChip label="Maintenance" isActive={filterStatus === "Under Maintenance"} onClick={() => setFilterStatus("Under Maintenance")} />
               </div>
             </div>
           </div>
-        )}
 
-        {/* TAB 4: MAINTENANCE LOG */}
-        {activeTab === "maintenance" && (
-          <div className="bg-white/[0.02] border border-white/10 rounded-2xl p-6 space-y-4 text-xs">
-            <div className="flex justify-between items-center border-b border-white/10 pb-4">
-              <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
-                <Wrench className="text-amber-400" /> Maintenance Audit & Execution History
-              </h3>
-              <button
-                onClick={() => setShowMaintenanceModal(true)}
-                className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-3 py-1.5 rounded-xl flex items-center gap-1.5"
-              >
-                <Plus className="w-3.5 h-3.5" /> Log Maintenance
-              </button>
+          {/* Occupancy Dashboard */}
+          {roomStats && bedStats && (
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
+              <KPICard title="Total Rooms" value={roomStats.totalRooms || 0} icon={Layers} color="blue" />
+              <KPICard title="Total Beds" value={bedStats.totalBeds || 0} icon={BedDouble} color="purple" />
+              <KPICard title="Available Beds" value={bedStats.vacantBeds || 0} icon={CheckCircle2} color="emerald" />
+              <KPICard title="Occupied Beds" value={bedStats.occupiedBeds || 0} icon={Shield} color="indigo" />
+              <KPICard title="Maintenance" value={bedStats.maintenanceBeds || 0} icon={Wrench} color="amber" />
+              <KPICard title="Occupancy %" value={`${bedStats.occupancyRate || 0}%`} icon={Activity} color="rose" />
             </div>
+          )}
 
-            <div className="space-y-3">
-              {maintenanceLogs.map((log) => (
-                <div key={log._id} className="p-3 bg-white/5 border border-white/5 rounded-xl flex justify-between items-center">
-                  <div>
-                    <div className="font-bold text-white">{log.targetType} Maintenance - {log.reason}</div>
-                    <div className="text-[10px] text-slate-400 mt-0.5">Started: {new Date(log.startDate).toLocaleDateString()} • Cost: ₹{log.cost}</div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${log.status === "Completed" ? "bg-emerald-500/20 text-emerald-300" : "bg-amber-500/20 text-amber-300"}`}>
-                      {log.status}
-                    </span>
-                    {log.status !== "Completed" && (
-                      <button
-                        onClick={() => handleCompleteMaintenance(log._id)}
-                        className="p-1 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 rounded"
-                        title="Mark Complete"
-                      >
-                        <CheckCircle2 className="w-4 h-4" />
-                      </button>
-                    )}
-                  </div>
-                </div>
+          {/* Room Grid */}
+          {loading ? (
+            <CardGrid>
+              {[1,2,3,4,5,6].map(i => <LoadingSkeleton key={i} type="card" />)}
+            </CardGrid>
+          ) : filteredRooms.length === 0 ? (
+            <EmptyState 
+              title="No Rooms Found"
+              description="No rooms match your selected filters."
+              icon={BedDouble}
+              action={{ label: "Clear Filters", onClick: () => { setSearch(""); setFilterStatus(""); setFilterBuilding(""); } }}
+            />
+          ) : (
+            <CardGrid>
+              {filteredRooms.map(room => (
+                <RoomCard 
+                  key={room._id} 
+                  room={room} 
+                  onAction={(action, r) => {
+                    if (action === 'view') {
+                      setSelectedRoom(r);
+                      setShowDrawer(true);
+                    } else if (action === 'maintenance') {
+                      setMaintenanceForm({ targetType: "Room", targetId: r._id, reason: "", cost: 0, expectedCompletion: "" });
+                      setShowMaintenanceModal(true);
+                    } else if (action === 'assign') {
+                      toast.success('Assign Resident Modal coming soon');
+                    }
+                  }}
+                  onClick={(r) => {
+                     setSelectedRoom(r);
+                     setShowDrawer(true);
+                  }}
+                />
               ))}
-            </div>
-          </div>
-        )}
+            </CardGrid>
+          )}
 
-      </div>
-
-      {/* Add Room Modal */}
-      {showAddRoomModal && (
+        </Section>
+      </PageContainer>
+      
+      {/* Drawer */}
+      <RoomDetailsDrawer 
+        isOpen={showDrawer}
+        onClose={() => setShowDrawer(false)}
+        room={selectedRoom}
+        beds={beds.filter(b => b.roomId?._id === selectedRoom?._id || b.roomId === selectedRoom?._id)}
+        maintenanceLogs={maintenanceLogs.filter(m => m.targetId?._id === selectedRoom?._id || m.targetId === selectedRoom?._id)}
+        onAction={(action, target) => {
+           if (action === 'maintenance') {
+              setMaintenanceForm({ targetType: "Room", targetId: selectedRoom._id, reason: "", cost: 0, expectedCompletion: "" });
+              setShowMaintenanceModal(true);
+           } else if (action === 'assign') {
+              toast.success('Assign flow');
+           }
+        }}
+      />
+  {showAddRoomModal && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-[#0b1739] border border-white/10 rounded-2xl max-w-md w-full p-6 space-y-4 text-xs">
             <h3 className="text-lg font-bold text-white border-b border-white/10 pb-3">Create New Room</h3>
@@ -676,8 +526,7 @@ export const Rooms = () => {
           </div>
         </div>
       )}
-
-    </div>
+    </OwnerLayout>
   );
 };
 

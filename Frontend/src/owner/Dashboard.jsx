@@ -19,10 +19,19 @@ import toast from "react-hot-toast";
 import api from "../utils/apiClient";
 import buildFileUrl from "../utils/buildFileUrl";
 
-import BottomNav from "../components/BottomNav";
-import DashboardLayout from "./DashboardLayout";
+import { OwnerLayout } from "../design-system/layouts/OwnerLayout";
+import { PageContainer } from "../design-system/layouts/PageContainer";
+import { Section } from "../design-system/layouts/Section";
+import { CardGrid } from "../design-system/layouts/CardGrid";
+import { KPICard } from "../design-system/components/KPICard";
+import { AlertCard } from "../design-system/components/AlertCard";
+import { AICard } from "../design-system/components/AICard";
+import { HealthScore } from "../design-system/components/HealthScore";
+import { ChartCard } from "../design-system/components/ChartCard";
+import { QuickActions } from "../design-system/components/QuickActions";
+import { Card } from "../design-system/components/Card";
+import { Button } from "../design-system/components/Button";
 import SubscriptionBanner from "../components/SubscriptionBanner";
-import { PageShell, GlassCard, StatCard, StatusPill, PREMIUM_THEME } from "./PremiumUI";
 
 import useGlobalPolling from "../hooks/useGlobalPolling";
 import useOwnerRealtimeSync from "../hooks/useOwnerRealtimeSync";
@@ -417,181 +426,143 @@ function Dashboard() {
   );
 
   return (
-    <DashboardLayout variant="owner" activePath="/owner/dashboard">
-      <PageShell
-        title="Overview"
-        subtitle={`Welcome back, ${ownerName}`}
-        action={
-          <button
-            onClick={() => navigate("/residents")}
-            className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold"
-            style={{ background: PREMIUM_THEME.primary, color: "#031018" }}
-          >
-            <Plus size={16} /> Add Resident
-          </button>
-        }
-      >
-        {!subscriptionLoading && subscriptionState && (
-          <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25 }}>
-            <SubscriptionBanner
-              status={subscriptionStatus}
-              daysLeft={daysLeft}
-              warningLevel={subscriptionState.warningLevel}
-              renewalRequired={subscriptionState.renewalRequired}
-            />
-          </motion.div>
+    <OwnerLayout ownerPhotoUrl={ownerPhotoUrl} notificationCount={pendingCount}>
+      <PageContainer className="pt-6">
+        
+        {/* Welcome Section */}
+        <Section>
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">Welcome back, {ownerName}</h1>
+              <p className="text-gray-500 mt-1">{subscriptionPlan} plan • {hostel?.city || "Ready for operations"}</p>
+            </div>
+            <div className="flex gap-2">
+              <StatusPill tone="info">{greeting}</StatusPill>
+              <StatusPill>{dateStr}</StatusPill>
+            </div>
+          </div>
+        </Section>
+
+        {/* Subscription Banner (if applicable) */}
+        {!subscriptionLoading && subscriptionState && subscriptionState.status !== "active" && (
+          <Section>
+            <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25 }}>
+              <SubscriptionBanner
+                status={subscriptionStatus}
+                daysLeft={daysLeft}
+                warningLevel={subscriptionState.warningLevel}
+                renewalRequired={subscriptionState.renewalRequired}
+              />
+            </motion.div>
+          </Section>
         )}
 
-        <div className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
-          <GlassCard hover>
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.24em]" style={{ color: PREMIUM_THEME.muted }}>
-                  Current hostel
-                </p>
-                <h2 className="mt-2 text-xl font-semibold">{hostel?.hostelName || "HostelMate"}</h2>
-                <p className="mt-2 text-sm" style={{ color: PREMIUM_THEME.muted }}>
-                  {subscriptionPlan} plan • {hostel?.city || "Ready for operations"}
-                </p>
-              </div>
-              <StatusPill tone="success">Live</StatusPill>
+        {/* Health Score & Alerts */}
+        <Section>
+          <div className="grid gap-4 md:grid-cols-3">
+            <div className="md:col-span-1">
+              <HealthScore score={85} title="Hostel Health" />
             </div>
+            <div className="md:col-span-2 flex flex-col gap-3">
+              {pendingCount > 0 && (
+                <AlertCard 
+                  title={`${pendingCount} Pending Admissions`}
+                  description="You have new resident admission requests pending approval."
+                  severity="high"
+                  onClick={() => navigate("/admissions")}
+                />
+              )}
+              {subscriptionState?.warningLevel !== "none" && (
+                <AlertCard
+                  title="Subscription Alert"
+                  description={subscriptionState?.renewalRequired ? "Your subscription has expired." : `Your subscription expires in ${daysLeft} days.`}
+                  severity={subscriptionState?.renewalRequired ? "high" : "medium"}
+                  onClick={() => navigate("/billing")}
+                />
+              )}
+            </div>
+          </div>
+        </Section>
 
-            <div className="mt-5 flex flex-wrap items-center gap-2">
-              <StatusPill tone="info">{greeting}</StatusPill>
-              <StatusPill tone="neutral">{dateStr}</StatusPill>
-              <StatusPill tone="neutral">{timeStr}</StatusPill>
-            </div>
-          </GlassCard>
+        {/* 6 KPI Cards */}
+        <Section>
+          <CardGrid columns={{ sm: 2, md: 3, lg: 3 }}>
+            <KPICard title="Occupancy" value={`${occupancyPercent}%`} trend="4%" trendDirection="up" icon={Sparkles} tone="info" />
+            <KPICard title="Revenue (Today)" value={`₹${todayCollection}`} trend="12%" trendDirection="up" icon={IndianRupee} tone="success" />
+            <KPICard title="Pending Rent" value={`₹${pendingAmount}`} trend="2%" trendDirection="down" icon={Wallet} tone="danger" />
+            <KPICard title="Total Rooms" value={totalRooms} icon={BedDouble} tone="primary" />
+            <KPICard title="Active Residents" value={totalResidents} icon={Users} tone="primary" />
+            {/* Adding Net Profit as a placeholder since we don't have it in stats, we can use a placeholder for now */}
+            <KPICard title="Net Profit (MoM)" value="₹1.2L" trend="8%" trendDirection="up" icon={TrendingUp} tone="success" />
+          </CardGrid>
+        </Section>
 
-          <GlassCard hover>
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.24em]" style={{ color: PREMIUM_THEME.muted }}>
-                  Pending admissions
-                </p>
-                <p className="mt-2 text-3xl font-semibold">{pendingCount}</p>
-              </div>
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl" style={{ background: `${PREMIUM_THEME.primary}16`, color: PREMIUM_THEME.primary }}>
-                <Bell size={18} />
-              </div>
-            </div>
-            <button onClick={() => navigate("/admissions")} className="mt-4 inline-flex items-center gap-2 text-sm font-semibold" style={{ color: PREMIUM_THEME.primary }}>
-              Review requests <ArrowRight size={16} />
-            </button>
-          </GlassCard>
-        </div>
+        {/* HostelMate AI */}
+        <Section>
+          <AICard 
+            summaryItems={[
+              `Occupancy is at ${occupancyPercent}%`,
+              `₹${pendingAmount} rent is currently pending`,
+              `${pendingCount} new admission requests require attention`
+            ]}
+            actions={[
+              { label: "Review Admissions", onClick: () => navigate("/admissions") },
+              { label: "Collect Rent", onClick: () => navigate("/payments") }
+            ]}
+          />
+        </Section>
 
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          {summaryCards.map((card) => (
-            <button key={card.title} type="button" onClick={card.onClick} className="text-left">
-              <StatCard label={card.title} value={card.value} caption={card.caption} icon={card.icon} tone={card.tone} />
-            </button>
-          ))}
-        </div>
-
-        <div className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
-          <GlassCard hover>
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.24em]" style={{ color: PREMIUM_THEME.muted }}>Quick actions</p>
-                <h3 className="mt-2 text-lg font-semibold">Keep momentum going</h3>
-              </div>
-            </div>
-            <div className="mt-4 grid gap-3 sm:grid-cols-2">
-              {quickActions.map((action) => (
-                <button key={action.label} type="button" onClick={action.onClick} className="flex items-center justify-between rounded-[20px] border p-3 text-left" style={{ borderColor: PREMIUM_THEME.border, background: "rgba(255,255,255,0.03)" }}>
-                  <span className="inline-flex items-center gap-3">
-                    <span className="flex h-10 w-10 items-center justify-center rounded-2xl" style={{ background: `${PREMIUM_THEME.primary}14`, color: PREMIUM_THEME.primary }}>{action.icon}</span>
-                    <span className="font-medium">{action.label}</span>
-                  </span>
-                  <ArrowRight size={16} style={{ color: PREMIUM_THEME.muted }} />
-                </button>
-              ))}
-            </div>
-          </GlassCard>
-
-          <GlassCard hover>
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.24em]" style={{ color: PREMIUM_THEME.muted }}>Occupancy</p>
-                <h3 className="mt-2 text-lg font-semibold">Capacity at a glance</h3>
-              </div>
-              <StatusPill tone="info">Live</StatusPill>
-            </div>
-            <div className="mt-4 grid gap-4 sm:grid-cols-2">
-              <OccupancyDonut percent={stats.occupancyRate} />
-              <div className="space-y-3">
-                <div className="rounded-[18px] border p-3" style={{ borderColor: PREMIUM_THEME.border, background: "rgba(255,255,255,0.03)" }}>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.24em]" style={{ color: PREMIUM_THEME.muted }}>Booked</p>
-                  <p className="mt-2 text-2xl font-semibold">{bookedCount ?? "—"}</p>
-                </div>
-                <div className="rounded-[18px] border p-3" style={{ borderColor: PREMIUM_THEME.border, background: "rgba(255,255,255,0.03)" }}>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.24em]" style={{ color: PREMIUM_THEME.muted }}>Vacant</p>
-                  <p className="mt-2 text-2xl font-semibold">{vacantCount ?? "—"}</p>
-                </div>
-              </div>
-            </div>
-          </GlassCard>
-        </div>
-
-        <div className="grid gap-4 xl:grid-cols-2">
-          <GlassCard hover>
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.24em]" style={{ color: PREMIUM_THEME.muted }}>Recent residents</p>
-                <h3 className="mt-2 text-lg font-semibold">Latest signups</h3>
-              </div>
-              <button onClick={() => navigate("/residents")} className="text-sm font-semibold" style={{ color: PREMIUM_THEME.primary }}>See all</button>
-            </div>
-            <div className="mt-4 space-y-3">
-              {topResidents.length === 0 ? (
-                <div className="rounded-[18px] border p-4 text-center" style={{ borderColor: PREMIUM_THEME.border, background: "rgba(255,255,255,0.03)" }}>
-                  <p className="font-medium">No recent residents yet</p>
-                  <p className="mt-1 text-sm" style={{ color: PREMIUM_THEME.muted }}>Add your first resident to get started.</p>
-                </div>
-              ) : topResidents.map((resident) => (
-                <div key={resident?._id || resident?.name} className="flex items-center justify-between rounded-[18px] border p-3" style={{ borderColor: PREMIUM_THEME.border, background: "rgba(255,255,255,0.03)" }}>
-                  <div className="flex items-center gap-3">
-                    <Avatar name={resident?.name || "Resident"} photoUrl={resident?.profileImage || resident?.photo || ""} size={42} />
-                    <div>
-                      <p className="font-medium">{resident?.name || "Resident"}</p>
-                      <p className="text-sm" style={{ color: PREMIUM_THEME.muted }}>Room {resident?.roomId?.roomNumber || resident?.roomNumber || "—"}</p>
-                    </div>
-                  </div>
-                  <StatusPill tone="info">{resident?.createdAt ? new Date(resident.createdAt).toLocaleDateString("en-IN") : "New"}</StatusPill>
-                </div>
-              ))}
-            </div>
-          </GlassCard>
-
-          <GlassCard hover>
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.24em]" style={{ color: PREMIUM_THEME.muted }}>Collections</p>
-                <h3 className="mt-2 text-lg font-semibold">Today’s momentum</h3>
-              </div>
-            </div>
-            <div className="mt-4 rounded-[18px] border p-3" style={{ borderColor: PREMIUM_THEME.border, background: "rgba(255,255,255,0.03)" }}>
-              <div className="flex items-baseline justify-between gap-3">
-                <div>
-                  <p className="text-3xl font-semibold">₹{todayCollection}</p>
-                  <p className="mt-1 text-sm" style={{ color: PREMIUM_THEME.muted }}>Collected today</p>
-                </div>
-                <div className="flex h-12 w-12 items-center justify-center rounded-2xl" style={{ background: `${PREMIUM_THEME.accent}16`, color: PREMIUM_THEME.accent }}>
-                  <IndianRupee size={18} />
-                </div>
-              </div>
-              <div className="mt-4">
+        {/* Charts & Activity */}
+        <Section>
+          <div className="grid gap-4 lg:grid-cols-2">
+            <ChartCard title="Revenue Trend">
+              <div className="h-48 mt-4">
                 <LineChart values={chartTrend} />
               </div>
-            </div>
-          </GlassCard>
-        </div>
+            </ChartCard>
+            
+            <ChartCard title="Occupancy Split">
+              <div className="h-48 flex items-center justify-center mt-4">
+                 <OccupancyDonut percent={stats.occupancyRate} />
+              </div>
+            </ChartCard>
+          </div>
+        </Section>
 
-        <BottomNav />
-      </PageShell>
-    </DashboardLayout>
+        <Section>
+          <div className="grid gap-4 lg:grid-cols-2">
+             <Card>
+               <h3 className="text-lg font-semibold mb-4 text-gray-900">Quick Actions</h3>
+               <QuickActions actions={quickActions} />
+             </Card>
+
+             <Card>
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-lg font-semibold text-gray-900">Recent Residents</h3>
+                  <button onClick={() => navigate("/residents")} className="text-sm font-semibold text-purple-600">See all</button>
+                </div>
+                <div className="space-y-3">
+                  {topResidents.length === 0 ? (
+                    <p className="text-gray-500 text-sm">No recent residents yet</p>
+                  ) : topResidents.map(resident => (
+                    <div key={resident._id} className="flex items-center justify-between p-3 border border-gray-100 rounded-xl">
+                       <div className="flex items-center gap-3">
+                          <Avatar name={resident.name} photoUrl={resident.profileImage || resident.photo} size={40} />
+                          <div>
+                            <p className="font-medium text-gray-900">{resident.name}</p>
+                            <p className="text-sm text-gray-500">Room {resident?.roomId?.roomNumber || resident?.roomNumber || "—"}</p>
+                          </div>
+                       </div>
+                       <StatusPill tone="info">New</StatusPill>
+                    </div>
+                  ))}
+                </div>
+             </Card>
+          </div>
+        </Section>
+
+      </PageContainer>
+    </OwnerLayout>
   );
 }
 

@@ -65,9 +65,10 @@ body {
   min-height: 100vh;
   display: flex;
   justify-content: center;
-  background: #0B1120;
-  color: #FFFFFF;
+  background: #F8FAFC;
+  color: #111827;
   overflow-x: hidden;
+  font-family: 'Inter', 'SF Pro Display', sans-serif;
 }
 
 /* Global cleanup: ensure no accidental light-mode overflow on mobile */

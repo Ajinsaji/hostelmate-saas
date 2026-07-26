@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { FiLock, FiShieldAlert, FiRefreshCw, FiHelpCircle, FiLogOut } from "react-icons/fi";
+import { FiLock, FiAlertTriangle, FiRefreshCw, FiHelpCircle, FiLogOut } from "react-icons/fi";
 import toast from "../services/toast";
 
 const SubscriptionExpired = () => {

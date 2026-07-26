@@ -26,6 +26,18 @@ import {
 import toast from "react-hot-toast";
 import api from "../utils/apiClient";
 import buildFileUrl from "../utils/buildFileUrl";
+import { OwnerLayout } from "../design-system/layouts/OwnerLayout";
+import { PageContainer } from "../design-system/layouts/PageContainer";
+import { Section } from "../design-system/layouts/Section";
+import { CardGrid } from "../design-system/layouts/CardGrid";
+import { Button } from "../design-system/components/Button";
+import FilterChip from "../design-system/components/FilterChip";
+import { KPICard } from "../design-system/components/KPICard";
+import ResidentCard from "../design-system/components/ResidentCard";
+import { AISearchBar } from "../design-system/components/AISearchBar";
+import { EmptyState } from "../design-system/components/EmptyState";
+import { LoadingSkeleton } from "../design-system/components/LoadingSkeleton";
+
 
 const Residents = () => {
   const [residents, setResidents] = useState([]);
@@ -256,308 +268,199 @@ const Residents = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#081028] text-white p-4 sm:p-6 lg:p-8">
-      <div className="max-w-7xl mx-auto space-y-8">
-
-        {/* Page Header */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-white/10 pb-6">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-black text-white flex items-center gap-3">
-              <Users className="text-emerald-400" /> Enterprise Resident Management
-            </h1>
-            <p className="text-slate-400 text-sm mt-1">
-              Full lifecycle tracking: admission, check-in, room transfers, checkout, and soft-delete archives.
-            </p>
-          </div>
-          <button
-            onClick={() => {
-              setEditingResident(null);
-              setForm({
-                firstName: "",
-                lastName: "",
-                fullName: "",
-                phone: "",
-                email: "",
-                gender: "Male",
-                dateOfBirth: "",
-                aadhaarNumber: "",
-                guardianName: "",
-                guardianPhone: "",
-                emergencyContactName: "",
-                emergencyContactPhone: "",
-                occupation: "Student",
-                company: "",
-                college: "",
-                monthlyRent: 7500,
-                securityDeposit: 5000,
-                foodPreference: "Veg",
-                roomId: "",
-                bedId: "",
-                status: "Pending Admission",
-              });
-              setShowAddModal(true);
-            }}
-            className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-4 py-2.5 rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 text-xs transition"
-          >
-            <Plus className="w-4 h-4" /> Add New Resident / Admission
-          </button>
-        </div>
-
-        {/* Summary Stat Cards */}
-        {stats && (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-            <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-4 flex flex-col justify-between">
-              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Total Residents</span>
-              <span className="text-2xl font-black text-white mt-2">{stats.totalResidents}</span>
-              <span className="text-[10px] text-slate-500 mt-1">All time admissions</span>
+    
+    <OwnerLayout>
+      <PageContainer>
+        <Section className="py-4">
+          {/* Top Search Area */}
+          <div className="flex flex-col gap-4 mb-8">
+            <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
+              <h1 className="text-2xl font-bold text-gray-900">Resident Management</h1>
+              <Button 
+                variant="primary" 
+                onClick={() => {
+                  setEditingResident(null);
+                  setForm({
+                    firstName: "",
+                    lastName: "",
+                    fullName: "",
+                    phone: "",
+                    email: "",
+                    gender: "Male",
+                    dateOfBirth: "",
+                    aadhaarNumber: "",
+                    guardianName: "",
+                    guardianPhone: "",
+                    emergencyContactName: "",
+                    emergencyContactPhone: "",
+                    occupation: "Student",
+                    company: "",
+                    college: "",
+                    monthlyRent: 7500,
+                    securityDeposit: 5000,
+                    foodPreference: "Veg",
+                    roomId: "",
+                    bedId: "",
+                    status: "Pending Admission",
+                  });
+                  setShowAddModal(true);
+                }}
+              >
+                <Plus size={18} />
+                Add Resident
+              </Button>
             </div>
-
-            <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-4 flex flex-col justify-between">
-              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Active</span>
-              <span className="text-2xl font-black text-emerald-400 mt-2">{stats.activeResidents}</span>
-              <span className="text-[10px] text-slate-500 mt-1">Currently staying</span>
-            </div>
-
-            <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-4 flex flex-col justify-between">
-              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Pending</span>
-              <span className="text-2xl font-black text-blue-400 mt-2">{stats.pendingAdmissions}</span>
-              <span className="text-[10px] text-slate-500 mt-1">Awaiting check-in</span>
-            </div>
-
-            <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-4 flex flex-col justify-between">
-              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Notice Period</span>
-              <span className="text-2xl font-black text-amber-400 mt-2">{stats.noticePeriod}</span>
-              <span className="text-[10px] text-slate-500 mt-1">Leaving soon</span>
-            </div>
-
-            <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-4 flex flex-col justify-between">
-              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Checked Out</span>
-              <span className="text-2xl font-black text-slate-400 mt-2">{stats.checkedOutResidents}</span>
-              <span className="text-[10px] text-slate-500 mt-1">Archived stays</span>
-            </div>
-
-            <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-4 flex flex-col justify-between">
-              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Blocked</span>
-              <span className="text-2xl font-black text-rose-400 mt-2">{stats.blockedResidents}</span>
-              <span className="text-[10px] text-slate-500 mt-1">Access restricted</span>
-            </div>
-          </div>
-        )}
-
-        {/* Global Toolbar: Search, Filters & Export */}
-        <div className="bg-white/[0.02] border border-white/10 rounded-2xl p-4 flex flex-col md:flex-row gap-4 items-center justify-between">
-          <div className="relative w-full md:w-80">
-            <Search className="absolute left-3.5 top-3 w-4 h-4 text-slate-400" />
-            <input
-              type="text"
-              placeholder="Search by name, adm #, phone, college..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full bg-white/5 border border-white/10 rounded-xl pl-10 pr-4 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-400"
+            
+            <AISearchBar 
+              placeholder="Ask HostelMate AI (e.g., 'Show residents with unpaid rent')..."
+              onSearch={(q) => console.log('AI Search:', q)} 
             />
+            
+            <div className="relative">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+              <input
+                type="text"
+                placeholder="Search by name, phone, room, or admission ID..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full pl-11 pr-4 py-3 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#6C4CF5]/20 focus:border-[#6C4CF5] transition-all shadow-sm"
+              />
+            </div>
+            
+            <div className="flex flex-wrap gap-2 mt-2">
+              <FilterChip 
+                label="All" 
+                isActive={!filterStatus} 
+                onClick={() => setFilterStatus("")} 
+                count={totalCount}
+              />
+              <FilterChip 
+                label="Active" 
+                isActive={filterStatus === "Active"} 
+                onClick={() => setFilterStatus("Active")} 
+              />
+              <FilterChip 
+                label="Pending" 
+                isActive={filterStatus === "Pending Admission"} 
+                onClick={() => setFilterStatus("Pending Admission")} 
+              />
+              <FilterChip 
+                label="Checked Out" 
+                isActive={filterStatus === "Checked Out"} 
+                onClick={() => setFilterStatus("Checked Out")} 
+              />
+              <FilterChip 
+                label="Overdue" 
+                isActive={filterStatus === "Overdue"} 
+                onClick={() => setFilterStatus("Overdue")} 
+              />
+              <FilterChip 
+                label="Blocked" 
+                isActive={filterStatus === "Blocked"} 
+                onClick={() => setFilterStatus("Blocked")} 
+              />
+            </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
-            <select
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value)}
-              className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"
-            >
-              <option value="" className="bg-slate-900">All Statuses</option>
-              <option value="Active" className="bg-slate-900">Active</option>
-              <option value="Pending Admission" className="bg-slate-900">Pending Admission</option>
-              <option value="Notice Period" className="bg-slate-900">Notice Period</option>
-              <option value="Checked Out" className="bg-slate-900">Checked Out</option>
-              <option value="Blocked" className="bg-slate-900">Blocked</option>
-            </select>
-
-            <select
-              value={filterGender}
-              onChange={(e) => setFilterGender(e.target.value)}
-              className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"
-            >
-              <option value="" className="bg-slate-900">All Genders</option>
-              <option value="Male" className="bg-slate-900">Male</option>
-              <option value="Female" className="bg-slate-900">Female</option>
-              <option value="Other" className="bg-slate-900">Other</option>
-            </select>
-
-            <a
-              href="/api/residents/export/csv"
-              target="_blank"
-              rel="noreferrer"
-              className="bg-white/10 hover:bg-white/20 text-slate-200 text-xs font-bold px-3 py-2 rounded-xl border border-white/10 flex items-center gap-2 transition"
-            >
-              <Download className="w-4 h-4" /> Export CSV
-            </a>
-          </div>
-        </div>
-
-        {/* Residents Table */}
-        <div className="bg-white/[0.02] border border-white/10 rounded-2xl overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-white/5 text-slate-400 font-bold uppercase tracking-wider border-b border-white/10">
-                <tr>
-                  <th className="p-4">Adm #</th>
-                  <th className="p-4">Resident Name</th>
-                  <th className="p-4">Phone / Email</th>
-                  <th className="p-4">Room & Bed</th>
-                  <th className="p-4">Monthly Rent</th>
-                  <th className="p-4">Status</th>
-                  <th className="p-4 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-white/5 text-slate-300">
-                {residents.length > 0 ? (
-                  residents.map((res) => (
-                    <tr key={res._id} className="hover:bg-white/[0.02] transition">
-                      <td className="p-4 font-mono font-bold text-emerald-400">{res.admissionNumber}</td>
-                      <td className="p-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-slate-800 border border-white/10 overflow-hidden flex items-center justify-center font-bold text-white text-xs">
-                            {res.photo ? (
-                              <img src={buildFileUrl(res.photo)} alt="" className="w-full h-full object-cover" />
-                            ) : (
-                              (res.firstName || res.fullName || "R")[0]
-                            )}
-                          </div>
-                          <div>
-                            <div className="font-bold text-white">{res.fullName || res.name}</div>
-                            <div className="text-[10px] text-slate-400">{res.occupation}</div>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="p-4">
-                        <div>{res.phone}</div>
-                        <div className="text-[10px] text-slate-400">{res.email || "-"}</div>
-                      </td>
-                      <td className="p-4">
-                        {res.roomId ? (
-                          <div>
-                            <span className="font-bold text-white">Room {res.roomId.roomNumber}</span>
-                            <span className="text-[10px] text-slate-400 block">Bed {res.bedId?.bedNumber || "N/A"}</span>
-                          </div>
-                        ) : (
-                          <span className="text-slate-500 italic">Unassigned</span>
-                        )}
-                      </td>
-                      <td className="p-4 font-bold text-white">₹{res.monthlyRent}</td>
-                      <td className="p-4">{getStatusBadge(res.status)}</td>
-                      <td className="p-4 text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <button
-                            onClick={() => handleViewProfile(res)}
-                            className="p-1.5 bg-white/10 hover:bg-white/20 rounded-lg text-slate-200"
-                            title="View Profile 360"
-                          >
-                            <Eye className="w-4 h-4" />
-                          </button>
-                          
-                          {res.status !== "Active" && (
-                            <button
-                              onClick={() => {
-                                setSelectedResident(res);
-                                setCheckInForm({ roomId: "", bedId: "", checkInDate: new Date().toISOString().split("T")[0] });
-                                setShowCheckInModal(true);
-                              }}
-                              className="p-1.5 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 rounded-lg"
-                              title="Check-In"
-                            >
-                              <UserCheck className="w-4 h-4" />
-                            </button>
-                          )}
-
-                          {res.status === "Active" && (
-                            <>
-                              <button
-                                onClick={() => {
-                                  setSelectedResident(res);
-                                  setTransferForm({ newRoomId: "", newBedId: "", reason: "" });
-                                  setShowTransferModal(true);
-                                }}
-                                className="p-1.5 bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 rounded-lg"
-                                title="Transfer Room/Bed"
-                              >
-                                <ArrowRightLeft className="w-4 h-4" />
-                              </button>
-
-                              <button
-                                onClick={() => {
-                                  setSelectedResident(res);
-                                  setCheckOutForm({ actualCheckoutDate: new Date().toISOString().split("T")[0], remarks: "" });
-                                  setShowCheckOutModal(true);
-                                }}
-                                className="p-1.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 rounded-lg"
-                                title="Check-Out"
-                              >
-                                <UserX className="w-4 h-4" />
-                              </button>
-                            </>
-                          )}
-
-                          {res.isDeleted ? (
-                            <button
-                              onClick={() => handleRestoreResident(res._id)}
-                              className="p-1.5 bg-teal-500/20 hover:bg-teal-500/30 text-teal-300 rounded-lg"
-                              title="Restore"
-                            >
-                              <RotateCcw className="w-4 h-4" />
-                            </button>
-                          ) : (
-                            <button
-                              onClick={() => handleDeleteResident(res._id)}
-                              className="p-1.5 bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 rounded-lg"
-                              title="Soft Delete"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan="7" className="p-8 text-center text-slate-500">
-                      No resident records found matching filters.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Pagination Footer */}
-          {totalPages > 1 && (
-            <div className="p-4 border-t border-white/10 flex justify-between items-center text-xs">
-              <span className="text-slate-400">
-                Page {page} of {totalPages} ({totalCount} Total Residents)
-              </span>
-              <div className="flex gap-2">
-                <button
-                  disabled={page <= 1}
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  className="px-3 py-1.5 rounded-lg bg-white/10 disabled:opacity-40"
-                >
-                  Previous
-                </button>
-                <button
-                  disabled={page >= totalPages}
-                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                  className="px-3 py-1.5 rounded-lg bg-white/10 disabled:opacity-40"
-                >
-                  Next
-                </button>
-              </div>
+          {/* KPI Summary */}
+          {stats && (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+              <KPICard 
+                title="Total Residents"
+                value={stats.totalResidents || 0}
+                icon={Users}
+                color="blue"
+              />
+              <KPICard 
+                title="Occupied Beds"
+                value={stats.occupiedBeds || 0}
+                icon={BedDouble}
+                color="emerald"
+              />
+              <KPICard 
+                title="Vacant Beds"
+                value={stats.vacantBeds || 0}
+                icon={CheckCircle}
+                color="amber"
+              />
+              <KPICard 
+                title="Pending Rent"
+                value={`₹${stats.totalPendingRent || 0}`}
+                icon={CreditCard}
+                color="rose"
+              />
             </div>
           )}
-        </div>
 
-      </div>
-
-      {/* Add / Edit Resident Modal */}
-      {showAddModal && (
+          {/* Resident Grid */}
+          {loading ? (
+            <CardGrid>
+              {[1,2,3,4,5,6].map(i => <LoadingSkeleton key={i} type="card" />)}
+            </CardGrid>
+          ) : residents.length === 0 ? (
+            <EmptyState 
+              title="No Residents Found"
+              description="Try adjusting your search or filters, or add a new resident."
+              icon={Users}
+              action={{
+                label: "Clear Filters",
+                onClick: () => { setSearch(""); setFilterStatus(""); }
+              }}
+            />
+          ) : (
+            <>
+              <CardGrid>
+                {residents.map(resident => (
+                  <ResidentCard 
+                    key={resident._id} 
+                    resident={resident}
+                    onAction={(action, res) => {
+                      setSelectedResident(res);
+                      if (action === 'view') {
+                        handleViewProfile(res);
+                      } else if (action === 'edit') {
+                        setEditingResident(res);
+                        setForm({ ...res });
+                        setShowAddModal(true);
+                      } else if (action === 'collect_rent') {
+                         // Collect rent modal or route
+                      } else if (action === 'more') {
+                         setShowTransferModal(true);
+                      }
+                    }}
+                  />
+                ))}
+              </CardGrid>
+              
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <div className="flex items-center justify-between mt-8 bg-white px-6 py-4 rounded-2xl border border-gray-100 shadow-sm">
+                  <span className="text-sm text-gray-500">
+                    Showing page <span className="font-semibold text-gray-900">{page}</span> of <span className="font-semibold text-gray-900">{totalPages}</span>
+                  </span>
+                  <div className="flex gap-2">
+                    <Button 
+                      variant="secondary" 
+                      onClick={() => setPage(p => Math.max(1, p - 1))}
+                      disabled={page === 1}
+                    >
+                      Previous
+                    </Button>
+                    <Button 
+                      variant="secondary" 
+                      onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                      disabled={page === totalPages}
+                    >
+                      Next
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </Section>
+      </PageContainer>
+  {showAddModal && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-[#0b1739] border border-white/10 rounded-2xl max-w-2xl w-full p-6 space-y-4 max-h-[90vh] overflow-y-auto text-xs">
             <h3 className="text-lg font-bold text-white border-b border-white/10 pb-3">
@@ -950,7 +853,7 @@ const Residents = () => {
         </div>
       )}
 
-    </div>
+    </OwnerLayout>
   );
 };
 

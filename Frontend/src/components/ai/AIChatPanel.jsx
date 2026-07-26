@@ -1,6 +1,6 @@
-import React, { useState } from "react";
-import { Send, Bot, User, Loader2 } from "lucide-react";
-import api from "../../utils/api";
+import React, { useState, useRef, useEffect } from "react";
+import { Send, User, Bot, Loader2 } from "lucide-react";
+import api from "../../utils/apiClient";
 
 export default function AIChatPanel() {
   const [messages, setMessages] = useState([

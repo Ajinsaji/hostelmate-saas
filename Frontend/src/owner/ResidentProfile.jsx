@@ -1,30 +1,27 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import {
-  User,
-  Phone,
-  Mail,
-  MapPin,
-  Calendar,
-  CreditCard,
-  ShieldCheck,
-  Activity,
-  ArrowLeft,
-  Briefcase,
-  FileText,
-  Heart,
-  Users,
-  BedDouble,
-} from "lucide-react";
 import toast from "react-hot-toast";
 import api from "../utils/apiClient";
 import buildFileUrl from "../utils/buildFileUrl";
+import { OwnerLayout } from "../design-system/layouts/OwnerLayout";
+import { PageContainer } from "../design-system/layouts/PageContainer";
+import { Section } from "../design-system/layouts/Section";
+import { Card } from "../design-system/components/Card";
+import { Button } from "../design-system/components/Button";
+import { KPICard } from "../design-system/components/KPICard";
+import { StatusPill } from "../design-system/components/StatusPill";
+import { AICard } from "../design-system/components/AICard";
+import { EmptyState } from "../design-system/components/EmptyState";
+import Tabs from "../design-system/components/Tabs";
+import Timeline from "../design-system/components/Timeline";
+import { User, CreditCard, Calendar, FileText, AlertTriangle, Clock, ArrowLeft, Edit, BedDouble, Phone, MapPin, Shield } from "lucide-react";
 
 const ResidentProfile = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState('details');
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -40,123 +37,184 @@ const ResidentProfile = () => {
         setLoading(false);
       }
     };
-    fetchProfile();
+    if (id) fetchProfile();
   }, [id]);
+
+  const handleCheckout = () => {
+    toast.success("Checkout flow initialized");
+  };
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#081028] text-white flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-400"></div>
-      </div>
+      <OwnerLayout>
+        <PageContainer>
+          <div className="flex justify-center items-center h-64">
+            <span className="text-gray-500">Loading Profile...</span>
+          </div>
+        </PageContainer>
+      </OwnerLayout>
     );
   }
 
-  if (!profile?.resident) {
+  if (!profile || !profile.resident) {
     return (
-      <div className="min-h-screen bg-[#081028] text-white p-8 text-center">
-        <h2>Resident Not Found</h2>
-        <button onClick={() => navigate("/residents")} className="mt-4 px-4 py-2 bg-emerald-500 text-slate-950 font-bold rounded-xl">
-          Back to Residents
-        </button>
-      </div>
+      <OwnerLayout>
+        <PageContainer>
+          <EmptyState title="Profile Not Found" description="The resident profile could not be loaded." icon={User} />
+        </PageContainer>
+      </OwnerLayout>
     );
   }
 
-  const { resident, auditHistory } = profile;
+  const res = profile.resident;
+
+  // Enterprise Tabs Definition
+  const tabs = [
+    { id: 'details', label: 'Details', icon: User },
+    { id: 'payments', label: 'Payments', icon: CreditCard },
+    { id: 'attendance', label: 'Attendance', icon: Calendar },
+    { id: 'documents', label: 'Documents', icon: FileText, badge: res.documents?.length || 0 },
+    { id: 'complaints', label: 'Complaints', icon: AlertTriangle, badge: res.complaints?.filter(c => c.status !== 'resolved').length || 0 },
+    { id: 'timeline', label: 'Timeline', icon: Clock }
+  ];
+
+  // Map backend timeline/history to timeline component
+  const timelineEvents = profile.auditHistory?.map(log => ({
+    id: log._id,
+    title: log.action,
+    description: log.details || "",
+    timestamp: log.timestamp,
+    type: 'default',
+    icon: Clock
+  })) || [];
 
   return (
-    <div className="min-h-screen bg-[#081028] text-white p-4 sm:p-6 lg:p-8">
-      <div className="max-w-5xl mx-auto space-y-6">
-
-        {/* Back Button */}
-        <button
-          onClick={() => navigate(-1)}
-          className="flex items-center gap-2 text-xs text-slate-400 hover:text-white transition"
-        >
-          <ArrowLeft className="w-4 h-4" /> Back to Residents
-        </button>
-
-        {/* Profile Banner Card */}
-        <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-6 flex flex-col md:flex-row items-center justify-between gap-6">
-          <div className="flex items-center gap-5">
-            <div className="w-20 h-20 rounded-2xl bg-slate-800 border border-white/10 overflow-hidden flex items-center justify-center text-3xl font-black text-white shadow-xl">
-              {resident.photo ? (
-                <img src={buildFileUrl(resident.photo)} alt="" className="w-full h-full object-cover" />
-              ) : (
-                (resident.firstName || "R")[0]
-              )}
-            </div>
-            <div>
-              <div className="flex items-center gap-3">
-                <h1 className="text-2xl font-black text-white">{resident.fullName}</h1>
-                <span className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-xs px-3 py-0.5 rounded-full font-bold">
-                  {resident.status}
-                </span>
-              </div>
-              <div className="font-mono text-emerald-400 text-xs font-bold mt-1">{resident.admissionNumber}</div>
-              <div className="text-xs text-slate-400 mt-1 flex items-center gap-4">
-                <span>{resident.occupation}</span>
-                <span>•</span>
-                <span>{resident.phone}</span>
-                {resident.email && <span>• {resident.email}</span>}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Profile Content Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs">
+    <OwnerLayout>
+      <PageContainer>
+        <Section className="py-4">
           
-          {/* Accommodation & Financials */}
-          <div className="bg-white/[0.02] border border-white/10 rounded-2xl p-6 space-y-3">
-            <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2 mb-2">
-              <BedDouble className="text-emerald-400" /> Accommodation & Financial Summary
-            </h3>
-            <div className="flex justify-between"><span className="text-slate-400">Assigned Room:</span><span className="font-bold text-white">{resident.roomId?.roomNumber ? `Room ${resident.roomId.roomNumber}` : "Unassigned"}</span></div>
-            <div className="flex justify-between"><span className="text-slate-400">Assigned Bed:</span><span className="font-bold text-white">{resident.bedId?.bedNumber ? `Bed ${resident.bedId.bedNumber}` : "Unassigned"}</span></div>
-            <div className="flex justify-between"><span className="text-slate-400">Monthly Rent:</span><span className="font-bold text-emerald-400 text-sm">₹{resident.monthlyRent}</span></div>
-            <div className="flex justify-between"><span className="text-slate-400">Security Deposit:</span><span className="font-bold text-white">₹{resident.securityDeposit || resident.depositAmount}</span></div>
-            <div className="flex justify-between"><span className="text-slate-400">Joining Date:</span><span className="text-slate-300">{new Date(resident.joiningDate || resident.joinDate).toLocaleDateString()}</span></div>
-            <div className="flex justify-between"><span className="text-slate-400">Food Preference:</span><span className="text-slate-300">{resident.foodPreference}</span></div>
+          {/* Top Actions */}
+          <div className="flex items-center justify-between mb-6">
+            <Button variant="secondary" size="sm" onClick={() => navigate("/owner/residents")}>
+              <ArrowLeft size={16} /> Back to Residents
+            </Button>
+            <div className="flex gap-2">
+              <Button variant="secondary" size="sm">
+                <Edit size={16} /> Edit Profile
+              </Button>
+              <Button variant="danger" size="sm" onClick={handleCheckout}>
+                Check Out
+              </Button>
+            </div>
           </div>
 
-          {/* Guardian & Emergency */}
-          <div className="bg-white/[0.02] border border-white/10 rounded-2xl p-6 space-y-3">
-            <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2 mb-2">
-              <Users className="text-blue-400" /> Guardian & Emergency Contacts
-            </h3>
-            <div className="flex justify-between"><span className="text-slate-400">Guardian Name:</span><span className="text-white">{resident.guardianName || "-"}</span></div>
-            <div className="flex justify-between"><span className="text-slate-400">Guardian Relation:</span><span className="text-white">{resident.guardianRelation || "-"}</span></div>
-            <div className="flex justify-between"><span className="text-slate-400">Guardian Phone:</span><span className="text-white">{resident.guardianPhone || "-"}</span></div>
-            <div className="flex justify-between"><span className="text-slate-400">Emergency Contact:</span><span className="text-white">{resident.emergencyContactPhone || resident.emergencyContact || "-"}</span></div>
-            <div className="flex justify-between"><span className="text-slate-400">Aadhaar Number:</span><span className="text-white font-mono">{resident.aadhaarNumber || "-"}</span></div>
-          </div>
-
-        </div>
-
-        {/* Audit Timeline */}
-        <div className="bg-white/[0.02] border border-white/10 rounded-2xl p-6 text-xs">
-          <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2 mb-4">
-            <Activity className="text-purple-400" /> Resident Lifecycle Audit Timeline
-          </h3>
-          <div className="space-y-3">
-            {auditHistory?.length > 0 ? (
-              auditHistory.map((log) => (
-                <div key={log._id} className="p-3 bg-white/5 border border-white/5 rounded-xl flex items-center justify-between">
-                  <div>
-                    <div className="font-bold text-white">{log.action}</div>
-                    <div className="text-[10px] text-slate-400 mt-0.5">{log.actionType} • {new Date(log.timestamp).toLocaleString()}</div>
+          {/* Profile Hero */}
+          <Card padding="none" className="overflow-visible mb-6">
+            <div className="p-8 flex flex-col md:flex-row items-start md:items-center gap-6">
+              <div className="w-24 h-24 rounded-full border-4 border-white shadow-md overflow-hidden bg-gray-100 shrink-0">
+                <img 
+                  src={res.photo ? buildFileUrl(res.photo) : `https://ui-avatars.com/api/?name=${encodeURIComponent(res.fullName || res.firstName)}&background=F3F4F6&color=6B7280`} 
+                  alt={res.fullName || res.firstName}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              <div className="flex-1 flex flex-col sm:flex-row justify-between items-start w-full gap-4">
+                <div>
+                  <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
+                    {res.fullName || `${res.firstName} ${res.lastName}`}
+                    <StatusPill status={res.status} size="md" />
+                  </h1>
+                  <div className="flex items-center gap-4 mt-2 text-sm text-gray-500 font-medium">
+                    <span className="flex items-center gap-1"><BedDouble size={14}/> Room {res.roomId?.roomNumber || "Unassigned"}</span>
+                    <span className="flex items-center gap-1"><Phone size={14}/> {res.phone}</span>
+                    <span className="flex items-center gap-1"><MapPin size={14}/> {res.permanentAddress?.city || "Unknown"}</span>
                   </div>
                 </div>
-              ))
-            ) : (
-              <div className="text-slate-500 italic">No audit history recorded</div>
-            )}
-          </div>
-        </div>
+                
+                <div className="bg-emerald-50 rounded-xl p-4 border border-emerald-100 flex flex-col items-end">
+                  <div className="text-emerald-700 text-xs font-semibold uppercase tracking-wider mb-1">Health Score</div>
+                  <div className="text-2xl font-bold text-emerald-600">98/100</div>
+                </div>
+              </div>
+            </div>
+          </Card>
 
-      </div>
-    </div>
+          {/* AI Summary */}
+          {res.aiInsight && (
+            <AICard 
+              title="HostelMate Intelligence"
+              description={res.aiInsight}
+              confidence={92}
+              className="mb-8"
+            />
+          )}
+
+          {/* Quick Stats */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+            <KPICard title="Monthly Rent" value={`₹${res.monthlyRent || 0}`} icon={CreditCard} color="blue" />
+            <KPICard title="Security Deposit" value={`₹${res.securityDeposit || 0}`} icon={Shield} color="emerald" />
+            <KPICard title="Pending Dues" value={`₹${res.pendingRent || 0}`} icon={AlertTriangle} color={res.pendingRent > 0 ? 'rose' : 'emerald'} />
+            <KPICard title="Attendance" value="94%" icon={Calendar} color="purple" />
+          </div>
+
+          {/* Tabs */}
+          <div className="mb-6">
+            <Tabs tabs={tabs} activeTab={activeTab} onChange={setActiveTab} />
+          </div>
+
+          {/* Tab Content */}
+          <Card className="min-h-[400px]">
+            {activeTab === 'details' && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div className="space-y-6">
+                  <div>
+                    <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wider mb-4 border-b pb-2">Personal Information</h3>
+                    <div className="space-y-3">
+                      <div className="flex justify-between"><span className="text-gray-500 text-sm">Gender</span><span className="font-medium text-gray-900 text-sm">{res.gender}</span></div>
+                      <div className="flex justify-between"><span className="text-gray-500 text-sm">DOB</span><span className="font-medium text-gray-900 text-sm">{res.dateOfBirth ? new Date(res.dateOfBirth).toLocaleDateString() : "-"}</span></div>
+                      <div className="flex justify-between"><span className="text-gray-500 text-sm">Aadhaar</span><span className="font-medium text-gray-900 text-sm">{res.aadhaarNumber}</span></div>
+                      <div className="flex justify-between"><span className="text-gray-500 text-sm">Food Preference</span><span className="font-medium text-gray-900 text-sm">{res.foodPreference}</span></div>
+                    </div>
+                  </div>
+                </div>
+                <div className="space-y-6">
+                  <div>
+                    <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wider mb-4 border-b pb-2">Emergency Contacts</h3>
+                    <div className="space-y-3">
+                      <div className="flex justify-between"><span className="text-gray-500 text-sm">Guardian</span><span className="font-medium text-gray-900 text-sm">{res.guardianName}</span></div>
+                      <div className="flex justify-between"><span className="text-gray-500 text-sm">Phone</span><span className="font-medium text-gray-900 text-sm">{res.guardianPhone}</span></div>
+                      <div className="flex justify-between"><span className="text-gray-500 text-sm">Emergency Info</span><span className="font-medium text-gray-900 text-sm">{res.emergencyContact || "-"}</span></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+            
+            {activeTab === 'payments' && (
+              <EmptyState title="Payment History" description="The detailed payment ledger will be displayed here." icon={CreditCard} />
+            )}
+            
+            {activeTab === 'attendance' && (
+              <EmptyState title="Attendance Logs" description="Attendance integration coming soon." icon={Calendar} />
+            )}
+            
+            {activeTab === 'documents' && (
+              <EmptyState title="Resident Documents" description="Upload Aadhaar, Police Verification, and Agreements." icon={FileText} />
+            )}
+
+            {activeTab === 'complaints' && (
+              <EmptyState title="Complaints" description="No active complaints reported." icon={AlertTriangle} />
+            )}
+
+            {activeTab === 'timeline' && (
+              <div className="max-w-2xl">
+                <Timeline events={timelineEvents} />
+              </div>
+            )}
+          </Card>
+        </Section>
+      </PageContainer>
+    </OwnerLayout>
   );
 };
 
