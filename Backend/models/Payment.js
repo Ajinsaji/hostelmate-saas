@@ -68,6 +68,11 @@ const paymentSchema = new mongoose.Schema({
   },
 });
 
+// Performance indexes
+paymentSchema.index({ hostelId: 1 });
+paymentSchema.index({ residentId: 1, month: 1 }); // Duplicate payment check
+paymentSchema.index({ hostelId: 1, status: 1 });  // Pending payment queries
+
 module.exports = mongoose.model(
   "Payment",
  paymentSchema

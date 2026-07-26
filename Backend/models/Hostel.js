@@ -151,6 +151,9 @@ const hostelSchema = new mongoose.Schema({
   qrCode: String,
 });
 
+// Performance indexes
+hostelSchema.index({ slug: 1 });             // Public page lookup
+hostelSchema.index({ subscriptionStatus: 1 }); // Subscription scheduler queries
 
 module.exports = mongoose.model(
   "Hostel",

@@ -26,6 +26,7 @@ function DesktopSidebar({ variant = "owner", activePath }) {
     { key: "residents", icon: Users, label: "Residents", href: "/residents" },
     { key: "payments", icon: Wallet, label: "Payments", href: "/payments" },
     { key: "reports", icon: FileText, label: "Reports", href: "/reports" },
+    { key: "ai", icon: ShieldCheck, label: "AI Insights", href: "/owner/ai-insights" },
   ];
 
   const adminItems = [

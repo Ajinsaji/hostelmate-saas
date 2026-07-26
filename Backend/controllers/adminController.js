@@ -595,7 +595,7 @@ const resetOwnerTempPassword = async (req, res) => {
 
     res.status(200).json({ success: true, message: "Password reset successfully", tempPassword: newTempPassword });
   } catch (error) {
-    res.status(500).json(error);
+    res.status(500).json({ success: false, message: "Failed to reset password", error: error?.message || String(error) });
   }
 };
 
@@ -707,7 +707,7 @@ const updateSubscription =
 
     } catch (error) {
 
-      res.status(500).json(error);
+      res.status(500).json({ success: false, message: "Failed to update subscription", error: error?.message || String(error) });
 
     }
   };

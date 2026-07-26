@@ -1,4 +1,5 @@
 require("dotenv").config();
+const { logger } = require("./utils/logger");
 
 // Fail-fast for missing critical environment variables
 const criticalEnvs = ["MONGO_URI", "JWT_SECRET"];
@@ -14,7 +15,6 @@ const express = require("express");
 const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
 const pinoHttp = require("pino-http");
-const { logger } = require("./utils/logger");
 
 const cors = require("cors");
 const path = require("path");
@@ -63,6 +63,9 @@ const publicRoutes = require("./routes/publicRoutes");
 // ==========================
 
 const app = express();
+
+// Trust Render/reverse-proxy headers for correct req.ip
+app.set("trust proxy", 1);
 
 
 // ==========================
@@ -132,7 +135,10 @@ app.use(
 // DATABASE
 // ==========================
 
-connectDB();
+const { seedDefaultFeaturesAndPlans } = require("./services/subscriptionService");
+connectDB().then(() => {
+  seedDefaultFeaturesAndPlans().catch((err) => logger.error("Seed error:", err));
+});
 
 
 // ==========================
@@ -168,6 +174,14 @@ app.use(
 
 
 
+// BUILDINGS
+const buildingRoutes = require("./routes/buildingRoutes");
+app.use("/api/buildings", buildingRoutes);
+
+// FLOORS
+const floorRoutes = require("./routes/floorRoutes");
+app.use("/api/floors", floorRoutes);
+
 // ROOMS
 app.use(
   "/api/rooms",
@@ -180,6 +194,11 @@ app.use(
   bedRoutes
 );
 
+// MAINTENANCE
+const maintenanceRoutes = require("./routes/maintenanceRoutes");
+app.use("/api/maintenance", maintenanceRoutes);
+
+
 
 // RESIDENTS
 app.use(
@@ -187,11 +206,104 @@ app.use(
   residentRoutes
 );
 
-// PAYMENTS
+// PAYMENTS (Resident Rent)
 app.use(
   "/api/payments",
   paymentRoutes
 );
+
+// ENTERPRISE RENT COLLECTION MODULE
+const rentPlanRoutes = require("./routes/rentPlanRoutes");
+const rentInvoiceRoutes = require("./routes/rentInvoiceRoutes");
+const rentPaymentRoutes = require("./routes/rentPaymentRoutes");
+const ledgerRoutes = require("./routes/ledgerRoutes");
+const depositRoutes = require("./routes/depositRoutes");
+const rentReportRoutes = require("./routes/rentReportRoutes");
+
+app.use("/api/rent-plans", rentPlanRoutes);
+app.use("/api/rent-invoices", rentInvoiceRoutes);
+app.use("/api/rent-payments", rentPaymentRoutes);
+app.use("/api/ledger", ledgerRoutes);
+app.use("/api/deposits", depositRoutes);
+app.use("/api/rent-reports", rentReportRoutes);
+
+// ENTERPRISE EXPENSE MANAGEMENT MODULE
+const expenseCategoryRoutes = require("./routes/expenseCategoryRoutes");
+const vendorRoutes = require("./routes/vendorRoutes");
+const expenseRoutes = require("./routes/expenseRoutes");
+const recurringExpenseRoutes = require("./routes/recurringExpenseRoutes");
+const budgetRoutes = require("./routes/budgetRoutes");
+const expenseReportRoutes = require("./routes/expenseReportRoutes");
+
+app.use("/api/expense-categories", expenseCategoryRoutes);
+app.use("/api/vendors", vendorRoutes);
+app.use("/api/expenses", expenseRoutes);
+app.use("/api/recurring-expenses", recurringExpenseRoutes);
+app.use("/api/budgets", budgetRoutes);
+app.use("/api/expense-reports", expenseReportRoutes);
+
+// FINANCIAL PERIOD LOCK & ACCOUNTING PROTECTION
+const financialPeriodRoutes = require("./routes/financialPeriodRoutes");
+app.use("/api/financial-periods", financialPeriodRoutes);
+
+// SHARED NOTIFICATION CENTER INFRASTRUCTURE
+const notificationRoutes = require("./routes/notificationRoutes");
+app.use("/api/notifications", notificationRoutes);
+
+const notificationTemplateRoutes = require("./routes/notificationTemplateRoutes");
+app.use("/api/notification-templates", notificationTemplateRoutes);
+
+// BACKGROUND JOB & SCHEDULER ENGINE
+const jobRoutes = require("./routes/jobRoutes");
+app.use("/api/jobs", jobRoutes);
+
+// ENTERPRISE FOOD & MESS MANAGEMENT MODULE
+const mealPlanRoutes = require("./routes/mealPlanRoutes");
+const residentMealPlanRoutes = require("./routes/residentMealPlanRoutes");
+const menuRoutes = require("./routes/menuRoutes");
+const mealAttendanceRoutes = require("./routes/mealAttendanceRoutes");
+const inventoryRoutes = require("./routes/inventoryRoutes");
+const recipeRoutes = require("./routes/recipeRoutes");
+const kitchenPurchaseRoutes = require("./routes/kitchenPurchaseRoutes");
+const wasteRoutes = require("./routes/wasteRoutes");
+const foodReportRoutes = require("./routes/foodReportRoutes");
+
+app.use("/api/meal-plans", mealPlanRoutes);
+app.use("/api/resident-meal-plans", residentMealPlanRoutes);
+app.use("/api/menus", menuRoutes);
+app.use("/api/meal-attendance", mealAttendanceRoutes);
+app.use("/api/inventory", inventoryRoutes);
+app.use("/api/recipes", recipeRoutes);
+app.use("/api/kitchen-purchases", kitchenPurchaseRoutes);
+app.use("/api/waste", wasteRoutes);
+app.use("/api/food-reports", foodReportRoutes);
+
+// ENTERPRISE PROCUREMENT ERP MODULE
+const procurementRoutes = require("./routes/procurementRoutes");
+app.use("/api/procurement", procurementRoutes);
+
+// ACCOUNTS PAYABLE (AP) MODULE
+const accountsPayableRoutes = require("./routes/accountsPayableRoutes");
+app.use("/api/accounts-payable", accountsPayableRoutes);
+
+// BANK & CASH MANAGEMENT (TREASURY) MODULE
+const treasuryRoutes = require("./routes/treasuryRoutes");
+app.use("/api/treasury", treasuryRoutes);
+
+// SAAS SUBSCRIPTION COMMERCIAL PAYMENTS
+
+
+
+
+
+
+
+
+
+
+const saasPaymentRoutes = require("./routes/saasPaymentRoutes");
+app.use("/api/saas-payments", saasPaymentRoutes);
+app.use("/api/payments/subscription", saasPaymentRoutes);
 
 // ADMIN
 app.use(
@@ -199,11 +311,41 @@ app.use(
   adminRoutes
 );
 
+// SAAS ADMIN SUBSCRIPTIONS
+const saasAdminRoutes = require("./routes/saasAdminRoutes");
+app.use("/api/admin/subscriptions", saasAdminRoutes);
+
 // STAFF
 app.use(
   "/api/staff",
   staffRoutes
 );
+
+// PERMISSIONS (RBAC)
+const permissionRoutes = require("./routes/permissionRoutes");
+app.use("/api/permissions", permissionRoutes);
+
+// SHIFT, ATTENDANCE, LEAVE & OVERTIME (PHASE 8.2)
+const shiftRoutes = require("./routes/shiftRoutes");
+const attendanceRoutes = require("./routes/attendanceRoutes");
+const leaveRoutes = require("./routes/leaveRoutes");
+const overtimeRoutes = require("./routes/overtimeRoutes");
+
+app.use("/api/shifts", shiftRoutes);
+app.use("/api/attendance", attendanceRoutes);
+app.use("/api/leaves", leaveRoutes);
+app.use("/api/overtime", overtimeRoutes);
+
+// ENTERPRISE PAYROLL ENGINE (PHASE 8.3)
+const payrollRoutes = require("./routes/payrollRoutes");
+app.use("/api/payroll", payrollRoutes);
+
+// ENTERPRISE BUSINESS INTELLIGENCE & ANALYTICS (PHASE 9)
+const analyticsRoutes = require("./routes/analyticsRoutes");
+const reportRoutes = require("./routes/reportRoutes");
+
+app.use("/api/analytics", analyticsRoutes);
+app.use("/api/reports", reportRoutes);
 
 // OWNER
 app.use(
@@ -235,6 +377,10 @@ app.use(
   "/api/dashboard",
   aiAnalyticsRoutes
 );
+
+// ENTERPRISE AI PLATFORM (PHASE 10)
+const aiRoutes = require("./routes/aiRoutes");
+app.use("/api/ai", aiRoutes);
 
 
 

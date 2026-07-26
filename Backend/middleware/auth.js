@@ -12,7 +12,10 @@ const auth = (req, res, next) => {
       return res.status(401).json({ success: false, message: "Missing token" });
     }
 
-    const secret = process.env.JWT_SECRET || "change_me_secret";
+    const secret = process.env.JWT_SECRET;
+    if (!secret) {
+      return res.status(500).json({ success: false, message: "Server misconfigured: JWT_SECRET missing" });
+    }
     const payload = jwt.verify(token, secret);
 
     if (!payload || !payload.role) {

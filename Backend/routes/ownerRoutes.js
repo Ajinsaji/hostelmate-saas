@@ -51,11 +51,13 @@ router.put("/onboarding/rules", ownerAuth, saveOnboardingRules);
 router.put("/onboarding/complete-rooms", ownerAuth, completeOnboardingRooms);
 router.put("/onboarding/complete", ownerAuth, completeOnboarding);
 
-// Superadmin actions
-router.put("/owners/reset-password", resetOwnerPassword);
-router.put("/owners/:ownerId/status", setOwnerStatus);
-router.put("/owners/force-logout", forceLogout);
-router.put("/owners/transfer-ownership", transferOwnership);
+// Superadmin actions — require admin authentication
+const { requireRole } = require("../middleware/auth");
+const adminGuard = requireRole(["super_admin", "admin"]);
+router.put("/owners/reset-password", adminGuard, resetOwnerPassword);
+router.put("/owners/:ownerId/status", adminGuard, setOwnerStatus);
+router.put("/owners/force-logout", adminGuard, forceLogout);
+router.put("/owners/transfer-ownership", adminGuard, transferOwnership);
 
 module.exports = router;
 

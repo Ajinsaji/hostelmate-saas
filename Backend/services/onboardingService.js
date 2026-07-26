@@ -72,7 +72,7 @@ const approveHostelRegistration = async ({
     // 5. Generate Temporary Password
     const tempPassword = crypto.randomBytes(4).toString("hex"); // e.g. 8 chars
     const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash( salt);
+    const hashedPassword = await bcrypt.hash(tempPassword, salt);
 
     // 6. Create Owner
     const newOwner = new Owner({

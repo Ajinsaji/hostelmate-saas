@@ -1,87 +1,59 @@
 const express = require("express");
-
 const router = express.Router();
-
+const ownerAuth = require("../middleware/ownerAuth");
+const { uploadFields } = require("../middleware/cloudinaryUpload");
 const {
   createResident,
   getResidentsByHostel,
+  getResidentStatistics,
+  searchResidents,
   getSingleResident,
   updateResident,
-  checkoutResident,
   deleteResident,
+  restoreResident,
+  checkInResident,
+  checkoutResident,
+  transferRoomOrBed,
+  changeStatus,
+  exportResidentsCSV,
 } = require("../controllers/residentController");
 
-const ownerAuth = require("../middleware/ownerAuth");
-const { uploadFields } = require("../middleware/cloudinaryUpload");
+const residentUploads = uploadFields([
+  { name: "photo", maxCount: 1 },
+  { name: "idProof", maxCount: 1 },
+  { name: "signatureFile", maxCount: 1 },
+]);
 
-// ==========================
-// CREATE RESIDENT
-// ==========================
+// Special Endpoints (Must be registered BEFORE /:residentId)
+router.get("/statistics", ownerAuth, getResidentStatistics);
+router.get("/search", ownerAuth, searchResidents);
+router.get("/export/csv", ownerAuth, exportResidentsCSV);
 
-router.post(
-  "/create",
-  ownerAuth,
-  uploadFields([
-    {
-      name: "photo",
-      maxCount: 1,
-    },
-    {
-      name: "idProof",
-      maxCount: 1,
-    },
-    {
-      name: "signatureFile",
-      maxCount: 1,
-    },
-  ]),
-  createResident
-);
+// Workflow Patch Operations
+router.patch("/checkin", ownerAuth, checkInResident);
+router.patch("/checkout", ownerAuth, checkoutResident);
+router.patch("/transfer-room", ownerAuth, transferRoomOrBed);
+router.patch("/transfer-bed", ownerAuth, transferRoomOrBed);
+router.patch("/status", ownerAuth, changeStatus);
 
-// ==========================
-// GET ALL RESIDENTS
-// BY HOSTEL
-// ==========================
+// Creation
+router.post("/", ownerAuth, residentUploads, createResident);
+router.post("/create", ownerAuth, residentUploads, createResident); // Legacy Alias
 
-router.get("/hostel", ownerAuth, getResidentsByHostel);
+// Listing
+router.get("/", ownerAuth, getResidentsByHostel);
+router.get("/hostel", ownerAuth, getResidentsByHostel); // Legacy Alias
 
-// ==========================
-// GET SINGLE RESIDENT
-// ==========================
+// Single Resident Details, Updates, Deletion, Restoration
+router.get("/single/:residentId", ownerAuth, getSingleResident); // Legacy Alias
+router.get("/:residentId", ownerAuth, getSingleResident);
 
-router.get("/single/:residentId", getSingleResident);
+router.put("/update/:residentId", ownerAuth, residentUploads, updateResident); // Legacy Alias
+router.put("/:residentId", ownerAuth, residentUploads, updateResident);
 
-// ==========================
-// UPDATE RESIDENT
-// ==========================
+router.delete("/delete/:residentId", ownerAuth, deleteResident); // Legacy Alias
+router.delete("/:residentId", ownerAuth, deleteResident);
 
-router.put(
-  "/update/:residentId",
-  ownerAuth,
-  uploadFields([
-    {
-      name: "photo",
-      maxCount: 1,
-    },
-    {
-      name: "idProof",
-      maxCount: 1,
-    },
-  ]),
-  updateResident
-);
-
-// ==========================
-// CHECKOUT RESIDENT
-// ==========================
-
-router.put("/checkout/:residentId", checkoutResident);
-
-// ==========================
-// DELETE RESIDENT
-// ==========================
-
-router.delete("/delete/:residentId", deleteResident);
+router.patch("/:residentId/restore", ownerAuth, restoreResident);
 
 module.exports = router;
-

@@ -204,7 +204,9 @@ router.put("/hostels/edit/:id", editHostelLocation);
 // HOSTELS CRM (Phase 4.2A)
 // ==========================
 
-router.get("/hostels", getHostels);
+// NOTE: GET /hostels (line 165) serves getAllHostels (legacy listing with stats).
+// GET /hostels/crm serves getHostels (Phase 4.2A CRM listing) to avoid Express shadowing.
+router.get("/hostels/crm", getHostels);
 
 router.get("/hostels/:id", getHostelById);
 

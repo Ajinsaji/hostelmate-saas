@@ -1,1497 +1,684 @@
-import { useMemo, useState } from "react";
-import { motion } from "framer-motion";
-import { api } from "../services/api";
-import buildFileUrl from "../utils/buildFileUrl";
-import useGlobalPolling from "../hooks/useGlobalPolling";
+import React, { useState, useEffect } from "react";
 import {
+  Building2,
+  Layers,
+  BedDouble,
   Plus,
   Search,
-  BedDouble,
-  Phone,
-  X,
-  Info,
-  CreditCard,
-  Calendar,
-  Loader2,
+  Filter,
+  Wrench,
   CheckCircle2,
-  AlertTriangle,
   Trash2,
+  RotateCcw,
+  Edit,
+  Grid,
+  List,
+  Shield,
+  Activity,
+  ArrowRight,
+  Download,
 } from "lucide-react";
 import toast from "react-hot-toast";
-import BottomNav from "../components/BottomNav";
-import { getOccupancyChipInline, getOccupancyStyle, getOccupancyState } from "../utils/occupancyStyles";
-import { triggerOccupancyRefresh } from "../utils/occupancyRefresh";
+import api from "../utils/apiClient";
+import VisualFloorPlan from "./VisualFloorPlan";
 
-
-const PHONE_REGEX = /^[0-9]{10}$/;
-
-function Rooms() {
-  // UI-only redesign per spec (no logic changes)
-
+export const Rooms = () => {
+  const [activeTab, setActiveTab] = useState("rooms"); // rooms | buildings | floorplan | maintenance
   const [rooms, setRooms] = useState([]);
-  const [residents, setResidents] = useState([]);
-  const [payments, setPayments] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [buildings, setBuildings] = useState([]);
+  const [floors, setFloors] = useState([]);
+  const [beds, setBeds] = useState([]);
+  const [maintenanceLogs, setMaintenanceLogs] = useState([]);
 
-  const [searchRoomNumber, setSearchRoomNumber] = useState("");
-  const [occupancyFilter, setOccupancyFilter] = useState("all");
-  const [roomFormOpen, setRoomFormOpen] = useState(false);
+  const [roomStats, setRoomStats] = useState(null);
+  const [bedStats, setBedStats] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  const [assignModalOpen, setAssignModalOpen] = useState(false);
-  const [residentModalOpen, setResidentModalOpen] = useState(false);
-  const [checkoutModalOpen, setCheckoutModalOpen] = useState(false);
+  // Search & Filter State
+  const [search, setSearch] = useState("");
+  const [filterBuilding, setFilterBuilding] = useState("");
+  const [filterStatus, setFilterStatus] = useState("");
+  const [filterRoomType, setFilterRoomType] = useState("");
 
-  const [selectedRoom, setSelectedRoom] = useState(null);
-  const [selectedBed, setSelectedBed] = useState(null);
-  const [selectedResidentId, setSelectedResidentId] = useState(null);
+  // Modals
+  const [showAddRoomModal, setShowAddRoomModal] = useState(false);
+  const [showAddBuildingModal, setShowAddBuildingModal] = useState(false);
+  const [showAddFloorModal, setShowAddFloorModal] = useState(false);
+  const [showMaintenanceModal, setShowMaintenanceModal] = useState(false);
 
-  const [residentDetails, setResidentDetails] = useState(null);
-  const [residentPayments, setResidentPayments] = useState([]);
-
-  const [assignLoading, setAssignLoading] = useState(false);
-  const [checkoutLoading, setCheckoutLoading] = useState(false);
-  const [residentLoading, setResidentLoading] = useState(false);
-  const [roomSaving, setRoomSaving] = useState(false);
-
-
+  // Forms
   const [roomForm, setRoomForm] = useState({
     roomNumber: "",
-    totalBeds: "",
-    floor: "",
-    roomType: "",
-    rentPerBed: "",
+    buildingId: "",
+    floorId: "",
+    roomType: "Double",
+    gender: "Male",
+    capacity: 2,
+    monthlyRent: 7500,
+    securityDeposit: 5000,
+    amenities: ["WiFi", "Study Table", "Cupboard"],
   });
-  const [editingRoom, setEditingRoom] = useState(null);
 
-  const [assignForm, setAssignForm] = useState({
-    name: "",
-    phone: "",
-    monthlyRent: "",
-    depositAmount: "",
-    joinDate: new Date().toISOString().slice(0, 10),
+  const [buildingForm, setBuildingForm] = useState({
+    buildingName: "",
+    buildingCode: "",
+    description: "",
+    address: "",
   });
-  const [assignError, setAssignError] = useState("");
 
-  const getRoomStats = (room) => {
-    const beds = room?.beds || [];
-    const totalBeds = Number(room.totalBeds ?? beds.length) || beds.length || 0;
-    const occupiedBeds = Number(room.occupiedBeds ?? beds.filter((bed) => String(bed?.status).toLowerCase() === "occupied").length) || 0;
-    const vacantBeds = Math.max(0, totalBeds - occupiedBeds);
-    const pct = totalBeds ? Math.round((occupiedBeds / totalBeds) * 100) : 0;
-    return { totalBeds, occupiedBeds, vacantBeds, pct, beds };
-  };
+  const [floorForm, setFloorForm] = useState({
+    buildingId: "",
+    floorName: "",
+    floorNumber: 1,
+    description: "",
+  });
 
-  const residentMapById = useMemo(() => {
-    return residents.reduce((acc, resident) => {
-      if (resident?._id) acc[resident._id] = resident;
-      return acc;
-    }, {});
-  }, [residents]);
+  const [maintenanceForm, setMaintenanceForm] = useState({
+    targetType: "Room",
+    targetId: "",
+    reason: "",
+    expectedCompletion: "",
+    cost: 0,
+  });
 
-  const residentMapByBedId = useMemo(() => {
-    return residents.reduce((acc, resident) => {
-      if (resident?.bedId) acc[resident.bedId] = resident;
-      return acc;
-    }, {});
-  }, [residents]);
-
-  const roomNumberById = useMemo(() => {
-    return rooms.reduce((acc, room) => {
-      if (room?._id) acc[room._id] = room.roomNumber;
-      return acc;
-    }, {});
-  }, [rooms]);
-
-  const bedNumberById = useMemo(() => {
-    return rooms.reduce((acc, room) => {
-      (room?.beds || []).forEach((bed) => {
-        if (bed?._id) acc[bed._id] = bed.bedNumber;
-      });
-      return acc;
-    }, {});
-  }, [rooms]);
-
-  const parseMonthString = (month) => {
-    if (!month) return null;
-    const cleaned = String(month).trim();
-    if (/^\d{4}-\d{2}$/.test(cleaned)) {
-      return new Date(`${cleaned}-01`);
-    }
-    const parsed = Date.parse(cleaned);
-    return Number.isNaN(parsed) ? null : new Date(parsed);
-  };
-
-  const paymentSummaryByResidentId = useMemo(() => {
-    return payments.reduce((acc, payment) => {
-      const id = payment?.residentId?.toString();
-      if (!id) return acc;
-      const existing = acc[id];
-      const currentDate = parseMonthString(payment?.month) || new Date(payment?.createdAt || payment?.updatedAt || Date.now());
-      if (!existing || currentDate > existing.monthDate) {
-        acc[id] = { ...payment, monthDate: currentDate };
-      }
-      return acc;
-    }, {});
-  }, [payments]);
-
-  const formatMoney = (value) => {
-    const amount = Number(value ?? 0);
-    return `₹${amount.toLocaleString("en-IN")}`;
-  };
-
-  const formatDate = (value) => {
-    if (!value) return "Not available";
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return "Not available";
-    return date.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
-  };
-
-  const getInitials = (name) => {
-    if (!name) return "-";
-    return name
-      .split(" ")
-      .filter(Boolean)
-      .slice(0, 2)
-      .map((part) => part[0]?.toUpperCase())
-      .join("");
-  };
-
-  const getPaymentBadge = (status) => {
-    if (!status) return { label: "Pending", color: "rgba(250,204,21,0.14)", border: "rgba(250,204,21,0.25)" };
-    if (status === "paid") return { label: "Paid", color: "rgba(34,197,94,0.14)", border: "rgba(34,197,94,0.3)" };
-    if (status === "partial") return { label: "Partial", color: "rgba(59,130,246,0.14)", border: "rgba(59,130,246,0.3)" };
-    return { label: "Overdue", color: "rgba(239,68,68,0.14)", border: "rgba(239,68,68,0.3)" };
-  };
-
-  const getOccupancyTextColor = (status) => {
-    const s = getOccupancyState(status);
-    return s === "occupied" ? "rgba(187,247,208,0.95)" : "rgba(254,202,202,0.95)";
-  };
-
-  const getOccupancyCardBackground = (status) => {
-    const s = getOccupancyState(status);
-    return s === "occupied" ? "rgba(34,197,94,0.10)" : "rgba(239,68,68,0.12)";
-  };
-
-  const getOccupancyAvatarBg = (status) => {
-    const s = getOccupancyState(status);
-    return s === "occupied" ? "rgba(34,197,94,0.14)" : "rgba(239,68,68,0.14)";
-  };
-
-  const occupancyStyleForBed = (bed) => {
-    return getOccupancyStyle(bed?.status);
-  };
-
-  // Normalize occupied/vacant handling for all bed UI
-  const isBedVacant = (bed) => {
-    return getOccupancyState(bed?.status) === "vacant";
-  };
-
-
-
-  const filteredRooms = useMemo(() => {
-    return rooms
-      .filter((room) => {
-        if (!searchRoomNumber.trim()) return true;
-        return String(room.roomNumber).toLowerCase().includes(searchRoomNumber.trim().toLowerCase());
-      })
-      .filter((room) => {
-        if (occupancyFilter === "all") return true;
-        const { totalBeds, occupiedBeds } = getRoomStats(room);
-        if (occupancyFilter === "vacant") return occupiedBeds === 0;
-        if (occupancyFilter === "full") return occupiedBeds === totalBeds;
-        if (occupancyFilter === "partial") return occupiedBeds > 0 && occupiedBeds < totalBeds;
-        return true;
-      });
-  }, [rooms, searchRoomNumber, occupancyFilter]);
-
-  const currentRoomOccupancySummary = useMemo(() => {
-    const totalRooms = rooms.length;
-    const totalBeds = rooms.reduce((sum, room) => sum + (Number(room.totalBeds) || (room.beds?.length || 0)), 0);
-    const totalOccupied = rooms.reduce(
-      (sum, room) => sum + Number(room.occupiedBeds ?? (room.beds?.filter((bed) => String(bed?.status).toLowerCase() === "occupied").length || 0)),
-      0
-    );
-    return { totalRooms, totalBeds, totalOccupied, totalVacant: Math.max(0, totalBeds - totalOccupied) };
-  }, [rooms]);
-
-  const dashboardOccupancyPercent = currentRoomOccupancySummary.totalBeds
-    ? Math.round((currentRoomOccupancySummary.totalOccupied / currentRoomOccupancySummary.totalBeds) * 100)
-    : 0;
-
-  const getBedStatusAppearance = (status) => {
-    const normalized = String(status || "").toLowerCase();
-    if (normalized === "occupied") {
-      return { label: "Occupied", color: "#3B82F6", background: "rgba(59,130,246,0.14)", border: "rgba(59,130,246,0.3)" };
-    }
-    if (normalized === "vacant") {
-      return { label: "Vacant", color: "#22C55E", background: "rgba(34,197,94,0.14)", border: "rgba(34,197,94,0.3)" };
-    }
-    if (normalized === "maintenance") {
-      return { label: "Maintenance", color: "#F59E0B", background: "rgba(245,158,11,0.14)", border: "rgba(245,158,11,0.3)" };
-    }
-    if (normalized === "unavailable") {
-      return { label: "Unavailable", color: "#94A3B8", background: "rgba(148,163,184,0.14)", border: "rgba(148,163,184,0.3)" };
-    }
-    return { label: status || "Unknown", color: "#94A3B8", background: "rgba(148,163,184,0.14)", border: "rgba(148,163,184,0.3)" };
-  };
-
-  const getDueDateLabel = (payment, joinDate) => {
-    const monthDate = parseMonthString(payment?.month);
-    const base = monthDate || (joinDate ? new Date(joinDate) : null);
-    if (!base) return "Not available";
-    const due = new Date(base.getTime());
-    due.setMonth(due.getMonth() + 1);
-    return formatDate(due);
-  };
-
-  const getDaysFromDue = (payment, joinDate) => {
-    const monthDate = parseMonthString(payment?.month);
-    const base = monthDate || (joinDate ? new Date(joinDate) : null);
-    if (!base) return null;
-    const due = new Date(base.getTime());
-    due.setMonth(due.getMonth() + 1);
-    const diff = Math.ceil((due.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
-    return diff;
-  };
-
-  const loadData = async () => {
-    // keep UI responsive and avoid stale occupancy state
-    setLoading(true);
+  const fetchData = async () => {
     try {
-      const [roomsRes, residentsRes, paymentsRes] = await Promise.all([
-        api.get("/api/rooms/get-rooms"),
-        api.get("/api/residents/hostel"),
-        api.get("/api/payments/hostel"),
+      setLoading(true);
+      const [rRes, bRes, fRes, bedRes, rStats, bStats, mRes] = await Promise.all([
+        api.get("/api/rooms"),
+        api.get("/api/buildings"),
+        api.get("/api/floors"),
+        api.get("/api/beds"),
+        api.get("/api/rooms/statistics"),
+        api.get("/api/beds/statistics"),
+        api.get("/api/maintenance"),
       ]);
-      setRooms(roomsRes.data?.rooms || []);
-      setResidents(residentsRes.data?.residents || []);
-      setPayments(paymentsRes.data?.payments || []);
-    } catch (error) {
-      toast.error(error?.response?.data?.message || "Unable to load room data.");
+
+      if (rRes.data?.rooms) setRooms(rRes.data.rooms);
+      if (bRes.data?.buildings) setBuildings(bRes.data.buildings);
+      if (fRes.data?.floors) setFloors(fRes.data.floors);
+      if (bedRes.data?.beds) setBeds(bedRes.data.beds);
+      if (rStats.data?.success) setRoomStats(rStats.data);
+      if (bStats.data?.success) setBedStats(bStats.data);
+      if (mRes.data?.logs) setMaintenanceLogs(mRes.data.logs);
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to load room management data");
     } finally {
       setLoading(false);
     }
   };
 
-  const refreshOccupancyUI = async () => {
-    // used after assign/checkout for immediate consistency
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const handleCreateRoom = async (e) => {
+    e.preventDefault();
     try {
-      const [roomsRes, residentsRes, paymentsRes] = await Promise.all([
-        api.get("/api/rooms/get-rooms"),
-        api.get("/api/residents/hostel"),
-        api.get("/api/payments/hostel"),
-      ]);
-      setRooms(roomsRes.data?.rooms || []);
-      setResidents(residentsRes.data?.residents || []);
-      setPayments(paymentsRes.data?.payments || []);
-
-      // Broadcast after any local occupancy refresh so other screens sync immediately.
-      triggerOccupancyRefresh("rooms-screen-refresh");
-    } catch (error) {
-      toast.error(error?.response?.data?.message || "Failed to refresh occupancy.");
+      await api.post("/api/rooms", roomForm);
+      toast.success("Room created with auto-generated beds!");
+      setShowAddRoomModal(false);
+      fetchData();
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to create room");
     }
   };
 
-  const safeRefreshProps = {
-    isEditing: roomFormOpen || assignModalOpen || residentModalOpen || checkoutModalOpen,
-    isSubmitting: assignLoading || checkoutLoading || residentLoading || roomSaving,
-    showModal: roomFormOpen || assignModalOpen || residentModalOpen || checkoutModalOpen,
-    isUploading: false,
-  };
-
-  useGlobalPolling(loadData, { interval: 9000, safeProps: safeRefreshProps });
-
-  const openAssignModal = (room, bed) => {
-    if (!room?._id || !bed?._id) {
-      toast.error("Invalid room or bed selected.");
-      return;
-    }
-    setSelectedRoom(room);
-    setSelectedBed(bed);
-    setAssignForm({
-      name: "",
-      phone: "",
-      monthlyRent: room.rentPerBed ? String(room.rentPerBed) : "",
-      depositAmount: "",
-      joinDate: new Date().toISOString().slice(0, 10),
-    });
-    setAssignError("");
-    setAssignModalOpen(true);
-  };
-
-  const closeAssignModal = () => {
-    if (assignLoading) return;
-    setAssignModalOpen(false);
-    setSelectedRoom(null);
-    setSelectedBed(null);
-  };
-
-  const validateAssignForm = () => {
-    if (!assignForm.name.trim()) return "Resident name is required.";
-    if (!assignForm.phone.trim()) return "Phone number is required.";
-    if (!PHONE_REGEX.test(assignForm.phone.trim())) return "Phone number must be 10 digits.";
-    if (!assignForm.monthlyRent || Number(assignForm.monthlyRent) <= 0) return "Monthly rent is required.";
-    if (!assignForm.depositAmount && assignForm.depositAmount !== "0") return "Deposit amount is required.";
-    if (!assignForm.joinDate) return "Join date is required.";
-    if (!selectedRoom || !selectedBed) return "Please select a room and bed.";
-    return "";
-  };
-
-  const submitAssign = async () => {
-    const validationError = validateAssignForm();
-    if (validationError) {
-      setAssignError(validationError);
-      toast.error(validationError);
-      return;
-    }
-
-    setAssignLoading(true);
+  const handleCreateBuilding = async (e) => {
+    e.preventDefault();
     try {
-      const form = new FormData();
-      form.append("name", assignForm.name.trim());
-      form.append("phone", assignForm.phone.trim());
-      form.append("roomId", selectedRoom._id);
-      form.append("bedId", selectedBed._id);
-      form.append("monthlyRent", assignForm.monthlyRent);
-      form.append("depositAmount", assignForm.depositAmount);
-      form.append("joinDate", assignForm.joinDate);
-      form.append("agreementChecked", "true");
-      form.append("quickAssign", "true");
-
-      await api.post("/api/residents/create", form);
-
-      triggerOccupancyRefresh("resident-assigned");
-      toast.success("Resident assigned successfully.");
-      closeAssignModal();
-      await refreshOccupancyUI();
-    } catch (error) {
-      const message = error?.response?.data?.message || "Failed to assign resident.";
-      setAssignError(message);
-      toast.error(message);
-    } finally {
-      setAssignLoading(false);
+      await api.post("/api/buildings", buildingForm);
+      toast.success("Building created!");
+      setShowAddBuildingModal(false);
+      fetchData();
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to create building");
     }
   };
 
-  const openResidentModal = async (residentId) => {
-    if (!residentId) return;
-    setResidentLoading(true);
-    setResidentModalOpen(true);
-    setSelectedResidentId(residentId);
-    setResidentDetails(null);
-    setResidentPayments([]);
-
+  const handleCreateFloor = async (e) => {
+    e.preventDefault();
     try {
-      const [residentRes, paymentsRes] = await Promise.all([
-        api.get(`/api/residents/single/${residentId}`),
-        api.get(`/api/payments/resident/${residentId}`),
-      ]);
-      setResidentDetails(residentRes.data?.resident ?? null);
-      setResidentPayments(paymentsRes.data?.payments || []);
-    } catch (error) {
-      toast.error(error?.response?.data?.message || "Unable to load resident details.");
-      setResidentModalOpen(false);
-    } finally {
-      setResidentLoading(false);
+      await api.post("/api/floors", floorForm);
+      toast.success("Floor created!");
+      setShowAddFloorModal(false);
+      fetchData();
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to create floor");
     }
   };
 
-  const closeResidentModal = () => {
-    if (residentLoading) return;
-    setResidentModalOpen(false);
-    setSelectedResidentId(null);
-    setResidentDetails(null);
-    setResidentPayments([]);
-  };
-
-  const openCheckoutModal = (room, bed) => {
-    const residentId = bed?.residentId || residentMapByBedId[bed?._id]?._id || bed?.resident?._id;
-    if (!residentId) {
-      toast.error("Resident information is missing for this bed.");
-      return;
-    }
-    setSelectedRoom(room);
-    setSelectedBed(bed);
-    setSelectedResidentId(residentId);
-    setCheckoutModalOpen(true);
-  };
-
-  const closeCheckoutModal = () => {
-    if (checkoutLoading) return;
-    setCheckoutModalOpen(false);
-    setSelectedResidentId(null);
-    setSelectedBed(null);
-    setSelectedRoom(null);
-  };
-
-  const submitCheckout = async () => {
-    if (!selectedResidentId) {
-      toast.error("Checkout resident not selected.");
-      return;
-    }
-
-    setCheckoutLoading(true);
+  const handleCreateMaintenance = async (e) => {
+    e.preventDefault();
     try {
-      await api.put(`/api/residents/checkout/${selectedResidentId}`);
-      toast.success("Resident checked out successfully.");
-      triggerOccupancyRefresh("resident-checkout");
-      closeCheckoutModal();
-      await refreshOccupancyUI();
-    } catch (error) {
-      toast.error(error?.response?.data?.message || "Failed to checkout resident.");
-    } finally {
-      setCheckoutLoading(false);
+      await api.post("/api/maintenance", maintenanceForm);
+      toast.success("Maintenance logged!");
+      setShowMaintenanceModal(false);
+      fetchData();
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to log maintenance");
     }
   };
 
-  const handleEditRoom = (room) => {
-    setEditingRoom(room);
-    setRoomForm({
-      roomNumber: room.roomNumber || "",
-      totalBeds: room.totalBeds ? String(room.totalBeds) : "",
-      floor: room.floor || "",
-      roomType: room.roomType || "",
-      rentPerBed: room.rentPerBed ? String(room.rentPerBed) : "",
-    });
-    setRoomFormOpen(true);
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  };
-
-  const resetRoomForm = () => {
-    setEditingRoom(null);
-    setRoomForm({ roomNumber: "", totalBeds: "", floor: "", roomType: "", rentPerBed: "" });
-  };
-
-  const submitRoom = async () => {
-    if (roomSaving) return;
-
-    const roomNumberRaw = roomForm.roomNumber;
-    const roomNumber = String(roomNumberRaw ?? "").trim();
-
-    if (!roomNumber) {
-      toast.error("Room number is required.");
-      return;
-    }
-
-    const rentPerBedNum = Number(roomForm.rentPerBed);
-    if (!Number.isFinite(rentPerBedNum) || rentPerBedNum < 0) {
-      toast.error("Rent per bed must be >= 0.");
-      return;
-    }
-
-    if (!editingRoom) {
-      const totalBedsNum = Number(roomForm.totalBeds);
-      if (!Number.isFinite(totalBedsNum) || totalBedsNum <= 0) {
-        toast.error("Total beds must be greater than 0.");
-        return;
-      }
-    }
-
-    setRoomSaving(true);
+  const handleCompleteMaintenance = async (logId) => {
     try {
-      if (editingRoom) {
-        await api.put(`/api/rooms/edit-room/${editingRoom._id}`, {
-          roomNumber: roomNumber,
-          floor: String(roomForm.floor ?? "").trim(),
-          roomType: String(roomForm.roomType ?? "").trim(),
-          rentPerBed: rentPerBedNum,
-        });
-        toast.success("Room updated successfully.");
-        triggerOccupancyRefresh("room-updated");
-      } else {
-        const totalBedsNum = Number(roomForm.totalBeds);
-        await api.post("/api/rooms/create-room", {
-          roomNumber: roomNumber,
-          totalBeds: totalBedsNum,
-          floor: String(roomForm.floor ?? "").trim(),
-          roomType: String(roomForm.roomType ?? "").trim(),
-          rentPerBed: rentPerBedNum,
-        });
-        toast.success("Room created successfully.");
-        triggerOccupancyRefresh("room-created");
-      }
-
-      resetRoomForm();
-      setRoomFormOpen(false);
-      await loadData();
-    } catch (error) {
-      const msg = error?.response?.data?.message || "Unable to save room.";
-      if (String(msg).toLowerCase().includes("room number already exists")) {
-        toast.error("Room number already exists.");
-      } else {
-        toast.error(msg);
-      }
-      // preserve modal values by NOT resetting
-    } finally {
-      setRoomSaving(false);
+      await api.patch(`/api/maintenance/${logId}/complete`);
+      toast.success("Maintenance marked completed");
+      fetchData();
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Completion failed");
     }
   };
+
+  const handleDeleteRoom = async (roomId) => {
+    if (!window.confirm("Are you sure you want to delete this room?")) return;
+    try {
+      await api.delete(`/api/rooms/${roomId}`);
+      toast.success("Room soft deleted");
+      fetchData();
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Delete failed");
+    }
+  };
+
+  const filteredRooms = rooms.filter((r) => {
+    const matchSearch = !search || r.roomNumber.toLowerCase().includes(search.toLowerCase());
+    const matchBuilding = !filterBuilding || r.buildingId?._id === filterBuilding || r.buildingId === filterBuilding;
+    const matchStatus = !filterStatus || r.status === filterStatus;
+    const matchType = !filterRoomType || r.roomType === filterRoomType;
+    return matchSearch && matchBuilding && matchStatus && matchType;
+  });
 
   return (
-    <div style={{ minHeight: "100vh", background: "#071223", overflowX: "hidden", paddingBottom: 140 }}>
-      <div style={{ position: "fixed", top: 0, left: 0, right: 0, height: 280, pointerEvents: "none", background: "radial-gradient(circle at 20% 10%, rgba(34,197,94,0.18), transparent 24%), radial-gradient(circle at 80% 0%, rgba(59,130,246,0.16), transparent 22%), rgba(7,18,35,0.9)" }} />
-      <div style={{ position: "relative", maxWidth: 1400, margin: "0 auto", padding: "24px 16px" }}>
-        <motion.header
-          className="motion-header"
-          initial={{ opacity: 0, y: 24 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.28 }}
-          style={{
-            position: "relative",
-            zIndex: 10,
-            borderRadius: 24,
-            padding: "32px 28px",
-            background: "rgba(16,27,51,0.78)",
-            backdropFilter: "blur(24px)",
-            border: "1px solid rgba(255,255,255,0.08)",
-            boxShadow: "0 24px 80px rgba(0,0,0,0.22)",
-            overflow: "hidden",
-          }}
-        >
-          <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-            <div style={{ display: "flex", flexDirection: "column", gap: 10, maxWidth: 760 }}>
-              <span style={{ color: "#22C55E", fontSize: 14, fontWeight: 700, letterSpacing: "0.2em", textTransform: "uppercase" }}>
-                Room Allocation
-              </span>
-              <h1 style={{ margin: 0, color: "#f8fafc", fontSize: 36, lineHeight: 1.05, fontWeight: 800 }}>
-                Premium room allocation & bed management
-              </h1>
-              <p style={{ margin: 0, color: "rgba(255,255,255,0.72)", fontSize: 15, maxWidth: 780, lineHeight: 1.8 }}>
-                Manage rooms, beds and residents efficiently with real-time occupancy insights, premium room cards, and fast assignment workflows.
-              </p>
-            </div>
+    <div className="min-h-screen bg-[#081028] text-white p-4 sm:p-6 lg:p-8">
+      <div className="max-w-7xl mx-auto space-y-8">
 
-            <div style={{ display: "grid", gap: 14, gridTemplateColumns: "1fr auto", alignItems: "center" }}>
-              <div style={{ position: "relative", width: "100%" }}>
-                <Search size={18} style={{ position: "absolute", left: 18, top: 18, color: "rgba(255,255,255,0.45)" }} />
+        {/* Header */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-white/10 pb-6">
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-black text-white flex items-center gap-3">
+              <BedDouble className="text-emerald-400" /> Enterprise Room & Bed Management
+            </h1>
+            <p className="text-slate-400 text-sm mt-1">
+              Building & floor hierarchy, automatic bed capacity generation, visual floor plans, and maintenance tracking.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => setShowAddBuildingModal(true)}
+              className="bg-white/10 hover:bg-white/20 text-slate-200 font-bold px-3.5 py-2 rounded-xl text-xs flex items-center gap-1.5 transition"
+            >
+              <Building2 className="w-4 h-4" /> Add Building
+            </button>
+            <button
+              onClick={() => setShowAddFloorModal(true)}
+              className="bg-white/10 hover:bg-white/20 text-slate-200 font-bold px-3.5 py-2 rounded-xl text-xs flex items-center gap-1.5 transition"
+            >
+              <Layers className="w-4 h-4" /> Add Floor
+            </button>
+            <button
+              onClick={() => setShowAddRoomModal(true)}
+              className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-4 py-2 rounded-xl text-xs flex items-center gap-2 shadow-lg shadow-emerald-500/20 transition"
+            >
+              <Plus className="w-4 h-4" /> Create Room
+            </button>
+          </div>
+        </div>
+
+        {/* Statistics KPI Cards */}
+        {roomStats && bedStats && (
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3">
+            <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-3.5">
+              <span className="text-[10px] font-bold text-slate-400 uppercase">Buildings</span>
+              <div className="text-xl font-black text-white mt-1">{buildings.length}</div>
+            </div>
+            <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-3.5">
+              <span className="text-[10px] font-bold text-slate-400 uppercase">Floors</span>
+              <div className="text-xl font-black text-white mt-1">{floors.length}</div>
+            </div>
+            <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-3.5">
+              <span className="text-[10px] font-bold text-slate-400 uppercase">Rooms</span>
+              <div className="text-xl font-black text-white mt-1">{roomStats.totalRooms}</div>
+            </div>
+            <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-3.5">
+              <span className="text-[10px] font-bold text-slate-400 uppercase">Total Beds</span>
+              <div className="text-xl font-black text-white mt-1">{bedStats.totalBeds}</div>
+            </div>
+            <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-3.5">
+              <span className="text-[10px] font-bold text-slate-400 uppercase">Occupied</span>
+              <div className="text-xl font-black text-emerald-400 mt-1">{bedStats.occupiedBeds}</div>
+            </div>
+            <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-3.5">
+              <span className="text-[10px] font-bold text-slate-400 uppercase">Vacant</span>
+              <div className="text-xl font-black text-blue-400 mt-1">{bedStats.vacantBeds}</div>
+            </div>
+            <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-3.5">
+              <span className="text-[10px] font-bold text-slate-400 uppercase">Maintenance</span>
+              <div className="text-xl font-black text-amber-400 mt-1">{bedStats.maintenanceBeds}</div>
+            </div>
+            <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-3.5">
+              <span className="text-[10px] font-bold text-slate-400 uppercase">Occupancy %</span>
+              <div className="text-xl font-black text-teal-400 mt-1">{bedStats.occupancyRate}%</div>
+            </div>
+          </div>
+        )}
+
+        {/* Tab Navigation */}
+        <div className="flex border-b border-white/10 text-xs font-bold gap-6">
+          <button
+            onClick={() => setActiveTab("rooms")}
+            className={`pb-3 border-b-2 transition ${activeTab === "rooms" ? "border-emerald-400 text-emerald-400" : "border-transparent text-slate-400 hover:text-white"}`}
+          >
+            Rooms & Beds List
+          </button>
+          <button
+            onClick={() => setActiveTab("floorplan")}
+            className={`pb-3 border-b-2 transition ${activeTab === "floorplan" ? "border-emerald-400 text-emerald-400" : "border-transparent text-slate-400 hover:text-white"}`}
+          >
+            Visual Floor Plan
+          </button>
+          <button
+            onClick={() => setActiveTab("buildings")}
+            className={`pb-3 border-b-2 transition ${activeTab === "buildings" ? "border-emerald-400 text-emerald-400" : "border-transparent text-slate-400 hover:text-white"}`}
+          >
+            Buildings & Floors ({buildings.length})
+          </button>
+          <button
+            onClick={() => setActiveTab("maintenance")}
+            className={`pb-3 border-b-2 transition ${activeTab === "maintenance" ? "border-emerald-400 text-emerald-400" : "border-transparent text-slate-400 hover:text-white"}`}
+          >
+            Maintenance Log ({maintenanceLogs.length})
+          </button>
+        </div>
+
+        {/* TAB 1: ROOMS LIST */}
+        {activeTab === "rooms" && (
+          <div className="space-y-4">
+            {/* Toolbar */}
+            <div className="bg-white/[0.02] border border-white/10 rounded-2xl p-4 flex flex-col md:flex-row gap-4 items-center justify-between">
+              <div className="relative w-full md:w-80">
+                <Search className="absolute left-3.5 top-3 w-4 h-4 text-slate-400" />
                 <input
-                  type="search"
-                  value={searchRoomNumber}
-                  onChange={(event) => setSearchRoomNumber(event.target.value)}
-                  placeholder="Search room number, floor, type..."
-                  style={{
-                    width: "100%",
-                    borderRadius: 20,
-                    padding: "16px 18px 16px 48px",
-                    background: "rgba(255,255,255,0.04)",
-                    border: "1px solid rgba(255,255,255,0.12)",
-                    color: "#f8fafc",
-                    fontSize: 14,
-                  }}
+                  type="text"
+                  placeholder="Search room number..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="w-full bg-white/5 border border-white/10 rounded-xl pl-10 pr-4 py-2 text-xs text-white focus:outline-none"
                 />
               </div>
-              <div style={{ display: "flex", gap: 12, flexWrap: "wrap", justifyContent: "flex-end" }}>
-                <button
-                  type="button"
-                  onClick={() => setOccupancyFilter((prev) => (prev === "all" ? "partial" : "all"))}
-                  style={{
-                    borderRadius: 18,
-                    border: "1px solid rgba(59,130,246,0.3)",
-                    background: "rgba(59,130,246,0.14)",
-                    color: "#f8fafc",
-                    padding: "14px 18px",
-                    minWidth: 140,
-                    cursor: "pointer",
-                  }}
+
+              <div className="flex flex-wrap items-center gap-3 w-full md:w-auto text-xs">
+                <select
+                  value={filterBuilding}
+                  onChange={(e) => setFilterBuilding(e.target.value)}
+                  className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white focus:outline-none"
                 >
-                  Filter: {occupancyFilter === "all" ? "All" : occupancyFilter === "vacant" ? "Vacant" : occupancyFilter === "full" ? "Full" : "Partial"}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setRoomFormOpen((open) => !open);
-                    if (!roomFormOpen) resetRoomForm();
-                  }}
-                  style={{
-                    borderRadius: 18,
-                    border: "1px solid rgba(34,197,94,0.35)",
-                    background: "linear-gradient(135deg, rgba(34,197,94,0.24), rgba(34,197,94,0.12))",
-                    color: "#f8fafc",
-                    padding: "14px 22px",
-                    minWidth: 160,
-                    cursor: "pointer",
-                    display: "inline-flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: 8,
-                  }}
+                  <option value="" className="bg-slate-900">All Buildings</option>
+                  {buildings.map((b) => (
+                    <option key={b._id} value={b._id} className="bg-slate-900">{b.buildingName}</option>
+                  ))}
+                </select>
+
+                <select
+                  value={filterStatus}
+                  onChange={(e) => setFilterStatus(e.target.value)}
+                  className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white focus:outline-none"
                 >
-                  <Plus size={18} />
-                  Add Room
-                </button>
+                  <option value="" className="bg-slate-900">All Statuses</option>
+                  <option value="Vacant" className="bg-slate-900">Vacant</option>
+                  <option value="Partially Occupied" className="bg-slate-900">Partially Occupied</option>
+                  <option value="Fully Occupied" className="bg-slate-900">Fully Occupied</option>
+                  <option value="Under Maintenance" className="bg-slate-900">Under Maintenance</option>
+                </select>
               </div>
             </div>
 
-            <div style={{ display: "grid", gap: 14, gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
-              {[
-                { label: "Total Rooms", value: currentRoomOccupancySummary.totalRooms, accent: "#22C55E" },
-                { label: "Total Beds", value: currentRoomOccupancySummary.totalBeds, accent: "#3B82F6" },
-                { label: "Occupied Beds", value: currentRoomOccupancySummary.totalOccupied, accent: "#22C55E" },
-                { label: "Vacant Beds", value: currentRoomOccupancySummary.totalVacant, accent: "#F59E0B" },
-                { label: "Occupancy", value: `${dashboardOccupancyPercent}%`, accent: "#22C55E" },
-              ].map((card) => (
-                <motion.div
-                  key={card.label}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.24, delay: 0.04 }}
-                  style={{
-                    borderRadius: 22,
-                    padding: "18px 22px",
-                    background: "rgba(255,255,255,0.05)",
-                    border: "1px solid rgba(255,255,255,0.08)",
-                    boxShadow: "0 18px 45px rgba(0,0,0,0.14)",
-                    backdropFilter: "blur(22px)",
-                  }}
-                >
-                  <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center" }}>
+            {/* Table */}
+            <div className="bg-white/[0.02] border border-white/10 rounded-2xl overflow-hidden text-xs">
+              <table className="w-full text-left">
+                <thead className="bg-white/5 text-slate-400 font-bold uppercase border-b border-white/10">
+                  <tr>
+                    <th className="p-4">Room #</th>
+                    <th className="p-4">Building & Floor</th>
+                    <th className="p-4">Type</th>
+                    <th className="p-4">Beds (Occupied/Total)</th>
+                    <th className="p-4">Rent (₹)</th>
+                    <th className="p-4">Status</th>
+                    <th className="p-4 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/5 text-slate-300">
+                  {filteredRooms.length > 0 ? (
+                    filteredRooms.map((room) => (
+                      <tr key={room._id} className="hover:bg-white/[0.02]">
+                        <td className="p-4 font-bold text-white">Room {room.roomNumber}</td>
+                        <td className="p-4">
+                          <div>{room.buildingId?.buildingName || "Default Building"}</div>
+                          <div className="text-[10px] text-slate-400">Floor {room.floor || "1"}</div>
+                        </td>
+                        <td className="p-4">{room.roomType}</td>
+                        <td className="p-4">
+                          <span className="font-bold text-emerald-400">{room.occupiedBeds}</span> / {room.capacity}
+                        </td>
+                        <td className="p-4 font-bold text-white">₹{room.monthlyRent || room.rentPerBed}</td>
+                        <td className="p-4">
+                          <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
+                            room.status === "Vacant" ? "bg-blue-500/20 text-blue-300 border-blue-500/30" :
+                            room.status === "Fully Occupied" ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/30" :
+                            room.status === "Partially Occupied" ? "bg-purple-500/20 text-purple-300 border-purple-500/30" :
+                            "bg-amber-500/20 text-amber-300 border-amber-500/30"
+                          }`}>
+                            {room.status}
+                          </span>
+                        </td>
+                        <td className="p-4 text-right">
+                          <div className="flex justify-end gap-2">
+                            <button
+                              onClick={() => {
+                                setMaintenanceForm({ targetType: "Room", targetId: room._id, reason: "", cost: 0 });
+                                setShowMaintenanceModal(true);
+                              }}
+                              className="p-1.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 rounded-lg"
+                              title="Maintenance"
+                            >
+                              <Wrench className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteRoom(room._id)}
+                              className="p-1.5 bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 rounded-lg"
+                              title="Soft Delete"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan="7" className="p-8 text-center text-slate-500">No rooms found.</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* TAB 2: VISUAL FLOOR PLAN */}
+        {activeTab === "floorplan" && <VisualFloorPlan />}
+
+        {/* TAB 3: BUILDINGS & FLOORS */}
+        {activeTab === "buildings" && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs">
+            <div className="bg-white/[0.02] border border-white/10 rounded-2xl p-6 space-y-4">
+              <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                <Building2 className="text-emerald-400" /> Buildings List
+              </h3>
+              <div className="space-y-2">
+                {buildings.map((b) => (
+                  <div key={b._id} className="p-3 bg-white/5 border border-white/5 rounded-xl flex justify-between items-center">
                     <div>
-                      <div style={{ color: "rgba(255,255,255,0.72)", fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.16em" }}>
-                        {card.label}
-                      </div>
-                      <div style={{ marginTop: 8, color: "#f8fafc", fontSize: 24, fontWeight: 800 }}>
-                        {card.value}
-                      </div>
+                      <div className="font-bold text-white">{b.buildingName} ({b.buildingCode})</div>
+                      <div className="text-[10px] text-slate-400">{b.address || "Main Address"}</div>
                     </div>
-                    <div style={{ width: 10, height: 10, borderRadius: 999, background: card.accent }} />
+                    <span className="px-2 py-0.5 rounded-full text-[10px] bg-emerald-500/20 text-emerald-300 font-bold">{b.status}</span>
                   </div>
-                </motion.div>
+                ))}
+              </div>
+            </div>
+
+            <div className="bg-white/[0.02] border border-white/10 rounded-2xl p-6 space-y-4">
+              <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                <Layers className="text-blue-400" /> Floors List
+              </h3>
+              <div className="space-y-2">
+                {floors.map((f) => (
+                  <div key={f._id} className="p-3 bg-white/5 border border-white/5 rounded-xl flex justify-between items-center">
+                    <div>
+                      <div className="font-bold text-white">{f.floorName} (Floor #{f.floorNumber})</div>
+                      <div className="text-[10px] text-slate-400">{f.buildingId?.buildingName || "Building"}</div>
+                    </div>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] bg-blue-500/20 text-blue-300 font-bold">{f.status}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* TAB 4: MAINTENANCE LOG */}
+        {activeTab === "maintenance" && (
+          <div className="bg-white/[0.02] border border-white/10 rounded-2xl p-6 space-y-4 text-xs">
+            <div className="flex justify-between items-center border-b border-white/10 pb-4">
+              <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                <Wrench className="text-amber-400" /> Maintenance Audit & Execution History
+              </h3>
+              <button
+                onClick={() => setShowMaintenanceModal(true)}
+                className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-3 py-1.5 rounded-xl flex items-center gap-1.5"
+              >
+                <Plus className="w-3.5 h-3.5" /> Log Maintenance
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              {maintenanceLogs.map((log) => (
+                <div key={log._id} className="p-3 bg-white/5 border border-white/5 rounded-xl flex justify-between items-center">
+                  <div>
+                    <div className="font-bold text-white">{log.targetType} Maintenance - {log.reason}</div>
+                    <div className="text-[10px] text-slate-400 mt-0.5">Started: {new Date(log.startDate).toLocaleDateString()} • Cost: ₹{log.cost}</div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${log.status === "Completed" ? "bg-emerald-500/20 text-emerald-300" : "bg-amber-500/20 text-amber-300"}`}>
+                      {log.status}
+                    </span>
+                    {log.status !== "Completed" && (
+                      <button
+                        onClick={() => handleCompleteMaintenance(log._id)}
+                        className="p-1 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 rounded"
+                        title="Mark Complete"
+                      >
+                        <CheckCircle2 className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+                </div>
               ))}
             </div>
           </div>
-        </motion.header>
-
-        {roomFormOpen && (
-          <motion.section
-            initial={{ opacity: 0, y: 24 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.26 }}
-            style={{
-              marginTop: 22,
-              marginBottom: 32,
-              borderRadius: 24,
-              padding: 28,
-              background: "rgba(16,27,51,0.82)",
-              backdropFilter: "blur(22px)",
-              border: "1px solid rgba(255,255,255,0.08)",
-              boxShadow: "0 26px 70px rgba(0,0,0,0.18)",
-            }}
-          >
-            <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", gap: 20, flexWrap: "wrap" }}>
-                <div>
-                  <p style={{ margin: 0, color: "rgba(255,255,255,0.66)", fontSize: 13, textTransform: "uppercase", letterSpacing: "0.12em" }}>
-                    Room setup
-                  </p>
-                  <h2 style={{ margin: "10px 0 0", color: "#f8fafc", fontSize: 26, fontWeight: 800 }}>
-                    {editingRoom ? "Edit room details" : "Create a new room"}
-                  </h2>
-                </div>
-              </div>
-
-              <div style={{ display: "grid", gap: 18 }}>
-                <div style={{ display: "grid", gap: 14, gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))" }}>
-                  <label style={{ display: "grid", gap: 8, color: "#f8fafc", fontSize: 13 }}>
-                    Room number
-                    <input
-                      value={roomForm.roomNumber}
-                      onChange={(event) => setRoomForm((prev) => ({ ...prev, roomNumber: event.target.value }))}
-                      placeholder="101"
-                      style={{ borderRadius: 18, border: "1px solid rgba(255,255,255,0.12)", padding: "14px 16px", background: "rgba(255,255,255,0.05)", color: "#f8fafc" }}
-                    />
-                  </label>
-                  <label style={{ display: "grid", gap: 8, color: "#f8fafc", fontSize: 13 }}>
-                    Rent per bed
-                    <input
-                      type="number"
-                      value={roomForm.rentPerBed}
-                      onChange={(event) => setRoomForm((prev) => ({ ...prev, rentPerBed: event.target.value }))}
-                      placeholder="5000"
-                      style={{ borderRadius: 18, border: "1px solid rgba(255,255,255,0.12)", padding: "14px 16px", background: "rgba(255,255,255,0.05)", color: "#f8fafc" }}
-                    />
-                  </label>
-                </div>
-                {!editingRoom && (
-                  <label style={{ display: "grid", gap: 8, color: "#f8fafc", fontSize: 13 }}>
-                    Total beds
-                    <input
-                      type="number"
-                      value={roomForm.totalBeds}
-                      onChange={(event) => setRoomForm((prev) => ({ ...prev, totalBeds: event.target.value }))}
-                      placeholder="2"
-                      style={{ borderRadius: 18, border: "1px solid rgba(255,255,255,0.12)", padding: "14px 16px", background: "rgba(255,255,255,0.05)", color: "#f8fafc" }}
-                    />
-                  </label>
-                )}
-                <div style={{ display: "grid", gap: 14, gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))" }}>
-                  <label style={{ display: "grid", gap: 8, color: "#f8fafc", fontSize: 13 }}>
-                    Floor
-                    <input
-                      value={roomForm.floor}
-                      onChange={(event) => setRoomForm((prev) => ({ ...prev, floor: event.target.value }))}
-                      placeholder="First"
-                      style={{ borderRadius: 18, border: "1px solid rgba(255,255,255,0.12)", padding: "14px 16px", background: "rgba(255,255,255,0.05)", color: "#f8fafc" }}
-                    />
-                  </label>
-                  <label style={{ display: "grid", gap: 8, color: "#f8fafc", fontSize: 13 }}>
-                    Type
-                    <input
-                      value={roomForm.roomType}
-                      onChange={(event) => setRoomForm((prev) => ({ ...prev, roomType: event.target.value }))}
-                      placeholder="AC / Non-AC"
-                      style={{ borderRadius: 18, border: "1px solid rgba(255,255,255,0.12)", padding: "14px 16px", background: "rgba(255,255,255,0.05)", color: "#f8fafc" }}
-                    />
-                  </label>
-                </div>
-                <div style={{ display: "flex", gap: 12, flexWrap: "wrap", justifyContent: "flex-end" }}>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      resetRoomForm();
-                      setRoomFormOpen(false);
-                    }}
-                    style={{
-                      borderRadius: 18,
-                      border: "1px solid rgba(255,255,255,0.18)",
-                      background: "transparent",
-                      color: "#f8fafc",
-                      padding: "14px 20px",
-                      cursor: "pointer",
-                    }}
-                  >
-                    Close
-                  </button>
-                  <button
-                    type="button"
-                    onClick={submitRoom}
-                    disabled={roomSaving}
-                    style={{
-                      borderRadius: 18,
-                      border: "none",
-                      background: "#22c55e",
-                      color: "#081028",
-                      padding: "14px 20px",
-                      cursor: roomSaving ? "not-allowed" : "pointer",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      gap: "10px",
-                    }}
-                  >
-                    {roomSaving ? <Loader2 size={18} className="animate-spin" /> : null}
-                    {roomSaving ? "Saving..." : editingRoom ? "Save room" : "Create room"}
-                  </button>
-                </div>
-              </div>
-            </div>
-          </motion.section>
         )}
 
-        <section style={{ position: "relative", zIndex: 10, display: "grid", gap: 20, marginTop: 24 }}>
-          {loading ? (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              style={{
-                display: "flex",
-                justifyContent: "center",
-                alignItems: "center",
-                minHeight: 260,
-                borderRadius: 28,
-                background: "rgba(255,255,255,0.04)",
-                border: "1px solid rgba(255,255,255,0.08)",
-                boxShadow: "0 18px 50px rgba(0,0,0,0.16)",
-              }}
-            >
-              <Loader2 size={30} color="#22c55e" />
-            </motion.div>
-          ) : filteredRooms.length === 0 ? (
-            <motion.div
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                justifyContent: "center",
-                minHeight: 320,
-                borderRadius: 28,
-                background: "rgba(255,255,255,0.03)",
-                border: "1px solid rgba(255,255,255,0.08)",
-                boxShadow: "0 18px 50px rgba(0,0,0,0.16)",
-                padding: 24,
-                textAlign: "center",
-              }}
-            >
-              <BedDouble size={42} color="rgba(255,255,255,0.55)" />
-              <h2 style={{ color: "#f8fafc", fontSize: 24, margin: "18px 0 8px" }}>No Rooms Found</h2>
-              <p style={{ color: "rgba(255,255,255,0.66)", maxWidth: 450, lineHeight: 1.7, margin: 0 }}>
-                Create a premium room to begin managing bed assignments, occupancy, and resident check-in from one powerful dashboard.
-              </p>
-              <button
-                type="button"
-                onClick={() => {
-                  setRoomFormOpen(true);
-                  resetRoomForm();
-                }}
-                style={{
-                  borderRadius: 18,
-                  border: "none",
-                  background: "#22c55e",
-                  color: "#081028",
-                  padding: "14px 22px",
-                  marginTop: 20,
-                  cursor: "pointer",
-                }}
-              >
-                Add Room
-              </button>
-            </motion.div>
-          ) : (
-            <div style={{ display: "grid", gap: 20, gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))" }}>
-              {filteredRooms.map((room, roomIndex) => {
-                const { totalBeds, occupiedBeds, vacantBeds, pct, beds } = getRoomStats(room);
-                const statusLabel = occupiedBeds === totalBeds && totalBeds > 0 ? "Full" : occupiedBeds === 0 ? "Empty" : "Partial";
-                const statusAccent = occupiedBeds === totalBeds ? "#3B82F6" : occupiedBeds === 0 ? "#22C55E" : "#F59E0B";
-                const roomTypeLabel = room.roomType || "Standard";
-
-                return (
-                  <motion.button
-                    key={room._id}
-                    type="button"
-                    onClick={() => handleEditRoom(room)}
-                    className="room-card"
-                    whileHover={{ y: -4 }}
-                    whileTap={{ scale: 0.98 }}
-                    initial={{ opacity: 0, y: 24 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.24, delay: 0.05 * roomIndex }}
-                    style={{
-                      display: "flex",
-                      flexDirection: "column",
-                      justifyContent: "space-between",
-                      borderRadius: 24,
-                      padding: 24,
-                      minHeight: 320,
-                      textAlign: "left",
-                      background: "rgba(255,255,255,0.04)",
-                      border: "1px solid rgba(255,255,255,0.08)",
-                      boxShadow: "0 24px 80px rgba(0,0,0,0.16)",
-                      backdropFilter: "blur(22px)",
-                      cursor: "pointer",
-                      transition: "border-color 0.2s ease, transform 0.2s ease",
-                    }}
-                  >
-                    <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
-                      <div style={{ minWidth: 0 }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-                          <div style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 44, height: 44, borderRadius: 18, background: "rgba(34,197,94,0.14)" }}>
-                            <BedDouble size={20} color="#22C55E" />
-                          </div>
-                          <div style={{ minWidth: 0 }}>
-                            <div style={{ fontSize: 18, fontWeight: 800, color: "#f8fafc", marginBottom: 4 }}>Room {room.roomNumber}</div>
-                            <div style={{ color: "rgba(255,255,255,0.68)", fontSize: 13 }}>
-                              {roomTypeLabel} · Floor {room.floor || "—"}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                      <div style={{ display: "inline-flex", alignItems: "center", gap: 8, borderRadius: 16, padding: "8px 12px", background: "rgba(255,255,255,0.06)", border: `1px solid ${statusAccent}` }}>
-                        <span style={{ width: 10, height: 10, borderRadius: 999, background: statusAccent, display: "inline-block" }} />
-                        <span style={{ color: "#f8fafc", fontSize: 12, fontWeight: 700 }}>{statusLabel}</span>
-                      </div>
-                    </div>
-
-                    <div style={{ display: "grid", gap: 14, marginTop: 18 }}>
-                      <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 14 }}>
-                        <div style={{ borderRadius: 18, padding: "16px", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
-                          <div style={{ color: "rgba(255,255,255,0.68)", fontSize: 12, textTransform: "uppercase", letterSpacing: "0.12em" }}>Capacity</div>
-                          <div style={{ marginTop: 10, color: "#f8fafc", fontSize: 20, fontWeight: 800 }}>{totalBeds}</div>
-                        </div>
-                        <div style={{ borderRadius: 18, padding: "16px", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
-                          <div style={{ color: "rgba(255,255,255,0.68)", fontSize: 12, textTransform: "uppercase", letterSpacing: "0.12em" }}>Booked</div>
-                          <div style={{ marginTop: 10, color: "#f8fafc", fontSize: 20, fontWeight: 800 }}>{occupiedBeds}</div>
-                        </div>
-                        <div style={{ borderRadius: 18, padding: "16px", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
-                          <div style={{ color: "rgba(255,255,255,0.68)", fontSize: 12, textTransform: "uppercase", letterSpacing: "0.12em" }}>Vacant</div>
-                          <div style={{ marginTop: 10, color: "#f8fafc", fontSize: 20, fontWeight: 800 }}>{vacantBeds}</div>
-                        </div>
-                        <div style={{ borderRadius: 18, padding: "16px", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
-                          <div style={{ color: "rgba(255,255,255,0.68)", fontSize: 12, textTransform: "uppercase", letterSpacing: "0.12em" }}>Occupancy</div>
-                          <div style={{ marginTop: 10, color: "#f8fafc", fontSize: 20, fontWeight: 800 }}>{pct}%</div>
-                        </div>
-                      </div>
-
-                      <div>
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8, color: "rgba(255,255,255,0.72)", fontSize: 13 }}>
-                          <span>Occupancy progress</span>
-                          <span>{pct}% booked</span>
-                        </div>
-                        <div style={{ width: "100%", height: 12, borderRadius: 999, background: "rgba(255,255,255,0.08)" }}>
-                          <div
-                            style={{
-                              width: `${pct}%`,
-                              height: "100%",
-                              borderRadius: 999,
-                              background: "linear-gradient(90deg, rgba(34,197,94,0.95), rgba(59,130,246,0.85))",
-                              boxShadow: "0 0 18px rgba(34,197,94,0.22)",
-                              transition: "width 0.28s ease",
-                            }}
-                          />
-                        </div>
-                      </div>
-                    </div>
-
-                    <div style={{ display: "grid", gap: 14, marginTop: 8 }}>
-                      <div style={{ display: "grid", gridTemplateColumns: "repeat(5, minmax(0, 1fr))", gap: 8 }}>
-                        {beds.slice(0, 5).map((bed, bedIndex) => {
-                          const bedStatus = getBedStatusAppearance(bed?.status);
-                          const isOccupied = String(bed?.status || "").toLowerCase() === "occupied";
-                          return (
-                            <div
-                              key={bed?._id || `${room._id}-${bedIndex}`}
-                              style={{
-                                minHeight: 44,
-                                borderRadius: 12,
-                                background: bedStatus.background,
-                                border: `1px solid ${bedStatus.border}`,
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "center",
-                                color: bedStatus.color,
-                                fontSize: 12,
-                                fontWeight: 700,
-                              }}
-                            >
-                              {isOccupied ? "🟢" : "⚪"}
-                            </div>
-                          );
-                        })}
-                        {beds.length === 0 && (
-                          <div style={{ gridColumn: "span 5", padding: 14, borderRadius: 16, background: "rgba(255,255,255,0.05)", color: "rgba(255,255,255,0.68)", fontSize: 13, textAlign: "center" }}>
-                            No bed data available
-                          </div>
-                        )}
-                      </div>
-                      <div style={{ display: "flex", justifyContent: "space-between", color: "rgba(255,255,255,0.75)", fontSize: 13 }}>
-                        <span>Booked: {occupiedBeds}</span>
-                        <span>Vacant: {vacantBeds}</span>
-                      </div>
-                    </div>
-                  </motion.button>
-                );
-              })}
-            </div>
-          )}
-        </section>
-
-        {assignModalOpen && selectedRoom && selectedBed && (
-          <div
-            role="dialog"
-            aria-modal="true"
-            style={{
-              position: "fixed",
-              inset: 0,
-              zIndex: 1200,
-              background: "rgba(0,0,0,0.78)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              padding: 20,
-              overflowY: "auto",
-            }}
-          >
-            <motion.div
-              initial={{ opacity: 0, scale: 0.96 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.22 }}
-              style={{
-                width: "min(760px,100%)",
-                maxHeight: "calc(100vh - 40px)",
-                borderRadius: 28,
-                background: "rgba(11,23,57,0.98)",
-                border: "1px solid rgba(255,255,255,0.08)",
-                padding: 28,
-                overflowY: "auto",
-                boxShadow: "0 30px 80px rgba(0,0,0,0.28)",
-              }}
-            >
-              <div style={{ display: "flex", justifyContent: "space-between", gap: 16, alignItems: "center", marginBottom: 22 }}>
-                <div>
-                  <p style={{ margin: 0, color: "rgba(255,255,255,0.6)", fontSize: 13, textTransform: "uppercase", letterSpacing: "0.12em" }}>
-                    Assign resident to
-                  </p>
-                  <h2 style={{ margin: "8px 0 0", color: "#f8fafc", fontSize: 24 }}>
-                    Room {selectedRoom.roomNumber} · Bed {selectedBed.bedNumber}
-                  </h2>
-                </div>
-                <button
-                  type="button"
-                  onClick={closeAssignModal}
-                  style={{
-                    border: "1px solid rgba(255,255,255,0.10)",
-                    background: "rgba(255,255,255,0.05)",
-                    color: "#f8fafc",
-                    borderRadius: 14,
-                    width: 42,
-                    height: 42,
-                    display: "grid",
-                    placeItems: "center",
-                    cursor: "pointer",
-                  }}
-                >
-                  <X size={22} />
-                </button>
-              </div>
-
-              <div style={{ display: "grid", gap: 22 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                  <CheckCircle2 color="#22c55e" />
-                  <h3 style={{ margin: 0, color: "#f8fafc", fontSize: 18 }}>Resident information</h3>
-                </div>
-                {assignError ? (
-                  <div style={{ color: "#fee2e2", background: "rgba(239,68,68,0.12)", padding: 14, borderRadius: 16, border: "1px solid rgba(239,68,68,0.2)" }}>
-                    {assignError}
-                  </div>
-                ) : null}
-                <div style={{ display: "grid", gap: 20 }}>
-                  <div style={{ display: "grid", gap: 14, gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))" }}>
-                    <label style={{ display: "grid", gap: 8, color: "#f8fafc", fontSize: 13 }}>
-                      Full name
-                      <input
-                        type="text"
-                        value={assignForm.name}
-                        onChange={(event) => setAssignForm((prev) => ({ ...prev, name: event.target.value }))}
-                        placeholder="Enter resident name"
-                        style={{ borderRadius: 18, border: "1px solid rgba(255,255,255,0.12)", padding: "14px 16px", background: "rgba(255,255,255,0.05)", color: "#f8fafc" }}
-                      />
-                    </label>
-                    <label style={{ display: "grid", gap: 8, color: "#f8fafc", fontSize: 13 }}>
-                      Phone
-                      <input
-                        type="tel"
-                        value={assignForm.phone}
-                        onChange={(event) => setAssignForm((prev) => ({ ...prev, phone: event.target.value }))}
-                        placeholder="10 digit phone"
-                        style={{ borderRadius: 18, border: "1px solid rgba(255,255,255,0.12)", padding: "14px 16px", background: "rgba(255,255,255,0.05)", color: "#f8fafc" }}
-                      />
-                    </label>
-                  </div>
-                  <div style={{ display: "grid", gap: 14, gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))" }}>
-                    <label style={{ display: "grid", gap: 8, color: "#f8fafc", fontSize: 13 }}>
-                      Monthly rent
-                      <input
-                        type="number"
-                        value={assignForm.monthlyRent}
-                        onChange={(event) => setAssignForm((prev) => ({ ...prev, monthlyRent: event.target.value }))}
-                        placeholder="Monthly rent"
-                        style={{ borderRadius: 18, border: "1px solid rgba(255,255,255,0.12)", padding: "14px 16px", background: "rgba(255,255,255,0.05)", color: "#f8fafc" }}
-                      />
-                    </label>
-                    <label style={{ display: "grid", gap: 8, color: "#f8fafc", fontSize: 13 }}>
-                      Deposit amount
-                      <input
-                        type="number"
-                        value={assignForm.depositAmount}
-                        onChange={(event) => setAssignForm((prev) => ({ ...prev, depositAmount: event.target.value }))}
-                        placeholder="Deposit amount"
-                        style={{ borderRadius: 18, border: "1px solid rgba(255,255,255,0.12)", padding: "14px 16px", background: "rgba(255,255,255,0.05)", color: "#f8fafc" }}
-                      />
-                    </label>
-                  </div>
-                  <label style={{ display: "grid", gap: 8, color: "#f8fafc", fontSize: 13 }}>
-                    Join date
-                    <input
-                      type="date"
-                      value={assignForm.joinDate}
-                      onChange={(event) => setAssignForm((prev) => ({ ...prev, joinDate: event.target.value }))}
-                      style={{ borderRadius: 18, border: "1px solid rgba(255,255,255,0.12)", padding: "14px 16px", background: "rgba(255,255,255,0.05)", color: "#f8fafc" }}
-                    />
-                  </label>
-                </div>
-                <div style={{ display: "flex", gap: 12, flexWrap: "wrap", justifyContent: "flex-end" }}>
-                  <button
-                    type="button"
-                    onClick={closeAssignModal}
-                    style={{
-                      borderRadius: 18,
-                      border: "1px solid rgba(255,255,255,0.18)",
-                      background: "transparent",
-                      color: "#f8fafc",
-                      padding: "14px 20px",
-                      minWidth: 120,
-                      cursor: "pointer",
-                    }}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="button"
-                    onClick={submitAssign}
-                    disabled={assignLoading}
-                    style={{
-                      borderRadius: 18,
-                      border: "none",
-                      background: "#22c55e",
-                      color: "#081028",
-                      padding: "14px 20px",
-                      minWidth: 160,
-                      cursor: assignLoading ? "not-allowed" : "pointer",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      gap: "10px",
-                    }}
-                  >
-                    {assignLoading ? <Loader2 size={18} className="animate-spin" /> : null}
-                    {assignLoading ? "Saving..." : "Assign Resident"}
-                  </button>
-                </div>
-              </div>
-            </motion.div>
-          </div>
-        )}
-
-        {residentModalOpen && (
-          <div
-            role="dialog"
-            aria-modal="true"
-            style={{
-              position: "fixed",
-              inset: 0,
-              zIndex: 1200,
-              background: "rgba(0,0,0,0.8)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              padding: 20,
-              overflowY: "auto",
-            }}
-          >
-            <motion.div
-              initial={{ opacity: 0, scale: 0.96 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.22 }}
-              style={{
-                width: "min(860px,100%)",
-                maxHeight: "calc(100vh - 40px)",
-                borderRadius: 28,
-                background: "rgba(11,23,57,0.98)",
-                border: "1px solid rgba(255,255,255,0.08)",
-                padding: 28,
-                overflowY: "auto",
-                boxShadow: "0 30px 80px rgba(0,0,0,0.28)",
-              }}
-            >
-              <div style={{ display: "flex", justifyContent: "space-between", gap: 16, alignItems: "center", marginBottom: 24 }}>
-                <div>
-                  <p style={{ margin: 0, color: "rgba(255,255,255,0.6)", fontSize: 13, textTransform: "uppercase", letterSpacing: "0.12em" }}>
-                    Resident profile
-                  </p>
-                  <h2 style={{ margin: "8px 0 0", color: "#f8fafc", fontSize: 24 }}>
-                    {residentDetails?.name || "Resident details"}
-                  </h2>
-                </div>
-                <button
-                  type="button"
-                  onClick={closeResidentModal}
-                  style={{ border: "none", background: "transparent", color: "#f8fafc", cursor: "pointer" }}
-                >
-                  <X size={22} />
-                </button>
-              </div>
-
-              {residentLoading ? (
-                <div style={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: 240 }}>
-                  <Loader2 size={32} color="#22c55e" />
-                </div>
-              ) : (
-                <div style={{ display: "grid", gap: 22 }}>
-                  <section
-                    style={{
-                      display: "grid",
-                      gap: 12,
-                      borderRadius: 24,
-                      background: "rgba(255,255,255,0.04)",
-                      border: "1px solid rgba(255,255,255,0.08)",
-                      padding: 22,
-                    }}
-                  >
-                    <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
-                      <div
-                        style={{
-                          width: 74,
-                          height: 74,
-                          borderRadius: 22,
-                          background: "rgba(255,255,255,0.08)",
-                          display: "grid",
-                          placeItems: "center",
-                          overflow: "hidden",
-                        }}
-                      >
-                        {residentDetails?.photo ? (
-                          <img
-                            src={buildFileUrl(residentDetails.photo)}
-                            alt={residentDetails.name || "Resident photo"}
-                            style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                          />
-                        ) : (
-                          <span style={{ color: "#f8fafc", fontWeight: 700, fontSize: 20 }}>{getInitials(residentDetails?.name)}</span>
-                        )}
-                      </div>
-                      <div>
-                        <p style={{ margin: 0, color: "rgba(255,255,255,0.7)", fontSize: 13 }}>Personal details</p>
-                        <div style={{ marginTop: 10, display: "grid", gap: 8 }}>
-                          <span style={{ color: "#f8fafc", fontWeight: 700 }}>{residentDetails?.name || "-"}</span>
-                          <span style={{ color: "rgba(255,255,255,0.72)", fontSize: 14 }}>Phone: {residentDetails?.phone || "-"}</span>
-                          <span style={{ color: "rgba(255,255,255,0.72)", fontSize: 14 }}>Email: {residentDetails?.email || "Not provided"}</span>
-                          <span style={{ color: "rgba(255,255,255,0.72)", fontSize: 14 }}>Joined on {formatDate(residentDetails?.joinDate)}</span>
-                        </div>
-                      </div>
-                    </div>
-                  </section>
-
-                  <section
-                    style={{
-                      display: "grid",
-                      gap: 12,
-                      borderRadius: 24,
-                      background: "rgba(255,255,255,0.04)",
-                      border: "1px solid rgba(255,255,255,0.08)",
-                      padding: 22,
-                    }}
-                  >
-                    <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-                      <Info size={18} color="#22c55e" />
-                      <h3 style={{ margin: 0, color: "#f8fafc", fontSize: 18 }}>Room & bed details</h3>
-                    </div>
-                    <div style={{ display: "grid", gap: 10 }}>
-                      <div style={{ color: "rgba(255,255,255,0.72)", fontSize: 14 }}>Room number: {roomNumberById[residentDetails?.roomId] || residentDetails?.roomId || "-"}</div>
-                      <div style={{ color: "rgba(255,255,255,0.72)", fontSize: 14 }}>Bed number: {bedNumberById[residentDetails?.bedId] || residentDetails?.bedId || "-"}</div>
-                      <div style={{ color: "rgba(255,255,255,0.72)", fontSize: 14 }}>Monthly rent: {formatMoney(residentDetails?.monthlyRent)}</div>
-                      <div style={{ color: "rgba(255,255,255,0.72)", fontSize: 14 }}>Occupancy status: {residentDetails?.status || "active"}</div>
-                    </div>
-                  </section>
-
-                  <section
-                    style={{
-                      display: "grid",
-                      gap: 12,
-                      borderRadius: 24,
-                      background: "rgba(255,255,255,0.04)",
-                      border: "1px solid rgba(255,255,255,0.08)",
-                      padding: 22,
-                    }}
-                  >
-                    <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-                      <CreditCard size={18} color="#22c55e" />
-                      <h3 style={{ margin: 0, color: "#f8fafc", fontSize: 18 }}>Payment summary</h3>
-                    </div>
-                    {residentPayments.length === 0 ? (
-                      <p style={{ margin: 0, color: "rgba(255,255,255,0.72)" }}>No payments recorded yet.</p>
-                    ) : (
-                      (() => {
-                        const latest = [...residentPayments].sort((a, b) => new Date(b.createdAt || b.updatedAt).getTime() - new Date(a.createdAt || a.updatedAt).getTime())[0];
-                        const totalPaid = latest.entries?.reduce((sum, entry) => sum + Number(entry.amount || 0), 0) || 0;
-                        const balance = latest.balance ?? Math.max(0, (latest.totalRent || 0) - totalPaid);
-                        const nextDue = getDueDateLabel(latest, residentDetails?.joinDate);
-                        const daysFromDue = getDaysFromDue(latest, residentDetails?.joinDate);
-                        const dueText = daysFromDue === null ? "Not available" : daysFromDue >= 0 ? `${daysFromDue} days remaining` : `${Math.abs(daysFromDue)} days overdue`;
-                        return (
-                          <div style={{ display: "grid", gap: 12 }}>
-                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                              <div style={{ borderRadius: 18, padding: 16, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)" }}>
-                                <p style={{ margin: 0, color: "rgba(255,255,255,0.7)", fontSize: 12 }}>Payment status</p>
-                                <p style={{ margin: "8px 0 0", color: "#f8fafc", fontWeight: 700 }}>{latest.status || "pending"}</p>
-                              </div>
-                              <div style={{ borderRadius: 18, padding: 16, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)" }}>
-                                <p style={{ margin: 0, color: "rgba(255,255,255,0.7)", fontSize: 12 }}>Paid</p>
-                                <p style={{ margin: "8px 0 0", color: "#f8fafc", fontWeight: 700 }}>{formatMoney(totalPaid)}</p>
-                              </div>
-                            </div>
-                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                              <div style={{ borderRadius: 18, padding: 16, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)" }}>
-                                <p style={{ margin: 0, color: "rgba(255,255,255,0.7)", fontSize: 12 }}>Pending balance</p>
-                                <p style={{ margin: "8px 0 0", color: "#f8fafc", fontWeight: 700 }}>{formatMoney(balance)}</p>
-                              </div>
-                              <div style={{ borderRadius: 18, padding: 16, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)" }}>
-                                <p style={{ margin: 0, color: "rgba(255,255,255,0.7)", fontSize: 12 }}>Next due</p>
-                                <p style={{ margin: "8px 0 0", color: "#f8fafc", fontWeight: 700 }}>{nextDue}</p>
-                              </div>
-                            </div>
-                            <p style={{ margin: 0, color: "rgba(255,255,255,0.72)", fontSize: 13 }}>{dueText}</p>
-                          </div>
-                        );
-                      })()
-                    )}
-                  </section>
-
-                  <section
-                    style={{
-                      display: "grid",
-                      gap: 12,
-                      borderRadius: 24,
-                      background: "rgba(255,255,255,0.04)",
-                      border: "1px solid rgba(255,255,255,0.08)",
-                      padding: 22,
-                    }}
-                  >
-                    <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-                      <Calendar size={18} color="#22c55e" />
-                      <h3 style={{ margin: 0, color: "#f8fafc", fontSize: 18 }}>Agreement summary</h3>
-                    </div>
-                    <div style={{ display: "grid", gap: 10, color: "rgba(255,255,255,0.72)", fontSize: 14 }}>
-                      <div>Rules version: {residentDetails?.rulesVersionNumber || "Not signed"}</div>
-                      <div>Signed at: {residentDetails?.signedAt ? formatDate(residentDetails.signedAt) : "Not signed"}</div>
-                      <div>Signature recorded: {residentDetails?.signatureImage ? "Yes" : "No"}</div>
-                    </div>
-                  </section>
-
-                  <div style={{ display: "flex", gap: 12, flexWrap: "wrap", justifyContent: "flex-end" }}>
-                    <button
-                      type="button"
-                      onClick={closeResidentModal}
-                      style={{
-                        borderRadius: 18,
-                        border: "1px solid rgba(255,255,255,0.18)",
-                        background: "transparent",
-                        color: "#f8fafc",
-                        padding: "14px 20px",
-                        cursor: "pointer",
-                      }}
-                    >
-                      Close
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        closeResidentModal();
-                        setCheckoutModalOpen(true);
-                      }}
-                      style={{
-                        borderRadius: 18,
-                        border: "none",
-                        background: "#ef4444",
-                        color: "#f8fafc",
-                        padding: "14px 20px",
-                        cursor: "pointer",
-                      }}
-                    >
-                      Checkout resident
-                    </button>
-                  </div>
-                </div>
-              )}
-            </motion.div>
-          </div>
-        )}
-
-        {checkoutModalOpen && selectedResidentId && (
-          <div
-            role="dialog"
-            aria-modal="true"
-            style={{
-              position: "fixed",
-              inset: 0,
-              zIndex: 1200,
-              background: "rgba(0,0,0,0.86)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              padding: 20,
-              overflowY: "auto",
-            }}
-          >
-            <motion.div
-              initial={{ opacity: 0, scale: 0.96 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.22 }}
-              style={{
-                width: "min(560px,100%)",
-                borderRadius: 28,
-                background: "rgba(11,23,57,0.98)",
-                border: "1px solid rgba(255,255,255,0.08)",
-                padding: 28,
-                boxShadow: "0 30px 80px rgba(0,0,0,0.28)",
-              }}
-            >
-              <div style={{ display: "flex", justifyContent: "space-between", gap: 16, alignItems: "center", marginBottom: 24 }}>
-                <div>
-                  <p style={{ margin: 0, color: "rgba(255,255,255,0.6)", fontSize: 13, textTransform: "uppercase", letterSpacing: "0.12em" }}>
-                    Confirm checkout
-                  </p>
-                  <h2 style={{ margin: "8px 0 0", color: "#f8fafc", fontSize: 24 }}>Finalize resident checkout</h2>
-                </div>
-                <button
-                  type="button"
-                  onClick={closeCheckoutModal}
-                  style={{ border: "none", background: "transparent", color: "#f8fafc", cursor: "pointer" }}
-                >
-                  <X size={22} />
-                </button>
-              </div>
-              <div style={{ display: "grid", gap: 20 }}>
-                <div style={{ display: "grid", gap: 14 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 12, color: "rgba(255,255,255,0.9)" }}>
-                    <AlertTriangle size={18} color="#f59e0b" />
-                    <span style={{ color: "rgba(255,255,255,0.9)", fontSize: 15 }}>This bed will become vacant after checkout.</span>
-                  </div>
-                  <div style={{ borderRadius: 20, background: "rgba(255,255,255,0.04)", padding: 18, border: "1px solid rgba(255,255,255,0.08)" }}>
-                    <p style={{ margin: 0, color: "rgba(255,255,255,0.75)", fontSize: 14 }}>
-                      Resident: <strong style={{ color: "#f8fafc" }}>{residentDetails?.name || "Resident"}</strong>
-                    </p>
-                    <p style={{ margin: "8px 0 0", color: "rgba(255,255,255,0.75)", fontSize: 14 }}>
-                      Room: <strong style={{ color: "#f8fafc" }}>{selectedRoom?.roomNumber || "-"}</strong> · Bed: <strong style={{ color: "#f8fafc" }}>{selectedBed?.bedNumber || "-"}</strong>
-                    </p>
-                  </div>
-                </div>
-
-                <div style={{ display: "flex", gap: 12, flexWrap: "wrap", justifyContent: "flex-end" }}>
-                  <button
-                    type="button"
-                    onClick={closeCheckoutModal}
-                    style={{
-                      borderRadius: 18,
-                      border: "1px solid rgba(255,255,255,0.18)",
-                      background: "transparent",
-                      color: "#f8fafc",
-                      padding: "14px 20px",
-                      cursor: "pointer",
-                    }}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="button"
-                    onClick={submitCheckout}
-                    disabled={checkoutLoading}
-                    style={{
-                      borderRadius: 18,
-                      border: "none",
-                      background: "#ef4444",
-                      color: "#f8fafc",
-                      padding: "14px 20px",
-                      cursor: checkoutLoading ? "not-allowed" : "pointer",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      gap: "10px",
-                    }}
-                  >
-                    {checkoutLoading ? <Loader2 size={18} className="animate-spin" /> : null}
-                    {checkoutLoading ? "Saving..." : "Confirm Checkout"}
-                  </button>
-                </div>
-              </div>
-            </motion.div>
-          </div>
-        )}
       </div>
 
-      <BottomNav />
+      {/* Add Room Modal */}
+      {showAddRoomModal && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-[#0b1739] border border-white/10 rounded-2xl max-w-md w-full p-6 space-y-4 text-xs">
+            <h3 className="text-lg font-bold text-white border-b border-white/10 pb-3">Create New Room</h3>
+            <form onSubmit={handleCreateRoom} className="space-y-3">
+              <div>
+                <label className="block text-slate-400 font-bold mb-1">Room Number *</label>
+                <input
+                  type="text"
+                  required
+                  value={roomForm.roomNumber}
+                  onChange={(e) => setRoomForm({ ...roomForm, roomNumber: e.target.value })}
+                  placeholder="e.g. 101"
+                  className="w-full bg-white/5 border border-white/10 rounded-xl p-2.5 text-white"
+                />
+              </div>
+
+              <div>
+                <label className="block text-slate-400 font-bold mb-1">Building</label>
+                <select
+                  value={roomForm.buildingId}
+                  onChange={(e) => setRoomForm({ ...roomForm, buildingId: e.target.value })}
+                  className="w-full bg-white/5 border border-white/10 rounded-xl p-2.5 text-white"
+                >
+                  <option value="" className="bg-slate-900">Select Building</option>
+                  {buildings.map((b) => <option key={b._id} value={b._id} className="bg-slate-900">{b.buildingName}</option>)}
+                </select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-slate-400 font-bold mb-1">Room Capacity *</label>
+                  <input
+                    type="number"
+                    min="1"
+                    required
+                    value={roomForm.capacity}
+                    onChange={(e) => setRoomForm({ ...roomForm, capacity: Number(e.target.value) })}
+                    className="w-full bg-white/5 border border-white/10 rounded-xl p-2.5 text-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-slate-400 font-bold mb-1">Monthly Rent (₹) *</label>
+                  <input
+                    type="number"
+                    required
+                    value={roomForm.monthlyRent}
+                    onChange={(e) => setRoomForm({ ...roomForm, monthlyRent: Number(e.target.value) })}
+                    className="w-full bg-white/5 border border-white/10 rounded-xl p-2.5 text-white"
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-3 pt-3">
+                <button type="button" onClick={() => setShowAddRoomModal(false)} className="w-1/2 py-2.5 bg-white/10 rounded-xl font-bold">Cancel</button>
+                <button type="submit" className="w-1/2 py-2.5 bg-emerald-500 text-slate-950 font-bold rounded-xl hover:bg-emerald-400">Save Room</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Add Building Modal */}
+      {showAddBuildingModal && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-[#0b1739] border border-white/10 rounded-2xl max-w-md w-full p-6 space-y-4 text-xs">
+            <h3 className="text-lg font-bold text-white border-b border-white/10 pb-3">Add Building</h3>
+            <form onSubmit={handleCreateBuilding} className="space-y-3">
+              <div>
+                <label className="block text-slate-400 font-bold mb-1">Building Name *</label>
+                <input
+                  type="text"
+                  required
+                  value={buildingForm.buildingName}
+                  onChange={(e) => setBuildingForm({ ...buildingForm, buildingName: e.target.value })}
+                  placeholder="e.g. Block A"
+                  className="w-full bg-white/5 border border-white/10 rounded-xl p-2.5 text-white"
+                />
+              </div>
+              <div>
+                <label className="block text-slate-400 font-bold mb-1">Building Code *</label>
+                <input
+                  type="text"
+                  required
+                  value={buildingForm.buildingCode}
+                  onChange={(e) => setBuildingForm({ ...buildingForm, buildingCode: e.target.value })}
+                  placeholder="e.g. BLK-A"
+                  className="w-full bg-white/5 border border-white/10 rounded-xl p-2.5 text-white"
+                />
+              </div>
+              <div className="flex gap-3 pt-3">
+                <button type="button" onClick={() => setShowAddBuildingModal(false)} className="w-1/2 py-2.5 bg-white/10 rounded-xl font-bold">Cancel</button>
+                <button type="submit" className="w-1/2 py-2.5 bg-emerald-500 text-slate-950 font-bold rounded-xl hover:bg-emerald-400">Save Building</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Add Floor Modal */}
+      {showAddFloorModal && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-[#0b1739] border border-white/10 rounded-2xl max-w-md w-full p-6 space-y-4 text-xs">
+            <h3 className="text-lg font-bold text-white border-b border-white/10 pb-3">Add Floor</h3>
+            <form onSubmit={handleCreateFloor} className="space-y-3">
+              <div>
+                <label className="block text-slate-400 font-bold mb-1">Select Building *</label>
+                <select
+                  required
+                  value={floorForm.buildingId}
+                  onChange={(e) => setFloorForm({ ...floorForm, buildingId: e.target.value })}
+                  className="w-full bg-white/5 border border-white/10 rounded-xl p-2.5 text-white"
+                >
+                  <option value="" className="bg-slate-900">-- Choose Building --</option>
+                  {buildings.map((b) => <option key={b._id} value={b._id} className="bg-slate-900">{b.buildingName}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-slate-400 font-bold mb-1">Floor Name *</label>
+                <input
+                  type="text"
+                  required
+                  value={floorForm.floorName}
+                  onChange={(e) => setFloorForm({ ...floorForm, floorName: e.target.value })}
+                  placeholder="e.g. Ground Floor"
+                  className="w-full bg-white/5 border border-white/10 rounded-xl p-2.5 text-white"
+                />
+              </div>
+              <div>
+                <label className="block text-slate-400 font-bold mb-1">Floor Number *</label>
+                <input
+                  type="number"
+                  required
+                  value={floorForm.floorNumber}
+                  onChange={(e) => setFloorForm({ ...floorForm, floorNumber: Number(e.target.value) })}
+                  className="w-full bg-white/5 border border-white/10 rounded-xl p-2.5 text-white"
+                />
+              </div>
+              <div className="flex gap-3 pt-3">
+                <button type="button" onClick={() => setShowAddFloorModal(false)} className="w-1/2 py-2.5 bg-white/10 rounded-xl font-bold">Cancel</button>
+                <button type="submit" className="w-1/2 py-2.5 bg-emerald-500 text-slate-950 font-bold rounded-xl hover:bg-emerald-400">Save Floor</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Maintenance Modal */}
+      {showMaintenanceModal && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-[#0b1739] border border-white/10 rounded-2xl max-w-md w-full p-6 space-y-4 text-xs">
+            <h3 className="text-lg font-bold text-white border-b border-white/10 pb-3">Log Maintenance</h3>
+            <form onSubmit={handleCreateMaintenance} className="space-y-3">
+              <div>
+                <label className="block text-slate-400 font-bold mb-1">Target Type</label>
+                <select
+                  value={maintenanceForm.targetType}
+                  onChange={(e) => setMaintenanceForm({ ...maintenanceForm, targetType: e.target.value })}
+                  className="w-full bg-white/5 border border-white/10 rounded-xl p-2.5 text-white"
+                >
+                  <option value="Room" className="bg-slate-900">Room</option>
+                  <option value="Bed" className="bg-slate-900">Bed</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-slate-400 font-bold mb-1">Maintenance Reason *</label>
+                <input
+                  type="text"
+                  required
+                  value={maintenanceForm.reason}
+                  onChange={(e) => setMaintenanceForm({ ...maintenanceForm, reason: e.target.value })}
+                  placeholder="e.g. AC Repair, Plumbing"
+                  className="w-full bg-white/5 border border-white/10 rounded-xl p-2.5 text-white"
+                />
+              </div>
+              <div className="flex gap-3 pt-3">
+                <button type="button" onClick={() => setShowMaintenanceModal(false)} className="w-1/2 py-2.5 bg-white/10 rounded-xl font-bold">Cancel</button>
+                <button type="submit" className="w-1/2 py-2.5 bg-amber-500 text-slate-950 font-bold rounded-xl hover:bg-amber-400">Log Maintenance</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
     </div>
   );
-}
+};
 
 export default Rooms;

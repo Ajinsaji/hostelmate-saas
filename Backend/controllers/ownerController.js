@@ -3,6 +3,7 @@ const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
 const Owner = require("../models/Owner");
 const Staff = require("../models/Staff");
+const User = require("../models/User");
 const Hostel = require("../models/Hostel");
 const Subscription = require("../models/Subscription");
 const Room = require("../models/Room");
@@ -60,66 +61,101 @@ const loginOwner = async (req, res) => {
 
     let owner = null;
     let staff = null;
+    let authUser = null;
     let userRole = "owner";
     let userId = null;
     let hostelId = null;
     let userResponse = null;
 
-    if (username) {
-      staff = await Staff.findOne({ username, isActive: true });
-    }
+    // 1. Try unified User authentication first
+    const userQuery = {
+      status: "Active",
+      ...(email ? { email: email.toLowerCase() } : {}),
+      ...(phone ? { phone } : {}),
+    };
 
-    if (!staff && (phone || email)) {
-      const query = {
-        status: { $ne: "disabled" },
-        ...(email ? { email } : {}),
-        ...(phone ? { phone } : {}),
-      };
-
-      const ownerCandidate = await Owner.findOne(query);
-      logger.info("Owner found:", ownerCandidate?.username, "Phone:", ownerCandidate?.phone);
-      logger.info("Stored hash exists:", !!ownerCandidate?.password);
-      logger.info("Owner candidate debug:", {
-        _id: ownerCandidate?._id,
-        phone: ownerCandidate?.phone,
-        email: ownerCandidate?.email,
-        onboardingCompleted: !!ownerCandidate?.onboardingCompleted,
-      });
-
-      if (ownerCandidate) {
-        const ok = await safePasswordCompare(password, ownerCandidate.password);
-        logger.info("Password match:", ok);
-        if (ok) owner = ownerCandidate;
-      }
-
-
-      if (!owner) {
-        staff = await Staff.findOne({
-          ...(phone ? { phone } : {}),
-          ...(email ? { email } : {}),
-          isActive: true,
-        });
+    if (email || phone) {
+      const candidateUser = await User.findOne(userQuery);
+      if (candidateUser) {
+        const ok = await bcrypt.compare(password, candidateUser.passwordHash);
+        if (ok) {
+          authUser = candidateUser;
+          authUser.lastLogin = new Date();
+          await authUser.save();
+        }
       }
     }
 
-    if (staff) {
-      const isValid = await bcrypt.compare(password, staff.passwordHash);
-      if (!isValid) {
-        return res.status(400).json({ success: false, message: "Invalid credentials" });
+    if (authUser) {
+      userRole = authUser.role;
+      userId = authUser._id;
+      hostelId = authUser.tenantId;
+
+      const staffRecord = await Staff.findOne({ userId: authUser._id, isDeleted: false });
+      if (staffRecord) {
+        hostelId = staffRecord.hostelId || authUser.tenantId;
       }
 
-      userRole = staff.role;
-      userId = staff._id;
-      hostelId = staff.hostelId;
       userResponse = {
-        _id: staff._id,
-        fullName: staff.fullName,
-        phone: staff.phone,
-        username: staff.username,
-        role: staff.role,
-        isActive: staff.isActive,
-        hostelId: staff.hostelId,
+        _id: authUser._id,
+        fullName: staffRecord ? staffRecord.fullName : authUser.email,
+        email: authUser.email,
+        phone: authUser.phone,
+        role: authUser.role,
+        status: authUser.status,
+        hostelId,
+        employeeCode: staffRecord?.employeeCode || "",
       };
+    }
+
+    // 2. Legacy fallback checks if User record wasn't found
+    if (!authUser) {
+      if (username) {
+        staff = await Staff.findOne({ username, isActive: true, isDeleted: false });
+      }
+
+      if (!staff && (phone || email)) {
+        const query = {
+          status: { $ne: "disabled" },
+          ...(email ? { email } : {}),
+          ...(phone ? { phone } : {}),
+        };
+
+        const ownerCandidate = await Owner.findOne(query);
+        if (ownerCandidate) {
+          const ok = await safePasswordCompare(password, ownerCandidate.password);
+          if (ok) owner = ownerCandidate;
+        }
+
+        if (!owner) {
+          staff = await Staff.findOne({
+            ...(phone ? { phone } : {}),
+            ...(email ? { email } : {}),
+            isActive: true,
+            isDeleted: false,
+          });
+        }
+      }
+
+      if (staff) {
+        const isValid = await bcrypt.compare(password, staff.passwordHash);
+        if (!isValid) {
+          return res.status(400).json({ success: false, message: "Invalid credentials" });
+        }
+
+        userRole = staff.role;
+        userId = staff._id;
+        hostelId = staff.hostelId;
+        userResponse = {
+          _id: staff._id,
+          fullName: staff.fullName,
+          phone: staff.phone,
+          username: staff.username || staff.fullName,
+          role: staff.role,
+          isActive: staff.isActive,
+          hostelId: staff.hostelId,
+        };
+      }
     }
 
     if (!staff && owner) {
@@ -155,7 +191,7 @@ const loginOwner = async (req, res) => {
       };
     }
 
-    if (!staff && !owner) {
+    if (!authUser && !staff && !owner) {
       return res.status(400).json({
         success: false,
         message: "Invalid credentials",
@@ -181,7 +217,10 @@ const loginOwner = async (req, res) => {
     logger.info("Owner roomsConfigured:", owner?.roomsConfigured);
 
 
-    const secret = process.env.JWT_SECRET || "change_me_secret";
+    const secret = process.env.JWT_SECRET;
+    if (!secret) {
+      return res.status(500).json({ success: false, message: "Server misconfigured: JWT_SECRET missing" });
+    }
     const token = jwt.sign(payload, secret, { expiresIn: "7d" });
 
     if (owner) {
@@ -240,11 +279,16 @@ const resetOwnerPassword = async (req, res) => {
       ...(email ? { email } : {}),
     };
 
-    const updated = await Owner.findOneAndUpdate(
-      query,
-      { password: newPassword },
-      { new: true }
-    );
+    const owner = await Owner.findOne(query);
+    if (!owner) {
+      return res.status(404).json({ success: false, message: "Owner not found" });
+    }
+
+    // Hash before storing — findOneAndUpdate bypasses the pre-save hook
+    const salt = await bcrypt.genSalt(10);
+    owner.password = await bcrypt.hash(newPassword, salt);
+    owner.mustChangePassword = false;
+    const updated = await owner.save();
 
     if (!updated) {
       return res.status(404).json({ success: false, message: "Owner not found" });
@@ -456,7 +500,8 @@ const getAdmissions = async (req, res) => {
     const admissions = await PublicAdmission.find({ hostelId }).sort({ createdAt: -1 });
     res.status(200).json({ success: true, admissions });
   } catch (error) {
-    res.status(500).json(error);
+    logger.error("getAdmissions error:", error?.message || error);
+    res.status(500).json({ success: false, message: "Failed to load admissions", error: error?.message || String(error) });
   }
 };
 
@@ -550,8 +595,8 @@ const approveAdmission = async (req, res) => {
 
     res.status(200).json({ success: true, message: "Admission approved & Resident created", resident });
   } catch (error) {
-    logger.info(error);
-    res.status(500).json(error);
+    logger.error("approveAdmission error:", error?.message || error);
+    res.status(500).json({ success: false, message: "Failed to approve admission", error: error?.message || String(error) });
   }
 };
 
@@ -590,7 +635,8 @@ const rejectAdmission = async (req, res) => {
     res.status(200).json({ success: true, message: "Admission rejected" });
 
   } catch (error) {
-    res.status(500).json(error);
+    logger.error("rejectAdmission error:", error?.message || error);
+    res.status(500).json({ success: false, message: "Failed to reject admission", error: error?.message || String(error) });
   }
 };
 

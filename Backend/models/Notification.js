@@ -2,66 +2,84 @@ const mongoose = require("mongoose");
 
 const notificationSchema = new mongoose.Schema(
   {
-    userId: { type: mongoose.Schema.Types.ObjectId, required: true },
-
-    // Reduces lookup complexity and supports cross-hostel scoping.
-    hostelId: { type: mongoose.Schema.Types.ObjectId, default: null },
-
-    title: { type: String, default: "HostelMate" },
-    message: { type: String, required: true },
-
+    tenantId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Hostel",
+      required: true,
+    },
+    hostelId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Hostel",
+      required: true,
+    },
     type: {
       type: String,
-      required: true,
-      enum: [
-        "admission_submitted",
-        "resident_approved",
-        "resident_rejected",
-        "payment_uploaded",
-        "payment_verified",
-        "complaint_submitted",
-        "complaint_raised",
-        "resident_added",
-        "resident_checkout",
-        "bed_assigned",
-        "room_added",
-        "room_updated",
-        "room_deleted",
-        "staff_added",
-        "staff_removed",
-        "subscription_alert",
-        "subscription_reminder",
-        "subscription_expired",
-        "system_update",
-        "reminder",
-      ],
+      enum: ["Rent Reminder", "Budget Alert", "Maintenance Alert", "Announcement", "System"],
+      default: "System",
     },
-
-    category: { type: String, default: "updates" },
+    title: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    message: {
+      type: String,
+      required: true,
+      trim: true,
+    },
     priority: {
       type: String,
-      enum: ["low", "normal", "high"],
-      default: "normal",
+      enum: ["Low", "Medium", "High", "Critical"],
+      default: "Medium",
     },
-    icon: { type: String, default: null },
-    actionUrl: { type: String, default: null },
-
-    receiverRole: { type: String, default: null },
-
-    meta: {
-      route: { type: String, default: null },
-      admissionId: { type: mongoose.Schema.Types.ObjectId, default: null },
-      residentId: { type: mongoose.Schema.Types.ObjectId, default: null },
-      paymentId: { type: mongoose.Schema.Types.ObjectId, default: null },
-      hostelRequestId: { type: mongoose.Schema.Types.ObjectId, default: null },
-      relatedId: { type: mongoose.Schema.Types.ObjectId, default: null },
+    channel: {
+      type: String,
+      enum: ["In-App", "Email", "WhatsApp", "SMS"],
+      default: "In-App",
     },
-
-    isRead: { type: Boolean, default: false },
-    readAt: { type: Date, default: null },
+    recipientType: {
+      type: String,
+      enum: ["Owner", "Staff", "Resident"],
+      default: "Owner",
+    },
+    recipientId: {
+      type: mongoose.Schema.Types.ObjectId,
+      default: null,
+    },
+    status: {
+      type: String,
+      enum: ["Pending", "Sent", "Delivered", "Failed", "Read"],
+      default: "Sent",
+    },
+    scheduledAt: {
+      type: Date,
+      default: Date.now,
+    },
+    sentAt: {
+      type: Date,
+      default: Date.now,
+    },
+    readAt: {
+      type: Date,
+      default: null,
+    },
+    referenceType: {
+      type: String,
+      default: "",
+    },
+    referenceId: {
+      type: mongoose.Schema.Types.ObjectId,
+      default: null,
+    },
+    createdBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      default: null,
+    },
   },
   { timestamps: true }
 );
 
-module.exports = mongoose.model("Notification", notificationSchema);
+notificationSchema.index({ hostelId: 1, recipientId: 1, status: 1 });
+notificationSchema.index({ hostelId: 1, createdAt: -1 });
 
+module.exports = mongoose.model("Notification", notificationSchema);

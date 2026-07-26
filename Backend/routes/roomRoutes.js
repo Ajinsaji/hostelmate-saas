@@ -1,51 +1,30 @@
-const express =
-  require("express");
-
-const router =
-  express.Router();
-
-const {
-
-  createRoom,
-
-  getRoomsByHostel,
-
-  deleteRoom,
-  editRoom,
-} = require(
-  "../controllers/roomController"
-);
-
+const express = require("express");
+const router = express.Router();
 const ownerAuth = require("../middleware/ownerAuth");
+const {
+  createRoom,
+  getRoomsByHostel,
+  getRoomStatistics,
+  editRoom,
+  deleteRoom,
+  restoreRoom,
+} = require("../controllers/roomController");
 
-// CREATE ROOM
-router.post(
-  "/create-room",
-  ownerAuth,
-  createRoom
-);
+router.use(ownerAuth);
 
+router.get("/statistics", getRoomStatistics);
+router.post("/", createRoom);
+router.post("/create-room", createRoom); // Legacy Alias
 
-// GET ROOMS
-router.get(
-  "/get-rooms",
-  ownerAuth,
-  getRoomsByHostel
-);
+router.get("/", getRoomsByHostel);
+router.get("/get-rooms", getRoomsByHostel); // Legacy Alias
 
+router.put("/edit-room/:roomId", editRoom); // Legacy Alias
+router.put("/:id", editRoom);
 
-// DELETE ROOM
-router.delete(
-  "/delete-room/:roomId",
-  ownerAuth,
-  deleteRoom
-);
+router.delete("/delete-room/:roomId", deleteRoom); // Legacy Alias
+router.delete("/:id", deleteRoom);
 
-// EDIT ROOM
-router.put(
-  "/edit-room/:roomId",
-  ownerAuth,
-  editRoom
-);
+router.patch("/:id/restore", restoreRoom);
 
 module.exports = router;

@@ -23,7 +23,15 @@ import PublicHostelRegister from "./pages/PublicHostelRegister";
 import Dashboard from "./owner/Dashboard";
 import Rooms from "./owner/Rooms";
 import Residents from "./owner/Residents";
+import ResidentProfile from "./owner/ResidentProfile";
+
 import Payments from "./owner/Payments";
+import RentDashboard from "./owner/RentDashboard";
+import ExpenseDashboard from "./owner/ExpenseDashboard";
+import KitchenDashboard from "./owner/KitchenDashboard";
+
+
+
 import Reports from "./owner/Reports";
 import Profile from "./owner/Profile";
 import PendingAdmissions from "./owner/PendingAdmissions";
@@ -31,10 +39,16 @@ import HostelSettings from "./owner/HostelSettings";
 import OwnerProfileEdit from "./owner/OwnerProfileEdit";
 import UpdatePassword from "./owner/UpdatePassword";
 import SubscriptionExpired from "./pages/SubscriptionExpired";
+import SubscriptionBilling from "./owner/SubscriptionBilling";
 import RequestStatus from "./pages/RequestStatus";
 
 
 import StaffManagement from "./owner/StaffManagement";
+import AttendanceShiftManagement from "./owner/AttendanceShiftManagement";
+import PayrollManagement from "./owner/PayrollManagement";
+import BusinessIntelligence from "./owner/BusinessIntelligence";
+import AIInsights from "./owner/AIInsights";
+import MyPayroll from "./pages/MyPayroll";
 
 import WardenDashboard from "./warden/Dashboard";
 import CookDashboard from "./cook/Dashboard";
@@ -54,6 +68,7 @@ import DesktopShell from "./pages/_DesktopShell";
 import OwnerProtectedRoute from "./components/OwnerProtectedRoute";
 import WardenProtectedRoute from "./components/WardenProtectedRoute";
 import CookProtectedRoute from "./components/CookProtectedRoute";
+import AccountantProtectedRoute from "./components/AccountantProtectedRoute";
 import AdminProtectedRoute from "./components/AdminProtectedRoute";
 import NotificationBell from "./components/NotificationBell";
 import ServerLoadingWrapper from "./components/ServerLoadingWrapper";
@@ -62,6 +77,7 @@ import Notifications from "./pages/Notifications";
 // New Super Admin 3.0 Lazy Imports
 const AdminLayout = lazy(() => import("./superadmin/layouts/AdminLayout"));
 const DashboardOverview = lazy(() => import("./superadmin/views/DashboardOverview"));
+const FinanceDashboard = lazy(() => import("./superadmin/views/FinanceDashboard"));
 const OnboardingRequests = lazy(() => import("./superadmin/views/OnboardingRequests"));
 const HostelsList = lazy(() => import("./superadmin/views/HostelsList"));
 const HostelDetailsLayout = lazy(() => import("./superadmin/views/HostelDetailsLayout"));
@@ -335,6 +351,23 @@ function App() {
             </OwnerProtectedRoute>
           }
         />
+
+        <Route
+          path="/residents/:id"
+          element={
+            <OwnerProtectedRoute>
+              <DesktopShell
+                variant="owner"
+                title="Resident Profile"
+                breadcrumbs={[{ label: "Residents", to: "/residents" }, { label: "Profile" }]}
+                backTo={"/residents"}
+              >
+                <ResidentProfile />
+              </DesktopShell>
+            </OwnerProtectedRoute>
+          }
+        />
+
         <Route
           path="/payments"
           element={
@@ -350,6 +383,57 @@ function App() {
             </OwnerProtectedRoute>
           }
         />
+
+        <Route
+          path="/owner/rent-dashboard"
+          element={
+            <OwnerProtectedRoute>
+              <DesktopShell
+                variant="owner"
+                title="Rent Collection & Financial Operations"
+                breadcrumbs={[{ label: "Rent Dashboard" }]}
+                backTo={"/owner/dashboard"}
+              >
+                <RentDashboard />
+              </DesktopShell>
+            </OwnerProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/owner/expense-dashboard"
+          element={
+            <OwnerProtectedRoute>
+              <DesktopShell
+                variant="owner"
+                title="Enterprise Expense Management"
+                breadcrumbs={[{ label: "Expense Dashboard" }]}
+                backTo={"/owner/dashboard"}
+              >
+                <ExpenseDashboard />
+              </DesktopShell>
+            </OwnerProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/owner/kitchen-dashboard"
+          element={
+            <OwnerProtectedRoute>
+              <DesktopShell
+                variant="owner"
+                title="Enterprise Food & Mess Management"
+                breadcrumbs={[{ label: "Kitchen Dashboard" }]}
+                backTo={"/owner/dashboard"}
+              >
+                <KitchenDashboard />
+              </DesktopShell>
+            </OwnerProtectedRoute>
+          }
+        />
+
+
+
         <Route
           path="/reports"
           element={
@@ -442,6 +526,78 @@ function App() {
           }
         />
         <Route
+          path="/attendance-shifts"
+          element={
+            <OwnerProtectedRoute>
+              <DesktopShell
+                variant="owner"
+                title="Attendance & Shift Control"
+                breadcrumbs={[{ label: "Attendance & Shifts" }]}
+                backTo={"/owner/dashboard"}
+              >
+                <AttendanceShiftManagement />
+              </DesktopShell>
+            </OwnerProtectedRoute>
+          }
+        />
+        <Route
+          path="/payroll"
+          element={
+            <OwnerProtectedRoute>
+              <DesktopShell
+                variant="owner"
+                title="Enterprise Payroll Engine"
+                breadcrumbs={[{ label: "Payroll Engine" }]}
+                backTo={"/owner/dashboard"}
+              >
+                <PayrollManagement />
+              </DesktopShell>
+            </OwnerProtectedRoute>
+          }
+        />
+        <Route
+          path="/analytics"
+          element={
+            <OwnerProtectedRoute>
+              <DesktopShell
+                variant="owner"
+                title="Business Intelligence & Analytics"
+                breadcrumbs={[{ label: "BI Analytics" }]}
+                backTo={"/owner/dashboard"}
+              >
+                <BusinessIntelligence />
+              </DesktopShell>
+            </OwnerProtectedRoute>
+          }
+        />
+        <Route
+          path="/ai-insights"
+          element={
+            <OwnerProtectedRoute>
+              <DesktopShell
+                variant="owner"
+                title="AI Insights & Automation"
+                breadcrumbs={[{ label: "AI Insights" }]}
+                backTo={"/owner/dashboard"}
+              >
+                <AIInsights />
+              </DesktopShell>
+            </OwnerProtectedRoute>
+          }
+        />
+        <Route
+          path="/my-payroll"
+          element={
+            <DesktopShell
+              variant="staff"
+              title="My Payroll & Payslips"
+              breadcrumbs={[{ label: "My Payroll" }]}
+            >
+              <MyPayroll />
+            </DesktopShell>
+          }
+        />
+        <Route
           path="/admissions"
           element={
             <OwnerProtectedRoute>
@@ -489,6 +645,55 @@ function App() {
         />
 
         <Route
+          path="/owner/subscription"
+          element={
+            <OwnerProtectedRoute>
+              <DesktopShell
+                variant="owner"
+                title="Subscription & Billing"
+                breadcrumbs={[{ label: "Subscription" }]}
+                backTo="/owner/dashboard"
+              >
+                <SubscriptionBilling />
+              </DesktopShell>
+            </OwnerProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/settings/subscription"
+          element={
+            <OwnerProtectedRoute>
+              <DesktopShell
+                variant="owner"
+                title="Subscription & Billing"
+                breadcrumbs={[{ label: "Subscription" }]}
+                backTo="/owner/dashboard"
+              >
+                <SubscriptionBilling />
+              </DesktopShell>
+            </OwnerProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/owner/billing-portal"
+          element={
+            <OwnerProtectedRoute>
+              <DesktopShell
+                variant="owner"
+                title="Commercial Billing Portal"
+                breadcrumbs={[{ label: "Billing Portal" }]}
+                backTo="/owner/dashboard"
+              >
+                <OwnerBillingDashboard />
+              </DesktopShell>
+            </OwnerProtectedRoute>
+          }
+        />
+
+
+        <Route
           path="/warden/notifications"
           element={
             <WardenProtectedRoute>
@@ -515,11 +720,51 @@ function App() {
           }
         />
         <Route
+          path="/warden/dashboard"
+          element={
+            <WardenProtectedRoute>
+              <WardenDashboard />
+            </WardenProtectedRoute>
+          }
+        />
+        <Route
           path="/cook"
           element={
             <CookProtectedRoute>
               <CookDashboard />
             </CookProtectedRoute>
+          }
+        />
+        <Route
+          path="/cook/dashboard"
+          element={
+            <CookProtectedRoute>
+              <CookDashboard />
+            </CookProtectedRoute>
+          }
+        />
+        <Route
+          path="/accountant"
+          element={
+            <AccountantProtectedRoute>
+              <AccountantDashboard />
+            </AccountantProtectedRoute>
+          }
+        />
+        <Route
+          path="/accountant/dashboard"
+          element={
+            <AccountantProtectedRoute>
+              <AccountantDashboard />
+            </AccountantProtectedRoute>
+          }
+        />
+        <Route
+          path="/accountant/notifications"
+          element={
+            <AccountantProtectedRoute>
+              <Notifications />
+            </AccountantProtectedRoute>
           }
         />
 
@@ -565,7 +810,9 @@ function App() {
           <Route path="owners/new" element={<CreateOwnerWizard />} />
           <Route path="residents" element={<ResidentsList />} />
           <Route path="subscriptions" element={<SubscriptionCenter />} />
+          <Route path="finance-dashboard" element={<FinanceDashboard />} />
           <Route path="revenue" element={<RevenueCenter />} />
+
           <Route path="finance" element={<PlatformFinance />} />
           <Route path="analytics" element={<AnalyticsDashboard />} />
           <Route path="customer-success" element={<CustomerSuccess />} />

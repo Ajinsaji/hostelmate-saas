@@ -86,9 +86,11 @@ function LoginPage() {
       console.log("[LoginPage] mustChangePassword:", userData.mustChangePassword);
 
       const targetRoute = (() => {
-        if (role === "warden") return "/warden";
-        if (role === "cook") return "/cook";
-        if (role === "owner") return needsOnboarding ? "/ownerAction" : "/owner/dashboard";
+        const normRole = (role || "").toLowerCase();
+        if (normRole === "warden") return "/warden/dashboard";
+        if (normRole === "cook") return "/cook/dashboard";
+        if (normRole === "accountant") return "/accountant/dashboard";
+        if (normRole === "owner") return needsOnboarding ? "/ownerAction" : "/owner/dashboard";
         return "/owner/dashboard";
       })();
 
