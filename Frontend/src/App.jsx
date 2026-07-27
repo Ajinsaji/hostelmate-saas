@@ -40,6 +40,7 @@ import OwnerProfileEdit from "./owner/OwnerProfileEdit";
 import UpdatePassword from "./owner/UpdatePassword";
 import SubscriptionExpired from "./pages/SubscriptionExpired";
 import SubscriptionBilling from "./owner/SubscriptionBilling";
+import OwnerBillingDashboard from "./owner/OwnerBillingDashboard";
 import RequestStatus from "./pages/RequestStatus";
 
 
@@ -52,6 +53,7 @@ import MyPayroll from "./pages/MyPayroll";
 
 import WardenDashboard from "./warden/Dashboard";
 import CookDashboard from "./cook/Dashboard";
+import AccountantDashboard from "./accountant/Dashboard";
 
 // Legacy admin page imports (replaced with Super Admin 3.0 lazy routing)
 // import AdminDashboard from "./Superadmin/AdminDashboard";
