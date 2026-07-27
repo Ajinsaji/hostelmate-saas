@@ -1,3 +1,5 @@
+import { resetSessionVerificationCache } from "../hooks/useSessionVerification";
+
 const OWNER_TOKEN_KEY = "ownerToken";
 const ADMIN_TOKEN_KEY = "adminToken";
 const OWNER_USER_KEY = "ownerUser";
@@ -32,6 +34,7 @@ export const getAuthToken = getOwnerToken;
 export const setOwnerAuth = (token) => {
   try {
     if (!token) return;
+    resetSessionVerificationCache();
     localStorage.setItem(OWNER_TOKEN_KEY, token);
   } catch {
     // ignore
@@ -41,6 +44,7 @@ export const setOwnerAuth = (token) => {
 export const setAdminAuth = (token) => {
   try {
     if (!token) return;
+    resetSessionVerificationCache();
     localStorage.setItem(ADMIN_TOKEN_KEY, token);
   } catch {
     // ignore
@@ -85,6 +89,7 @@ export const setStoredUser = setStoredOwner;
 
 export const clearOwnerAuth = () => {
   try {
+    resetSessionVerificationCache();
     localStorage.removeItem(OWNER_TOKEN_KEY);
     localStorage.removeItem(OWNER_USER_KEY);
     localStorage.removeItem("token");
@@ -97,6 +102,7 @@ export const clearOwnerAuth = () => {
 
 export const clearAdminAuth = () => {
   try {
+    resetSessionVerificationCache();
     localStorage.removeItem(ADMIN_TOKEN_KEY);
     localStorage.removeItem(ADMIN_USER_KEY);
   } catch {
@@ -112,4 +118,3 @@ export const clearAuth = () => {
     // ignore
   }
 };
-

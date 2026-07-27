@@ -1,8 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation } from "react-router-dom";
+
+// In-memory cache of verified tokens to avoid re-verifying the same token on every route change
+let globalVerifiedToken = null;
+let activeVerificationPromise = null;
+
+export function resetSessionVerificationCache() {
+  globalVerifiedToken = null;
+  activeVerificationPromise = null;
+}
 
 export default function useSessionVerification() {
-  const navigate = useNavigate();
   const location = useLocation();
 
   const isPublicRoute = useMemo(() => {
@@ -25,62 +33,95 @@ export default function useSessionVerification() {
     return false;
   }, [location.pathname]);
 
-  const [verifying, setVerifying] = useState(() => !isPublicRoute);
+  const token = useMemo(() => {
+    const path = location.pathname;
+    const isAdminRoute = path.startsWith("/admin");
+    return isAdminRoute
+      ? localStorage.getItem("adminToken")
+      : localStorage.getItem("ownerToken") || localStorage.getItem("token");
+  }, [location.pathname]);
+
+  const [verifying, setVerifying] = useState(() => {
+    if (isPublicRoute) return false;
+    if (!token) return false;
+    if (globalVerifiedToken === token) return false;
+    return true;
+  });
 
   useEffect(() => {
     let mounted = true;
 
-    // Prevent startup verification from triggering global redirects.
+    // Prevent startup verification from triggering global redirects on public routes.
     if (isPublicRoute) {
-      setVerifying(false);
+      if (mounted) setVerifying(false);
       return;
     }
-
-    const path = location.pathname;
-    const isAdminRoute = path.startsWith("/admin");
-
-    // On admin routes, verify ONLY admin session and never owner session.
-    // This prevents owner verify-session / interceptors from redirecting admins to /login.
-    const token = isAdminRoute
-      ? localStorage.getItem("adminToken")
-      : localStorage.getItem("ownerToken") || localStorage.getItem("token");
 
     if (!token) {
       if (mounted) setVerifying(false);
       return;
     }
 
+    const path = location.pathname;
+    const isAdminRoute = path.startsWith("/admin");
+
+    // If this exact token was already verified or is actively being verified
+    if (globalVerifiedToken === token) {
+      const waitForInFlight = async () => {
+        if (activeVerificationPromise) {
+          try {
+            await activeVerificationPromise;
+          } catch {
+            // ignore
+          }
+        }
+        if (mounted) setVerifying(false);
+      };
+      waitForInFlight();
+      return;
+    }
+
     const run = async () => {
       // Admin routes must NOT call the owner verification endpoint.
-      // Admin validation is handled by <AdminProtectedRoute />.
       if (isAdminRoute) {
         if (mounted) setVerifying(false);
         return;
       }
 
-      try {
-        const { api } = await import("../services/api");
-        // Interceptor may handle redirects on 401/expired.
-        await api.get("/api/auth/verify-session");
-        if (mounted) {
-          setVerifying(false);
-        }
-      } catch (err) {
-        if (mounted) {
-          setVerifying(false);
-        }
+      // Immediately cache token to prevent duplicate parallel executions
+      globalVerifiedToken = token;
+
+      // Deduplicate concurrently running verification promises
+      if (!activeVerificationPromise) {
+        activeVerificationPromise = (async () => {
+          try {
+            const { api } = await import("../services/api");
+            await api.get("/api/auth/verify-session");
+          } catch (err) {
+            // Keep token marked as verified to avoid infinite retry loops on failure
+          } finally {
+            activeVerificationPromise = null;
+          }
+        })();
       }
 
+      try {
+        await activeVerificationPromise;
+      } catch {
+        // ignore
+      }
+
+      if (mounted) {
+        setVerifying(false);
+      }
     };
 
     run();
 
-
     return () => {
       mounted = false;
     };
-  }, [navigate, isPublicRoute, location.pathname]);
+  }, [token, isPublicRoute, location.pathname]);
 
   return { verifying };
 }
-
