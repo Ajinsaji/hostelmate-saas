@@ -31,6 +31,7 @@ import { ChartCard } from "../design-system/components/ChartCard";
 import { QuickActions } from "../design-system/components/QuickActions";
 import { Card } from "../design-system/components/Card";
 import { Button } from "../design-system/components/Button";
+import { StatusPill } from "../design-system/components/StatusPill";
 import SubscriptionBanner from "../components/SubscriptionBanner";
 
 import useGlobalPolling from "../hooks/useGlobalPolling";

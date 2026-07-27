@@ -15,6 +15,7 @@ import {
 import { api } from "../services/api";
 import toast from "react-hot-toast";
 import StaffAttendanceWidget from "../components/StaffAttendanceWidget";
+import { PageShell, GlassCard } from "../owner/PremiumUI";
 
 export default function AccountantDashboard() {
   const [stats, setStats] = useState({

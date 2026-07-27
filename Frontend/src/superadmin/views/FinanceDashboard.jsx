@@ -13,6 +13,7 @@ import {
   FiCreditCard,
   FiClock,
   FiCheckCircle,
+  FiUsers,
 } from "react-icons/fi";
 
 export const FinanceDashboard = React.memo(() => {

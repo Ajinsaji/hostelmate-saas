@@ -12,6 +12,7 @@ import Drawer from "../components/drawers/Drawer";
 import useHostels from "../hooks/useHostels";
 import { COLORS } from "../constants/theme";
 import { Download, Eye, ChevronDown, Link, QrCode } from "lucide-react";
+import toast from "react-hot-toast";
 
 
 export const HostelsList = React.memo(() => {

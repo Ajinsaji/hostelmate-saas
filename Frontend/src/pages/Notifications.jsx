@@ -5,6 +5,7 @@ import toast from "react-hot-toast";
 import { api } from "../services/api";
 import useNotificationSocket from "../hooks/useNotificationSocket";
 import { PageShell, GlassCard, StatusPill, EmptyState, PREMIUM_THEME } from "../owner/PremiumUI";
+import BottomNav from "../components/BottomNav";
 
 function typeToUI(type) {
   switch (type) {

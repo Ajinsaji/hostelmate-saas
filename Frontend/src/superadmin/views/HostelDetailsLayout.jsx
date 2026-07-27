@@ -1,3 +1,5 @@
+import React from "react";
+import { useParams, useNavigate, useLocation, Outlet } from "react-router-dom";
 import { 
   ArrowLeft, 
   ShieldAlert, 
@@ -17,6 +19,10 @@ import { COLORS } from "../constants/theme";
 import { useHostel } from "../hooks/useHostel";
 import { api } from "../../services/api";
 import toast from "react-hot-toast";
+import PageContainer from "../layouts/PageContainer";
+import StatusBadge from "../components/feedback/StatusBadge";
+import QuickActionButton from "../components/widgets/QuickActionButton";
+import Tabs from "../components/navigation/Tabs";
 
 export const HostelDetailsLayout = React.memo(() => {
   const { id } = useParams();
