@@ -1,3 +1,4 @@
+import React from "react";
 import { motion } from "framer-motion";
 
 export const PREMIUM_THEME = {
@@ -103,12 +104,34 @@ export function StatusPill({ children, tone = "neutral" }) {
   );
 }
 
-export function EmptyState({ title, message, action }) {
+export function EmptyState({ title, message, description, action }) {
+  const renderAction = () => {
+    if (!action) return null;
+    if (React.isValidElement(action) || typeof action === "string" || typeof action === "number") {
+      return action;
+    }
+    if (typeof action === "object" && action.onClick) {
+      return (
+        <button
+          type="button"
+          onClick={action.onClick}
+          className="rounded-full px-4 py-2 text-sm font-semibold cursor-pointer transition active:scale-95"
+          style={{ background: PREMIUM_THEME.primary, color: "#031018" }}
+        >
+          {action.label || "Action"}
+        </button>
+      );
+    }
+    return null;
+  };
+
+  const textContent = description || message;
+
   return (
     <GlassCard className="text-center">
       <p className="text-lg font-semibold">{title}</p>
-      <p className="mt-2 text-sm" style={{ color: PREMIUM_THEME.muted }}>{message}</p>
-      {action ? <div className="mt-4">{action}</div> : null}
+      {textContent && <p className="mt-2 text-sm" style={{ color: PREMIUM_THEME.muted }}>{textContent}</p>}
+      {action ? <div className="mt-4">{renderAction()}</div> : null}
     </GlassCard>
   );
 }

@@ -7,10 +7,12 @@ const {
   getUnreadCount,
   markAsRead,
   markAllAsRead,
+  registerDeviceToken,
 } = require("../controllers/notificationController");
 
 router.use(ownerAuth);
 
+router.post("/device-token", registerDeviceToken);
 router.post("/dispatch", dispatchNotification);
 router.get("/", getNotifications);
 router.get("/unread-count", getUnreadCount);

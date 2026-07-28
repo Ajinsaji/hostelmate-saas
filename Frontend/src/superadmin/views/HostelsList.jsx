@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 import PageContainer from "../layouts/PageContainer";
 import SectionHeader from "../layouts/SectionHeader";
 import ContentContainer from "../layouts/ContentContainer";
-import SaaSTable from "../components/tables/SaaSTable";
 import SearchBar from "../components/forms/SearchBar";
 import FilterBar from "../components/forms/FilterBar";
 import StatusBadge from "../components/feedback/StatusBadge";
@@ -13,6 +12,7 @@ import useHostels from "../hooks/useHostels";
 import { COLORS } from "../constants/theme";
 import { Download, Eye, ChevronDown, Link, QrCode } from "lucide-react";
 import toast from "react-hot-toast";
+import { api } from "../../services/api";
 
 
 export const HostelsList = React.memo(() => {
@@ -97,18 +97,7 @@ export const HostelsList = React.memo(() => {
       });
       if (response.data.success) {
         toast.success(response.data.message, { id: toastId });
-        // Optimistic UI update or refresh
-        const fetchHostels = async () => {
-          try {
-            const res = await api.get("/api/admin/hostels");
-            if (res.data.success) {
-              setHostels(res.data.data);
-            }
-          } catch (e) {
-            console.error("Refresh failed", e);
-          }
-        };
-        fetchHostels();
+        setPage(1);
         setSelectedIds([]);
         setBulkDrawerOpen(false);
       }

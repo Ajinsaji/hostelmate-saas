@@ -74,7 +74,7 @@ function OwnerProfileEdit() {
 
   useEffect(() => {
     fetchOwner();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, []);
 
   useGlobalPolling(fetchOwner, { interval: 9000, safeProps: safeRefreshProps });

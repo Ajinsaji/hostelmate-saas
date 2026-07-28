@@ -10,7 +10,7 @@ function fixLogger(dir) {
     } else if (fullPath.endsWith('.js') && !fullPath.includes('node_modules')) {
       let code = fs.readFileSync(fullPath, 'utf8');
       if (code.includes('require(./logger)')) {
-        code = code.replace(/require\("logger"\)/g, 'require("./logger")');
+        code = code.replace(/require\("logger"\)/g, 'require("../utils/logger")');
         fs.writeFileSync(fullPath, code);
       }
     }

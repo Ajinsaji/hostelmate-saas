@@ -8,7 +8,7 @@ const importLines = `
 const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
 const pinoHttp = require("pino-http");
-const { logger } = require("./utils/logger");
+const { logger } = require("../utils/logger");
 `;
 
 if (!code.includes("helmet")) {

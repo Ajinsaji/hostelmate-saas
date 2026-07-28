@@ -422,8 +422,6 @@ const Residents = () => {
                         setEditingResident(res);
                         setForm({ ...res });
                         setShowAddModal(true);
-                      } else if (action === 'collect_rent') {
-                         // Collect rent modal or route
                       } else if (action === 'more') {
                          setShowTransferModal(true);
                       }
@@ -434,9 +432,9 @@ const Residents = () => {
               
               {/* Pagination */}
               {totalPages > 1 && (
-                <div className="flex items-center justify-between mt-8 bg-white px-6 py-4 rounded-2xl border border-gray-100 shadow-sm">
-                  <span className="text-sm text-gray-500">
-                    Showing page <span className="font-semibold text-gray-900">{page}</span> of <span className="font-semibold text-gray-900">{totalPages}</span>
+                <div className="flex items-center justify-between mt-8 bg-white/5 px-6 py-4 rounded-2xl border border-white/10 shadow-sm">
+                  <span className="text-sm text-slate-400">
+                    Showing page <span className="font-semibold text-white">{page}</span> of <span className="font-semibold text-white">{totalPages}</span>
                   </span>
                   <div className="flex gap-2">
                     <Button 

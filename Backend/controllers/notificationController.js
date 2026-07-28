@@ -79,10 +79,37 @@ const markAllAsRead = async (req, res) => {
   }
 };
 
+const registerDeviceToken = async (req, res) => {
+  try {
+    const userCtx = getUserContext(req);
+    const { token, platform = "web" } = req.body;
+    if (!token) {
+      return res.status(400).json({ success: false, message: "Device token is required" });
+    }
+    const DeviceToken = require("../models/DeviceToken");
+    const deviceToken = await DeviceToken.findOneAndUpdate(
+      { token },
+      {
+        userId: userCtx.userId,
+        hostelId: userCtx.hostelId,
+        platform,
+        isActive: true,
+        lastSeenAt: new Date(),
+      },
+      { upsert: true, new: true }
+    );
+    return res.status(200).json({ success: true, message: "Device token registered successfully", deviceToken });
+  } catch (err) {
+    logger.error("registerDeviceToken error:", err);
+    return res.status(500).json({ success: false, message: err.message || "Failed to register device token" });
+  }
+};
+
 module.exports = {
   dispatchNotification,
   getNotifications,
   getUnreadCount,
   markAsRead,
   markAllAsRead,
+  registerDeviceToken,
 };

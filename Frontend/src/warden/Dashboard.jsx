@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import {
   Users,
   Wallet,
@@ -9,8 +9,6 @@ import {
   AlertCircle,
   Bell,
   ShieldCheck,
-  Building,
-  CheckSquare,
 } from "lucide-react";
 import { api } from "../services/api";
 import toast from "react-hot-toast";
@@ -25,20 +23,20 @@ export default function WardenDashboard() {
     todayCollection: 0,
   });
 
-  useEffect(() => {
-    fetchWardenStats();
-  }, []);
-
-  const fetchWardenStats = async () => {
+  const fetchWardenStats = useCallback(async () => {
     try {
       const response = await api.get("/api/staff/dashboard");
       if (response.data.success) {
         setStats(response.data.stats || {});
       }
-    } catch (error) {
+    } catch {
       toast.error("Unable to load warden dashboard statistics");
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchWardenStats();
+  }, [fetchWardenStats]);
 
   return (
     <PageShell

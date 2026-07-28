@@ -1,4 +1,3 @@
-import React from "react";
 import { BadgeCheck, Clock, Crown, ShieldAlert } from "lucide-react";
 
 const styles = {

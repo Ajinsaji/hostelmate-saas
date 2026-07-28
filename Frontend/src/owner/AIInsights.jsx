@@ -59,14 +59,14 @@ export default function AIInsights() {
   const { executiveInsights, predictions, risks, recommendations } = insights;
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-8 animate-fade-in pb-20">
+    <div className="p-6 max-w-7xl mx-auto space-y-8 animate-fade-in pb-24 text-white">
       <div className="flex items-center justify-between mb-2">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 flex items-center space-x-2">
-            <BrainCircuit className="text-indigo-600" size={32} />
+          <h1 className="text-3xl font-bold text-white flex items-center space-x-3">
+            <BrainCircuit className="text-emerald-400" size={32} />
             <span>AI Insights & Automation</span>
           </h1>
-          <p className="text-gray-500 mt-1">Enterprise-grade predictions and anomaly detection.</p>
+          <p className="text-slate-400 mt-1">Enterprise-grade predictions and anomaly detection.</p>
         </div>
       </div>
 
@@ -83,7 +83,7 @@ export default function AIInsights() {
         {/* Middle/Right Columns - Forecasts & Recs */}
         <div className="lg:col-span-2 space-y-6">
           
-          <h2 className="text-xl font-bold text-gray-800 border-b pb-2">30-Day Forecasts</h2>
+          <h2 className="text-xl font-bold text-slate-100 border-b border-white/10 pb-2">30-Day Forecasts</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <ForecastChart 
               title="Occupancy Prediction"
@@ -101,7 +101,7 @@ export default function AIInsights() {
             />
           </div>
 
-          <h2 className="text-xl font-bold text-gray-800 border-b pb-2 mt-8">Actionable Recommendations</h2>
+          <h2 className="text-xl font-bold text-slate-100 border-b border-white/10 pb-2 mt-8">Actionable Recommendations</h2>
           {recommendations?.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {recommendations.map(rec => (
@@ -114,20 +114,20 @@ export default function AIInsights() {
               ))}
             </div>
           ) : (
-            <div className="bg-gray-50 border rounded-lg p-6 text-center text-gray-500">
+            <div className="bg-[#132235] border border-white/10 rounded-2xl p-6 text-center text-slate-400">
               No pending recommendations at this time.
             </div>
           )}
 
-          <h2 className="text-xl font-bold text-gray-800 border-b pb-2 mt-8">Detected Anomalies</h2>
-          <div className="bg-white border rounded-lg p-4">
+          <h2 className="text-xl font-bold text-slate-100 border-b border-white/10 pb-2 mt-8">Detected Anomalies</h2>
+          <div className="bg-[#132235] border border-white/10 rounded-2xl p-4">
             {risks?.expenses?.anomalies?.length > 0 || risks?.payroll?.anomalies?.length > 0 ? (
               <div className="space-y-2 max-h-64 overflow-y-auto pr-2">
                 {risks.expenses.anomalies.map((a, i) => <AnomalyCard key={`exp-${i}`} anomaly={a} />)}
                 {risks.payroll.anomalies.map((a, i) => <AnomalyCard key={`pay-${i}`} anomaly={a} />)}
               </div>
             ) : (
-              <p className="text-gray-500 text-sm text-center py-4">No anomalies detected in recent datasets.</p>
+              <p className="text-slate-400 text-sm text-center py-4">No anomalies detected in recent datasets.</p>
             )}
           </div>
 

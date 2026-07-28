@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { requestFcmPermissionAndToken } from "../utils/firebaseClient";
+import { requestFcmPermissionAndToken, getFirebaseMessagingSafe } from "../utils/firebaseClient";
 import { getStoredUser } from "../utils/authToken";
 
 // Foreground listener + device token registration.
@@ -50,7 +50,6 @@ export default function useFcmNotifications({ enabled = true, onIncoming } = {})
         // Foreground message listener
         console.log("[useFcmNotifications] Setting up foreground message listener...");
         try {
-          const { getFirebaseMessagingSafe } = await import("../utils/firebaseClient");
           const messaging = getFirebaseMessagingSafe();
           if (!messaging) {
             console.warn("[useFcmNotifications] Firebase messaging not available for foreground");

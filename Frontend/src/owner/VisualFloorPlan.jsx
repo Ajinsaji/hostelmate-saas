@@ -30,7 +30,7 @@ export const VisualFloorPlan = ({ onSelectBed, onSelectRoom }) => {
     } catch (err) {
       console.error(err);
       toast.error("Failed to load visual floor plan data");
-    } fontally: {
+    } {
       setLoading(false);
     }
   };

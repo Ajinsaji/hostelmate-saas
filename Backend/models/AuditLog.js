@@ -48,4 +48,8 @@ const auditLogSchema = new mongoose.Schema({
   },
 });
 
+auditLogSchema.index({ hostelId: 1, timestamp: -1 });
+auditLogSchema.index({ adminId: 1, timestamp: -1 });
+auditLogSchema.index({ targetId: 1, targetModel: 1 });
+
 module.exports = mongoose.model("AuditLog", auditLogSchema);

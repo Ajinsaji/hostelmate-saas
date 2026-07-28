@@ -3,8 +3,6 @@ const mongoose = require("mongoose");
 const Hostel = require("../models/Hostel");
 const Owner = require("../models/Owner");
 const Subscription = require("../models/Subscription");
-// TODO: Restore QR generator when fully implemented
-// const { generateQR } = require("../utils/qrGenerator");
 const bcrypt = require("bcryptjs");
 const crypto = require("crypto");
 

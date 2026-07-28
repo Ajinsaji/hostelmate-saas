@@ -1,4 +1,3 @@
-import React from "react";
 import { useParams } from "react-router-dom";
 import useHostel from "../../hooks/useHostel";
 import { Loader2, AlertCircle, User, Phone } from "lucide-react";

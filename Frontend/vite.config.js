@@ -1,3 +1,4 @@
+/* global process */
 import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
@@ -39,15 +40,38 @@ export default defineConfig(({ mode }) => {
           cleanupOutdatedCaches: true,
           clientsClaim: true,
           skipWaiting: true,
-
-          // Allow large hashed bundles (prevents build failure on Vercel)
           maximumFileSizeToCacheInBytes: 15 * 1024 * 1024,
-
-          // Also prevent treating those assets as build-blocking errors
           importScripts: [],
         },
       }),
       firebaseConfigPlugin(env),
     ],
+    build: {
+      rollupOptions: {
+        output: {
+          manualChunks(id) {
+            if (id.includes('node_modules')) {
+              if (id.includes('react-dom') || id.includes('react-router-dom') || id.includes('react/')) {
+                return 'vendor-react';
+              }
+              if (id.includes('recharts')) {
+                return 'vendor-charts';
+              }
+              if (id.includes('lucide-react') || id.includes('react-icons')) {
+                return 'vendor-icons';
+              }
+              if (id.includes('framer-motion')) {
+                return 'vendor-animation';
+              }
+              if (id.includes('firebase') || id.includes('socket.io-client')) {
+                return 'vendor-realtime';
+              }
+              return 'vendor-misc';
+            }
+          },
+        },
+      },
+    },
   }
 })
+

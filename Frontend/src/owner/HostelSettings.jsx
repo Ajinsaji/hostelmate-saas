@@ -99,7 +99,7 @@ function HostelSettings() {
 
   useEffect(() => {
     fetchHostel();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, []);
 
   useGlobalPolling(fetchHostel, { interval: 9000, safeProps: safeRefreshProps });
