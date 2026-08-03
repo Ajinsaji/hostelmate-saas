@@ -1,21 +1,21 @@
-import { colors } from "../tokens/colors";
-import { radius } from "../tokens/radius";
-import { typography } from "../tokens/typography";
+import { useTheme } from "../ThemeProvider";
 
 export function StatusPill({ children, tone = "neutral", className = "" }) {
+  const { colors, radius, typography } = useTheme();
+
   const getStyles = () => {
     switch (tone) {
       case "success":
-        return { bg: `${colors.success}26`, text: colors.success }; // 26 hex is ~15% opacity
+        return { bg: `${colors.accent.success}26`, text: colors.accent.success }; // 26 hex is ~15% opacity
       case "warning":
-        return { bg: `${colors.warning}26`, text: colors.warning };
+        return { bg: `${colors.accent.warning}26`, text: colors.accent.warning };
       case "danger":
-        return { bg: `${colors.danger}26`, text: colors.danger };
+        return { bg: `${colors.accent.danger}26`, text: colors.accent.danger };
       case "info":
-        return { bg: `${colors.info}26`, text: colors.info };
+        return { bg: `${colors.accent.info}26`, text: colors.accent.info };
       case "neutral":
       default:
-        return { bg: colors.border, text: colors.textSecondary };
+        return { bg: colors.border.default, text: colors.text.secondary };
     }
   };
 
@@ -24,6 +24,7 @@ export function StatusPill({ children, tone = "neutral", className = "" }) {
   return (
     <span 
       className={`inline-flex items-center justify-center font-medium ${className}`}
+      role="status"
       style={{
         background: styles.bg,
         color: styles.text,

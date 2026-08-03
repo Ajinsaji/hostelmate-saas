@@ -1,17 +1,17 @@
 import { Card } from "./Card";
-import { colors } from "../tokens/colors";
-import { typography } from "../tokens/typography";
-import { spacing } from "../tokens/spacing";
+import { useTheme } from "../ThemeProvider";
 
 export function ChartCard({ title, children, action }) {
+  const { colors, typography, spacing } = useTheme();
+
   return (
-    <Card>
+    <Card aria-label={`${title} chart`}>
       <div className="flex justify-between items-center" style={{ marginBottom: spacing.lg }}>
         <h3 
           style={{ 
             fontSize: typography.sizes.cardTitle, 
             fontWeight: typography.weights.semibold, 
-            color: colors.textPrimary 
+            color: colors.text.primary 
           }}
         >
           {title}

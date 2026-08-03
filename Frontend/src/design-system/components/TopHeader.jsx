@@ -1,9 +1,9 @@
 import { Menu, Search, Bell } from "lucide-react";
-import { colors } from "../tokens/colors";
-import { typography } from "../tokens/typography";
-import { spacing } from "../tokens/spacing";
+import { useTheme } from "../ThemeProvider";
 
 export function TopHeader({ onMenuClick, ownerPhotoUrl, notificationCount = 0 }) {
+  const { colors, typography, spacing } = useTheme();
+
   return (
     <header 
       className="flex items-center justify-between w-full"
@@ -16,7 +16,8 @@ export function TopHeader({ onMenuClick, ownerPhotoUrl, notificationCount = 0 })
         <button 
           onClick={onMenuClick}
           className="p-1 rounded-md"
-          style={{ color: colors.textPrimary }}
+          style={{ color: colors.text.primary }}
+          aria-label="Open menu"
         >
           <Menu size={24} />
         </button>
@@ -25,7 +26,7 @@ export function TopHeader({ onMenuClick, ownerPhotoUrl, notificationCount = 0 })
             fontFamily: typography.fontFamily, 
             fontWeight: typography.weights.bold,
             fontSize: "18px",
-            color: colors.textPrimary
+            color: colors.text.primary
           }}
         >
           HostelMate
@@ -33,22 +34,23 @@ export function TopHeader({ onMenuClick, ownerPhotoUrl, notificationCount = 0 })
       </div>
 
       <div className="flex items-center gap-4">
-        <button style={{ color: colors.textSecondary }}>
+        <button style={{ color: colors.text.secondary }} aria-label="Search">
           <Search size={22} />
         </button>
         
-        <button style={{ color: colors.textSecondary, position: "relative" }}>
+        <button style={{ color: colors.text.secondary, position: "relative" }} aria-label="Notifications">
           <Bell size={22} />
           {notificationCount > 0 && (
             <span 
               className="absolute top-0 right-0 rounded-full flex items-center justify-center text-white"
               style={{
-                background: colors.danger,
+                background: colors.accent.danger,
                 width: "14px",
                 height: "14px",
                 fontSize: "9px",
                 fontWeight: typography.weights.bold,
-                transform: "translate(2px, -2px)"
+                transform: "translate(2px, -2px)",
+                color: colors.text.primary
               }}
             >
               {notificationCount > 9 ? '9+' : notificationCount}
@@ -61,8 +63,8 @@ export function TopHeader({ onMenuClick, ownerPhotoUrl, notificationCount = 0 })
           style={{ 
             width: "36px", 
             height: "36px", 
-            borderColor: colors.border,
-            background: colors.border
+            borderColor: colors.border.default,
+            background: colors.border.default
           }}
         >
           {ownerPhotoUrl ? (

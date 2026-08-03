@@ -1,17 +1,40 @@
 import { motion } from "framer-motion";
-import { colors } from "../tokens/colors";
-import { radius } from "../tokens/radius";
-import { spacing } from "../tokens/spacing";
-import { shadows } from "../tokens/shadows";
-import { animations } from "../tokens/animations";
+import { useTheme } from "../ThemeProvider";
 
 export function Card({ 
   children, 
   className = "", 
   hover = false,
   onClick,
-  style = {}
+  style = {},
+  variant = "default",
+  "aria-label": ariaLabel
 }) {
+  const { colors, spacing, radius, shadows, animations } = useTheme();
+
+  const getVariantStyles = () => {
+    switch (variant) {
+      case "elevated":
+        return {
+          background: colors.background.elevated || "#1C2740",
+          border: `1px solid ${colors.border.default}`,
+        };
+      case "ai":
+        return {
+          background: colors.background.card,
+          border: `1px solid ${colors.accent.ai || "#6C4CF5"}`,
+        };
+      case "default":
+      default:
+        return {
+          background: colors.background.card,
+          border: `1px solid ${colors.border.default}`,
+        };
+    }
+  };
+
+  const variantStyles = getVariantStyles();
+
   return (
     <motion.div
       initial={animations.pageLoad.initial}
@@ -19,13 +42,15 @@ export function Card({
       transition={animations.pageLoad.transition}
       whileHover={hover && onClick ? animations.cardHover.whileHover : {}}
       onClick={onClick}
+      role={onClick ? "button" : "region"}
+      aria-label={ariaLabel}
+      tabIndex={onClick ? 0 : undefined}
       className={`${className}`}
       style={{
-        background: colors.card,
-        borderRadius: radius.lg,
+        ...variantStyles,
+        borderRadius: radius.xl,
         padding: spacing.xl,
-        boxShadow: shadows.soft,
-        border: `1px solid rgba(0,0,0,0.02)`,
+        boxShadow: shadows.card || shadows.soft,
         cursor: onClick ? "pointer" : "default",
         ...style
       }}
