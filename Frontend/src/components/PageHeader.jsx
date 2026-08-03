@@ -1,3 +1,6 @@
+/**
+ * @deprecated This component is deprecated. Use UnifiedLayout directly.
+ */
 import { ChevronLeft } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 

@@ -1,3 +1,7 @@
+// This component is deprecated. Use UnifiedLayout which includes UnifiedSidebar.
+/**
+ * @deprecated
+ */
 import { useNavigate } from "react-router-dom";
 import {
   Home,

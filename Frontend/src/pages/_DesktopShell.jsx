@@ -1,26 +1,28 @@
-import DesktopSidebar from "../components/DesktopSidebar";
-import PageHeader from "../components/PageHeader";
+/**
+ * @deprecated Use UnifiedLayout directly. This wrapper exists for backward compatibility.
+ */
+import React from 'react';
+import { UnifiedLayout } from '../design-system/layouts/UnifiedLayout';
+import { getMenuConfig } from '../design-system/layouts/menuConfigs';
 
 export default function DesktopShell({
-  variant = "owner",
+  variant = 'owner',
   title,
   breadcrumbs,
   backTo,
   children,
 }) {
+  const config = getMenuConfig(variant);
   return (
-    <div className="flex min-h-screen bg-[#081028]">
-      <DesktopSidebar variant={variant} />
-      <div className="flex-1">
-        <div className="hidden lg:block">
-          <PageHeader title={title} breadcrumbs={breadcrumbs} backTo={backTo} />
-        </div>
-
-        <div className="lg:px-8 lg:pb-8">
-          {children}
-        </div>
-      </div>
-    </div>
+    <UnifiedLayout
+      role={variant}
+      menuItems={config.sidebar}
+      mobileItems={config.mobile}
+      pageTitle={title}
+      breadcrumbs={breadcrumbs}
+      backTo={backTo}
+    >
+      {children}
+    </UnifiedLayout>
   );
 }
-

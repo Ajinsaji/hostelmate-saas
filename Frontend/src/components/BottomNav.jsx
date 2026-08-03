@@ -1,3 +1,6 @@
+/**
+ * @deprecated This component is deprecated. Use UnifiedLayout which includes UnifiedBottomNav.
+ */
 import { motion } from "framer-motion";
 import { Home, BedDouble, Users, Wallet, FileText, UserRound } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
