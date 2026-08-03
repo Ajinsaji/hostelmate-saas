@@ -1,9 +1,12 @@
 export const spacing = {
-  xs: "4px",
-  sm: "8px",
-  md: "12px",    // Card gap
-  lg: "16px",    // Section gap / horizontal padding
-  xl: "20px",    // Card padding
-  xxl: "24px",
-  xxxl: "32px",
+  '2xs': '4px',
+  xs: '8px',
+  sm: '12px',
+  md: '16px',
+  lg: '20px',
+  xl: '24px',   // Card padding, section spacing
+  '2xl': '32px',
+  '3xl': '40px',
+  '4xl': '48px',
+  '5xl': '64px',
 };

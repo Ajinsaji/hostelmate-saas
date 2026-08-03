@@ -1,19 +1,25 @@
 export const typography = {
-  fontFamily: "'Inter', 'SF Pro Display', sans-serif",
+  fontFamily: "'Inter', 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif",
   sizes: {
-    micro: "11px",
-    label: "12px",
-    body: "14px",
-    cardTitle: "16px",
-    sectionHeader: "18px",
-    screenTitle: "24px",
-    kpi: "32px",
+    xs: '11px',
+    sm: '12px',
+    base: '14px',
+    md: '16px',
+    lg: '18px',
+    xl: '20px',
+    '2xl': '24px',
+    '3xl': '32px',
+    '4xl': '40px',
   },
   weights: {
     regular: 400,
     medium: 500,
     semibold: 600,
     bold: 700,
-    extrabold: 800,
-  }
+  },
+  lineHeights: {
+    tight: 1.2,
+    normal: 1.5,
+    relaxed: 1.75,
+  },
 };
