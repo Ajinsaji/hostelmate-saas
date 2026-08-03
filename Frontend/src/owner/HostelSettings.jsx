@@ -1,11 +1,5 @@
 import { useTheme } from "../design-system/ThemeProvider";
-import { PageContainer } from "../design-system/layouts/PageContainer";
-import { Card } from "../design-system/components/Card";
-import { KPICard } from "../design-system/components/KPICard";
-import { StatusPill } from "../design-system/components/StatusPill";
-import { EmptyState } from "../design-system/components/EmptyState";
 import { Button } from "../design-system/components/Button";
-import { FormInput } from "../design-system/components/FormInput";
 import { useEffect, useState } from "react";
 import { api } from "../services/api";
 import toast from "react-hot-toast";
@@ -15,7 +9,7 @@ import useOwnerRealtimeSync from "../hooks/useOwnerRealtimeSync";
 
 
 function HostelSettings() {
-  const { colors, spacing, radius, typography } = useTheme();
+  
   const [hostel, setHostel] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);

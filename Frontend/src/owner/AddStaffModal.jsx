@@ -1,16 +1,9 @@
 import { useTheme } from "../design-system/ThemeProvider";
-import { PageContainer } from "../design-system/layouts/PageContainer";
-import { Card } from "../design-system/components/Card";
-import { KPICard } from "../design-system/components/KPICard";
-import { StatusPill } from "../design-system/components/StatusPill";
-import { EmptyState } from "../design-system/components/EmptyState";
-import { Button } from "../design-system/components/Button";
-import { FormInput } from "../design-system/components/FormInput";
 import { useState } from "react";
 import { X, User, Mail, Phone, Lock, Briefcase, DollarSign, Calendar, Image as ImageIcon } from "lucide-react";
 
 export default function AddStaffModal({ isOpen, onClose, onSubmit, initialData = null }) {
-  const { colors, spacing, radius, typography } = useTheme();
+  
   const [form, setForm] = useState(
     initialData || {
       fullName: "",

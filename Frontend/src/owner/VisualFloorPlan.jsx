@@ -1,18 +1,11 @@
 import { useTheme } from "../design-system/ThemeProvider";
-import { PageContainer } from "../design-system/layouts/PageContainer";
-import { Card } from "../design-system/components/Card";
-import { KPICard } from "../design-system/components/KPICard";
-import { StatusPill } from "../design-system/components/StatusPill";
-import { EmptyState } from "../design-system/components/EmptyState";
-import { Button } from "../design-system/components/Button";
-import { FormInput } from "../design-system/components/FormInput";
 import React, { useState, useEffect } from "react";
 import { Building2, Layers, BedDouble, CheckCircle, AlertCircle, Wrench, Shield, Info } from "lucide-react";
 import toast from "react-hot-toast";
 import api from "../utils/apiClient";
 
 export const VisualFloorPlan = ({ onSelectBed, onSelectRoom }) => {
-  const { colors, spacing, radius, typography } = useTheme();
+  
   const [buildings, setBuildings] = useState([]);
   const [floors, setFloors] = useState([]);
   const [rooms, setRooms] = useState([]);

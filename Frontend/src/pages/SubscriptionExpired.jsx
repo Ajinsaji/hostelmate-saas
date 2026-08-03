@@ -1,18 +1,11 @@
 import { useTheme } from "../design-system/ThemeProvider";
-import { PageContainer } from "../design-system/layouts/PageContainer";
-import { Card } from "../design-system/components/Card";
-import { KPICard } from "../design-system/components/KPICard";
-import { StatusPill } from "../design-system/components/StatusPill";
-import { EmptyState } from "../design-system/components/EmptyState";
-import { Button } from "../design-system/components/Button";
-import { FormInput } from "../design-system/components/FormInput";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { FiLock, FiAlertTriangle, FiRefreshCw, FiHelpCircle, FiLogOut } from "react-icons/fi";
 import toast from "../services/toast";
 
 const SubscriptionExpired = () => {
-  const { colors, spacing, radius, typography } = useTheme();
+  
   const navigate = useNavigate();
 
   const state = useMemo(() => {

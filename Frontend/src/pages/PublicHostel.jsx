@@ -1,11 +1,6 @@
 import { useTheme } from "../design-system/ThemeProvider";
 import { PageContainer } from "../design-system/layouts/PageContainer";
 import { Card } from "../design-system/components/Card";
-import { KPICard } from "../design-system/components/KPICard";
-import { StatusPill } from "../design-system/components/StatusPill";
-import { EmptyState } from "../design-system/components/EmptyState";
-import { Button } from "../design-system/components/Button";
-import { FormInput } from "../design-system/components/FormInput";
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
@@ -14,7 +9,7 @@ import toast from 'react-hot-toast';
 
 
 export default function PublicHostel() {
-  const { colors, spacing, radius, typography } = useTheme();
+  const { colors } = useTheme();
   const { slug } = useParams();
   const navigate = useNavigate();
   const [hostel, setHostel] = useState(null);

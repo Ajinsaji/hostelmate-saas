@@ -4,8 +4,6 @@ import { Card } from "../design-system/components/Card";
 import { KPICard } from "../design-system/components/KPICard";
 import { StatusPill } from "../design-system/components/StatusPill";
 import { EmptyState } from "../design-system/components/EmptyState";
-import { Button } from "../design-system/components/Button";
-import { FormInput } from "../design-system/components/FormInput";
 import { CheckCircle2, AlertCircle, Clock, Plus, Trash2, Upload, Receipt, Info, FileText, Save, Loader2, IndianRupee, Wallet, BadgeCheck, TrendingUp } from "lucide-react";
 import { useEffect, useState, useMemo } from "react";
 import toast from "react-hot-toast";
@@ -15,7 +13,7 @@ import useGlobalPolling from "../hooks/useGlobalPolling";
 
 
 function Payments() {
-  const { colors, spacing, radius, typography } = useTheme();
+  const { colors } = useTheme();
   // UI-only redesign per spec (no logic changes)
 
   const [payments, setPayments] = useState([]);

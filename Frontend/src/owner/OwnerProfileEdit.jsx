@@ -1,11 +1,6 @@
 import { useTheme } from "../design-system/ThemeProvider";
 import { PageContainer } from "../design-system/layouts/PageContainer";
 import { Card } from "../design-system/components/Card";
-import { KPICard } from "../design-system/components/KPICard";
-import { StatusPill } from "../design-system/components/StatusPill";
-import { EmptyState } from "../design-system/components/EmptyState";
-import { Button } from "../design-system/components/Button";
-import { FormInput } from "../design-system/components/FormInput";
 import { useEffect, useState } from "react";
 import api from "../utils/apiClient";
 import toast from "react-hot-toast";
@@ -16,7 +11,7 @@ import useGlobalPolling from "../hooks/useGlobalPolling";
 
 
 function OwnerProfileEdit() {
-  const { colors, spacing, radius, typography } = useTheme();
+  const { colors } = useTheme();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 

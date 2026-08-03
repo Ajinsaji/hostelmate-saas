@@ -1,11 +1,6 @@
 import { useTheme } from "../design-system/ThemeProvider";
 import { PageContainer } from "../design-system/layouts/PageContainer";
 import { Card } from "../design-system/components/Card";
-import { KPICard } from "../design-system/components/KPICard";
-import { StatusPill } from "../design-system/components/StatusPill";
-import { EmptyState } from "../design-system/components/EmptyState";
-import { Button } from "../design-system/components/Button";
-import { FormInput } from "../design-system/components/FormInput";
 import { useState } from "react";
 import api from "../utils/apiClient";
 import toast from "react-hot-toast";
@@ -13,7 +8,7 @@ import { Save, X, Lock, Loader2 } from "lucide-react";
 
 
 function UpdatePassword() {
-  const { colors, spacing, radius, typography } = useTheme();
+  const { colors } = useTheme();
   const [form, setForm] = useState({
     currentPassword: "",
     newPassword: "",

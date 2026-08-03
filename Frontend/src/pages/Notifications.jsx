@@ -1,11 +1,8 @@
 import { useTheme } from "../design-system/ThemeProvider";
 import { PageContainer } from "../design-system/layouts/PageContainer";
 import { Card } from "../design-system/components/Card";
-import { KPICard } from "../design-system/components/KPICard";
 import { StatusPill } from "../design-system/components/StatusPill";
 import { EmptyState } from "../design-system/components/EmptyState";
-import { Button } from "../design-system/components/Button";
-import { FormInput } from "../design-system/components/FormInput";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Bell, CheckCheck, ArrowRight, Search, Sparkles } from "lucide-react";
 import { useNavigate } from "react-router-dom";
@@ -33,7 +30,7 @@ function typeToUI(type) {
 }
 
 export default function Notifications() {
-  const { colors, spacing, radius, typography } = useTheme();
+  const { colors } = useTheme();
   const navigate = useNavigate();
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);

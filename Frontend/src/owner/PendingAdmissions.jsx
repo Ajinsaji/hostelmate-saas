@@ -1,11 +1,8 @@
 import { useTheme } from "../design-system/ThemeProvider";
 import { PageContainer } from "../design-system/layouts/PageContainer";
 import { Card } from "../design-system/components/Card";
-import { KPICard } from "../design-system/components/KPICard";
 import { StatusPill } from "../design-system/components/StatusPill";
 import { EmptyState } from "../design-system/components/EmptyState";
-import { Button } from "../design-system/components/Button";
-import { FormInput } from "../design-system/components/FormInput";
 import { useEffect, useState } from "react";
 import { api } from "../services/api";
 import buildFileUrl from "../utils/buildFileUrl";
@@ -15,7 +12,7 @@ import toast from "react-hot-toast";
 
 
 function PendingAdmissions() {
-  const { colors, spacing, radius, typography } = useTheme();
+  const { colors } = useTheme();
   const [admissions, setAdmissions] = useState([]);
   const [loading, setLoading] = useState(false);
   const [loadingActionId, setLoadingActionId] = useState(null);

@@ -1,11 +1,7 @@
 import { useTheme } from "../design-system/ThemeProvider";
 import { PageContainer } from "../design-system/layouts/PageContainer";
 import { Card } from "../design-system/components/Card";
-import { KPICard } from "../design-system/components/KPICard";
 import { StatusPill } from "../design-system/components/StatusPill";
-import { EmptyState } from "../design-system/components/EmptyState";
-import { Button } from "../design-system/components/Button";
-import { FormInput } from "../design-system/components/FormInput";
 import { useEffect, useState } from "react";
 import {
   DollarSign,
@@ -22,7 +18,7 @@ import toast from "react-hot-toast";
 
 
 export default function MyPayroll() {
-  const { colors, spacing, radius, typography } = useTheme();
+  
   const [history, setHistory] = useState([]);
   const [advances, setAdvances] = useState([]);
   const [loading, setLoading] = useState(false);

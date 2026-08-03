@@ -1,7 +1,4 @@
 import { useTheme } from "../design-system/ThemeProvider";
-import { Card } from "../design-system/components/Card";
-import { StatusPill } from "../design-system/components/StatusPill";
-import { FormInput } from "../design-system/components/FormInput";
 import React, { useState, useEffect } from "react";
 import {
   Building2,
@@ -40,7 +37,7 @@ import { LoadingSkeleton } from "../design-system/components/LoadingSkeleton";
 
 
 export const Rooms = () => {
-  const { colors, spacing, radius, typography } = useTheme();
+  const { colors } = useTheme();
   const [showDrawer, setShowDrawer] = useState(false);
   const [selectedRoom, setSelectedRoom] = useState(null);
   const [activeTab, setActiveTab] = useState("rooms"); // rooms | buildings | floorplan | maintenance

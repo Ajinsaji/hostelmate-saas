@@ -1,11 +1,6 @@
 import { useTheme } from "../design-system/ThemeProvider";
 import { PageContainer } from "../design-system/layouts/PageContainer";
 import { Card } from "../design-system/components/Card";
-import { KPICard } from "../design-system/components/KPICard";
-import { StatusPill } from "../design-system/components/StatusPill";
-import { EmptyState } from "../design-system/components/EmptyState";
-import { Button } from "../design-system/components/Button";
-import { FormInput } from "../design-system/components/FormInput";
 import { ArrowLeft, User, Building, Lock, LogOut, QrCode, Copy, Download, Share2, X, Sparkles } from "lucide-react";
 
 import { useState, useEffect } from "react";
@@ -19,7 +14,7 @@ import buildQrUrl from "../utils/buildQrUrl";
 
 
 function Profile() {
-  const { colors, spacing, radius, typography } = useTheme();
+  const { colors } = useTheme();
   const navigate = useNavigate();
   const [ownerData, setOwnerData] = useState({
     ownerName: "", phone: "", email: ""
@@ -287,7 +282,7 @@ function Profile() {
 }
 
 function MenuItem({ icon, title, subtitle, onClick }) {
-  const { colors, spacing, radius, typography } = useTheme();
+  const { colors } = useTheme();
   return (
     <div
       className="flex items-center gap-4 p-4 cursor-pointer"
