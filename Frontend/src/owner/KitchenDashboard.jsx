@@ -1,3 +1,11 @@
+import { useTheme } from "../design-system/ThemeProvider";
+import { PageContainer } from "../design-system/layouts/PageContainer";
+import { Card } from "../design-system/components/Card";
+import { KPICard } from "../design-system/components/KPICard";
+import { StatusPill } from "../design-system/components/StatusPill";
+import { EmptyState } from "../design-system/components/EmptyState";
+import { Button } from "../design-system/components/Button";
+import { FormInput } from "../design-system/components/FormInput";
 import React, { useState, useEffect } from "react";
 import {
   Utensils,
@@ -22,6 +30,7 @@ import toast from "react-hot-toast";
 import api from "../utils/apiClient";
 
 export const KitchenDashboard = () => {
+  const { colors, spacing, radius, typography } = useTheme();
   const [activeTab, setActiveTab] = useState("menu"); // menu | attendance | inventory | recipes | purchases | waste
   const [stats, setStats] = useState(null);
   const [menu, setMenu] = useState({ breakfast: "", lunch: "", snacks: "", dinner: "", specialMenu: "" });

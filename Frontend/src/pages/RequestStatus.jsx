@@ -1,3 +1,11 @@
+import { useTheme } from "../design-system/ThemeProvider";
+import { PageContainer } from "../design-system/layouts/PageContainer";
+import { Card } from "../design-system/components/Card";
+import { KPICard } from "../design-system/components/KPICard";
+import { StatusPill } from "../design-system/components/StatusPill";
+import { EmptyState } from "../design-system/components/EmptyState";
+import { Button } from "../design-system/components/Button";
+import { FormInput } from "../design-system/components/FormInput";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -23,6 +31,7 @@ const statusToUi = {
 };
 
 function RequestStatus() {
+  const { colors, spacing, radius, typography } = useTheme();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -212,6 +221,7 @@ function RequestStatus() {
 
 
 function CardLine({ label, value }) {
+  const { colors, spacing, radius, typography } = useTheme();
   return (
     <div className="rounded-3xl border border-white/10 bg-slate-900/50 p-4">
       <div className="text-xs font-semibold uppercase tracking-[0.3em] text-white/50">{label}</div>

@@ -1,3 +1,11 @@
+import { useTheme } from "../design-system/ThemeProvider";
+import { PageContainer } from "../design-system/layouts/PageContainer";
+import { Card } from "../design-system/components/Card";
+import { KPICard } from "../design-system/components/KPICard";
+import { StatusPill } from "../design-system/components/StatusPill";
+import { EmptyState } from "../design-system/components/EmptyState";
+import { Button } from "../design-system/components/Button";
+import { FormInput } from "../design-system/components/FormInput";
 import { useEffect, useState } from "react";
 import {
   DollarSign,
@@ -11,9 +19,10 @@ import {
 } from "lucide-react";
 import { api } from "../services/api";
 import toast from "react-hot-toast";
-import { PageShell, GlassCard, StatusPill } from "../owner/PremiumUI";
+
 
 export default function MyPayroll() {
+  const { colors, spacing, radius, typography } = useTheme();
   const [history, setHistory] = useState([]);
   const [advances, setAdvances] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -64,7 +73,7 @@ export default function MyPayroll() {
   const latestRecord = history[0];
 
   return (
-    <PageShell
+    <PageContainer
       title="My Payroll & Salary History"
       subtitle="Monthly Payslips, Salary Breakdown, Overtime Earnings & Advance Claims"
     >
@@ -106,38 +115,38 @@ export default function MyPayroll() {
       {/* Salary Breakdown Summary */}
       {latestRecord && (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
-          <GlassCard className="p-4">
+          <Card className="p-4">
             <p className="text-slate-400 text-xs font-medium">Basic + Allowances</p>
             <p className="text-lg font-bold text-white mt-1">
               ₹{((latestRecord.basicSalary || 0) + (latestRecord.allowances || 0)).toLocaleString("en-IN")}
             </p>
-          </GlassCard>
+          </Card>
 
-          <GlassCard className="p-4">
+          <Card className="p-4">
             <p className="text-slate-400 text-xs font-medium">Overtime Earnings</p>
             <p className="text-lg font-bold text-emerald-400 mt-1">
               + ₹{(latestRecord.overtimeEarnings || 0).toLocaleString("en-IN")}
             </p>
-          </GlassCard>
+          </Card>
 
-          <GlassCard className="p-4">
+          <Card className="p-4">
             <p className="text-slate-400 text-xs font-medium">Leave & Deductions</p>
             <p className="text-lg font-bold text-rose-400 mt-1">
               - ₹{(latestRecord.deductions || 0).toLocaleString("en-IN")}
             </p>
-          </GlassCard>
+          </Card>
 
-          <GlassCard className="p-4">
+          <Card className="p-4">
             <p className="text-slate-400 text-xs font-medium">Advance Recovered</p>
             <p className="text-lg font-bold text-amber-400 mt-1">
               ₹{(latestRecord.advanceRecovery || 0).toLocaleString("en-IN")}
             </p>
-          </GlassCard>
+          </Card>
         </div>
       )}
 
       {/* Salary History Table */}
-      <GlassCard className="p-5">
+      <Card className="p-5">
         <h3 className="text-sm font-bold text-slate-200 mb-3">Salary History & Payslips</h3>
         {history.length === 0 ? (
           <p className="text-xs text-slate-500 text-center py-6">No historical salary records found.</p>
@@ -183,7 +192,7 @@ export default function MyPayroll() {
             </table>
           </div>
         )}
-      </GlassCard>
+      </Card>
 
       {/* Salary Advance Request Modal */}
       {isAdvanceModalOpen && (
@@ -223,6 +232,6 @@ export default function MyPayroll() {
           </div>
         </div>
       )}
-    </PageShell>
+    </PageContainer>
   );
 }

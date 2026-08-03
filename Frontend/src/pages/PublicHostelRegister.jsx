@@ -1,11 +1,20 @@
+import { useTheme } from "../design-system/ThemeProvider";
+import { PageContainer } from "../design-system/layouts/PageContainer";
+import { Card } from "../design-system/components/Card";
+import { KPICard } from "../design-system/components/KPICard";
+import { StatusPill } from "../design-system/components/StatusPill";
+import { EmptyState } from "../design-system/components/EmptyState";
+import { Button } from "../design-system/components/Button";
+import { FormInput } from "../design-system/components/FormInput";
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import toast from 'react-hot-toast';
-import { PREMIUM_THEME, PageShell, GlassCard } from '../owner/PremiumUI';
+
 import { Upload, CheckCircle } from 'lucide-react';
 
 export default function PublicHostelRegister() {
+  const { colors, spacing, radius, typography } = useTheme();
   const { slug } = useParams();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
@@ -68,24 +77,24 @@ export default function PublicHostelRegister() {
 
   if (success) {
     return (
-      <PageShell title="Success" subtitle="Application Received">
-        <GlassCard className="text-center py-10">
+      <PageContainer title="Success" subtitle="Application Received">
+        <Card className="text-center py-10">
           <div className="flex justify-center mb-4">
-            <CheckCircle size={64} style={{ color: PREMIUM_THEME.primary }} />
+            <CheckCircle size={64} style={{ color: colors.accent.primary }} />
           </div>
           <h2 className="text-2xl font-bold text-white mb-2">Application Submitted!</h2>
           <p className="text-slate-300 mb-6">Your admission request has been sent to the hostel administration. You will be contacted shortly.</p>
-          <button onClick={() => navigate(`/hostel/${slug}`)} className="px-6 py-3 rounded-xl font-bold" style={{ background: PREMIUM_THEME.primary, color: 'white' }}>
+          <button onClick={() => navigate(`/hostel/${slug}`)} className="px-6 py-3 rounded-xl font-bold" style={{ background: colors.accent.primary, color: 'white' }}>
             Back to Hostel
           </button>
-        </GlassCard>
-      </PageShell>
+        </Card>
+      </PageContainer>
     );
   }
 
   return (
-    <PageShell title="Admission Form" subtitle="Apply for accommodation">
-      <GlassCard>
+    <PageContainer title="Admission Form" subtitle="Apply for accommodation">
+      <Card>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
@@ -122,12 +131,12 @@ export default function PublicHostelRegister() {
           </div>
           
           <div className="pt-6">
-            <button type="submit" disabled={loading} className="w-full py-4 rounded-xl font-bold text-lg" style={{ background: PREMIUM_THEME.primary, color: 'white', opacity: loading ? 0.7 : 1 }}>
+            <button type="submit" disabled={loading} className="w-full py-4 rounded-xl font-bold text-lg" style={{ background: colors.accent.primary, color: 'white', opacity: loading ? 0.7 : 1 }}>
               {loading ? 'Submitting...' : 'Submit Application'}
             </button>
           </div>
         </form>
-      </GlassCard>
-    </PageShell>
+      </Card>
+    </PageContainer>
   );
 }

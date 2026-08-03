@@ -1,3 +1,11 @@
+import { useTheme } from "../design-system/ThemeProvider";
+import { PageContainer } from "../design-system/layouts/PageContainer";
+import { Card } from "../design-system/components/Card";
+import { KPICard } from "../design-system/components/KPICard";
+import { StatusPill } from "../design-system/components/StatusPill";
+import { EmptyState } from "../design-system/components/EmptyState";
+import { Button } from "../design-system/components/Button";
+import { FormInput } from "../design-system/components/FormInput";
 import { useEffect, useState } from "react";
 import {
   Plus,
@@ -22,9 +30,10 @@ import {
 import { api } from "../services/api";
 import toast from "react-hot-toast";
 import AddStaffModal from "./AddStaffModal";
-import { PageShell, GlassCard, StatusPill, EmptyState, PREMIUM_THEME } from "./PremiumUI";
+
 
 export default function StaffManagement() {
+  const { colors, spacing, radius, typography } = useTheme();
   const [staff, setStaff] = useState([]);
   const [loading, setLoading] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -167,14 +176,14 @@ export default function StaffManagement() {
   });
 
   return (
-    <PageShell
+    <PageContainer
       title="Staff & Role-Based Access Control"
       subtitle="Enterprise Staff Management, Roles, and Permissions"
       action={
         <button
           onClick={() => setIsAddModalOpen(true)}
           className="inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold shadow-lg transition"
-          style={{ background: PREMIUM_THEME.primary, color: "#031018" }}
+          style={{ background: colors.accent.primary, color: "#031018" }}
         >
           <Plus size={16} /> Add Staff Member
         </button>
@@ -182,57 +191,57 @@ export default function StaffManagement() {
     >
       {/* Overview Stat Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
-        <GlassCard className="p-4 flex flex-col justify-between">
+        <Card className="p-4 flex flex-col justify-between">
           <div className="flex items-center justify-between text-slate-400 text-xs font-medium">
             <span>Total Staff</span>
             <Users size={16} className="text-emerald-400" />
           </div>
           <p className="text-2xl font-bold mt-2 text-white">{totalStaff}</p>
-        </GlassCard>
+        </Card>
 
-        <GlassCard className="p-4 flex flex-col justify-between">
+        <Card className="p-4 flex flex-col justify-between">
           <div className="flex items-center justify-between text-slate-400 text-xs font-medium">
             <span>Wardens</span>
             <ShieldCheck size={16} className="text-blue-400" />
           </div>
           <p className="text-2xl font-bold mt-2 text-blue-400">{wardensCount}</p>
-        </GlassCard>
+        </Card>
 
-        <GlassCard className="p-4 flex flex-col justify-between">
+        <Card className="p-4 flex flex-col justify-between">
           <div className="flex items-center justify-between text-slate-400 text-xs font-medium">
             <span>Cooks</span>
             <ChefHat size={16} className="text-amber-400" />
           </div>
           <p className="text-2xl font-bold mt-2 text-amber-400">{cooksCount}</p>
-        </GlassCard>
+        </Card>
 
-        <GlassCard className="p-4 flex flex-col justify-between">
+        <Card className="p-4 flex flex-col justify-between">
           <div className="flex items-center justify-between text-slate-400 text-xs font-medium">
             <span>Accountants</span>
             <Calculator size={16} className="text-purple-400" />
           </div>
           <p className="text-2xl font-bold mt-2 text-purple-400">{accountantsCount}</p>
-        </GlassCard>
+        </Card>
 
-        <GlassCard className="p-4 flex flex-col justify-between">
+        <Card className="p-4 flex flex-col justify-between">
           <div className="flex items-center justify-between text-slate-400 text-xs font-medium">
             <span>Active</span>
             <UserCheck size={16} className="text-emerald-400" />
           </div>
           <p className="text-2xl font-bold mt-2 text-emerald-400">{activeCount}</p>
-        </GlassCard>
+        </Card>
 
-        <GlassCard className="p-4 flex flex-col justify-between">
+        <Card className="p-4 flex flex-col justify-between">
           <div className="flex items-center justify-between text-slate-400 text-xs font-medium">
             <span>Inactive</span>
             <UserX size={16} className="text-rose-400" />
           </div>
           <p className="text-2xl font-bold mt-2 text-rose-400">{inactiveCount}</p>
-        </GlassCard>
+        </Card>
       </div>
 
       {/* Filter and Search Toolbar */}
-      <GlassCard className="p-4 mb-6">
+      <Card className="p-4 mb-6">
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="relative w-full sm:w-72">
             <Search size={16} className="absolute left-3 top-2.5 text-slate-400" />
@@ -275,15 +284,15 @@ export default function StaffManagement() {
             </div>
           </div>
         </div>
-      </GlassCard>
+      </Card>
 
       {/* Staff Table */}
       {loading ? (
-        <GlassCard className="p-8 text-center text-slate-400">Loading staff records...</GlassCard>
+        <Card className="p-8 text-center text-slate-400">Loading staff records...</Card>
       ) : filteredStaff.length === 0 ? (
         <EmptyState title="No staff members found" message="Add a staff member or adjust your filter criteria." />
       ) : (
-        <GlassCard className="p-0 overflow-hidden">
+        <Card className="p-0 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs border-collapse">
               <thead>
@@ -402,7 +411,7 @@ export default function StaffManagement() {
               </tbody>
             </table>
           </div>
-        </GlassCard>
+        </Card>
       )}
 
       {/* Add Staff Modal */}
@@ -468,6 +477,6 @@ export default function StaffManagement() {
           </div>
         </div>
       )}
-    </PageShell>
+    </PageContainer>
   );
 }

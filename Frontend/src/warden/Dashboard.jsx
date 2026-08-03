@@ -1,3 +1,11 @@
+import { useTheme } from "../design-system/ThemeProvider";
+import { PageContainer } from "../design-system/layouts/PageContainer";
+import { Card } from "../design-system/components/Card";
+import { KPICard } from "../design-system/components/KPICard";
+import { StatusPill } from "../design-system/components/StatusPill";
+import { EmptyState } from "../design-system/components/EmptyState";
+import { Button } from "../design-system/components/Button";
+import { FormInput } from "../design-system/components/FormInput";
 import { useEffect, useState, useCallback } from "react";
 import {
   Users,
@@ -13,9 +21,10 @@ import {
 import { api } from "../services/api";
 import toast from "react-hot-toast";
 import StaffAttendanceWidget from "../components/StaffAttendanceWidget";
-import { PageShell, GlassCard } from "../owner/PremiumUI";
+
 
 export default function WardenDashboard() {
+  const { colors, spacing, radius, typography } = useTheme();
   const [stats, setStats] = useState({
     residents: 0,
     pendingDues: 0,
@@ -39,7 +48,7 @@ export default function WardenDashboard() {
   }, [fetchWardenStats]);
 
   return (
-    <PageShell
+    <PageContainer
       title="Warden Operations Portal"
       subtitle="Resident Occupancy, Room Allocation, Complaints & Daily Dues Management"
     >
@@ -49,23 +58,23 @@ export default function WardenDashboard() {
       </div>
       {/* Overview Stat Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <GlassCard className="p-4 flex flex-col justify-between">
+        <Card className="p-4 flex flex-col justify-between">
           <div className="flex items-center justify-between text-slate-400 text-xs font-medium">
             <span>Active Residents</span>
             <Users size={18} className="text-emerald-400" />
           </div>
           <p className="text-2xl font-bold mt-2 text-emerald-400">{stats.residents || 0}</p>
-        </GlassCard>
+        </Card>
 
-        <GlassCard className="p-4 flex flex-col justify-between">
+        <Card className="p-4 flex flex-col justify-between">
           <div className="flex items-center justify-between text-slate-400 text-xs font-medium">
             <span>Vacant Beds</span>
             <BedDouble size={18} className="text-blue-400" />
           </div>
           <p className="text-2xl font-bold mt-2 text-blue-400">{stats.vacantBeds || 0}</p>
-        </GlassCard>
+        </Card>
 
-        <GlassCard className="p-4 flex flex-col justify-between">
+        <Card className="p-4 flex flex-col justify-between">
           <div className="flex items-center justify-between text-slate-400 text-xs font-medium">
             <span>Pending Dues</span>
             <Wallet size={18} className="text-amber-400" />
@@ -73,9 +82,9 @@ export default function WardenDashboard() {
           <p className="text-2xl font-bold mt-2 text-amber-400">
             ₹{(stats.pendingDues || 0).toLocaleString("en-IN")}
           </p>
-        </GlassCard>
+        </Card>
 
-        <GlassCard className="p-4 flex flex-col justify-between">
+        <Card className="p-4 flex flex-col justify-between">
           <div className="flex items-center justify-between text-slate-400 text-xs font-medium">
             <span>Today's Collections</span>
             <Clock size={18} className="text-purple-400" />
@@ -83,13 +92,13 @@ export default function WardenDashboard() {
           <p className="text-2xl font-bold mt-2 text-purple-400">
             ₹{(stats.todayCollection || 0).toLocaleString("en-IN")}
           </p>
-        </GlassCard>
+        </Card>
       </div>
 
       {/* Quick Action Grid */}
       <h2 className="text-lg font-bold text-slate-200 mb-4">Warden Operational Tools</h2>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-        <GlassCard hover className="p-5 cursor-pointer" onClick={() => window.location.href = "/residents"}>
+        <Card hover className="p-5 cursor-pointer" onClick={() => window.location.href = "/residents"}>
           <div className="flex items-center gap-3">
             <div className="p-3 rounded-2xl bg-emerald-500/10 text-emerald-400">
               <UserPlus size={22} />
@@ -99,9 +108,9 @@ export default function WardenDashboard() {
               <p className="text-xs text-slate-400 mt-0.5">Register, update & view resident details</p>
             </div>
           </div>
-        </GlassCard>
+        </Card>
 
-        <GlassCard hover className="p-5 cursor-pointer" onClick={() => window.location.href = "/rooms"}>
+        <Card hover className="p-5 cursor-pointer" onClick={() => window.location.href = "/rooms"}>
           <div className="flex items-center gap-3">
             <div className="p-3 rounded-2xl bg-blue-500/10 text-blue-400">
               <ArrowRightLeft size={22} />
@@ -111,9 +120,9 @@ export default function WardenDashboard() {
               <p className="text-xs text-slate-400 mt-0.5">Allocate beds, bed transfers & vacant beds</p>
             </div>
           </div>
-        </GlassCard>
+        </Card>
 
-        <GlassCard hover className="p-5 cursor-pointer" onClick={() => window.location.href = "/payments"}>
+        <Card hover className="p-5 cursor-pointer" onClick={() => window.location.href = "/payments"}>
           <div className="flex items-center gap-3">
             <div className="p-3 rounded-2xl bg-amber-500/10 text-amber-400">
               <Wallet size={22} />
@@ -123,9 +132,9 @@ export default function WardenDashboard() {
               <p className="text-xs text-slate-400 mt-0.5">Record incoming rent payments & due list</p>
             </div>
           </div>
-        </GlassCard>
+        </Card>
 
-        <GlassCard hover className="p-5 cursor-pointer" onClick={() => toast.info("Opening Complaints Register")}>
+        <Card hover className="p-5 cursor-pointer" onClick={() => toast.info("Opening Complaints Register")}>
           <div className="flex items-center gap-3">
             <div className="p-3 rounded-2xl bg-purple-500/10 text-purple-400">
               <AlertCircle size={22} />
@@ -135,9 +144,9 @@ export default function WardenDashboard() {
               <p className="text-xs text-slate-400 mt-0.5">Register & resolve resident complaints</p>
             </div>
           </div>
-        </GlassCard>
+        </Card>
 
-        <GlassCard hover className="p-5 cursor-pointer" onClick={() => window.location.href = "/notifications"}>
+        <Card hover className="p-5 cursor-pointer" onClick={() => window.location.href = "/notifications"}>
           <div className="flex items-center gap-3">
             <div className="p-3 rounded-2xl bg-cyan-500/10 text-cyan-400">
               <Bell size={22} />
@@ -147,13 +156,13 @@ export default function WardenDashboard() {
               <p className="text-xs text-slate-400 mt-0.5">View notifications & announcements</p>
             </div>
           </div>
-        </GlassCard>
+        </Card>
       </div>
 
       <div className="flex items-center gap-3 p-3 bg-slate-800/80 border border-slate-700/60 rounded-xl text-slate-400 text-xs">
         <ShieldCheck size={18} className="text-blue-400 shrink-0" />
         <span>Warden Access: Full access to residents, room allocation, dues and complaints. Restricted from Procurement, Treasury, AP, and Payroll.</span>
       </div>
-    </PageShell>
+    </PageContainer>
   );
 }

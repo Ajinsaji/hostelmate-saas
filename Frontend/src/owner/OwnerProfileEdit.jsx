@@ -1,3 +1,11 @@
+import { useTheme } from "../design-system/ThemeProvider";
+import { PageContainer } from "../design-system/layouts/PageContainer";
+import { Card } from "../design-system/components/Card";
+import { KPICard } from "../design-system/components/KPICard";
+import { StatusPill } from "../design-system/components/StatusPill";
+import { EmptyState } from "../design-system/components/EmptyState";
+import { Button } from "../design-system/components/Button";
+import { FormInput } from "../design-system/components/FormInput";
 import { useEffect, useState } from "react";
 import api from "../utils/apiClient";
 import toast from "react-hot-toast";
@@ -5,9 +13,10 @@ import buildFileUrl from "../utils/buildFileUrl";
 import useOwnerRealtimeSync, { dispatchOwnerSnapshotUpdated } from "../hooks/useOwnerRealtimeSync";
 import { Save, X, User, Phone, Mail, Image as ImageIcon, Loader2 } from "lucide-react";
 import useGlobalPolling from "../hooks/useGlobalPolling";
-import { PageShell, GlassCard, PREMIUM_THEME } from "./PremiumUI";
+
 
 function OwnerProfileEdit() {
+  const { colors, spacing, radius, typography } = useTheme();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -156,14 +165,14 @@ function OwnerProfileEdit() {
   };
 
   return (
-    <PageShell title="Owner Profile" subtitle="Manage your personal details and profile image">
+    <PageContainer title="Owner Profile" subtitle="Manage your personal details and profile image">
       {loading ? (
-        <GlassCard className="text-center">Loading profile...</GlassCard>
+        <Card className="text-center">Loading profile...</Card>
       ) : (
-        <GlassCard>
+        <Card>
           <div className="flex items-center justify-between gap-3">
             <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.24em]" style={{ color: PREMIUM_THEME.muted }}>Account details</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.24em]" style={{ color: colors.text.muted }}>Account details</p>
               <h2 className="mt-1 text-xl font-semibold">Personal profile</h2>
             </div>
             <button className="flex h-10 w-10 items-center justify-center rounded-full" style={{ background: "rgba(255,255,255,0.05)" }} onClick={() => window.history.back()}>
@@ -172,8 +181,8 @@ function OwnerProfileEdit() {
           </div>
 
           <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-center">
-            <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-[24px] border" style={{ borderColor: PREMIUM_THEME.border, background: `${PREMIUM_THEME.primary}16` }}>
-              {previewUrl ? <img src={previewUrl} alt="Profile" className="h-full w-full object-cover" /> : <User size={32} style={{ color: PREMIUM_THEME.primary }} />}
+            <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-[24px] border" style={{ borderColor: colors.border.default, background: `${colors.accent.primary}16` }}>
+              {previewUrl ? <img src={previewUrl} alt="Profile" className="h-full w-full object-cover" /> : <User size={32} style={{ color: colors.accent.primary }} />}
             </div>
             <label className="inline-flex cursor-pointer items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold" style={{ background: "rgba(255,255,255,0.05)" }}>
               <ImageIcon size={16} /> Change image
@@ -182,26 +191,26 @@ function OwnerProfileEdit() {
           </div>
 
           <div className="mt-5 space-y-3">
-            <div className="rounded-[16px] border px-3 py-2" style={{ borderColor: PREMIUM_THEME.border, background: "rgba(255,255,255,0.03)" }}>
-              <p className="text-[10px] font-semibold uppercase tracking-[0.24em]" style={{ color: PREMIUM_THEME.muted }}>Owner name</p>
-              <input className="mt-1 w-full bg-transparent text-sm outline-none" value={form.ownerName} onChange={(e) => update("ownerName", e.target.value)} style={{ color: PREMIUM_THEME.text }} />
+            <div className="rounded-[16px] border px-3 py-2" style={{ borderColor: colors.border.default, background: "rgba(255,255,255,0.03)" }}>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.24em]" style={{ color: colors.text.muted }}>Owner name</p>
+              <input className="mt-1 w-full bg-transparent text-sm outline-none" value={form.ownerName} onChange={(e) => update("ownerName", e.target.value)} style={{ color: colors.text.primary }} />
             </div>
-            <div className="rounded-[16px] border px-3 py-2" style={{ borderColor: PREMIUM_THEME.border, background: "rgba(255,255,255,0.03)" }}>
-              <p className="text-[10px] font-semibold uppercase tracking-[0.24em]" style={{ color: PREMIUM_THEME.muted }}>Phone</p>
-              <input className="mt-1 w-full bg-transparent text-sm outline-none" value={form.phone} onChange={(e) => update("phone", e.target.value)} inputMode="tel" style={{ color: PREMIUM_THEME.text }} />
+            <div className="rounded-[16px] border px-3 py-2" style={{ borderColor: colors.border.default, background: "rgba(255,255,255,0.03)" }}>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.24em]" style={{ color: colors.text.muted }}>Phone</p>
+              <input className="mt-1 w-full bg-transparent text-sm outline-none" value={form.phone} onChange={(e) => update("phone", e.target.value)} inputMode="tel" style={{ color: colors.text.primary }} />
             </div>
-            <div className="rounded-[16px] border px-3 py-2" style={{ borderColor: PREMIUM_THEME.border, background: "rgba(255,255,255,0.03)" }}>
-              <p className="text-[10px] font-semibold uppercase tracking-[0.24em]" style={{ color: PREMIUM_THEME.muted }}>Email</p>
-              <input className="mt-1 w-full bg-transparent text-sm outline-none" value={form.email} onChange={(e) => update("email", e.target.value)} inputMode="email" style={{ color: PREMIUM_THEME.text }} />
+            <div className="rounded-[16px] border px-3 py-2" style={{ borderColor: colors.border.default, background: "rgba(255,255,255,0.03)" }}>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.24em]" style={{ color: colors.text.muted }}>Email</p>
+              <input className="mt-1 w-full bg-transparent text-sm outline-none" value={form.email} onChange={(e) => update("email", e.target.value)} inputMode="email" style={{ color: colors.text.primary }} />
             </div>
           </div>
 
-          <button onClick={handleSave} disabled={saving} className="mt-5 inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-semibold" style={{ background: PREMIUM_THEME.primary, color: "#031018", opacity: saving ? 0.7 : 1 }}>
+          <button onClick={handleSave} disabled={saving} className="mt-5 inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-semibold" style={{ background: colors.accent.primary, color: "#031018", opacity: saving ? 0.7 : 1 }}>
             {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />} {saving ? "Saving..." : "Save profile"}
           </button>
-        </GlassCard>
+        </Card>
       )}
-    </PageShell>
+    </PageContainer>
   );
 }
 

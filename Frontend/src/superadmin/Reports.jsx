@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { api } from "../services/api";
 import { Download, TrendingUp, TrendingDown, IndianRupee } from "lucide-react";
 
-import SuperadminBottomNav from "../components/SuperadminBottomNav";
+
 
 function Reports() {
   const [loading, setLoading] = useState(true);
@@ -102,7 +102,7 @@ function Reports() {
         </div>
       </div>
 
-      <SuperadminBottomNav />
+      
     </div>
   );
 }

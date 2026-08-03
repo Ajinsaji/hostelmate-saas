@@ -1,11 +1,19 @@
+import { useTheme } from "../design-system/ThemeProvider";
+import { PageContainer } from "../design-system/layouts/PageContainer";
+import { Card } from "../design-system/components/Card";
+import { KPICard } from "../design-system/components/KPICard";
+import { StatusPill } from "../design-system/components/StatusPill";
+import { EmptyState } from "../design-system/components/EmptyState";
+import { Button } from "../design-system/components/Button";
+import { FormInput } from "../design-system/components/FormInput";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Bell, CheckCheck, ArrowRight, Search, Sparkles } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import { api } from "../services/api";
 import useNotificationSocket from "../hooks/useNotificationSocket";
-import { PageShell, GlassCard, StatusPill, EmptyState, PREMIUM_THEME } from "../owner/PremiumUI";
-import BottomNav from "../components/BottomNav";
+
+
 
 function typeToUI(type) {
   switch (type) {
@@ -25,6 +33,7 @@ function typeToUI(type) {
 }
 
 export default function Notifications() {
+  const { colors, spacing, radius, typography } = useTheme();
   const navigate = useNavigate();
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -153,46 +162,46 @@ export default function Notifications() {
   }, [notifications, search, filter]);
 
   return (
-    <PageShell title="Notifications" subtitle={subtitle} action={<button disabled={saving || notifications.length === 0} onClick={markAllRead} className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold" style={{ background: PREMIUM_THEME.primary, color: "#031018", opacity: saving || notifications.length === 0 ? 0.7 : 1 }}><CheckCheck size={16} /> Mark all read</button>}>
-      <GlassCard>
+    <PageContainer title="Notifications" subtitle={subtitle} action={<button disabled={saving || notifications.length === 0} onClick={markAllRead} className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold" style={{ background: colors.accent.primary, color: "#031018", opacity: saving || notifications.length === 0 ? 0.7 : 1 }}><CheckCheck size={16} /> Mark all read</button>}>
+      <Card>
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex flex-1 items-center gap-2 rounded-[16px] border px-3 py-2" style={{ borderColor: PREMIUM_THEME.border, background: "rgba(255,255,255,0.03)" }}>
-            <Search size={16} style={{ color: PREMIUM_THEME.muted }} />
-            <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search notifications" className="w-full bg-transparent text-sm outline-none" style={{ color: PREMIUM_THEME.text }} />
+          <div className="flex flex-1 items-center gap-2 rounded-[16px] border px-3 py-2" style={{ borderColor: colors.border.default, background: "rgba(255,255,255,0.03)" }}>
+            <Search size={16} style={{ color: colors.text.muted }} />
+            <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search notifications" className="w-full bg-transparent text-sm outline-none" style={{ color: colors.text.primary }} />
           </div>
           <div className="flex flex-wrap gap-2">
             {['all', 'admissions', 'payments', 'residents', 'rooms', 'system'].map((item) => (
-              <button key={item} onClick={() => setFilter(item)} className="rounded-full px-3 py-2 text-sm font-semibold" style={{ background: filter === item ? PREMIUM_THEME.primary : "rgba(255,255,255,0.05)", color: filter === item ? "#031018" : PREMIUM_THEME.text }}>
+              <button key={item} onClick={() => setFilter(item)} className="rounded-full px-3 py-2 text-sm font-semibold" style={{ background: filter === item ? colors.accent.primary : "rgba(255,255,255,0.05)", color: filter === item ? "#031018" : colors.text.primary }}>
                 {item === 'all' ? 'All' : item.charAt(0).toUpperCase() + item.slice(1)}
               </button>
             ))}
           </div>
         </div>
-      </GlassCard>
+      </Card>
 
-      {loading ? <GlassCard className="text-center">Loading notifications...</GlassCard> : filteredNotifications.length === 0 ? <EmptyState title="No notifications" message="No matching updates right now." /> : (
+      {loading ? <Card className="text-center">Loading notifications...</Card> : filteredNotifications.length === 0 ? <EmptyState title="No notifications" message="No matching updates right now." /> : (
         <div className="space-y-3">
           {filteredNotifications.map((notification) => {
             const ui = typeToUI(notification.type);
             return (
-              <GlassCard key={notification._id} hover className="cursor-pointer" onClick={() => handleOpen(notification)} style={{ opacity: notification.isRead ? 0.8 : 1 }}>
+              <Card key={notification._id} hover className="cursor-pointer" onClick={() => handleOpen(notification)} style={{ opacity: notification.isRead ? 0.8 : 1 }}>
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <div className="flex flex-wrap items-center gap-2">
                       <StatusPill tone={notification.isRead ? "neutral" : "warning"}>{ui.label}</StatusPill>
-                      <span className="text-xs" style={{ color: PREMIUM_THEME.muted }}>{new Date(notification.createdAt).toLocaleString()}</span>
+                      <span className="text-xs" style={{ color: colors.text.muted }}>{new Date(notification.createdAt).toLocaleString()}</span>
                     </div>
                     <h3 className="mt-2 text-lg font-semibold">{notification.title || "HostelMate"}</h3>
-                    <p className="mt-1 text-sm" style={{ color: PREMIUM_THEME.muted }}>{notification.message}</p>
+                    <p className="mt-1 text-sm" style={{ color: colors.text.muted }}>{notification.message}</p>
                   </div>
-                  <ArrowRight size={18} style={{ color: PREMIUM_THEME.primary }} />
+                  <ArrowRight size={18} style={{ color: colors.accent.primary }} />
                 </div>
-              </GlassCard>
+              </Card>
             );
           })}
         </div>
       )}
-      <BottomNav />
-    </PageShell>
+      
+    </PageContainer>
   );
 }

@@ -1,3 +1,11 @@
+import { useTheme } from "../design-system/ThemeProvider";
+import { PageContainer } from "../design-system/layouts/PageContainer";
+import { Card } from "../design-system/components/Card";
+import { KPICard } from "../design-system/components/KPICard";
+import { StatusPill } from "../design-system/components/StatusPill";
+import { EmptyState } from "../design-system/components/EmptyState";
+import { Button } from "../design-system/components/Button";
+import { FormInput } from "../design-system/components/FormInput";
 import { ArrowLeft, User, Building, Lock, LogOut, QrCode, Copy, Download, Share2, X, Sparkles } from "lucide-react";
 
 import { useState, useEffect } from "react";
@@ -7,10 +15,11 @@ import { api } from "../services/api";
 import useOwnerRealtimeSync from "../hooks/useOwnerRealtimeSync";
 import { clearOwnerAuth } from "../utils/authToken";
 import buildQrUrl from "../utils/buildQrUrl";
-import { PageShell, GlassCard, PREMIUM_THEME } from "./PremiumUI";
+
 
 
 function Profile() {
+  const { colors, spacing, radius, typography } = useTheme();
   const navigate = useNavigate();
   const [ownerData, setOwnerData] = useState({
     ownerName: "", phone: "", email: ""
@@ -105,28 +114,28 @@ function Profile() {
   };
 
   return (
-    <PageShell title="Settings" subtitle="Profile, secure access, and sharing" action={<button onClick={() => navigate(-1)} className="flex h-10 w-10 items-center justify-center rounded-full" style={{ background: "rgba(255,255,255,0.08)" }}><ArrowLeft size={18} /></button>}>
-      <GlassCard>
+    <PageContainer title="Settings" subtitle="Profile, secure access, and sharing" action={<button onClick={() => navigate(-1)} className="flex h-10 w-10 items-center justify-center rounded-full" style={{ background: "rgba(255,255,255,0.08)" }}><ArrowLeft size={18} /></button>}>
+      <Card>
         <div className="flex items-center gap-4">
-          <div className="flex h-14 w-14 items-center justify-center rounded-2xl" style={{ background: `${PREMIUM_THEME.primary}16`, color: PREMIUM_THEME.primary }}><User size={24} /></div>
+          <div className="flex h-14 w-14 items-center justify-center rounded-2xl" style={{ background: `${colors.accent.primary}16`, color: colors.accent.primary }}><User size={24} /></div>
           <div>
             <h2 className="text-xl font-semibold">{ownerData.ownerName}</h2>
-            <p className="text-sm" style={{ color: PREMIUM_THEME.muted }}>{ownerData.phone}</p>
+            <p className="text-sm" style={{ color: colors.text.muted }}>{ownerData.phone}</p>
           </div>
         </div>
-      </GlassCard>
+      </Card>
 
-      <GlassCard className="p-0 overflow-hidden">
-        <MenuItem icon={<Building size={20} style={{ color: PREMIUM_THEME.primary }} />} title="Hostel Settings" subtitle="Update hostel details and address" onClick={() => navigate("/owner/settings")} />
-        <div style={{ borderTop: `1px solid ${PREMIUM_THEME.border}` }} />
-        <MenuItem icon={<Sparkles size={20} style={{ color: PREMIUM_THEME.primary }} />} title="Subscription Info" subtitle="View active plan and billing" onClick={() => toast("Subscription details coming soon!")} />
-        <div style={{ borderTop: `1px solid ${PREMIUM_THEME.border}` }} />
-        <MenuItem icon={<QrCode size={20} style={{ color: PREMIUM_THEME.primary }} />} title="View Public QR" subtitle="Share hostel admission link" onClick={() => setShowQRModal(true)} />
-        <div style={{ borderTop: `1px solid ${PREMIUM_THEME.border}` }} />
-        <MenuItem icon={<User size={20} style={{ color: PREMIUM_THEME.primary }} />} title="Owner Profile" subtitle="Manage personal information" onClick={() => navigate("/owner/profile")} />
-        <div style={{ borderTop: `1px solid ${PREMIUM_THEME.border}` }} />
-        <MenuItem icon={<Lock size={20} style={{ color: PREMIUM_THEME.primary }} />} title="Update Password" subtitle="Change your login password" onClick={() => navigate("/owner/update-password")} />
-        <div style={{ borderTop: `1px solid ${PREMIUM_THEME.border}` }} />
+      <Card className="p-0 overflow-hidden">
+        <MenuItem icon={<Building size={20} style={{ color: colors.accent.primary }} />} title="Hostel Settings" subtitle="Update hostel details and address" onClick={() => navigate("/owner/settings")} />
+        <div style={{ borderTop: `1px solid ${colors.border.default}` }} />
+        <MenuItem icon={<Sparkles size={20} style={{ color: colors.accent.primary }} />} title="Subscription Info" subtitle="View active plan and billing" onClick={() => toast("Subscription details coming soon!")} />
+        <div style={{ borderTop: `1px solid ${colors.border.default}` }} />
+        <MenuItem icon={<QrCode size={20} style={{ color: colors.accent.primary }} />} title="View Public QR" subtitle="Share hostel admission link" onClick={() => setShowQRModal(true)} />
+        <div style={{ borderTop: `1px solid ${colors.border.default}` }} />
+        <MenuItem icon={<User size={20} style={{ color: colors.accent.primary }} />} title="Owner Profile" subtitle="Manage personal information" onClick={() => navigate("/owner/profile")} />
+        <div style={{ borderTop: `1px solid ${colors.border.default}` }} />
+        <MenuItem icon={<Lock size={20} style={{ color: colors.accent.primary }} />} title="Update Password" subtitle="Change your login password" onClick={() => navigate("/owner/update-password")} />
+        <div style={{ borderTop: `1px solid ${colors.border.default}` }} />
         <div className="flex items-center justify-between p-4 px-6" style={{ background: "rgba(255,255,255,0.02)" }}>
           <div>
             <h3 className="text-sm font-medium" style={{ color: "#ffffff" }}>Push Notifications</h3>
@@ -137,13 +146,13 @@ function Profile() {
             <div className="peer h-6 w-11 rounded-full bg-slate-700 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-green-500 peer-checked:after:translate-x-full peer-checked:after:border-white peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-green-300"></div>
           </label>
         </div>
-      </GlassCard>
+      </Card>
 
-      <GlassCard>
-        <button onClick={handleLogout} className="flex w-full items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-semibold" style={{ background: "rgba(235,87,87,0.14)", color: PREMIUM_THEME.danger }}>
+      <Card>
+        <button onClick={handleLogout} className="flex w-full items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-semibold" style={{ background: "rgba(235,87,87,0.14)", color: colors.accent.danger }}>
           <LogOut size={18} /> Logout
         </button>
-      </GlassCard>
+      </Card>
 
       {/* QR Modal */}
       {showQRModal && hostelData && (
@@ -273,11 +282,12 @@ function Profile() {
           </div>
         </div>
       )}
-    </PageShell>
+    </PageContainer>
   );
 }
 
 function MenuItem({ icon, title, subtitle, onClick }) {
+  const { colors, spacing, radius, typography } = useTheme();
   return (
     <div
       className="flex items-center gap-4 p-4 cursor-pointer"

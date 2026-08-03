@@ -1,3 +1,7 @@
+import { useTheme } from "../design-system/ThemeProvider";
+import { Card } from "../design-system/components/Card";
+import { StatusPill } from "../design-system/components/StatusPill";
+import { FormInput } from "../design-system/components/FormInput";
 import React, { useState, useEffect } from "react";
 import {
   Search,
@@ -40,6 +44,7 @@ import { LoadingSkeleton } from "../design-system/components/LoadingSkeleton";
 
 
 const Residents = () => {
+  const { colors, spacing, radius, typography } = useTheme();
   const [residents, setResidents] = useState([]);
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);

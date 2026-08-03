@@ -1,3 +1,11 @@
+import { useTheme } from "../design-system/ThemeProvider";
+import { PageContainer } from "../design-system/layouts/PageContainer";
+import { Card } from "../design-system/components/Card";
+import { KPICard } from "../design-system/components/KPICard";
+import { StatusPill } from "../design-system/components/StatusPill";
+import { EmptyState } from "../design-system/components/EmptyState";
+import { Button } from "../design-system/components/Button";
+import { FormInput } from "../design-system/components/FormInput";
 import { useEffect, useState } from "react";
 import {
   Clock,
@@ -19,9 +27,10 @@ import {
 } from "lucide-react";
 import { api } from "../services/api";
 import toast from "react-hot-toast";
-import { PageShell, GlassCard, StatusPill, EmptyState, PREMIUM_THEME } from "./PremiumUI";
+
 
 export default function AttendanceShiftManagement() {
+  const { colors, spacing, radius, typography } = useTheme();
   const [activeTab, setActiveTab] = useState("attendance"); // attendance, shifts, corrections, approvals
   const [summary, setSummary] = useState(null);
   const [shifts, setShifts] = useState([]);
@@ -160,7 +169,7 @@ export default function AttendanceShiftManagement() {
   };
 
   return (
-    <PageShell
+    <PageContainer
       title="Attendance, Shifts & Leave Control"
       subtitle="Real-time Staff Check-Ins, Roster Assignments & Approval Center"
       action={
@@ -182,53 +191,53 @@ export default function AttendanceShiftManagement() {
     >
       {/* Overview Stat Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
-        <GlassCard className="p-4 flex flex-col justify-between">
+        <Card className="p-4 flex flex-col justify-between">
           <div className="flex items-center justify-between text-slate-400 text-xs font-medium">
             <span>Attendance %</span>
             <CheckCircle2 size={16} className="text-emerald-400" />
           </div>
           <p className="text-2xl font-bold mt-2 text-emerald-400">{summary?.attendancePercentage || 0}%</p>
-        </GlassCard>
+        </Card>
 
-        <GlassCard className="p-4 flex flex-col justify-between">
+        <Card className="p-4 flex flex-col justify-between">
           <div className="flex items-center justify-between text-slate-400 text-xs font-medium">
             <span>On Duty Now</span>
             <Clock size={16} className="text-blue-400" />
           </div>
           <p className="text-2xl font-bold mt-2 text-blue-400">{summary?.onDuty || 0}</p>
-        </GlassCard>
+        </Card>
 
-        <GlassCard className="p-4 flex flex-col justify-between">
+        <Card className="p-4 flex flex-col justify-between">
           <div className="flex items-center justify-between text-slate-400 text-xs font-medium">
             <span>Present Today</span>
             <Users size={16} className="text-emerald-400" />
           </div>
           <p className="text-2xl font-bold mt-2 text-white">{summary?.present || 0}</p>
-        </GlassCard>
+        </Card>
 
-        <GlassCard className="p-4 flex flex-col justify-between">
+        <Card className="p-4 flex flex-col justify-between">
           <div className="flex items-center justify-between text-slate-400 text-xs font-medium">
             <span>Late Arrivals</span>
             <AlertTriangle size={16} className="text-amber-400" />
           </div>
           <p className="text-2xl font-bold mt-2 text-amber-400">{summary?.late || 0}</p>
-        </GlassCard>
+        </Card>
 
-        <GlassCard className="p-4 flex flex-col justify-between">
+        <Card className="p-4 flex flex-col justify-between">
           <div className="flex items-center justify-between text-slate-400 text-xs font-medium">
             <span>On Leave</span>
             <Calendar size={16} className="text-purple-400" />
           </div>
           <p className="text-2xl font-bold mt-2 text-purple-400">{summary?.onLeave || 0}</p>
-        </GlassCard>
+        </Card>
 
-        <GlassCard className="p-4 flex flex-col justify-between">
+        <Card className="p-4 flex flex-col justify-between">
           <div className="flex items-center justify-between text-slate-400 text-xs font-medium">
             <span>Overtime Hrs</span>
             <Clock3 size={16} className="text-cyan-400" />
           </div>
           <p className="text-2xl font-bold mt-2 text-cyan-400">{summary?.totalOvertimeHours || 0} hrs</p>
-        </GlassCard>
+        </Card>
       </div>
 
       {/* Tabs Bar */}
@@ -269,7 +278,7 @@ export default function AttendanceShiftManagement() {
 
       {/* TAB 1: Attendance Log */}
       {activeTab === "attendance" && (
-        <GlassCard className="p-0 overflow-hidden">
+        <Card className="p-0 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs border-collapse">
               <thead>
@@ -312,14 +321,14 @@ export default function AttendanceShiftManagement() {
               </tbody>
             </table>
           </div>
-        </GlassCard>
+        </Card>
       )}
 
       {/* TAB 2: Shift Roster */}
       {activeTab === "shifts" && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {shifts.map((shift) => (
-            <GlassCard key={shift._id} className="p-5">
+            <Card key={shift._id} className="p-5">
               <div className="flex items-center justify-between mb-3">
                 <span className="px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
                   {shift.shiftCode}
@@ -331,14 +340,14 @@ export default function AttendanceShiftManagement() {
                 Timings: <span className="text-slate-200 font-mono">{shift.startTime} - {shift.endTime}</span>
               </p>
               <p className="text-xs text-slate-400 mt-0.5">Break: {shift.breakDuration} mins</p>
-            </GlassCard>
+            </Card>
           ))}
         </div>
       )}
 
       {/* TAB 3: Corrections Center */}
       {activeTab === "corrections" && (
-        <GlassCard className="p-4 space-y-3">
+        <Card className="p-4 space-y-3">
           {corrections.length === 0 ? (
             <p className="text-center text-xs text-slate-500 py-6">No attendance correction requests.</p>
           ) : (
@@ -372,12 +381,12 @@ export default function AttendanceShiftManagement() {
               </div>
             ))
           )}
-        </GlassCard>
+        </Card>
       )}
 
       {/* TAB 4: Leave & Overtime Approvals */}
       {activeTab === "approvals" && (
-        <GlassCard className="p-4 space-y-3">
+        <Card className="p-4 space-y-3">
           <h3 className="text-sm font-bold text-slate-300">Pending Leave Applications</h3>
           {leaves.filter((l) => l.status === "Pending").length === 0 ? (
             <p className="text-xs text-slate-500 py-2">No pending leave requests.</p>
@@ -420,7 +429,7 @@ export default function AttendanceShiftManagement() {
                 </div>
               ))
           )}
-        </GlassCard>
+        </Card>
       )}
 
       {/* Create Shift Modal */}
@@ -527,6 +536,6 @@ export default function AttendanceShiftManagement() {
           </div>
         </div>
       )}
-    </PageShell>
+    </PageContainer>
   );
 }

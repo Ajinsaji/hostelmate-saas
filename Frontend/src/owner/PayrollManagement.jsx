@@ -1,3 +1,11 @@
+import { useTheme } from "../design-system/ThemeProvider";
+import { PageContainer } from "../design-system/layouts/PageContainer";
+import { Card } from "../design-system/components/Card";
+import { KPICard } from "../design-system/components/KPICard";
+import { StatusPill } from "../design-system/components/StatusPill";
+import { EmptyState } from "../design-system/components/EmptyState";
+import { Button } from "../design-system/components/Button";
+import { FormInput } from "../design-system/components/FormInput";
 import { useEffect, useState } from "react";
 import {
   DollarSign,
@@ -21,9 +29,10 @@ import {
 } from "lucide-react";
 import { api } from "../services/api";
 import toast from "react-hot-toast";
-import { PageShell, GlassCard, StatusPill, PREMIUM_THEME } from "./PremiumUI";
+
 
 export default function PayrollManagement() {
+  const { colors, spacing, radius, typography } = useTheme();
   const [activeTab, setActiveTab] = useState("processing"); // processing, structures, policy, adjustments, exceptions, reports
   const [month, setMonth] = useState(new Date().getMonth() + 1);
   const [year, setYear] = useState(new Date().getFullYear());
@@ -188,7 +197,7 @@ export default function PayrollManagement() {
   };
 
   return (
-    <PageShell
+    <PageContainer
       title="Enterprise Payroll Engine"
       subtitle="Automated Salary Generation, Policy Engine, Treasury Integration & PDF Payslips"
       action={
@@ -203,7 +212,7 @@ export default function PayrollManagement() {
       }
     >
       {/* Date Filter & Period Control */}
-      <GlassCard className="p-4 mb-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+      <Card className="p-4 mb-6 flex flex-col sm:flex-row items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <Calendar size={18} className="text-emerald-400" />
           <span className="text-xs font-bold text-slate-300">Payroll Cycle:</span>
@@ -251,19 +260,19 @@ export default function PayrollManagement() {
             </button>
           )}
         </div>
-      </GlassCard>
+      </Card>
 
       {/* Overview Metric Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
-        <GlassCard className="p-4 flex flex-col justify-between">
+        <Card className="p-4 flex flex-col justify-between">
           <div className="flex items-center justify-between text-slate-400 text-xs font-medium">
             <span>Staff Count</span>
             <Users size={16} className="text-emerald-400" />
           </div>
           <p className="text-2xl font-bold mt-2 text-white">{summary?.totalRecords || 0}</p>
-        </GlassCard>
+        </Card>
 
-        <GlassCard className="p-4 flex flex-col justify-between">
+        <Card className="p-4 flex flex-col justify-between">
           <div className="flex items-center justify-between text-slate-400 text-xs font-medium">
             <span>Total Gross</span>
             <DollarSign size={16} className="text-emerald-400" />
@@ -271,9 +280,9 @@ export default function PayrollManagement() {
           <p className="text-xl font-bold mt-2 text-emerald-400">
             ₹{(summary?.totalGross || 0).toLocaleString("en-IN")}
           </p>
-        </GlassCard>
+        </Card>
 
-        <GlassCard className="p-4 flex flex-col justify-between">
+        <Card className="p-4 flex flex-col justify-between">
           <div className="flex items-center justify-between text-slate-400 text-xs font-medium">
             <span>Total Net Pay</span>
             <CreditCard size={16} className="text-blue-400" />
@@ -281,9 +290,9 @@ export default function PayrollManagement() {
           <p className="text-xl font-bold mt-2 text-blue-400">
             ₹{(summary?.totalNet || 0).toLocaleString("en-IN")}
           </p>
-        </GlassCard>
+        </Card>
 
-        <GlassCard className="p-4 flex flex-col justify-between">
+        <Card className="p-4 flex flex-col justify-between">
           <div className="flex items-center justify-between text-slate-400 text-xs font-medium">
             <span>Overtime Cost</span>
             <Clock size={16} className="text-amber-400" />
@@ -291,9 +300,9 @@ export default function PayrollManagement() {
           <p className="text-xl font-bold mt-2 text-amber-400">
             ₹{(summary?.totalOvertime || 0).toLocaleString("en-IN")}
           </p>
-        </GlassCard>
+        </Card>
 
-        <GlassCard className="p-4 flex flex-col justify-between">
+        <Card className="p-4 flex flex-col justify-between">
           <div className="flex items-center justify-between text-slate-400 text-xs font-medium">
             <span>Leave Deductions</span>
             <TrendingUp size={16} className="text-rose-400" />
@@ -301,9 +310,9 @@ export default function PayrollManagement() {
           <p className="text-xl font-bold mt-2 text-rose-400">
             ₹{(summary?.totalDeductions || 0).toLocaleString("en-IN")}
           </p>
-        </GlassCard>
+        </Card>
 
-        <GlassCard className="p-4 flex flex-col justify-between">
+        <Card className="p-4 flex flex-col justify-between">
           <div className="flex items-center justify-between text-slate-400 text-xs font-medium">
             <span>Advances Active</span>
             <Building2 size={16} className="text-purple-400" />
@@ -311,7 +320,7 @@ export default function PayrollManagement() {
           <p className="text-2xl font-bold mt-2 text-purple-400">
             {advances.filter((a) => a.status === "Approved").length}
           </p>
-        </GlassCard>
+        </Card>
       </div>
 
       {/* Tabs */}
@@ -360,7 +369,7 @@ export default function PayrollManagement() {
 
       {/* TAB 1: Payroll Processing */}
       {activeTab === "processing" && (
-        <GlassCard className="p-0 overflow-hidden">
+        <Card className="p-0 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs border-collapse">
               <thead>
@@ -434,12 +443,12 @@ export default function PayrollManagement() {
               </tbody>
             </table>
           </div>
-        </GlassCard>
+        </Card>
       )}
 
       {/* TAB 2: Salary Structures */}
       {activeTab === "structures" && (
-        <GlassCard className="p-6">
+        <Card className="p-6">
           <div className="flex justify-between items-center mb-4">
             <div>
               <h3 className="text-base font-bold text-white">Staff Salary Structures</h3>
@@ -479,12 +488,12 @@ export default function PayrollManagement() {
               </div>
             ))}
           </div>
-        </GlassCard>
+        </Card>
       )}
 
       {/* TAB 3: Policy Engine */}
       {activeTab === "policy" && policy && (
-        <GlassCard className="p-6 max-w-3xl">
+        <Card className="p-6 max-w-3xl">
           <h3 className="text-base font-bold text-white mb-1 flex items-center gap-2">
             <Sliders size={18} className="text-emerald-400" /> Active Payroll Policy Rules
           </h3>
@@ -508,12 +517,12 @@ export default function PayrollManagement() {
               <span className="font-bold text-white">{policy.graceMinutes} minutes</span>
             </div>
           </div>
-        </GlassCard>
+        </Card>
       )}
 
       {/* TAB 4: Adjustments & Advances */}
       {activeTab === "adjustments" && (
-        <GlassCard className="p-6">
+        <Card className="p-6">
           <div className="flex justify-between items-center mb-4">
             <div>
               <h3 className="text-base font-bold text-white">One-Time Adjustments & Pending Advances</h3>
@@ -550,12 +559,12 @@ export default function PayrollManagement() {
                 ))
             )}
           </div>
-        </GlassCard>
+        </Card>
       )}
 
       {/* TAB 5: Reports & Exports */}
       {activeTab === "reports" && (
-        <GlassCard className="p-6">
+        <Card className="p-6">
           <h3 className="text-base font-bold text-white mb-2">Export Payroll Reports</h3>
           <p className="text-xs text-slate-400 mb-6">Download comprehensive monthly payroll summaries and tax ledgers</p>
 
@@ -587,7 +596,7 @@ export default function PayrollManagement() {
               </button>
             </div>
           </div>
-        </GlassCard>
+        </Card>
       )}
 
       {/* Create Salary Structure Modal */}
@@ -719,6 +728,6 @@ export default function PayrollManagement() {
           </div>
         </div>
       )}
-    </PageShell>
+    </PageContainer>
   );
 }
