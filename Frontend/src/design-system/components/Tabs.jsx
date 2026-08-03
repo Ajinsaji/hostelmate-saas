@@ -1,5 +1,6 @@
-import React, { useState } from "react";
+import React from "react";
 import clsx from "clsx";
+import { useTheme } from "../ThemeProvider";
 
 /**
  * Enterprise Tabs Component
@@ -8,9 +9,14 @@ import clsx from "clsx";
  * @param {Function} onChange - Callback when tab changes
  */
 export default function Tabs({ tabs, activeTab, onChange }) {
+  const { colors, spacing, radius, typography } = useTheme();
+
   return (
     <div className="w-full">
-      <div className="flex overflow-x-auto hide-scrollbar border-b border-gray-100">
+      <div 
+        className="flex overflow-x-auto hide-scrollbar"
+        style={{ borderBottom: `1px solid ${colors.border.default}` }}
+      >
         {tabs.map((tab) => {
           const isActive = activeTab === tab.id;
           const Icon = tab.icon;
@@ -18,32 +24,52 @@ export default function Tabs({ tabs, activeTab, onChange }) {
             <button
               key={tab.id}
               onClick={() => onChange(tab.id)}
-              className={clsx(
-                "group relative min-w-fit flex items-center gap-2 px-6 py-4 text-sm font-medium transition-colors",
-                isActive
-                  ? "text-[#6C4CF5]"
-                  : "text-gray-500 hover:text-gray-900 hover:bg-gray-50/50"
-              )}
+              className="group relative min-w-fit flex items-center gap-2 transition-colors cursor-pointer"
+              style={{
+                padding: `${spacing.md} ${spacing.lg}`,
+                fontSize: typography.sizes.sm,
+                fontWeight: typography.weights.medium,
+                color: isActive ? colors.accent.primary : colors.text.secondary,
+                background: 'transparent',
+                border: 'none',
+                fontFamily: typography.fontFamily,
+                outline: 'none',
+              }}
+              onMouseEnter={e => {
+                if (!isActive) {
+                  e.currentTarget.style.color = colors.text.primary;
+                  e.currentTarget.style.background = 'rgba(255, 255, 255, 0.02)';
+                }
+              }}
+              onMouseLeave={e => {
+                if (!isActive) {
+                  e.currentTarget.style.color = colors.text.secondary;
+                  e.currentTarget.style.background = 'transparent';
+                }
+              }}
             >
               {Icon && (
                 <Icon
                   size={18}
-                  className={clsx(
-                    "transition-colors",
-                    isActive ? "text-[#6C4CF5]" : "text-gray-400 group-hover:text-gray-600"
-                  )}
+                  style={{
+                    color: isActive ? colors.accent.primary : colors.text.muted,
+                    transition: 'color 200ms ease',
+                  }}
                 />
               )}
               {tab.label}
               
               {tab.badge !== undefined && tab.badge !== null && (
                 <span
-                  className={clsx(
-                    "ml-1.5 px-2 py-0.5 text-xs font-semibold rounded-full",
-                    isActive
-                      ? "bg-[#6C4CF5]/10 text-[#6C4CF5]"
-                      : "bg-gray-100 text-gray-500 group-hover:bg-gray-200"
-                  )}
+                  style={{
+                    marginLeft: spacing.xs,
+                    padding: '2px 8px',
+                    fontSize: typography.sizes.xs,
+                    fontWeight: typography.weights.semibold,
+                    borderRadius: radius.full,
+                    background: isActive ? 'rgba(22, 163, 74, 0.15)' : colors.background.elevated,
+                    color: isActive ? colors.accent.primary : colors.text.muted,
+                  }}
                 >
                   {tab.badge}
                 </span>
@@ -51,7 +77,13 @@ export default function Tabs({ tabs, activeTab, onChange }) {
 
               {/* Active Indicator */}
               {isActive && (
-                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#6C4CF5] rounded-t-full shadow-[0_-2px_10px_rgba(108,76,245,0.4)]" />
+                <div 
+                  className="absolute bottom-0 left-0 right-0 h-0.5 rounded-t-full"
+                  style={{
+                    background: colors.accent.primary,
+                    boxShadow: '0 -2px 10px rgba(22, 163, 74, 0.4)',
+                  }}
+                />
               )}
             </button>
           );
@@ -60,3 +92,4 @@ export default function Tabs({ tabs, activeTab, onChange }) {
     </div>
   );
 }
+

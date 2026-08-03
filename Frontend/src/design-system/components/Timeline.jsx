@@ -1,59 +1,123 @@
+import React from 'react';
 import clsx from "clsx";
-import { Card } from "./Card";
+import { useTheme } from "../ThemeProvider";
 
 /**
  * Enterprise Timeline Component
  * @param {Array} events - Array of { id, title, description, timestamp, icon: Icon, type: 'success' | 'warning' | 'info' | 'danger' | 'default' }
  */
 export default function Timeline({ events }) {
+  const { colors, spacing, radius, typography } = useTheme();
+
   const getColorClasses = (type) => {
     switch (type) {
       case "success":
-        return "bg-green-100 text-green-600 border-green-200";
+        return {
+          bg: 'rgba(34, 197, 94, 0.15)',
+          text: colors.accent.success,
+          border: 'rgba(34, 197, 94, 0.3)',
+        };
       case "warning":
-        return "bg-amber-100 text-amber-600 border-amber-200";
+        return {
+          bg: 'rgba(245, 158, 11, 0.15)',
+          text: colors.accent.warning,
+          border: 'rgba(245, 158, 11, 0.3)',
+        };
       case "danger":
-        return "bg-rose-100 text-rose-600 border-rose-200";
+        return {
+          bg: 'rgba(239, 68, 68, 0.15)',
+          text: colors.accent.danger,
+          border: 'rgba(239, 68, 68, 0.3)',
+        };
       case "info":
-        return "bg-blue-100 text-blue-600 border-blue-200";
+        return {
+          bg: 'rgba(59, 130, 246, 0.15)',
+          text: colors.accent.info,
+          border: 'rgba(59, 130, 246, 0.3)',
+        };
       case "primary":
-        return "bg-[#6C4CF5]/10 text-[#6C4CF5] border-[#6C4CF5]/20";
+        return {
+          bg: 'rgba(22, 163, 74, 0.15)',
+          text: colors.accent.primary,
+          border: 'rgba(22, 163, 74, 0.3)',
+        };
       default:
-        return "bg-gray-100 text-gray-600 border-gray-200";
+        return {
+          bg: colors.background.elevated,
+          text: colors.text.secondary,
+          border: colors.border.default,
+        };
     }
   };
 
   if (!events || events.length === 0) {
     return (
-      <div className="py-8 text-center text-gray-500 text-sm">
+      <div 
+        style={{
+          padding: spacing.xl,
+          textAlign: 'center',
+          color: colors.text.muted,
+          fontSize: typography.sizes.sm,
+          fontFamily: typography.fontFamily,
+        }}
+      >
         No timeline events available.
       </div>
     );
   }
 
   return (
-    <div className="relative pl-4 border-l-2 border-gray-100 ml-4 space-y-8 py-4">
+    <div 
+      style={{
+        position: 'relative',
+        paddingLeft: spacing.md,
+        borderLeft: `2px solid ${colors.border.default}`,
+        marginLeft: spacing.md,
+        paddingTop: spacing.md,
+        paddingBottom: spacing.md,
+      }}
+    >
       {events.map((event, index) => {
         const Icon = event.icon;
-        const colorClasses = getColorClasses(event.type);
+        const colorStyles = getColorClasses(event.type);
         
         return (
-          <div key={event.id || index} className="relative">
+          <div key={event.id || index} style={{ position: 'relative', marginBottom: spacing.xl }}>
             {/* Timeline Dot/Icon */}
             <div
-              className={clsx(
-                "absolute -left-[27px] top-0 w-8 h-8 rounded-full border-2 flex items-center justify-center bg-white shadow-sm z-10",
-                colorClasses
-              )}
+              style={{
+                position: 'absolute',
+                left: '-25px',
+                top: '0px',
+                width: '32px',
+                height: '32px',
+                borderRadius: radius.full,
+                border: `2px solid ${colorStyles.border}`,
+                background: colorStyles.bg,
+                color: colorStyles.text,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                zIndex: 10,
+              }}
             >
               {Icon && <Icon size={14} strokeWidth={2.5} />}
             </div>
 
             {/* Content */}
-            <div className="pl-6">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-1 gap-1">
-                <h4 className="text-sm font-semibold text-gray-900">{event.title}</h4>
-                <span className="text-xs font-medium text-gray-400">
+            <div style={{ paddingLeft: spacing.xl }}>
+              <div 
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  marginBottom: spacing.xs,
+                  fontFamily: typography.fontFamily,
+                }}
+              >
+                <h4 style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.semibold, color: colors.text.primary, margin: 0 }}>
+                  {event.title}
+                </h4>
+                <span style={{ fontSize: typography.sizes.xs, color: colors.text.muted, marginTop: '2px' }}>
                   {new Date(event.timestamp).toLocaleString(undefined, {
                     month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit'
                   })}
@@ -61,7 +125,7 @@ export default function Timeline({ events }) {
               </div>
               
               {event.description && (
-                <p className="text-sm text-gray-500 leading-relaxed">
+                <p style={{ fontSize: typography.sizes.sm, color: colors.text.secondary, margin: 0, lineHeight: typography.lineHeights.normal, fontFamily: typography.fontFamily }}>
                   {event.description}
                 </p>
               )}
@@ -72,3 +136,4 @@ export default function Timeline({ events }) {
     </div>
   );
 }
+

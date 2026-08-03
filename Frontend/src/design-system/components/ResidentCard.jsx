@@ -1,11 +1,15 @@
+import React from 'react';
 import clsx from "clsx";
 import { Card } from "./Card";
 import { StatusPill } from "./StatusPill";
 import { Button } from "./Button";
-import { Sparkles, Calendar, DollarSign, MoreVertical, Edit, FileText, BedDouble } from "lucide-react";
+import { Sparkles, Calendar, DollarSign, MoreVertical, BedDouble } from "lucide-react";
 import buildFileUrl from "../../utils/buildFileUrl";
+import { useTheme } from "../ThemeProvider";
 
 export default function ResidentCard({ resident, onAction }) {
+  const { colors, spacing, radius, typography, shadows } = useTheme();
+
   // Compute pending status
   const pendingAmount = resident.pendingRent || 0;
   const isOverdue = pendingAmount > 0;
@@ -19,36 +23,74 @@ export default function ResidentCard({ resident, onAction }) {
   // Build photo url
   const photoUrl = resident.photoUrl 
     ? buildFileUrl(resident.photoUrl)
-    : `https://ui-avatars.com/api/?name=${encodeURIComponent(`${resident.firstName} ${resident.lastName}`)}&background=F3F4F6&color=6B7280`;
+    : `https://ui-avatars.com/api/?name=${encodeURIComponent(`${resident.firstName} ${resident.lastName}`)}&background=1C2740&color=CBD5E1`;
 
   return (
     <Card 
-      hoverable 
+      hover 
       className="flex flex-col group overflow-visible"
-      padding="none"
+      style={{ padding: '0px' }}
     >
-      <div className="p-5 flex flex-col h-full gap-4 relative">
-        
+      <div 
+        style={{
+          padding: spacing.xl,
+          display: 'flex',
+          flexDirection: 'column',
+          height: '100%',
+          gap: spacing.md,
+          position: 'relative',
+        }}
+      >
         {/* Top row: Avatar & Info */}
-        <div className="flex items-start justify-between">
-          <div className="flex gap-4">
-            <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-white shadow-sm shrink-0">
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyBetween: 'space-between' }}>
+          <div style={{ display: 'flex', gap: spacing.md }}>
+            <div 
+              style={{
+                width: '48px',
+                height: '48px',
+                borderRadius: radius.full,
+                overflow: 'hidden',
+                border: `2px solid ${colors.border.default}`,
+                background: colors.background.elevated,
+                boxShadow: shadows.sm,
+                flexShrink: 0,
+              }}
+            >
               <img 
                 src={photoUrl} 
                 alt={`${resident.firstName} ${resident.lastName}`}
-                className="w-full h-full object-cover"
+                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                 onError={(e) => {
                   e.target.onerror = null;
-                  e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(`${resident.firstName} ${resident.lastName}`)}&background=F3F4F6&color=6B7280`;
+                  e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(`${resident.firstName} ${resident.lastName}`)}&background=1C2740&color=CBD5E1`;
                 }}
               />
             </div>
-            <div className="flex flex-col">
-              <h3 className="font-semibold text-gray-900 text-lg leading-tight truncate pr-4">
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              <h3 
+                style={{
+                  fontSize: typography.sizes.md,
+                  fontWeight: typography.weights.semibold,
+                  color: colors.text.primary,
+                  margin: 0,
+                  fontFamily: typography.fontFamily,
+                  lineHeight: '1.2',
+                }}
+              >
                 {resident.firstName} {resident.lastName}
               </h3>
-              <div className="flex items-center gap-1.5 mt-1 text-sm text-gray-500 font-medium">
-                <BedDouble size={14} className="text-gray-400" />
+              <div 
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: spacing.xs,
+                  marginTop: '4px',
+                  fontSize: typography.sizes.sm,
+                  color: colors.text.muted,
+                  fontFamily: typography.fontFamily,
+                }}
+              >
+                <BedDouble size={14} style={{ color: colors.text.disabled }} />
                 <span>
                   {resident.room?.roomNumber || "No Room"} 
                   {resident.bed?.bedNumber && ` • Bed ${resident.bed.bedNumber}`}
@@ -57,32 +99,77 @@ export default function ResidentCard({ resident, onAction }) {
             </div>
           </div>
           
-          <div className="shrink-0 flex flex-col items-end gap-2">
+          <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px' }}>
             <StatusPill status={resident.status} variant={statusVariant} size="sm" />
           </div>
         </div>
 
         {/* Metrics Grid */}
-        <div className="grid grid-cols-2 gap-3 mt-1">
-          <div className="bg-gray-50/80 rounded-xl p-3 border border-gray-100/50">
-            <div className="text-xs text-gray-500 mb-1 font-medium flex items-center gap-1">
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: spacing.sm, marginTop: '4px' }}>
+          <div 
+            style={{
+              background: colors.background.elevated,
+              borderRadius: radius.md,
+              padding: spacing.md,
+              border: `1px solid ${colors.border.default}`,
+            }}
+          >
+            <div 
+              style={{
+                fontSize: typography.sizes.xs,
+                color: colors.text.muted,
+                marginBottom: '4px',
+                fontFamily: typography.fontFamily,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+              }}
+            >
               <DollarSign size={12} />
               Outstanding
             </div>
-            <div className={clsx(
-              "font-semibold text-sm",
-              isOverdue ? "text-rose-600" : "text-gray-900"
-            )}>
+            <div 
+              style={{
+                fontWeight: typography.weights.semibold,
+                fontSize: typography.sizes.base,
+                color: isOverdue ? colors.accent.danger : colors.text.primary,
+                fontFamily: typography.fontFamily,
+              }}
+            >
               ₹{pendingAmount.toLocaleString()}
             </div>
           </div>
           
-          <div className="bg-gray-50/80 rounded-xl p-3 border border-gray-100/50">
-            <div className="text-xs text-gray-500 mb-1 font-medium flex items-center gap-1">
+          <div 
+            style={{
+              background: colors.background.elevated,
+              borderRadius: radius.md,
+              padding: spacing.md,
+              border: `1px solid ${colors.border.default}`,
+            }}
+          >
+            <div 
+              style={{
+                fontSize: typography.sizes.xs,
+                color: colors.text.muted,
+                marginBottom: '4px',
+                fontFamily: typography.fontFamily,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+              }}
+            >
               <Calendar size={12} />
               Move-in
             </div>
-            <div className="font-semibold text-sm text-gray-900">
+            <div 
+              style={{
+                fontWeight: typography.weights.semibold,
+                fontSize: typography.sizes.base,
+                color: colors.text.primary,
+                fontFamily: typography.fontFamily,
+              }}
+            >
               {resident.dateOfJoining ? new Date(resident.dateOfJoining).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : "N/A"}
             </div>
           </div>
@@ -90,22 +177,53 @@ export default function ResidentCard({ resident, onAction }) {
 
         {/* AI Insight (If provided) */}
         {resident.aiInsight && (
-          <div className="bg-[#6C4CF5]/5 border border-[#6C4CF5]/10 rounded-xl p-3 flex items-start gap-2 mt-auto">
-            <Sparkles size={14} className="text-[#6C4CF5] shrink-0 mt-0.5" />
-            <p className="text-xs text-[#6C4CF5] font-medium leading-relaxed">
+          <div 
+            style={{
+              background: 'rgba(108, 76, 245, 0.08)',
+              border: '1px solid rgba(108, 76, 245, 0.2)',
+              borderRadius: radius.md,
+              padding: spacing.md,
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: spacing.xs,
+              marginTop: 'auto',
+            }}
+          >
+            <Sparkles size={14} style={{ color: colors.accent.ai, flexShrink: 0, marginTop: '2px' }} />
+            <p 
+              style={{
+                fontSize: typography.sizes.xs,
+                color: colors.accent.ai,
+                fontWeight: typography.weights.medium,
+                lineHeight: typography.lineHeights.normal,
+                margin: 0,
+                fontFamily: typography.fontFamily,
+              }}
+            >
               {resident.aiInsight}
             </p>
           </div>
         )}
         
-        {/* Placeholder for AI Insight if not present to keep cards uniform height if desired, but flex-col + mt-auto works better */}
-        {!resident.aiInsight && <div className="mt-auto"></div>}
-
+        {!resident.aiInsight && <div style={{ marginTop: 'auto' }}></div>}
       </div>
       
       {/* Quick Actions Footer */}
-      <div className="px-5 py-3 border-t border-gray-100 bg-gray-50/30 flex items-center justify-between gap-2 mt-auto rounded-b-3xl">
-        <div className="flex gap-2 w-full">
+      <div 
+        style={{
+          padding: `${spacing.sm} ${spacing.xl}`,
+          borderTop: `1px solid ${colors.border.default}`,
+          background: 'rgba(255, 255, 255, 0.01)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: spacing.sm,
+          marginTop: 'auto',
+          borderBottomLeftRadius: radius.xl,
+          borderBottomRightRadius: radius.xl,
+        }}
+      >
+        <div style={{ display: 'flex', gap: spacing.sm, width: '100%' }}>
           <Button 
             variant="secondary" 
             size="sm" 
@@ -126,9 +244,25 @@ export default function ResidentCard({ resident, onAction }) {
           )}
         </div>
         
-        <div className="flex items-center">
+        <div style={{ display: 'flex', alignItems: 'center' }}>
           <button 
-            className="p-2 text-gray-400 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+            style={{
+              padding: spacing.xs,
+              color: colors.text.muted,
+              background: 'transparent',
+              border: 'none',
+              borderRadius: radius.md,
+              cursor: 'pointer',
+              transition: 'all 200ms ease',
+            }}
+            onMouseEnter={e => {
+              e.currentTarget.style.color = colors.text.primary;
+              e.currentTarget.style.background = colors.background.elevated;
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.color = colors.text.muted;
+              e.currentTarget.style.background = 'transparent';
+            }}
             onClick={(e) => {
               e.stopPropagation();
               onAction('more', resident);

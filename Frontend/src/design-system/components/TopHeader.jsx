@@ -70,7 +70,7 @@ export function TopHeader({ onMenuClick, ownerPhotoUrl, notificationCount = 0 })
           {ownerPhotoUrl ? (
             <img src={ownerPhotoUrl} alt="Profile" className="w-full h-full object-cover" />
           ) : (
-            <div className="w-full h-full bg-gray-200" />
+            <div style={{ width: "100%", height: "100%", background: colors.background.elevated }} />
           )}
         </div>
       </div>
