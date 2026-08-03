@@ -1,12 +1,15 @@
 import { Download, TrendingUp, IndianRupee, BarChart3, Users, BedDouble } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import BottomNav from "../components/BottomNav";
 import api from "../utils/apiClient";
 import toast from "react-hot-toast";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
-import { PageShell, GlassCard, StatCard, PREMIUM_THEME } from "./PremiumUI";
+import { useTheme } from "../design-system/ThemeProvider";
+import { PageContainer } from "../design-system/layouts/PageContainer";
+import { Card } from "../design-system/components/Card";
+import { KPICard } from "../design-system/components/KPICard";
 
-function Reports() {
+export default function Reports() {
+  const { colors, radius } = useTheme();
   const [payments, setPayments] = useState([]);
   const [stats, setDashboardStats] = useState({});
   const [loading, setLoading] = useState(true);
@@ -98,77 +101,87 @@ function Reports() {
   };
 
   return (
-    <PageShell
-      title="Reports & analytics"
-      subtitle="Financial overview and occupancy signals"
-      action={
-        <button onClick={exportToCSV} className="rounded-full px-4 py-2 text-sm font-semibold" style={{ background: PREMIUM_THEME.primary, color: "#031018" }}>
-          Export CSV
-        </button>
-      }
-    >
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <PageContainer>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6">
         <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.24em]" style={{ color: PREMIUM_THEME.muted }}>Dashboard</p>
-          <p className="text-lg font-semibold">Revenue & occupancy snapshot</p>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.24em]" style={{ color: colors.text.muted }}>Dashboard</p>
+          <p className="text-lg font-semibold" style={{ color: colors.text.primary }}>Revenue & occupancy snapshot</p>
         </div>
-        <select className="rounded-full border px-3 py-2 text-sm outline-none" style={{ background: "rgba(255,255,255,0.05)", borderColor: PREMIUM_THEME.border, color: PREMIUM_THEME.text }} value={dateFilter} onChange={(e) => setDateFilter(e.target.value)}>
+        <select 
+          className="rounded-xl border px-3 py-2 text-sm outline-none font-medium" 
+          style={{ background: colors.background.card, borderColor: colors.border.default, color: colors.text.primary }} 
+          value={dateFilter} 
+          onChange={(e) => setDateFilter(e.target.value)}
+        >
           <option value="all">All time</option>
           <option value="month">This month</option>
           <option value="year">This year</option>
         </select>
       </div>
 
-      {loading ? <GlassCard className="text-center">Loading reports...</GlassCard> : (
-        <div className="space-y-4">
+      {loading ? (
+        <Card className="text-center py-8">
+          <p style={{ color: colors.text.muted }}>Loading reports...</p>
+        </Card>
+      ) : (
+        <div className="space-y-6">
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            <StatCard label="Total collection" value={`₹${reportData.totalPaid.toLocaleString("en-IN")}`} caption="Payments received" icon={<TrendingUp size={18} />} />
-            <StatCard label="Pending dues" value={`₹${reportData.pending.toLocaleString("en-IN")}`} caption="Outstanding balance" icon={<IndianRupee size={18} />} tone="blue" />
-            <StatCard label="Occupancy" value={`${stats.occupancyRate || 0}%`} caption="Current occupancy rate" icon={<Users size={18} />} />
-            <StatCard label="Rooms" value={`${stats.totalRooms || 0}`} caption="Managed rooms" icon={<BedDouble size={18} />} tone="blue" />
+            <KPICard title="Total collection" value={`₹${reportData.totalPaid.toLocaleString("en-IN")}`} trend="MTD" trendDirection="up" icon={TrendingUp} tone="success" />
+            <KPICard title="Pending dues" value={`₹${reportData.pending.toLocaleString("en-IN")}`} trend="Active" trendDirection="neutral" icon={IndianRupee} tone="danger" />
+            <KPICard title="Occupancy" value={`${stats.occupancyRate || 0}%`} trend="Live" trendDirection="up" icon={Users} tone="info" />
+            <KPICard title="Rooms" value={`${stats.totalRooms || stats.rooms || 0}`} trend="Total" trendDirection="neutral" icon={BedDouble} tone="primary" />
           </div>
 
-          <div className="grid gap-4 xl:grid-cols-[1.4fr_0.8fr]">
-            <GlassCard>
+          <div className="grid gap-6 xl:grid-cols-[1.4fr_0.8fr]">
+            <Card>
               <div className="mb-4 flex items-center gap-2">
-                <BarChart3 size={18} style={{ color: PREMIUM_THEME.primary }} />
-                <h3 className="text-lg font-semibold">Revenue trend</h3>
+                <BarChart3 size={18} style={{ color: colors.accent.primary }} />
+                <h3 className="text-lg font-semibold" style={{ color: colors.text.primary }}>Revenue trend</h3>
               </div>
               <div style={{ width: "100%", height: 250 }}>
                 <ResponsiveContainer>
                   <BarChart data={reportData.chartData}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.08)" />
-                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: PREMIUM_THEME.muted, fontSize: 12 }} />
-                    <YAxis axisLine={false} tickLine={false} tick={{ fill: PREMIUM_THEME.muted, fontSize: 12 }} />
-                    <Tooltip cursor={{ fill: "transparent" }} />
-                    <Bar dataKey="amount" fill={PREMIUM_THEME.primary} radius={[6, 6, 0, 0]} barSize={40} />
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={colors.border.default} />
+                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: colors.text.muted, fontSize: 12 }} />
+                    <YAxis axisLine={false} tickLine={false} tick={{ fill: colors.text.muted, fontSize: 12 }} />
+                    <Tooltip cursor={{ fill: "transparent" }} contentStyle={{ backgroundColor: colors.background.elevated, borderColor: colors.border.default, borderRadius: radius.lg }} />
+                    <Bar dataKey="amount" fill={colors.accent.primary} radius={[6, 6, 0, 0]} barSize={40} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
-            </GlassCard>
+            </Card>
 
-            <div className="space-y-4">
-              <GlassCard>
+            <div className="space-y-6">
+              <Card>
                 <div className="mb-3 flex items-center gap-2">
-                  <Download size={18} style={{ color: PREMIUM_THEME.primary }} />
-                  <h3 className="text-lg font-semibold">Export reports</h3>
+                  <Download size={18} style={{ color: colors.accent.primary }} />
+                  <h3 className="text-lg font-semibold" style={{ color: colors.text.primary }}>Export reports</h3>
                 </div>
                 <div className="space-y-2">
-                  <button className="w-full rounded-full px-4 py-2 text-sm font-semibold" style={{ background: "rgba(255,255,255,0.05)" }} onClick={exportToPDF}>Export PDF report</button>
-                  <button className="w-full rounded-full px-4 py-2 text-sm font-semibold" style={{ background: PREMIUM_THEME.primary, color: "#031018" }} onClick={exportToCSV}>Export Excel (CSV)</button>
+                  <button 
+                    className="w-full rounded-xl px-4 py-2.5 text-sm font-semibold transition hover:opacity-95" 
+                    style={{ background: colors.background.elevated, color: colors.text.primary, border: `1px solid ${colors.border.default}` }} 
+                    onClick={exportToPDF}
+                  >
+                    Export PDF report
+                  </button>
+                  <button 
+                    className="w-full rounded-xl px-4 py-2.5 text-sm font-semibold transition hover:opacity-95" 
+                    style={{ background: colors.accent.primary, color: "#FFFFFF" }} 
+                    onClick={exportToCSV}
+                  >
+                    Export Excel (CSV)
+                  </button>
                 </div>
-              </GlassCard>
-              <GlassCard>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.24em]" style={{ color: PREMIUM_THEME.muted }}>Finance pulse</p>
-                <p className="mt-2 text-sm" style={{ color: PREMIUM_THEME.muted }}>Track due amounts, revenue recovery, and growth patterns from one place.</p>
-              </GlassCard>
+              </Card>
+              <Card>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.24em]" style={{ color: colors.text.muted }}>Finance pulse</p>
+                <p className="mt-2 text-sm font-medium" style={{ color: colors.text.secondary }}>Track due amounts, revenue recovery, and growth patterns from one place.</p>
+              </Card>
             </div>
           </div>
         </div>
       )}
-      <BottomNav />
-    </PageShell>
+    </PageContainer>
   );
 }
-
-export default Reports;

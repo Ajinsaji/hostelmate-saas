@@ -33,20 +33,10 @@ import { Card } from "../design-system/components/Card";
 import { Button } from "../design-system/components/Button";
 import { StatusPill } from "../design-system/components/StatusPill";
 import SubscriptionBanner from "../components/SubscriptionBanner";
+import { useTheme } from "../design-system/ThemeProvider";
 
 import useGlobalPolling from "../hooks/useGlobalPolling";
 import useOwnerRealtimeSync from "../hooks/useOwnerRealtimeSync";
-
-const THEME = {
-  bg: "#071223",
-  card: "#101B33",
-  border: "#334155",
-  green: "#22C55E",
-  blue: "#3B82F6",
-  text: "#FFFFFF",
-  secondary: "#CBD5E1",
-  muted: "#94A3B8",
-};
 
 function clamp01(n) {
   const x = Number(n);
@@ -61,16 +51,22 @@ function formatMetricValue(value, fallback = "—") {
 }
 
 function Avatar({ name, photoUrl, size = 44 }) {
+  const { colors } = useTheme();
   const initials = (name || "").trim().slice(0, 2).toUpperCase();
   return (
     <div
       className="relative flex items-center justify-center overflow-hidden rounded-full"
-      style={{ width: size, height: size, background: "rgba(255,255,255,0.06)", border: `1px solid rgba(51,65,85,0.95)` }}
+      style={{ 
+        width: size, 
+        height: size, 
+        background: "rgba(255,255,255,0.06)", 
+        border: `1px solid ${colors.border.default}` 
+      }}
     >
       {photoUrl ? (
         <img src={buildFileUrl(photoUrl)} alt={name || "Owner"} className="h-full w-full object-cover" />
       ) : (
-        <span className="font-semibold" style={{ color: THEME.text, fontSize: Math.max(12, size * 0.33) }}>
+        <span className="font-semibold" style={{ color: colors.text.primary, fontSize: Math.max(12, size * 0.33) }}>
           {initials || "H"}
         </span>
       )}
@@ -79,6 +75,7 @@ function Avatar({ name, photoUrl, size = 44 }) {
 }
 
 function OccupancyDonut({ percent }) {
+  const { colors } = useTheme();
   const pct = clamp01((Number(percent) || 0) / 100);
   const radius = 44;
   const stroke = 10;
@@ -95,8 +92,8 @@ function OccupancyDonut({ percent }) {
       <svg width="140" height="140" viewBox="0 0 140 140" className="drop-shadow-[0_8px_24px_rgba(34,197,94,0.15)]">
         <defs>
           <linearGradient id="occGradient" x1="0" y1="0" x2="140" y2="140">
-            <stop offset="0%" stopColor={THEME.green} />
-            <stop offset="100%" stopColor={THEME.blue} />
+            <stop offset="0%" stopColor={colors.accent.success} />
+            <stop offset="100%" stopColor={colors.accent.info} />
           </linearGradient>
           <filter id="occGlow">
             <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
@@ -107,7 +104,7 @@ function OccupancyDonut({ percent }) {
           </filter>
         </defs>
 
-        <circle cx="70" cy="70" r={radius} stroke={`rgba(51,65,85,0.6)`} strokeWidth={stroke} fill="transparent" />
+        <circle cx="70" cy="70" r={radius} stroke={colors.border.default} strokeWidth={stroke} fill="transparent" />
 
         <circle
           cx="70"
@@ -125,10 +122,10 @@ function OccupancyDonut({ percent }) {
           }}
         />
 
-        <text x="70" y="74" textAnchor="middle" dominantBaseline="middle" style={{ fill: THEME.text, fontSize: 30, fontWeight: 850 }}>
+        <text x="70" y="74" textAnchor="middle" dominantBaseline="middle" style={{ fill: colors.text.primary, fontSize: 30, fontWeight: 850 }}>
           {Math.round((Number(percent) || 0))}%
         </text>
-        <text x="70" y="95" textAnchor="middle" dominantBaseline="middle" style={{ fill: THEME.muted, fontSize: 12, fontWeight: 650 }}>
+        <text x="70" y="95" textAnchor="middle" dominantBaseline="middle" style={{ fill: colors.text.muted, fontSize: 12, fontWeight: 650 }}>
           Occupancy
         </text>
       </svg>
@@ -137,10 +134,11 @@ function OccupancyDonut({ percent }) {
 }
 
 function LineChart({ values }) {
+  const { colors } = useTheme();
   const safe = Array.isArray(values) && values.length ? values : [];
   if (safe.length === 0) {
     return (
-      <div className="flex h-[120px] w-full items-center justify-center text-sm" style={{ color: THEME.muted }}>
+      <div className="flex h-[120px] w-full items-center justify-center text-sm" style={{ color: colors.text.muted }}>
         No Data
       </div>
     );
@@ -173,12 +171,12 @@ function LineChart({ values }) {
     <svg viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" className="w-full">
       <defs>
         <linearGradient id="lineChartGradient" x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0%" stopColor={THEME.green} stopOpacity="0.95" />
-          <stop offset="100%" stopColor={THEME.blue} stopOpacity="0.95" />
+          <stop offset="0%" stopColor={colors.accent.success} stopOpacity="0.95" />
+          <stop offset="100%" stopColor={colors.accent.info} stopOpacity="0.95" />
         </linearGradient>
         <linearGradient id="lineFillGradient" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor={THEME.green} stopOpacity="0.25" />
-          <stop offset="100%" stopColor={THEME.blue} stopOpacity="0.08" />
+          <stop offset="0%" stopColor={colors.accent.success} stopOpacity="0.25" />
+          <stop offset="100%" stopColor={colors.accent.info} stopOpacity="0.08" />
         </linearGradient>
         <filter id="chartGlow">
           <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
@@ -192,7 +190,7 @@ function LineChart({ values }) {
       {/* Premium grid */}
       {[0.25, 0.5, 0.75].map((t) => {
         const y = pad + (h - 2 * pad) * t;
-        return <line key={t} x1={pad} y1={y} x2={w - pad} y2={y} stroke="rgba(51,65,85,0.5)" strokeDasharray="4 6" strokeWidth="0.8" />;
+        return <line key={t} x1={pad} y1={y} x2={w - pad} y2={y} stroke={colors.border.default} strokeDasharray="4 6" strokeWidth="0.8" opacity="0.5" />;
       })}
 
       {/* Gradient fill */}
@@ -204,13 +202,14 @@ function LineChart({ values }) {
       </g>
       
       {/* End point indicator with glow */}
-      <circle cx={lastX} cy={lastY} r="6" fill={THEME.green} opacity="0.3" />
-      <circle cx={lastX} cy={lastY} r="5" fill={THEME.green} stroke="rgba(255,255,255,0.18)" strokeWidth="2" />
+      <circle cx={lastX} cy={lastY} r="6" fill={colors.accent.success} opacity="0.3" />
+      <circle cx={lastX} cy={lastY} r="5" fill={colors.accent.success} stroke="rgba(255,255,255,0.18)" strokeWidth="2" />
     </svg>
   );
 }
 
 function Dashboard() {
+  const { colors } = useTheme();
   const navigate = useNavigate();
 
   const [subscriptionState, setSubscriptionState] = useState(null);
@@ -434,8 +433,8 @@ function Dashboard() {
         <Section>
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">Welcome back, {ownerName}</h1>
-              <p className="text-gray-500 mt-1">{subscriptionPlan} plan • {hostel?.city || "Ready for operations"}</p>
+              <h1 className="text-2xl font-bold" style={{ color: colors.text.primary }}>Welcome back, {ownerName}</h1>
+              <p className="mt-1" style={{ color: colors.text.muted }}>{subscriptionPlan} plan • {hostel?.city || "Ready for operations"}</p>
             </div>
             <div className="flex gap-2">
               <StatusPill tone="info">{greeting}</StatusPill>
@@ -493,7 +492,6 @@ function Dashboard() {
             <KPICard title="Pending Rent" value={`₹${pendingAmount}`} trend="2%" trendDirection="down" icon={Wallet} tone="danger" />
             <KPICard title="Total Rooms" value={totalRooms} icon={BedDouble} tone="primary" />
             <KPICard title="Active Residents" value={totalResidents} icon={Users} tone="primary" />
-            {/* Adding Net Profit as a placeholder since we don't have it in stats, we can use a placeholder for now */}
             <KPICard title="Net Profit (MoM)" value="₹1.2L" trend="8%" trendDirection="up" icon={TrendingUp} tone="success" />
           </CardGrid>
         </Section>
@@ -533,28 +531,28 @@ function Dashboard() {
         <Section>
           <div className="grid gap-4 lg:grid-cols-2">
              <Card>
-               <h3 className="text-lg font-semibold mb-4 text-gray-900">Quick Actions</h3>
+               <h3 className="text-lg font-semibold mb-4" style={{ color: colors.text.primary }}>Quick Actions</h3>
                <QuickActions actions={quickActions} />
              </Card>
 
              <Card>
                 <div className="flex justify-between items-center mb-4">
-                  <h3 className="text-lg font-semibold text-gray-900">Recent Residents</h3>
-                  <button onClick={() => navigate("/residents")} className="text-sm font-semibold text-purple-600">See all</button>
+                  <h3 className="text-lg font-semibold" style={{ color: colors.text.primary }}>Recent Residents</h3>
+                  <button onClick={() => navigate("/residents")} className="text-sm font-semibold" style={{ color: colors.accent.primary }}>See all</button>
                 </div>
                 <div className="space-y-3">
                   {topResidents.length === 0 ? (
-                    <p className="text-gray-500 text-sm">No recent residents yet</p>
+                    <p className="text-sm" style={{ color: colors.text.muted }}>No recent residents yet</p>
                   ) : topResidents.map(resident => (
-                    <div key={resident._id} className="flex items-center justify-between p-3 border border-gray-100 rounded-xl">
-                       <div className="flex items-center gap-3">
+                    <div key={resident._id} className="flex items-center justify-between p-3 border rounded-xl" style={{ borderColor: colors.border.default }}>
+                        <div className="flex items-center gap-3">
                           <Avatar name={resident.name} photoUrl={resident.profileImage || resident.photo} size={40} />
                           <div>
-                            <p className="font-medium text-gray-900">{resident.name}</p>
-                            <p className="text-sm text-gray-500">Room {resident?.roomId?.roomNumber || resident?.roomNumber || "—"}</p>
+                            <p className="font-medium" style={{ color: colors.text.primary }}>{resident.name}</p>
+                            <p className="text-sm" style={{ color: colors.text.muted }}>Room {resident?.roomId?.roomNumber || resident?.roomNumber || "—"}</p>
                           </div>
-                       </div>
-                       <StatusPill tone="info">New</StatusPill>
+                        </div>
+                        <StatusPill tone="info">New</StatusPill>
                     </div>
                   ))}
                 </div>

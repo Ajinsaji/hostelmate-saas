@@ -1,11 +1,16 @@
 import { TrendingUp, TrendingDown, Minus } from "lucide-react";
+import { useTheme } from "../../design-system/ThemeProvider";
 
 export default function ForecastChart({ title, current, forecast, unit = "", trend = "up" }) {
+  const { colors } = useTheme();
   const TrendIcon = trend === "up" ? TrendingUp : trend === "down" ? TrendingDown : Minus;
   const trendColor = trend === "up" ? "text-emerald-400" : trend === "down" ? "text-rose-400" : "text-slate-400";
 
   return (
-    <div className="bg-[#132235] border border-white/10 rounded-2xl p-5 shadow-lg">
+    <div 
+      className="border rounded-2xl p-5 shadow-lg"
+      style={{ backgroundColor: colors.background.card, borderColor: colors.border.default }}
+    >
       <h3 className="text-slate-400 text-sm font-medium mb-4">{title}</h3>
       <div className="flex items-end justify-between">
         <div>

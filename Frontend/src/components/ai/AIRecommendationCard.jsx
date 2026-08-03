@@ -1,6 +1,8 @@
 import { Check, X } from "lucide-react";
+import { useTheme } from "../../design-system/ThemeProvider";
 
 export default function AIRecommendationCard({ recommendation, onAccept, onDismiss }) {
+  const { colors } = useTheme();
   const { category, priority, confidence, recommendedAction, explanation } = recommendation;
   
   const priorityStyles = {
@@ -11,7 +13,10 @@ export default function AIRecommendationCard({ recommendation, onAccept, onDismi
   };
 
   return (
-    <div className="bg-[#132235] border border-white/10 rounded-2xl p-4 shadow-lg hover:border-white/20 transition-all">
+    <div 
+      className="border rounded-2xl p-4 shadow-lg hover:border-white/20 transition-all"
+      style={{ backgroundColor: colors.background.card, borderColor: colors.border.default }}
+    >
       <div className="flex justify-between items-start mb-2">
         <span className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${priorityStyles[priority] || "bg-white/10 text-slate-300 border-white/10"}`}>
           {priority} Priority
