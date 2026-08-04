@@ -1,5 +1,7 @@
 import { Navigate } from "react-router-dom";
 import { getAuthToken } from "../utils/authToken";
+import useSessionVerification from "../hooks/useSessionVerification";
+import PageLoader from "./PageLoader";
 
 const decodeJwtPayload = (token) => {
   try {
@@ -13,13 +15,19 @@ const decodeJwtPayload = (token) => {
           .join("")
       )
     );
-  } catch (error) {
+  } catch {
     return null;
   }
 };
 
 export default function RoleProtectedRoute({ children, allowedRoles = [] }) {
   const token = getAuthToken();
+  const { verifying } = useSessionVerification();
+
+  if (verifying) {
+    return <PageLoader />;
+  }
+
   if (!token) {
     return <Navigate to="/login" replace />;
   }

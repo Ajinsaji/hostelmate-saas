@@ -23,7 +23,7 @@ const decodeJwtPayload = (token) => {
           .join("")
       )
     );
-  } catch (error) {
+  } catch {
     return null;
   }
 };
@@ -127,6 +127,14 @@ api.interceptors.response.use(
     if (status === 401) {
       const method = (error?.config?.method || "").toUpperCase();
       const responseBody = error?.response?.data;
+      const code = responseBody?.code;
+      const message = responseBody?.message || "";
+
+      // If subscription is expired, do not clear tokens or redirect to login.
+      // The OwnerProtectedRoute will handle redirection to /subscription-expired.
+      if (code === "SUBSCRIPTION_EXPIRED" || message === "Subscription expired") {
+        return Promise.reject(error);
+      }
 
       // [API RESPONSE ERROR]
       console.log("[API RESPONSE ERROR]", {

@@ -1,8 +1,6 @@
 import { useState } from "react";
-
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, User, Lock, Eye, EyeOff, Loader2 } from "lucide-react";
-
 import toast from "react-hot-toast";
 
 import { api } from "../services/api";
@@ -19,7 +17,6 @@ function LoginPage() {
   const [trackPhone, setTrackPhone] = useState("");
   const [trackLoading, setTrackLoading] = useState(false);
   const [trackError, setTrackError] = useState("");
-
 
   const handleLogin = async () => {
     if (loading) {
@@ -47,65 +44,59 @@ function LoginPage() {
 
     setLoading(true);
     try {
-      const response = await api.post(
-        "/api/owner/login",
-        payload
-      );
+      const response = await api.post("/api/owner/login", payload);
 
       if (response.data.success) {
         toast.success("Login successful");
-      console.log("[LoginPage] LOGIN RESPONSE:", response.data);
+        console.log("[LoginPage] LOGIN RESPONSE:", response.data);
 
-      const userData = response.data.owner || response.data.user || {};
-      const role = userData.role || "owner";
-      const storedUser = {
-        ...userData,
-        role,
-        onboardingCompleted: userData.onboardingCompleted === true,
-        firstLogin: userData.firstLogin === true,
-        token: response.data.token,
-      };
+        const userData = response.data.owner || response.data.user || {};
+        const role = userData.role || "owner";
+        const storedUser = {
+          ...userData,
+          role,
+          onboardingCompleted: userData.onboardingCompleted === true,
+          firstLogin: userData.firstLogin === true,
+          token: response.data.token,
+        };
 
-      console.log("Stored User:", storedUser);
-      console.log("Stored onboardingStep:", storedUser.onboardingStep);
+        console.log("Stored User:", storedUser);
+        console.log("Stored onboardingStep:", storedUser.onboardingStep);
 
+        setOwnerAuth(response.data.token);
+        setStoredOwner(storedUser);
 
-      setOwnerAuth(response.data.token);
-      setStoredOwner(storedUser);
+        console.log("[LoginPage] TOKEN SAVED (ownerToken):", localStorage.getItem("ownerToken"));
+        console.log("[LoginPage] OWNER SAVED (ownerUser):", localStorage.getItem("ownerUser"));
 
-      console.log("[LoginPage] TOKEN SAVED (ownerToken):", localStorage.getItem("ownerToken"));
-      console.log("[LoginPage] OWNER SAVED (ownerUser):", localStorage.getItem("ownerUser"));
+        // Debug onboarding routing
+        const needsOnboarding =
+          userData.firstLogin === true ||
+          userData.onboardingCompleted !== true;
 
-      // Debug onboarding routing
-      const needsOnboarding =
-        userData.firstLogin === true ||
-        userData.onboardingCompleted !== true;
+        console.log("[LoginPage] needsOnboarding:", needsOnboarding);
+        console.log("[LoginPage] onboardingCompleted:", userData.onboardingCompleted);
+        console.log("[LoginPage] mustChangePassword:", userData.mustChangePassword);
 
-      console.log("[LoginPage] needsOnboarding:", needsOnboarding);
-      console.log("[LoginPage] onboardingCompleted:", userData.onboardingCompleted);
-      console.log("[LoginPage] mustChangePassword:", userData.mustChangePassword);
+        const targetRoute = (() => {
+          const normRole = (role || "").toLowerCase();
+          if (normRole === "warden") return "/warden/dashboard";
+          if (normRole === "cook") return "/cook/dashboard";
+          if (normRole === "accountant") return "/accountant/dashboard";
+          if (normRole === "owner") return needsOnboarding ? "/ownerAction" : "/owner/dashboard";
+          return "/owner/dashboard";
+        })();
 
-      const targetRoute = (() => {
-        const normRole = (role || "").toLowerCase();
-        if (normRole === "warden") return "/warden/dashboard";
-        if (normRole === "cook") return "/cook/dashboard";
-        if (normRole === "accountant") return "/accountant/dashboard";
-        if (normRole === "owner") return needsOnboarding ? "/ownerAction" : "/owner/dashboard";
-        return "/owner/dashboard";
-      })();
-
-      console.log("[LoginPage] Navigating to:", targetRoute);
-      navigate(targetRoute, { replace: true });
+        console.log("[LoginPage] Navigating to:", targetRoute);
+        navigate(targetRoute, { replace: true });
       } else {
         const serverMessage = response.data?.message || "";
-      if (/owner not found|account not found|provide email|provide phone|provide username/i.test(serverMessage)) {
+        if (/owner not found|account not found|provide email|provide phone|provide username/i.test(serverMessage)) {
           toast.error("❌ Account Not Found\nNo account exists with this phone number/email.");
         } else if (/invalid credentials|invalid password|incorrect password|password match false|password/i.test(serverMessage)) {
           toast.error("❌ Incorrect Password\nThe password you entered is incorrect.");
         } else if (/pending|activation pending|approved but not yet activated|not yet activated/i.test(serverMessage)) {
-          toast("🟡 Hostel Activation Pending", {
-            icon: "🟡",
-          });
+          toast("🟡 Hostel Activation Pending", { icon: "🟡" });
           toast.error("🟡 Hostel Activation Pending\nYour hostel has been approved but not yet activated by the administrator.");
         } else {
           toast.error("❌ Server Error\nSomething went wrong. Please try again later.");
@@ -130,232 +121,205 @@ function LoginPage() {
   };
 
   return (
-    <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
-      {/* Header Area */}
-      <div className="gradient-header" style={{ paddingBottom: "100px", borderBottomLeftRadius: "40px", borderBottomRightRadius: "40px" }}>
-        <button 
-          className="btn-icon" 
-          style={{ background: "rgba(255,255,255,0.2)", color: "white", marginBottom: "24px" }}
-          onClick={() => navigate("/")}
-        >
-          <ArrowLeft size={24} />
-        </button>
-        <h1 style={{ fontSize: "36px", fontWeight: 700, marginBottom: "8px" }}>Welcome Back</h1>
-        <p style={{ color: "rgba(255,255,255,0.8)", fontSize: "16px" }}>Login to HostelMate OS</p>
-      </div>
+    <div className="min-h-screen bg-[#0B1120] text-white flex flex-col items-center justify-center p-4 relative overflow-hidden font-sans">
+      
+      {/* Background glow effects */}
+      <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-[#16A34A] opacity-[0.05] rounded-full blur-[120px] pointer-events-none" />
+      <div className="absolute bottom-0 right-1/4 w-[500px] h-[500px] bg-[#6C4CF5] opacity-[0.05] rounded-full blur-[120px] pointer-events-none" />
 
-      {/* Form Area */}
-      <div className="p-4" style={{ marginTop: "-60px" }}>
-        <div className="glass-card animate-slide-up" style={{ background: "var(--surface)", boxShadow: "var(--shadow-md)", padding: "32px 24px" }}>
-          
-          <div className="input-group">
-            <label className="input-label">Username</label>
-            <div style={{ position: "relative" }}>
-              <User size={20} style={{ position: "absolute", left: "16px", top: "16px", color: "var(--text-muted)" }} />
-              <input
-                type="text"
-                placeholder="Enter username"
-                className="input-field"
-                style={{ paddingLeft: "48px" }}
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-              />
-            </div>
+      {/* Header back link */}
+      <button 
+        onClick={() => navigate("/")}
+        className="absolute top-6 left-6 flex items-center gap-2 text-[#CBD5E1] hover:text-white transition-colors duration-200 bg-[#162032] border border-[#22304A] py-2.5 px-4 rounded-xl shadow-md z-20"
+      >
+        <ArrowLeft size={16} />
+        <span className="text-sm font-medium">Back to Home</span>
+      </button>
+
+      {/* Login Card Container */}
+      <div className="w-full max-w-md bg-[#162032]/95 border border-[#22304A] rounded-2xl shadow-2xl p-8 backdrop-blur-md relative z-10 my-8">
+        
+        {/* Headings */}
+        <div className="text-center mb-8">
+          <h1 className="text-3xl font-extrabold tracking-tight text-white">Welcome Back</h1>
+          <p className="text-[#CBD5E1] text-sm mt-2">Login to HostelMate Enterprise OS</p>
+        </div>
+
+        {/* Username/Phone/Email Field */}
+        <div className="mb-5">
+          <label className="block text-white text-sm font-medium mb-2">
+            Username / Phone / Email
+          </label>
+          <div className="relative">
+            <User size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-[#94A3B8]" />
+            <input
+              type="text"
+              placeholder="Enter phone or email"
+              className="w-full bg-[#0B1120] text-white placeholder-[#94A3B8] border border-[#22304A] focus:border-[#16A34A] focus:ring-2 focus:ring-[#16A34A]/25 focus:shadow-[0_0_15px_rgba(22,163,74,0.25)] rounded-xl py-3.5 px-4 pl-12 transition-all duration-300 outline-none text-sm"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+            />
           </div>
+        </div>
 
-          <div className="input-group mb-6">
-            <label className="input-label">Password</label>
-            <div style={{ position: "relative" }}>
-              <Lock size={20} style={{ position: "absolute", left: "16px", top: "16px", color: "var(--text-muted)" }} />
-              <input
-                type={passwordVisible ? "text" : "password"}
-                placeholder="Enter password"
-                className="input-field"
-                style={{ paddingLeft: "48px", paddingRight: "48px" }}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
-
-              <button
-                type="button"
-                aria-label={passwordVisible ? "Hide password" : "Show password"}
-                onClick={() => setPasswordVisible((v) => !v)}
-                style={{
-                  position: "absolute",
-                  right: 10,
-                  top: "50%",
-                  transform: "translateY(-50%)",
-                  background: "transparent",
-                  border: "none",
-                  cursor: "pointer",
-                  color: "var(--text-muted)",
-                }}
-              >
-                {passwordVisible ? <EyeOff size={18} /> : <Eye size={18} />}
-              </button>
-            </div>
-          </div>
-
-          <button className="btn-primary mb-6" onClick={handleLogin} disabled={loading}>
-            {loading ? <><Loader2 size={16} className="animate-spin" /> Signing In...</> : "Login to Dashboard"}
-          </button>
-
-          <div style={{ display: "flex", justifyContent: "center", marginBottom: 18 }}>
+        {/* Password Field */}
+        <div className="mb-8">
+          <label className="block text-white text-sm font-medium mb-2">
+            Password
+          </label>
+          <div className="relative">
+            <Lock size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-[#94A3B8]" />
+            <input
+              type={passwordVisible ? "text" : "password"}
+              placeholder="Enter password"
+              className="w-full bg-[#0B1120] text-white placeholder-[#94A3B8] border border-[#22304A] focus:border-[#16A34A] focus:ring-2 focus:ring-[#16A34A]/25 focus:shadow-[0_0_15px_rgba(22,163,74,0.25)] rounded-xl py-3.5 px-4 pl-12 pr-12 transition-all duration-300 outline-none text-sm"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
             <button
               type="button"
-              onClick={() => {
-                try {
-                  window.dispatchEvent(new CustomEvent("HOSTELMATE_TRACK_APPLICATION_STATUS_OPEN"));
-                } catch {
-                  // ignore
-                }
-                setTrackModalOpen(true);
-              }}
-              style={{
-                background: "rgba(255,255,255,0.06)",
-                border: "1px solid rgba(255,255,255,0.10)",
-                color: "#fff",
-                padding: "12px 16px",
-                borderRadius: "12px",
-                fontWeight: 700,
-                cursor: "pointer",
-                width: "100%",
-              }}
+              aria-label={passwordVisible ? "Hide password" : "Show password"}
+              onClick={() => setPasswordVisible((v) => !v)}
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-[#94A3B8] hover:text-white transition-colors duration-200"
             >
-              Track Application Status
+              {passwordVisible ? <EyeOff size={18} /> : <Eye size={18} />}
             </button>
           </div>
-
-          {trackModalOpen ? (
-            <div
-              style={{
-                position: "fixed",
-                inset: 0,
-                background: "rgba(0,0,0,0.55)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                zIndex: 4000,
-                padding: 16,
-              }}
-            >
-              <div
-                style={{
-                  width: "100%",
-                  maxWidth: 420,
-                  background: "#081028",
-                  border: "1px solid rgba(255,255,255,0.10)",
-                  borderRadius: 16,
-                  padding: 20,
-                  color: "#fff",
-                }}
-              >
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-                  <div style={{ fontSize: 18, fontWeight: 900 }}>Track Application Status</div>
-                  <button
-                    type="button"
-                    onClick={() => setTrackModalOpen(false)}
-                    style={{
-                      background: "transparent",
-                      border: "none",
-                      color: "rgba(255,255,255,0.8)",
-                      cursor: "pointer",
-                      fontSize: 16,
-                      fontWeight: 900,
-                    }}
-                  >
-                    ✕
-                  </button>
-                </div>
-
-                <div style={{ marginBottom: 10, color: "rgba(255,255,255,0.75)", fontWeight: 700 }}>
-                  Enter phone number
-                </div>
-
-                <input
-                  type="text"
-                  value={trackPhone}
-                  onChange={(e) => setTrackPhone(e.target.value)}
-                  placeholder="Phone number"
-                  className="input-field"
-                  style={{
-                    width: "100%",
-                    background: "rgba(255,255,255,0.05)",
-                    border: "1px solid rgba(255,255,255,0.10)",
-                    borderRadius: 12,
-                    padding: "12px 14px",
-                    color: "#fff",
-                    outline: "none",
-                    marginBottom: 10,
-                  }}
-                />
-
-                {trackError ? (
-                  <div style={{ color: "#ef4444", fontWeight: 900, marginBottom: 10 }}>
-                    {trackError}
-                  </div>
-                ) : null}
-
-                <button
-                  type="button"
-                  disabled={trackLoading}
-                  onClick={async () => {
-                    const phone = trackPhone?.trim();
-                    if (!phone) {
-                      setTrackError("Please enter phone number");
-                      return;
-                    }
-
-                    setTrackLoading(true);
-                    setTrackError("");
-                    try {
-const res = await api.get(
-                        `/api/hostel-request/status/${encodeURIComponent(phone)}`
-                      );
-
-                      const found = res?.data?.success;
-                      const requestId = res?.data?.requestId;
-
-                      if (found === false || !requestId) {
-                        setTrackError("No application found for this phone number.");
-                        return;
-                      }
-
-                      localStorage.setItem("hostelRequestPhone", phone);
-                      localStorage.setItem("hostelRequestId", requestId);
-
-                      setTrackModalOpen(false);
-                      navigate("/request-status");
-                    } catch (e) {
-                      setTrackError("No application found for this phone number.");
-                    } finally {
-                      setTrackLoading(false);
-                    }
-                  }}
-                  className="btn-primary w-full"
-                  style={{ width: "100%" }}
-                >
-                  {trackLoading ? <Loader2 size={16} className="animate-spin" /> : "Check Status"}
-                </button>
-              </div>
-            </div>
-          ) : null}
-
-          <p className="text-center text-body">
-            Don't have an account?{" "}
-            <span 
-              onClick={() => navigate("/register")} 
-              style={{ color: "var(--primary)", fontWeight: 600, cursor: "pointer" }}
-            >
-              Register now
-            </span>
-          </p>
-
         </div>
+
+        {/* Primary Action Button */}
+        <button 
+          className="w-full bg-gradient-to-r from-[#16A34A] to-[#15803D] hover:from-[#15803D] hover:to-[#16A34A] text-white font-bold py-3.5 px-4 rounded-xl shadow-lg shadow-[#16A34A]/10 hover:shadow-[#16A34A]/30 transition-all duration-300 flex items-center justify-center gap-2 transform hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:hover:shadow-none mb-4"
+          onClick={handleLogin} 
+          disabled={loading}
+        >
+          {loading ? (
+            <>
+              <Loader2 size={18} className="animate-spin" />
+              <span>Signing In...</span>
+            </>
+          ) : (
+            <span>Login to Dashboard</span>
+          )}
+        </button>
+
+        {/* Track Application Button */}
+        <button
+          type="button"
+          onClick={() => {
+            try {
+              window.dispatchEvent(new CustomEvent("HOSTELMATE_TRACK_APPLICATION_STATUS_OPEN"));
+            } catch {
+              // ignore
+            }
+            setTrackModalOpen(true);
+          }}
+          className="w-full bg-[#1C2740] hover:bg-[#22304A] border border-[#22304A] text-[#CBD5E1] hover:text-white py-3.5 px-4 rounded-xl font-bold transition-all duration-200 flex items-center justify-center gap-2 transform hover:scale-[1.01] active:scale-[0.99] mb-6 shadow-sm"
+        >
+          Track Application Status
+        </button>
+
+        {/* Register Redirect */}
+        <p className="text-center text-sm text-[#CBD5E1]">
+          Don't have an account?{" "}
+          <span 
+            onClick={() => navigate("/register")} 
+            className="text-[#16A34A] hover:underline font-semibold cursor-pointer transition-colors duration-200"
+          >
+            Register now
+          </span>
+        </p>
+
       </div>
+
+      {/* Track Status Modal */}
+      {trackModalOpen ? (
+        <div className="fixed inset-0 bg-[#0B1120]/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="w-full max-w-md bg-[#162032] border border-[#22304A] rounded-2xl p-6 relative shadow-2xl animate-scale-up">
+            
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-lg font-bold text-white">Track Application Status</h2>
+              <button
+                type="button"
+                onClick={() => {
+                  setTrackModalOpen(false);
+                  setTrackError("");
+                }}
+                className="text-[#94A3B8] hover:text-white transition-colors duration-200 text-xl font-bold p-1"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="mb-4">
+              <label className="block text-[#CBD5E1] text-xs font-semibold mb-2 uppercase tracking-wide">
+                Enter registered phone number
+              </label>
+              <input
+                type="text"
+                value={trackPhone}
+                onChange={(e) => setTrackPhone(e.target.value)}
+                placeholder="Phone number"
+                className="w-full bg-[#0B1120] text-white placeholder-[#94A3B8] border border-[#22304A] focus:border-[#16A34A] focus:ring-2 focus:ring-[#16A34A]/25 focus:shadow-[0_0_15px_rgba(22,163,74,0.25)] rounded-xl py-3 px-4 outline-none text-sm"
+              />
+            </div>
+
+            {trackError ? (
+              <div className="text-[#ef4444] text-xs font-semibold mb-4 bg-red-500/10 border border-red-500/20 p-3 rounded-lg">
+                {trackError}
+              </div>
+            ) : null}
+
+            <button
+              type="button"
+              disabled={trackLoading}
+              onClick={async () => {
+                const phone = trackPhone?.trim();
+                if (!phone) {
+                  setTrackError("Please enter phone number");
+                  return;
+                }
+
+                setTrackLoading(true);
+                setTrackError("");
+                try {
+                  const res = await api.get(`/api/hostel-request/status/${encodeURIComponent(phone)}`);
+                  const found = res?.data?.success;
+                  const requestId = res?.data?.requestId;
+
+                  if (found === false || !requestId) {
+                    setTrackError("No application found for this phone number.");
+                    return;
+                  }
+
+                  localStorage.setItem("hostelRequestPhone", phone);
+                  localStorage.setItem("hostelRequestId", requestId);
+
+                  setTrackModalOpen(false);
+                  navigate("/request-status");
+                } catch {
+                  setTrackError("No application found for this phone number.");
+                } finally {
+                  setTrackLoading(false);
+                }
+              }}
+              className="w-full bg-gradient-to-r from-[#16A34A] to-[#15803D] hover:from-[#15803D] hover:to-[#16A34A] text-white font-bold py-3.5 px-4 rounded-xl shadow-lg shadow-[#16A34A]/10 hover:shadow-[#16A34A]/30 transition-all duration-300 flex items-center justify-center gap-2 transform hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {trackLoading ? (
+                <>
+                  <Loader2 size={16} className="animate-spin" />
+                  <span>Checking Status...</span>
+                </>
+              ) : (
+                <span>Check Status</span>
+              )}
+            </button>
+          </div>
+        </div>
+      ) : null}
+
     </div>
   );
 }
 
 export default LoginPage;
-

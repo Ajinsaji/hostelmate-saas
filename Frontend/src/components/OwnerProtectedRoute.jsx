@@ -2,6 +2,8 @@ import { Navigate, useLocation } from "react-router-dom";
 import RoleProtectedRoute from "./RoleProtectedRoute";
 import { getAuthToken, getStoredUser } from "../utils/authToken";
 import { useEffect, useState } from "react";
+import useSessionVerification from "../hooks/useSessionVerification";
+import PageLoader from "./PageLoader";
 
 const decodeJwtPayload = (token) => {
   try {
@@ -23,27 +25,15 @@ const decodeJwtPayload = (token) => {
 export default function OwnerProtectedRoute({ children }) {
   const location = useLocation();
   const token = getAuthToken();
+  const { verifying } = useSessionVerification();
   const payload = token ? decodeJwtPayload(token) : null;
-  const mustChangePassword = payload?.mustChangePassword;
-
   const storedUser = getStoredUser();
   const ownerInfo = storedUser || payload;
   const onboardingCompleted = ownerInfo?.onboardingCompleted;
 
   const hasAuthenticatedOwner = !!token;
 
-  // If decoded payload exists and contains user fields, prefer it.
-  // Otherwise, fall back to stored user (handled below in RoleProtectedRoute).
-  // This prevents authenticated owners from being treated as logged out
-  // when ownerUser storage is temporarily missing.
-
-  const ownerInfoWithFallback = storedUser || payload;
-
-
-
-
   const [subscriptionExpired, setSubscriptionExpired] = useState(false);
-
 
   // Non-blocking: check subscription via backend lightweight status.
   // If endpoint is missing, do not lock.
@@ -62,28 +52,32 @@ export default function OwnerProtectedRoute({ children }) {
 
         if (res.status === 403) {
           const data = await res.json().catch(() => ({}));
-          if (!cancelled) setSubscriptionExpired(!!data?.subscriptionExpired);
+          if (!cancelled) setSubscriptionExpired(!!(data?.isExpired || data?.subscriptionExpired));
           return;
         }
 
         if (res.ok) {
           const data = await res.json().catch(() => ({}));
-          if (!cancelled) setSubscriptionExpired(!!data?.subscriptionExpired);
+          if (!cancelled) setSubscriptionExpired(!!(data?.isExpired || data?.subscriptionExpired));
         }
       } catch {
         // fail open
       }
     };
 
-    if (!token) return;
+    if (!token || verifying) return;
     run();
 
     return () => {
       cancelled = true;
     };
-  }, [token]);
+  }, [token, verifying]);
 
   const isOnboardingRoute = location.pathname === "/ownerAction" || location.pathname === "/onboarding";
+
+  if (verifying) {
+    return <PageLoader />;
+  }
 
   if (!hasAuthenticatedOwner) {
     return <Navigate to="/login" replace />;

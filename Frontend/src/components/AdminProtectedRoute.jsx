@@ -1,6 +1,8 @@
 import { Navigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import { getAdminToken } from "../utils/authToken";
+import useSessionVerification from "../hooks/useSessionVerification";
+import PageLoader from "./PageLoader";
 
 const decodeJwtPayload = (token) => {
   try {
@@ -14,7 +16,7 @@ const decodeJwtPayload = (token) => {
           .join("")
       )
     );
-  } catch (error) {
+  } catch {
     return null;
   }
 };
@@ -28,6 +30,11 @@ const isTokenExpired = (token) => {
 export default function AdminProtectedRoute({ children }) {
 
   const token = getAdminToken();
+  const { verifying } = useSessionVerification();
+
+  if (verifying) {
+    return <PageLoader />;
+  }
 
   if (!token) {
     localStorage.removeItem("adminToken");

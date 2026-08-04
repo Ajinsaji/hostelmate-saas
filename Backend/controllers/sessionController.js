@@ -97,7 +97,11 @@ const verifySession = async (req, res) => {
         const isExpired = end ? new Date(end).getTime() < Date.now() : false;
         const isActiveSub = status !== "expired" && !isExpired;
         if (!isActiveSub) {
-          return res.status(401).json(getError(401, "Subscription expired"));
+          return res.status(401).json({
+            success: false,
+            message: "Subscription expired",
+            code: "SUBSCRIPTION_EXPIRED"
+          });
         }
       }
 
