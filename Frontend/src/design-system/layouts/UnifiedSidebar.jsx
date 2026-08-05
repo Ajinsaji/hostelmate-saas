@@ -1,9 +1,9 @@
-import React, { useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useTheme } from '../ThemeProvider';
 import * as LucideIcons from 'lucide-react';
 import { Search, LogOut, ChevronLeft, ChevronRight, ShieldCheck } from 'lucide-react';
-import { useCurrentUser, useCurrentHostel, useCurrentStorage, useCurrentSubscription } from '../../contexts/HostelContext';
+import { useCurrentUser, useCurrentStorage, useCurrentSubscription } from '../../contexts/HostelContext';
 import { formatSubscriptionStatus } from '../../utils/subscriptionFormatter';
 import HostelSwitcher from '../components/HostelSwitcher';
 
@@ -24,10 +24,13 @@ export default function UnifiedSidebar({
   userRole = '',
   userAvatar = '',
 }) {
-  const { colors, spacing, radius, typography, shadows } = useTheme();
+  const { colors, spacing, radius, typography } = useTheme();
   const location = useLocation();
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
+  const { user } = useCurrentUser();
+  const { storage } = useCurrentStorage();
+  const { subscription } = useCurrentSubscription();
 
   // Filter menu items by search
   const filteredSections = useMemo(() => {

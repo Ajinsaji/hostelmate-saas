@@ -15,11 +15,22 @@ export default function useFcmNotifications({ enabled = true, onIncoming } = {})
   useEffect(() => {
     if (!enabled) return;
 
+    const jwt =
+      localStorage.getItem("ownerToken") ||
+      localStorage.getItem("adminToken") ||
+      localStorage.getItem("token");
+
+    if (!jwt) {
+      return;
+    }
+
     let unsubscribe = null;
 
     async function boot() {
       try {
-        console.log("[useFcmNotifications] Initializing FCM...");
+        if (import.meta.env.DEV) {
+          console.log("[useFcmNotifications] Initializing FCM...");
+        }
 
         const token = await requestFcmPermissionAndToken();
         if (!token) {
@@ -27,7 +38,9 @@ export default function useFcmNotifications({ enabled = true, onIncoming } = {})
           return;
         }
 
-        console.log("[useFcmNotifications] Token obtained, registering with backend...");
+        if (import.meta.env.DEV) {
+          console.log("[useFcmNotifications] Token obtained, registering with backend...");
+        }
         const user = getStoredUser();
 
         try {
@@ -39,7 +52,9 @@ export default function useFcmNotifications({ enabled = true, onIncoming } = {})
           });
           
           if (response.data?.success) {
-            console.log("✓ Device token registered successfully");
+            if (import.meta.env.DEV) {
+              console.log("✓ Device token registered successfully");
+            }
           } else {
             console.warn("⚠ Device token registration returned non-success:", response.data);
           }
@@ -48,7 +63,9 @@ export default function useFcmNotifications({ enabled = true, onIncoming } = {})
         }
 
         // Foreground message listener
-        console.log("[useFcmNotifications] Setting up foreground message listener...");
+        if (import.meta.env.DEV) {
+          console.log("[useFcmNotifications] Setting up foreground message listener...");
+        }
         try {
           const messaging = getFirebaseMessagingSafe();
           if (!messaging) {
@@ -59,7 +76,9 @@ export default function useFcmNotifications({ enabled = true, onIncoming } = {})
           const { onMessage } = await import("firebase/messaging");
 
           unsubscribe = onMessage(messaging, (payload) => {
-            console.log("[useFcmNotifications] Foreground message received:", payload);
+            if (import.meta.env.DEV) {
+              console.log("[useFcmNotifications] Foreground message received:", payload);
+            }
             
             const route = payload?.data?.route || "";
             const title = payload?.notification?.title || "HostelMate";
@@ -73,7 +92,9 @@ export default function useFcmNotifications({ enabled = true, onIncoming } = {})
             });
           });
           
-          console.log("✓ Foreground message listener active");
+          if (import.meta.env.DEV) {
+            console.log("✓ Foreground message listener active");
+          }
         } catch (e) {
           console.error("✗ Failed to setup foreground listener:", e?.message || e);
         }
@@ -87,7 +108,9 @@ export default function useFcmNotifications({ enabled = true, onIncoming } = {})
     return () => {
       try {
         unsubscribe?.();
-      } catch (e) {}
+      } catch {
+        // ignore
+      }
     };
   }, [enabled]);
 }

@@ -48,7 +48,9 @@ function LoginPage() {
 
       if (response.data.success) {
         toast.success("Login successful");
-        console.log("[LoginPage] LOGIN RESPONSE:", response.data);
+        if (import.meta.env.DEV) {
+          console.log("[LoginPage] LOGIN RESPONSE:", response.data);
+        }
 
         const userData = response.data.owner || response.data.user || {};
         const role = userData.role || "owner";
@@ -60,23 +62,29 @@ function LoginPage() {
           token: response.data.token,
         };
 
-        console.log("Stored User:", storedUser);
-        console.log("Stored onboardingStep:", storedUser.onboardingStep);
+        if (import.meta.env.DEV) {
+          console.log("Stored User:", storedUser);
+          console.log("Stored onboardingStep:", storedUser.onboardingStep);
+        }
 
         setOwnerAuth(response.data.token);
         setStoredOwner(storedUser);
 
-        console.log("[LoginPage] TOKEN SAVED (ownerToken):", localStorage.getItem("ownerToken"));
-        console.log("[LoginPage] OWNER SAVED (ownerUser):", localStorage.getItem("ownerUser"));
+        if (import.meta.env.DEV) {
+          console.log("[LoginPage] TOKEN SAVED (ownerToken):", localStorage.getItem("ownerToken"));
+          console.log("[LoginPage] OWNER SAVED (ownerUser):", localStorage.getItem("ownerUser"));
+        }
 
         // Debug onboarding routing
         const needsOnboarding =
           userData.firstLogin === true ||
           userData.onboardingCompleted !== true;
 
-        console.log("[LoginPage] needsOnboarding:", needsOnboarding);
-        console.log("[LoginPage] onboardingCompleted:", userData.onboardingCompleted);
-        console.log("[LoginPage] mustChangePassword:", userData.mustChangePassword);
+        if (import.meta.env.DEV) {
+          console.log("[LoginPage] needsOnboarding:", needsOnboarding);
+          console.log("[LoginPage] onboardingCompleted:", userData.onboardingCompleted);
+          console.log("[LoginPage] mustChangePassword:", userData.mustChangePassword);
+        }
 
         const targetRoute = (() => {
           const normRole = (role || "").toLowerCase();
@@ -87,7 +95,9 @@ function LoginPage() {
           return "/owner/dashboard";
         })();
 
-        console.log("[LoginPage] Navigating to:", targetRoute);
+        if (import.meta.env.DEV) {
+          console.log("[LoginPage] Navigating to:", targetRoute);
+        }
         navigate(targetRoute, { replace: true });
       } else {
         const serverMessage = response.data?.message || "";

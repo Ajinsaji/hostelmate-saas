@@ -62,7 +62,7 @@ async function registerFirebaseServiceWorker() {
         "";
 
       if (scriptUrl.includes("firebase-messaging-sw.js")) {
-        console.log("✓ Reusing existing Firebase service worker:", existingRegistration.scope);
+        if (import.meta.env.DEV) { if (import.meta.env.DEV) { console.log("✓ Reusing existing Firebase service worker:", existingRegistration.scope); } }
         return existingRegistration;
       }
 
@@ -77,7 +77,7 @@ async function registerFirebaseServiceWorker() {
         scope: "/firebase-messaging-sw.js",
       }
     );
-    console.log("✓ Firebase service worker registered:", registration.scope);
+    if (import.meta.env.DEV) { if (import.meta.env.DEV) { console.log("✓ Firebase service worker registered:", registration.scope); } }
     return registration;
   } catch (error) {
     console.error("✗ Failed to register Firebase service worker:", error);
@@ -87,7 +87,7 @@ async function registerFirebaseServiceWorker() {
 
 export async function requestFcmPermissionAndToken() {
   if (cachedFcmTokenPromise) {
-    console.log("Using cached FCM token request");
+    if (import.meta.env.DEV) { if (import.meta.env.DEV) { console.log("Using cached FCM token request"); } }
     return cachedFcmTokenPromise;
   }
 
@@ -105,15 +105,15 @@ export async function requestFcmPermissionAndToken() {
 
   const currentPermission = Notification.permission;
   if (currentPermission !== "granted") {
-    console.log("Requesting notification permission...");
+    if (import.meta.env.DEV) { if (import.meta.env.DEV) { console.log("Requesting notification permission..."); } }
     const permission = await Notification.requestPermission();
     if (permission !== "granted") {
       console.warn("Notification permission denied by user");
       return null;
     }
-    console.log("✓ Notification permission granted");
+    if (import.meta.env.DEV) { if (import.meta.env.DEV) { console.log("✓ Notification permission granted"); } }
   } else {
-    console.log("✓ Notification permission already granted");
+    if (import.meta.env.DEV) { if (import.meta.env.DEV) { console.log("✓ Notification permission already granted"); } }
   }
 
   const vapidKey = import.meta.env.VITE_FIREBASE_VAPID_KEY?.trim();
@@ -121,9 +121,9 @@ export async function requestFcmPermissionAndToken() {
     console.error("✗ Missing or invalid VITE_FIREBASE_VAPID_KEY - background notifications will not work");
     return null;
   }
-  console.log("✓ VAPID key loaded");
+  if (import.meta.env.DEV) { if (import.meta.env.DEV) { console.log("✓ VAPID key loaded"); } }
 
-  console.log("Registering Firebase messaging service worker...");
+  if (import.meta.env.DEV) { if (import.meta.env.DEV) { console.log("Registering Firebase messaging service worker..."); } }
   const swRegistration = await registerFirebaseServiceWorker();
   if (!swRegistration) {
     console.error("✗ Service worker registration failed - background notifications may not work");
@@ -132,7 +132,7 @@ export async function requestFcmPermissionAndToken() {
 
   const tokenPromise = (async () => {
     try {
-      console.log("Requesting FCM token...");
+      if (import.meta.env.DEV) { if (import.meta.env.DEV) { console.log("Requesting FCM token..."); } }
       const token = await getToken(messaging, {
         vapidKey,
         serviceWorkerRegistration: swRegistration,
@@ -143,7 +143,7 @@ export async function requestFcmPermissionAndToken() {
         return null;
       }
 
-      console.log("✓ FCM token obtained:", token.substring(0, 20) + "...");
+      if (import.meta.env.DEV) { if (import.meta.env.DEV) { console.log("✓ FCM token obtained:", token.substring(0, 20) + "..."); } }
       return token;
     } catch (error) {
       console.error("✗ Failed to retrieve FCM token:", error?.message || error);
@@ -159,7 +159,7 @@ export async function requestFcmPermissionAndToken() {
       cachedFcmTokenPromise = null;
     }
     return token;
-  } catch (error) {
+  } catch {
     cachedFcmTokenPromise = null;
     return null;
   }

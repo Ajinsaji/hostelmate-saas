@@ -89,13 +89,15 @@ api.interceptors.request.use(
     // Only log a prefix of the token (never the full JWT)
     // NOTE: we log both whether an Authorization header exists *before* we set it,
     // and whether a token exists in localStorage.
-    console.log("[API REQUEST]", {
-      Method: method,
-      URL: requestUrl,
-      Authorization: authorizationHeaderExists || !!token ? "Present" : "Missing",
-      "Token Prefix": token ? String(token).slice(0, 20) + "..." : "(none)",
-      "Is Admin Request": isAdminRequest,
-    });
+    if (import.meta.env.DEV) {
+      console.log("[API REQUEST]", {
+        Method: method,
+        URL: requestUrl,
+        Authorization: authorizationHeaderExists || !!token ? "Present" : "Missing",
+        "Token Prefix": token ? String(token).slice(0, 20) + "..." : "(none)",
+        "Is Admin Request": isAdminRequest,
+      });
+    }
 
     if (token) {
       if (isTokenExpired(token)) {
@@ -137,13 +139,15 @@ api.interceptors.response.use(
       }
 
       // [API RESPONSE ERROR]
-      console.log("[API RESPONSE ERROR]", {
-        Method: method,
-        URL: requestUrl,
-        Status: status,
-        ResponseBody: responseBody,
-        "Is Admin Request": isAdminRequest,
-      });
+      if (import.meta.env.DEV) {
+        console.log("[API RESPONSE ERROR]", {
+          Method: method,
+          URL: requestUrl,
+          Status: status,
+          ResponseBody: responseBody,
+          "Is Admin Request": isAdminRequest,
+        });
+      }
 
       const reason =
         responseBody?.message ||

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useMemo, useRef } from "react";
+import { createContext, useContext, useState, useEffect, useMemo, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import toast from "react-hot-toast";
 import useFcmNotifications from "../hooks/useFcmNotifications";
@@ -33,7 +33,7 @@ export function NotificationProvider({ children }) {
     try {
       const res = await api.get(`/api/notifications/unread-count`);
       if (res.data?.success) setUnreadCount(res.data.unreadCount || 0);
-    } catch (e) {
+    } catch {
       // silent
     }
   };
@@ -43,7 +43,7 @@ export function NotificationProvider({ children }) {
       setLoading(true);
       const res = await api.get(`/api/notifications/mine?limit=30`);
       if (res.data?.success) setNotifications(res.data.notifications || []);
-    } catch (e) {
+    } catch {
       // silent
     } finally {
       setLoading(false);
@@ -56,22 +56,22 @@ export function NotificationProvider({ children }) {
     onIncoming: async ({ title, body, route }) => {
       try {
         playNotificationSound({ cooldownMs: 900 });
-      } catch (e) {}
+      } catch { /* silent */ }
 
       try {
-        toast((t) => (
+        toast(() => (
           <div style={{ fontWeight: 800 }}>
             {title || "HostelMate"}: {body || "New notification"}
           </div>
         ));
-      } catch (e) {}
+      } catch { /* silent */ }
 
       try {
         await fetchUnread();
         if (open) {
           await fetchNotifications();
         }
-      } catch (e) {}
+      } catch { /* silent */ }
 
       if (route && !open) {
         navigate(route);
@@ -99,13 +99,13 @@ export function NotificationProvider({ children }) {
 
       try {
         playNotificationSound({ cooldownMs: 900 });
-      } catch (e) {}
+      } catch { /* silent */ }
 
       try {
         toast.success(notification.title || "New notification", {
           duration: 4000,
         });
-      } catch (e) {}
+      } catch { /* silent */ }
     },
     onDisconnect: () => {
       isConnectedRef.current = false;
@@ -121,6 +121,7 @@ export function NotificationProvider({ children }) {
     const adminToken = localStorage.getItem("adminToken");
     
     if (ownerToken || adminToken) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       fetchUnread();
       const id = setInterval(() => {
         fetchUnread();
@@ -131,6 +132,7 @@ export function NotificationProvider({ children }) {
 
   useEffect(() => {
     if (open) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       fetchNotifications();
     }
   }, [open]);
@@ -149,7 +151,7 @@ export function NotificationProvider({ children }) {
       setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
       setUnreadCount(0);
       toast.success("Marked all as read");
-    } catch (e) {
+    } catch {
       try {
         const unread = notifications.filter((n) => !n.isRead);
         for (const n of unread) {
@@ -158,7 +160,7 @@ export function NotificationProvider({ children }) {
         setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
         setUnreadCount(0);
         toast.success("Marked all as read");
-      } catch (error) {
+      } catch {
         toast.error("Failed to mark all as read");
       }
     }
@@ -171,7 +173,7 @@ export function NotificationProvider({ children }) {
         prev.map((n) => (n._id === id ? { ...n, isRead: true } : n))
       );
       setUnreadCount((prev) => Math.max(0, prev - 1));
-    } catch (e) {
+    } catch {
       // silent
     }
   };
@@ -194,6 +196,7 @@ export function NotificationProvider({ children }) {
         isConnectedRef.current = false;
       },
     }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [notifications, unreadCount, loading, open, isBellAnimated]
   );
 
@@ -204,6 +207,7 @@ export function NotificationProvider({ children }) {
   );
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useNotifications() {
   const context = useContext(NotificationContext);
   if (!context) {
