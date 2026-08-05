@@ -3,10 +3,34 @@ const bcrypt = require("bcryptjs");
 
 const ownerSchema = new mongoose.Schema(
   {
+    // Legacy support
     hostelId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Hostel",
-      required: true,
+      required: false, // Optional for workspace support
+    },
+
+    // Workspace & Tenant settings
+    workspaceId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Workspace",
+      required: false,
+    },
+
+    // Active UI Context for enhanced UX
+    activeWorkspaceId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Workspace",
+      required: false,
+    },
+    activeHostelId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Hostel",
+      required: false,
+    },
+    lastVisitedPage: {
+      type: String,
+      default: "",
     },
 
     ownerName: {
@@ -96,4 +120,3 @@ ownerSchema.pre("save", async function () {
 });
 
 module.exports = mongoose.model("Owner", ownerSchema);
-

@@ -1,6 +1,11 @@
 const mongoose = require("mongoose");
 
 const auditLogSchema = new mongoose.Schema({
+  workspaceId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Workspace",
+    required: false,
+  },
   hostelId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "Hostel",
@@ -48,6 +53,7 @@ const auditLogSchema = new mongoose.Schema({
   },
 });
 
+auditLogSchema.index({ workspaceId: 1, timestamp: -1 });
 auditLogSchema.index({ hostelId: 1, timestamp: -1 });
 auditLogSchema.index({ adminId: 1, timestamp: -1 });
 auditLogSchema.index({ targetId: 1, targetModel: 1 });

@@ -2,125 +2,146 @@ const mongoose = require("mongoose");
 
 const subscriptionSchema = new mongoose.Schema(
   {
-    // HOSTEL REFERENCE
+    // Tenancy References
+    workspaceId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Workspace",
+      required: false,
+    },
+    // Keep hostelId optional for backward compatibility
     hostelId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Hostel",
-      required: true,
+      required: false,
     },
 
-    // PLAN TYPE
+    // PLAN TYPE (Legacy & New)
     planType: {
       type: String,
-      enum: ["Basic", "Pro"],
-      default: "Basic",
+      enum: ["Basic", "Pro", "base", "pro", "enterprise", "trial", "lifetime"],
+      default: "base",
+    },
+    plan: {
+      type: String,
+      enum: ["base", "pro", "enterprise", "trial", "lifetime"],
+      default: "base",
     },
 
-    // SUBSCRIPTION STATUS
+    // SUBSCRIPTION STATUS (Legacy & New)
     subscriptionStatus: {
       type: String,
-      enum: [
-        "trial",
-        "active",
-        "expired",
-        "cancelled",
-      ],
       default: "trial",
     },
+    status: {
+      type: String,
+      enum: [
+        "Trial",
+        "Active",
+        "Renewal Pending",
+        "Grace Period",
+        "Expired",
+        "Cancelled",
+        "Lifetime",
+      ],
+      default: "Trial",
+    },
 
-    // TRIAL
+    // Dates
+    startedAt: {
+      type: Date,
+      default: Date.now,
+    },
+    expiresAt: {
+      type: Date,
+    },
+    renewalDate: {
+      type: Date,
+    },
+    trialEnds: {
+      type: Date,
+    },
+
+    // Plan Limits
+    storageLimit: {
+      type: Number, // in bytes
+      default: 5368709120, // 5GB in bytes
+    },
+    residentLimit: {
+      type: Number,
+      default: 100,
+    },
+    staffLimit: {
+      type: Number,
+      default: 5,
+    },
+    hostelLimit: {
+      type: Number,
+      default: 1,
+    },
+    features: {
+      type: [String],
+      default: [],
+    },
+
+    // Legacy Dates
     isTrial: {
       type: Boolean,
       default: true,
     },
-
     trialStartDate: {
       type: Date,
       default: Date.now,
     },
-
     trialEndDate: {
       type: Date,
     },
-
-    // SUBSCRIPTION DATES
     subscriptionStartDate: {
       type: Date,
     },
-
     subscriptionEndDate: {
       type: Date,
     },
 
-    // ADMIN OVERRIDE
+    // Legacy Fields
     isFreeAccess: {
       type: Boolean,
       default: false,
     },
-
-    // PAYMENT INFO
     amount: {
       type: Number,
       default: 0,
     },
-
     paymentMethod: {
       type: String,
-      enum: [
-        "upi",
-        "cash",
-        "bank",
-        "manual",
-      ],
+      enum: ["upi", "cash", "bank", "manual"],
     },
-
     transactionId: {
       type: String,
     },
-
     paymentScreenshot: {
       type: String,
     },
-
-    // LIMITS
-    residentLimit: {
-      type: Number,
-      default: 60,
-    },
-
     currentResidentCount: {
       type: Number,
       default: 0,
     },
-
-    // MULTI HOSTEL SUPPORT
     multiHostelEnabled: {
       type: Boolean,
       default: false,
     },
-
-    // CREATED BY ADMIN
     approvedBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Admin",
     },
-
-    // NOTES
     notes: {
       type: String,
     },
-
-    // NOTIFICATION TRACKING
     lastReminderSentAt: {
       type: Date,
       default: null,
     },
   },
-
   { timestamps: true }
 );
 
-module.exports = mongoose.model(
-  "Subscription",
-  subscriptionSchema
-);
+module.exports = mongoose.model("Subscription", subscriptionSchema);

@@ -1,8 +1,7 @@
 const { logger } = require("../utils/logger");
 const Payment = require("../models/Payment");
-
 const Resident = require("../models/Resident");
-
+const EventBus = require("../services/EventBus");
 
 // ==========================
 // CREATE PAYMENT
@@ -97,6 +96,15 @@ const createPayment =
 
         await payment.save();
 
+        // Emit PAYMENT_RECEIVED event
+        EventBus.emit("PAYMENT_RECEIVED", {
+          workspaceId: req.context?.workspaceId,
+          hostelId,
+          residentId,
+          amount,
+          totalRent,
+          ownerId: req.owner?._id,
+        });
 
       // Notification for this payment upload
       try {
@@ -116,7 +124,7 @@ const createPayment =
         logger.error("Payment notification failed:", e?.message || e);
       }
 
-      res.status(200).json({
+      return res.status(200).json({
         success: true,
         message:
           "Partial Payment Added",
@@ -154,7 +162,17 @@ const createPayment =
             : "partial",
       });
 
-      res.status(201).json({
+      // Emit PAYMENT_RECEIVED event
+      EventBus.emit("PAYMENT_RECEIVED", {
+        workspaceId: req.context?.workspaceId,
+        hostelId,
+        residentId,
+        amount: effectivePaidAmount,
+        totalRent,
+        ownerId: req.owner?._id,
+      });
+
+      return res.status(201).json({
         success: true,
         message:
           "Payment Created",
@@ -164,7 +182,7 @@ const createPayment =
     } catch (error) {
       logger.info(error);
 
-      res.status(500).json(error);
+      return res.status(500).json(error);
     }
   };
 

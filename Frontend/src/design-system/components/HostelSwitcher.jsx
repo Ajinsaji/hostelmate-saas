@@ -1,24 +1,39 @@
-import React, { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useCurrentUser, useCurrentHostel } from '../../contexts/HostelContext';
 import { useTheme } from '../ThemeProvider';
 import { Building, ChevronDown, Check, Plus } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { api } from '../../services/api';
 
 export function HostelSwitcher() {
   const { colors, spacing, radius, typography, shadows } = useTheme();
   const { user } = useCurrentUser();
   const { hostel, switchHostel } = useCurrentHostel();
   const [open, setOpen] = useState(false);
+  const [hostelsList, setHostelsList] = useState([]);
 
   const plan = user?.plan?.name || user?.subscription?.planName || 'Trial';
-  const isPro = plan === 'Pro Plan' || plan === 'Enterprise' || (user?.hostels?.length > 1);
+  // If plan is base or trial (and has <=1 hostels), it is basic.
+  const isPro = ["pro", "enterprise"].includes(plan.toLowerCase()) || hostelsList.length > 1;
 
-  // Data-driven hostels list from user profile or default list
-  const hostelsList = user?.hostels || [
-    { id: '1', name: 'Green Valley Hostel', residentsCount: 120, code: 'GV01' },
-    { id: '2', name: 'Sunrise Hostel', residentsCount: 64, code: 'SR02' },
-    { id: '3', name: 'Hill View Hostel', residentsCount: 210, code: 'HV03' }
-  ];
+  useEffect(() => {
+    let isMounted = true;
+    const fetchHostels = async () => {
+      try {
+        const response = await api.get("/api/v2/workspaces/hostels");
+        if (response.data && response.data.success && isMounted) {
+          setHostelsList(response.data.hostels || []);
+        }
+      } catch (err) {
+        console.warn("Failed to load workspace hostels list", err);
+      }
+    };
+
+    fetchHostels();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   if (!isPro) {
     return (
@@ -42,6 +57,8 @@ export function HostelSwitcher() {
       </div>
     );
   }
+
+  const currentHostelId = hostel?.id || hostel?._id;
 
   return (
     <div style={{ position: 'relative', fontFamily: typography.fontFamily }}>
@@ -95,14 +112,19 @@ export function HostelSwitcher() {
         >
           <div style={{ maxHeight: '200px', overflowY: 'auto' }}>
             {hostelsList.map((h) => {
-              const isActive = h.id === hostel.id;
+              const hId = h._id || h.id;
+              const isActive = String(hId) === String(currentHostelId);
               return (
                 <button
-                  key={h.id}
+                  key={hId}
                   onClick={() => {
-                    switchHostel(h);
+                    switchHostel({
+                      id: hId,
+                      name: h.hostelName || h.name,
+                      address: h.address,
+                    });
                     setOpen(false);
-                    toast.success(`Switched to ${h.name}`);
+                    toast.success(`Switched to ${h.hostelName || h.name}`);
                   }}
                   style={{
                     width: '100%',
@@ -126,12 +148,12 @@ export function HostelSwitcher() {
                 >
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
                     <span style={{ fontSize: typography.sizes.sm, fontWeight: isActive ? typography.weights.bold : typography.weights.medium }}>
-                      {h.name}
+                      {h.hostelName || h.name}
                     </span>
                     {isActive && <Check size={14} style={{ color: colors.accent.success }} />}
                   </div>
                   <span style={{ fontSize: '10px', color: colors.text.muted, marginTop: '2px' }}>
-                    {h.residentsCount || h.memberCount || 0} Residents
+                    {h.city ? `${h.city} • ` : ""}{h.hostelType || "Hostel"}
                   </span>
                 </button>
               );
@@ -140,7 +162,8 @@ export function HostelSwitcher() {
 
           <button
             onClick={() => {
-              toast.success("Create new hostel wizard initialized");
+              // Redirect to Dashboard Workspace Overview where adding hostel modal lives
+              window.location.href = "/dashboard";
               setOpen(false);
             }}
             style={{

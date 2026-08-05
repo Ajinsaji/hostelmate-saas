@@ -1,7 +1,8 @@
 const { requireRole } = require("./auth");
+const contextMiddleware = require("./contextMiddleware");
 
 const ownerAuth = (req, res, next) => {
-  const wrapper = requireRole(["owner"]);
+  const wrapper = requireRole(["owner", "owner_admin", "Warden", "Cook", "Accountant"]);
   wrapper(req, res, () => {
     if (req.user) {
       req.owner = {
@@ -10,9 +11,9 @@ const ownerAuth = (req, res, next) => {
         role: req.user.role,
       };
     }
-    next();
+    // Chain contextMiddleware to populate req.context
+    contextMiddleware(req, res, next);
   });
 };
 
 module.exports = ownerAuth;
-

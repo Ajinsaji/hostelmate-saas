@@ -13,10 +13,7 @@ const {
 } = require("../controllers/paymentController");
 
 const { uploadSingle } = require("../middleware/cloudinaryUpload");
-
-
-
-
+const trackStorageUpload = require("../middleware/storageTracker");
 
 // ==========================
 // CREATE PAYMENT
@@ -26,6 +23,7 @@ router.post(
   "/create",
   ownerAuth,
   uploadSingle("proof"),
+  trackStorageUpload("receipts"),
   createPayment
 );
 

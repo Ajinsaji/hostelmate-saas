@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const ownerAuth = require("../middleware/ownerAuth");
 const { uploadFields } = require("../middleware/cloudinaryUpload");
+const trackStorageUpload = require("../middleware/storageTracker");
 const {
   createResident,
   getResidentsByHostel,
@@ -37,8 +38,8 @@ router.patch("/transfer-bed", ownerAuth, transferRoomOrBed);
 router.patch("/status", ownerAuth, changeStatus);
 
 // Creation
-router.post("/", ownerAuth, residentUploads, createResident);
-router.post("/create", ownerAuth, residentUploads, createResident); // Legacy Alias
+router.post("/", ownerAuth, residentUploads, trackStorageUpload("residentImages"), createResident);
+router.post("/create", ownerAuth, residentUploads, trackStorageUpload("residentImages"), createResident); // Legacy Alias
 
 // Listing
 router.get("/", ownerAuth, getResidentsByHostel);
@@ -48,8 +49,8 @@ router.get("/hostel", ownerAuth, getResidentsByHostel); // Legacy Alias
 router.get("/single/:residentId", ownerAuth, getSingleResident); // Legacy Alias
 router.get("/:residentId", ownerAuth, getSingleResident);
 
-router.put("/update/:residentId", ownerAuth, residentUploads, updateResident); // Legacy Alias
-router.put("/:residentId", ownerAuth, residentUploads, updateResident);
+router.put("/update/:residentId", ownerAuth, residentUploads, trackStorageUpload("residentImages"), updateResident); // Legacy Alias
+router.put("/:residentId", ownerAuth, residentUploads, trackStorageUpload("residentImages"), updateResident);
 
 router.delete("/delete/:residentId", ownerAuth, deleteResident); // Legacy Alias
 router.delete("/:residentId", ownerAuth, deleteResident);

@@ -36,11 +36,11 @@ export const ownerMenuItems = [
 ];
 
 export const ownerMobileItems = [
-  { key: 'home', label: 'Home', icon: 'Home', href: '/owner/dashboard' },
-  { key: 'rooms', label: 'Rooms', icon: 'BedDouble', href: '/rooms' },
+  { key: 'home', label: 'Dashboard', icon: 'Home', href: '/owner/dashboard' },
   { key: 'residents', label: 'Residents', icon: 'Users', href: '/residents' },
-  { key: 'payments', label: 'Payments', icon: 'Wallet', href: '/payments' },
-  { key: 'profile', label: 'Profile', icon: 'User', href: '/owner/profile' },
+  { key: 'finance', label: 'Finance', icon: 'Wallet', href: '/payments' },
+  { key: 'hostels', label: 'Hostels', icon: 'Building', href: '/owner/dashboard' },
+  { key: 'more', label: 'More', icon: 'Menu', href: '/owner/settings' },
 ];
 
 export const wardenMenuItems = [

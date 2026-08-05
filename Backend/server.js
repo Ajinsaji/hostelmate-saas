@@ -145,6 +145,10 @@ connectDB().then(() => {
 // API ROUTES
 // ==========================
 
+// V2 WORKSPACE & SAAS ROUTES
+const v2Routes = require("./routes/v2Routes");
+app.use("/api/v2", v2Routes);
+
 // AUTH
 app.use(
   "/api/auth",

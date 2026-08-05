@@ -6,6 +6,7 @@ const SubscriptionPayment = require("../models/SubscriptionPayment");
 const BillingSettings = require("../models/BillingSettings");
 const Resident = require("../models/Resident");
 const Hostel = require("../models/Hostel");
+const Plan = require("../models/Plan");
 const { logger } = require("../utils/logger");
 
 const DEFAULT_FEATURES = [
@@ -89,6 +90,46 @@ async function seedDefaultFeaturesAndPlans() {
         features: Object.values(featureMap),
         addons: ["whatsapp_premium", "ai_module", "payroll", "multi_branch", "biometric", "api_access"],
         isActive: true,
+      });
+    }
+
+    // Seed new MongoDB Plans collection for workspace limits
+    const basePlanLimits = await Plan.findOne({ name: "base" });
+    if (!basePlanLimits) {
+      await Plan.create({
+        name: "base",
+        hostelLimit: 1,
+        residentLimit: 100,
+        staffLimit: 5,
+        storageLimit: 5 * 1024 * 1024 * 1024, // 5GB
+        features: ["canUseStaff", "canUseFood", "canUseExpenses"],
+        monthlyPrice: 1000,
+      });
+    }
+
+    const proPlanLimits = await Plan.findOne({ name: "pro" });
+    if (!proPlanLimits) {
+      await Plan.create({
+        name: "pro",
+        hostelLimit: 999999, // Unlimited
+        residentLimit: 999999, // Unlimited
+        staffLimit: 999999, // Unlimited
+        storageLimit: 100 * 1024 * 1024 * 1024, // 100GB
+        features: ["canUseStaff", "canUseFood", "canUseExpenses", "canSendWhatsApp", "canUseAI", "payroll", "analytics"],
+        monthlyPrice: 2000,
+      });
+    }
+
+    const enterprisePlanLimits = await Plan.findOne({ name: "enterprise" });
+    if (!enterprisePlanLimits) {
+      await Plan.create({
+        name: "enterprise",
+        hostelLimit: 999999,
+        residentLimit: 999999,
+        staffLimit: 999999,
+        storageLimit: 999999 * 1024 * 1024 * 1024, // Unlimited
+        features: ["canUseStaff", "canUseFood", "canUseExpenses", "canSendWhatsApp", "canUseAI", "payroll", "analytics", "customBranding", "marketplace", "apiAccess"],
+        monthlyPrice: 5000,
       });
     }
 

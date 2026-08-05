@@ -1,6 +1,8 @@
 const expenseService = require("../services/expenseService");
 const { createExpenseSchema } = require("../validations/expenseValidation");
 const { logger } = require("../utils/logger");
+const BusinessRuleEngine = require("../services/BusinessRuleEngine");
+const EventBus = require("../services/EventBus");
 
 function getUserContext(req) {
   return {
@@ -13,10 +15,28 @@ function getUserContext(req) {
 const createExpense = async (req, res) => {
   try {
     const userCtx = getUserContext(req);
+    
+    // 1. Quota check via BusinessRuleEngine
+    const quotaCheck = await BusinessRuleEngine.canCreateExpense(req.context?.workspaceId);
+    if (!quotaCheck.allowed) {
+      return res.status(403).json({ success: false, message: quotaCheck.message });
+    }
+
     const { error, value } = createExpenseSchema.validate(req.body);
     if (error) return res.status(400).json({ success: false, message: error.details[0].message });
 
     const expense = await expenseService.createExpense(value, userCtx);
+
+    // 2. Emit EXPENSE_CREATED event
+    EventBus.emit("EXPENSE_CREATED", {
+      workspaceId: req.context?.workspaceId,
+      hostelId: userCtx.hostelId,
+      ownerId: userCtx.userId,
+      expenseId: expense._id,
+      amount: expense.amount,
+      categoryId: expense.categoryId,
+    });
+
     return res.status(201).json({ success: true, message: "Expense Recorded Successfully", expense });
   } catch (err) {
     logger.error("createExpense error:", err);

@@ -94,13 +94,21 @@ export function HostelProvider({ children }) {
 
   const switchHostel = (hostel) => {
     if (!hostel) return;
+    const hostelId = hostel.id || hostel._id;
     localStorage.setItem("activeHostel", JSON.stringify(hostel));
-    localStorage.setItem("activeHostelId", hostel.id);
+    localStorage.setItem("activeHostelId", hostelId);
     localStorage.setItem("activeHostelName", hostel.name);
     setCurrentHostel(hostel);
     
     // Dispatch event so that dashboards know to reload hostel data
     window.dispatchEvent(new Event('hostelChanged'));
+
+    // Call api to update context in backend
+    import("../services/api").then(({ api }) => {
+      api.patch("/api/v2/workspaces/active-context", {
+        activeHostelId: hostelId,
+      }).catch(err => console.error("Failed to sync context to backend", err));
+    });
   };
 
   const updateSubscription = (newSubState) => {

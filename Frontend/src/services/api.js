@@ -114,6 +114,11 @@ api.interceptors.request.use(
       config.headers.Authorization = `Bearer ${token}`;
     }
 
+    const activeHostelId = localStorage.getItem("activeHostelId");
+    if (activeHostelId) {
+      config.headers["x-active-hostel-id"] = activeHostelId;
+    }
+
     return config;
   },
   (error) => Promise.reject(error)

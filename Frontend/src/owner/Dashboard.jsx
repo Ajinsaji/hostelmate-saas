@@ -10,10 +10,15 @@ import {
   IndianRupee,
   TrendingUp,
   Plus,
+  Building,
+  HardDrive,
+  ChevronLeft,
+  X,
+  Server
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import toast from "react-hot-toast";
 
 import api from "../utils/apiClient";
@@ -36,6 +41,7 @@ import SubscriptionBanner from "../components/SubscriptionBanner";
 import { useTheme } from "../design-system/ThemeProvider";
 import { useCurrentUser, useCurrentHostel } from "../contexts/HostelContext";
 import { formatSubscriptionStatus } from "../utils/subscriptionFormatter";
+import { useFeatureGate } from "../hooks/useFeatureGate";
 
 import useGlobalPolling from "../hooks/useGlobalPolling";
 import useOwnerRealtimeSync from "../hooks/useOwnerRealtimeSync";
@@ -213,9 +219,29 @@ function LineChart({ values }) {
 function Dashboard() {
   const { colors } = useTheme();
   const navigate = useNavigate();
+  const { switchHostel } = useCurrentHostel();
+  const { gates, canAccessAnalytics } = useFeatureGate();
 
   const [subscriptionState, setSubscriptionState] = useState(null);
   const [subscriptionLoading, setSubscriptionLoading] = useState(true);
+
+  // Tenancy Workspace View State
+  const [workspaceData, setWorkspaceData] = useState(null);
+  const [workspaceLoading, setWorkspaceLoading] = useState(true);
+  const [isWorkspaceView, setIsWorkspaceView] = useState(false);
+  const [showAddHostelModal, setShowAddHostelModal] = useState(false);
+
+  // New Hostel Form Data
+  const [newHostelData, setNewHostelData] = useState({
+    name: "",
+    address: "",
+    city: "",
+    state: "",
+    district: "",
+    pincode: "",
+    hostelType: "Co-Living",
+  });
+  const [submittingHostel, setSubmittingHostel] = useState(false);
 
   const [stats, setStats] = useState({
     residents: 0,
@@ -256,6 +282,7 @@ function Dashboard() {
     return () => window.clearInterval(timer);
   }, []);
 
+  // Fetch stats for single hostel view
   const fetchStats = async () => {
     try {
       const response = await api.get("/api/owner/dashboard");
@@ -267,6 +294,36 @@ function Dashboard() {
       toast.error(error?.response?.data?.message || "Unable to load dashboard.");
     }
   };
+
+  // Fetch Workspace aggregate data
+  const fetchWorkspaceOverview = useCallback(async () => {
+    try {
+      setWorkspaceLoading(true);
+      const response = await api.get("/api/v2/workspaces/overview");
+      if (response.data && response.data.success) {
+        setWorkspaceData(response.data);
+        
+        // Dynamically toggle Workspace Overview if plan is Pro/Enterprise and multiple hostels exist or no active hostel is chosen
+        const isProOrEnterprise = gates?.hostels?.limit > 1 || canAccessAnalytics();
+        const hasMultipleHostels = response.data.workspace.hostelsCount > 1;
+        const currentActiveHostelId = localStorage.getItem("activeHostelId");
+
+        if (isProOrEnterprise && (!currentActiveHostelId || hasMultipleHostels)) {
+          // Default to Workspace Summary screen
+          setIsWorkspaceView(true);
+        }
+      }
+    } catch (err) {
+      console.warn("Failed to load workspace overview. Falling back to single-hostel dashboard.", err);
+    } finally {
+      setWorkspaceLoading(false);
+    }
+  }, [gates, canAccessAnalytics]);
+
+  useEffect(() => {
+    fetchStats();
+    fetchWorkspaceOverview();
+  }, [fetchWorkspaceOverview]);
 
   useGlobalPolling(fetchStats, { interval: 9000 });
 
@@ -379,6 +436,50 @@ function Dashboard() {
     return [v0 - 2, v0 + 1, v0 - 1, v0 + 3, v0 + 2, v0 + 4];
   }, [stats.todayCollection]);
 
+  // Handle Hostel Creation Form Submission
+  const handleCreateHostel = async (e) => {
+    e.preventDefault();
+    if (!newHostelData.name) {
+      return toast.error("Hostel name is required");
+    }
+
+    try {
+      setSubmittingHostel(true);
+      const response = await api.post("/api/v2/workspaces/hostels", newHostelData);
+      if (response.data && response.data.success) {
+        toast.success("Hostel created successfully inside workspace!");
+        setShowAddHostelModal(false);
+        setNewHostelData({
+          name: "",
+          address: "",
+          city: "",
+          state: "",
+          district: "",
+          pincode: "",
+          hostelType: "Co-Living",
+        });
+        
+        // Refresh overview
+        await fetchWorkspaceOverview();
+        
+        // Automatically switch to the newly created hostel
+        const createdHostel = response.data.hostel;
+        switchHostel({
+          id: createdHostel._id,
+          name: createdHostel.hostelName || createdHostel.name,
+          address: createdHostel.address,
+        });
+        setIsWorkspaceView(false);
+        fetchStats();
+      }
+    } catch (err) {
+      const errMsg = err?.response?.data?.message || "Failed to create hostel.";
+      toast.error(errMsg);
+    } finally {
+      setSubmittingHostel(false);
+    }
+  };
+
   const summaryCards = useMemo(
     () => [
       {
@@ -427,6 +528,350 @@ function Dashboard() {
     [navigate]
   );
 
+  // Render Storage Meter Percentage & Warnings
+  const storagePercentage = useMemo(() => {
+    if (!workspaceData?.workspace?.storageUsed) return 0;
+    const limit = gates?.storage?.limit;
+    if (!limit || limit === "Unlimited") return 0;
+    return Math.round((workspaceData.workspace.storageUsed / limit) * 100);
+  }, [workspaceData, gates]);
+
+  const storageLimitGB = useMemo(() => {
+    const limit = gates?.storage?.limit;
+    if (!limit || limit === "Unlimited") return "Unlimited";
+    return `${Math.round(limit / (1024 * 1024 * 1024))} GB`;
+  }, [gates]);
+
+  const storageUsedGB = useMemo(() => {
+    if (!workspaceData?.workspace?.storageUsed) return "0 GB";
+    return `${(workspaceData.workspace.storageUsed / (1024 * 1024 * 1024)).toFixed(2)} GB`;
+  }, [workspaceData]);
+
+  // Determine storage alert tone based on percentages
+  const storageAlertTone = useMemo(() => {
+    if (storagePercentage >= 100) return "red";
+    if (storagePercentage >= 95) return "red";
+    if (storagePercentage >= 90) return "orange";
+    if (storagePercentage >= 80) return "yellow";
+    return "blue";
+  }, [storagePercentage]);
+
+  // WORKSPACE OVERVIEW COMPONENT
+  if (isWorkspaceView && workspaceData) {
+    const ws = workspaceData.workspace;
+    const isBasePlan = gates?.hostels?.limit <= 1;
+
+    return (
+      <OwnerLayout ownerPhotoUrl={ownerPhotoUrl} notificationCount={pendingCount}>
+        <PageContainer className="pt-6">
+          
+          {/* Header */}
+          <Section>
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+              <div>
+                <h1 className="text-3xl font-bold tracking-tight" style={{ color: colors.text.primary }}>
+                  {ws.name || `${ownerName}'s Workspace`}
+                </h1>
+                <p className="mt-1 text-sm font-semibold capitalize" style={{ color: colors.accent.primary }}>
+                  {ws.plan || "Pro"} Plan Overview • Enterprise Dashboard
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <StatusPill tone="info">{greeting}</StatusPill>
+                <StatusPill>{dateStr}</StatusPill>
+              </div>
+            </div>
+          </Section>
+
+          {/* Workspace Aggregate Stats */}
+          <Section>
+            <CardGrid columns={{ sm: 2, md: 3, lg: 5 }}>
+              <KPICard title="Total Hostels" value={ws.hostelsCount || "0"} icon={Building} tone="primary" />
+              <KPICard title="Total Residents" value={ws.residents || "0"} icon={Users} tone="primary" />
+              <KPICard title="Total Rooms" value={ws.rooms || "0"} icon={BedDouble} tone="primary" />
+              <KPICard title="Aggregate Occupancy" value={`${ws.occupancyRate || 0}%`} icon={Sparkles} tone="info" />
+              <KPICard title="Workspace Revenue" value={`₹${(ws.revenue || 0).toLocaleString()}`} icon={IndianRupee} tone="success" />
+            </CardGrid>
+          </Section>
+
+          {/* Storage Meter Card & Subscription details */}
+          <Section>
+            <div className="grid gap-4 lg:grid-cols-3">
+              <Card className="lg:col-span-2">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-lg font-bold" style={{ color: colors.text.primary }}>Workspace Storage Meter</h3>
+                  <StatusPill tone={storageAlertTone === "red" ? "danger" : storageAlertTone === "orange" ? "warning" : "info"}>
+                    {storagePercentage}% Used
+                  </StatusPill>
+                </div>
+                <div className="space-y-4">
+                  <div className="flex justify-between text-sm font-medium" style={{ color: colors.text.muted }}>
+                    <span>{storageUsedGB} Consumed</span>
+                    <span>{storageLimitGB} Limit</span>
+                  </div>
+                  <div className="w-full bg-slate-800 rounded-full h-3 overflow-hidden">
+                    <div 
+                      className={`h-full rounded-full transition-all duration-500 ${
+                        storagePercentage >= 95 ? "bg-red-600" :
+                        storagePercentage >= 90 ? "bg-orange-500" :
+                        storagePercentage >= 80 ? "bg-yellow-500" :
+                        "bg-green-500"
+                      }`} 
+                      style={{ width: `${Math.min(100, storagePercentage)}%` }}
+                    />
+                  </div>
+                  {storagePercentage >= 80 && (
+                    <div className="p-3 bg-red-950/20 border border-red-500/20 rounded-xl flex items-center gap-3">
+                      <Server size={18} className="text-red-500 shrink-0" />
+                      <p className="text-xs text-red-450 leading-relaxed">
+                        Workspace storage is running low. Please clean up unused exports/receipts or upgrade your plan capacity.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </Card>
+
+              <Card>
+                <h3 className="text-lg font-bold mb-4" style={{ color: colors.text.primary }}>SaaS Plan Details</h3>
+                <div className="space-y-3">
+                  <div className="flex justify-between border-b pb-2" style={{ borderColor: colors.border.default }}>
+                    <span className="text-sm" style={{ color: colors.text.muted }}>Active Subscription</span>
+                    <span className="text-sm font-semibold" style={{ color: colors.text.primary }}>{ws.plan || "Pro"}</span>
+                  </div>
+                  <div className="flex justify-between border-b pb-2" style={{ borderColor: colors.border.default }}>
+                    <span className="text-sm" style={{ color: colors.text.muted }}>Status</span>
+                    <StatusPill tone="success">Active</StatusPill>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-sm" style={{ color: colors.text.muted }}>Hostels Quota</span>
+                    <span className="text-sm font-semibold" style={{ color: colors.text.primary }}>
+                      {workspaceData.hostels?.length} / {gates?.hostels?.limit === 999999 || !gates?.hostels?.limit ? "Unlimited" : gates.hostels.limit}
+                    </span>
+                  </div>
+                  <Button 
+                    className="w-full mt-4" 
+                    variant="outline" 
+                    onClick={() => navigate("/billing")}
+                  >
+                    Manage Subscriptions
+                  </Button>
+                </div>
+              </Card>
+            </div>
+          </Section>
+
+          {/* Hostels List */}
+          <Section>
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-xl font-bold" style={{ color: colors.text.primary }}>Your Hostels</h2>
+              {!isBasePlan && (
+                <Button 
+                  onClick={() => {
+                    const addHostelGate = gates?.hostels || { allowed: true };
+                    if (!addHostelGate.allowed) {
+                      toast.error(addHostelGate.message || "Hostel limit reached. Please upgrade.");
+                    } else {
+                      setShowAddHostelModal(true);
+                    }
+                  }} 
+                  className="flex items-center gap-2"
+                >
+                  <Plus size={16} /> Add Hostel
+                </Button>
+              )}
+            </div>
+
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+              {workspaceData.hostels?.map((item) => (
+                <motion.div 
+                  key={item._id} 
+                  whileHover={{ scale: 1.02 }}
+                  className="cursor-pointer"
+                  onClick={() => {
+                    switchHostel({
+                      id: item._id,
+                      name: item.name || item.hostelName,
+                      address: item.address,
+                    });
+                    setIsWorkspaceView(false);
+                    fetchStats();
+                  }}
+                >
+                  <Card className="hover:border-green-500/50 transition-all border duration-300">
+                    <h3 className="text-lg font-bold mb-2" style={{ color: colors.text.primary }}>
+                      {item.name}
+                    </h3>
+                    <p className="text-xs mb-4" style={{ color: colors.text.muted }}>
+                      {item.address || "No address specified"}
+                    </p>
+                    <div className="space-y-3">
+                      <div className="flex justify-between text-sm">
+                        <span style={{ color: colors.text.muted }}>Occupancy</span>
+                        <span className="font-semibold" style={{ color: colors.text.primary }}>{item.occupancy}%</span>
+                      </div>
+                      <div className="w-full bg-slate-800 rounded-full h-2">
+                        <div 
+                          className="bg-green-500 h-full rounded-full" 
+                          style={{ width: `${item.occupancy}%` }}
+                        />
+                      </div>
+                      <div className="flex justify-between text-xs pt-2" style={{ color: colors.text.muted }}>
+                        <span>Residents: <b>{item.residents}</b></span>
+                        <span>Rooms: <b>{item.rooms}</b></span>
+                      </div>
+                    </div>
+                  </Card>
+                </motion.div>
+              ))}
+
+              {!isBasePlan && (
+                <div 
+                  className="border-2 border-dashed rounded-2xl flex flex-col justify-center items-center p-6 cursor-pointer hover:bg-slate-900/40 hover:border-green-500/50 transition-all duration-350"
+                  style={{ borderColor: colors.border.default }}
+                  onClick={() => {
+                    const addHostelGate = gates?.hostels || { allowed: true };
+                    if (!addHostelGate.allowed) {
+                      toast.error(addHostelGate.message || "Hostel limit reached. Please upgrade.");
+                    } else {
+                      setShowAddHostelModal(true);
+                    }
+                  }} 
+                >
+                  <Plus size={32} className="text-slate-500 mb-2" />
+                  <p className="font-semibold text-sm" style={{ color: colors.text.primary }}>Add New Hostel</p>
+                  <p className="text-xs text-slate-500 mt-1">Upgrade your business scale</p>
+                </div>
+              )}
+            </div>
+          </Section>
+
+          {/* Add Hostel Dialog */}
+          <AnimatePresence>
+            {showAddHostelModal && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm">
+                <motion.div 
+                  initial={{ scale: 0.9, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  exit={{ scale: 0.9, opacity: 0 }}
+                  className="w-full max-w-md rounded-2xl overflow-hidden shadow-2xl border"
+                  style={{ background: colors.background.card, borderColor: colors.border.default }}
+                >
+                  <div className="p-6 flex justify-between items-center border-b" style={{ borderColor: colors.border.default }}>
+                    <h3 className="text-lg font-bold" style={{ color: colors.text.primary }}>Add New Hostel</h3>
+                    <button onClick={() => setShowAddHostelModal(false)}>
+                      <X size={20} style={{ color: colors.text.muted }} />
+                    </button>
+                  </div>
+                  <form onSubmit={handleCreateHostel} className="p-6 space-y-4">
+                    <div>
+                      <label className="block text-xs font-semibold uppercase mb-1" style={{ color: colors.text.muted }}>Hostel Name</label>
+                      <input 
+                        type="text" 
+                        required
+                        className="w-full p-3 rounded-xl border bg-slate-900 text-white"
+                        style={{ borderColor: colors.border.default }}
+                        value={newHostelData.name}
+                        onChange={(e) => setNewHostelData({ ...newHostelData, name: e.target.value })}
+                        placeholder="e.g. Sunrise Residency"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold uppercase mb-1" style={{ color: colors.text.muted }}>Address</label>
+                      <input 
+                        type="text" 
+                        className="w-full p-3 rounded-xl border bg-slate-900 text-white"
+                        style={{ borderColor: colors.border.default }}
+                        value={newHostelData.address}
+                        onChange={(e) => setNewHostelData({ ...newHostelData, address: e.target.value })}
+                        placeholder="e.g. MG Road, Near Central Library"
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs font-semibold uppercase mb-1" style={{ color: colors.text.muted }}>City</label>
+                        <input 
+                          type="text" 
+                          className="w-full p-3 rounded-xl border bg-slate-900 text-white"
+                          style={{ borderColor: colors.border.default }}
+                          value={newHostelData.city}
+                          onChange={(e) => setNewHostelData({ ...newHostelData, city: e.target.value })}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold uppercase mb-1" style={{ color: colors.text.muted }}>District</label>
+                        <input 
+                          type="text" 
+                          className="w-full p-3 rounded-xl border bg-slate-900 text-white"
+                          style={{ borderColor: colors.border.default }}
+                          value={newHostelData.district}
+                          onChange={(e) => setNewHostelData({ ...newHostelData, district: e.target.value })}
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs font-semibold uppercase mb-1" style={{ color: colors.text.muted }}>State</label>
+                        <input 
+                          type="text" 
+                          className="w-full p-3 rounded-xl border bg-slate-900 text-white"
+                          style={{ borderColor: colors.border.default }}
+                          value={newHostelData.state}
+                          onChange={(e) => setNewHostelData({ ...newHostelData, state: e.target.value })}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold uppercase mb-1" style={{ color: colors.text.muted }}>Pincode</label>
+                        <input 
+                          type="text" 
+                          className="w-full p-3 rounded-xl border bg-slate-900 text-white"
+                          style={{ borderColor: colors.border.default }}
+                          value={newHostelData.pincode}
+                          onChange={(e) => setNewHostelData({ ...newHostelData, pincode: e.target.value })}
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold uppercase mb-1" style={{ color: colors.text.muted }}>Hostel Type</label>
+                      <select 
+                        className="w-full p-3 rounded-xl border bg-slate-900 text-white"
+                        style={{ borderColor: colors.border.default }}
+                        value={newHostelData.hostelType}
+                        onChange={(e) => setNewHostelData({ ...newHostelData, hostelType: e.target.value })}
+                      >
+                        <option value="Boys Hostel">Boys Hostel</option>
+                        <option value="Girls Hostel">Girls Hostel</option>
+                        <option value="Co-Living">Co-Living</option>
+                      </select>
+                    </div>
+                    <div className="pt-4 flex gap-3">
+                      <Button 
+                        type="button" 
+                        variant="outline" 
+                        className="w-1/2" 
+                        onClick={() => setShowAddHostelModal(false)}
+                      >
+                        Cancel
+                      </Button>
+                      <Button 
+                        type="submit" 
+                        className="w-1/2" 
+                        disabled={submittingHostel}
+                      >
+                        {submittingHostel ? "Creating..." : "Create Hostel"}
+                      </Button>
+                    </div>
+                  </form>
+                </motion.div>
+              </div>
+            )}
+          </AnimatePresence>
+
+        </PageContainer>
+      </OwnerLayout>
+    );
+  }
+
+  // STANDARD SINGLE HOSTEL VIEW
   return (
     <OwnerLayout ownerPhotoUrl={ownerPhotoUrl} notificationCount={pendingCount}>
       <PageContainer className="pt-6">
@@ -435,7 +880,20 @@ function Dashboard() {
         <Section>
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <div>
-              <h1 className="text-2xl font-bold" style={{ color: colors.text.primary }}>Welcome back, {ownerName}</h1>
+              <div className="flex items-center gap-3">
+                {workspaceData && (gates?.hostels?.limit > 1 || canAccessAnalytics()) && (
+                  <button 
+                    onClick={() => setIsWorkspaceView(true)}
+                    className="p-2 bg-slate-900 border rounded-xl hover:bg-slate-800 transition duration-200"
+                    style={{ borderColor: colors.border.default }}
+                  >
+                    <ChevronLeft size={16} style={{ color: colors.text.primary }} />
+                  </button>
+                )}
+                <h1 className="text-2xl font-bold" style={{ color: colors.text.primary }}>
+                  Welcome back, {ownerName}
+                </h1>
+              </div>
               <p className="mt-1" style={{ color: colors.text.muted }}>{subscriptionPlan} plan • {hostel?.city || "Ready for operations"}</p>
             </div>
             <div className="flex gap-2">
@@ -568,4 +1026,3 @@ function Dashboard() {
 }
 
 export default Dashboard;
-

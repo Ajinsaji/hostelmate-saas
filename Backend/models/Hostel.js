@@ -1,6 +1,18 @@
 const mongoose = require("mongoose");
 
 const hostelSchema = new mongoose.Schema({
+  // Tenancy References
+  workspaceId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Workspace",
+    required: false,
+  },
+  ownerId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Owner",
+    required: false,
+  },
+
   hostelName: String,
 
   ownerName: String,
@@ -154,8 +166,6 @@ const hostelSchema = new mongoose.Schema({
 // Performance indexes
 hostelSchema.index({ slug: 1 });             // Public page lookup
 hostelSchema.index({ subscriptionStatus: 1 }); // Subscription scheduler queries
+hostelSchema.index({ workspaceId: 1 });       // Tenant query indexing
 
-module.exports = mongoose.model(
-  "Hostel",
-  hostelSchema
-);
+module.exports = mongoose.model("Hostel", hostelSchema);

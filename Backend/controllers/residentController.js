@@ -1,6 +1,8 @@
 const residentService = require("../services/residentService");
 const getUploadedFileUrl = require("../utils/getUploadedFileUrl");
 const { logger } = require("../utils/logger");
+const BusinessRuleEngine = require("../services/BusinessRuleEngine");
+const EventBus = require("../services/EventBus");
 const {
   createResidentSchema,
   updateResidentSchema,
@@ -29,6 +31,14 @@ const createResident = async (req, res) => {
       return res.status(401).json({ success: false, message: "Unauthorized: Missing hostelId" });
     }
 
+    const workspaceId = req.context?.workspaceId;
+
+    // 1. Quota check via BusinessRuleEngine
+    const quotaCheck = await BusinessRuleEngine.canCreateResident(workspaceId);
+    if (!quotaCheck.allowed) {
+      return res.status(403).json({ success: false, message: quotaCheck.message });
+    }
+
     const payload = { ...req.body };
 
     // Handle file uploads if present
@@ -47,6 +57,14 @@ const createResident = async (req, res) => {
       return res.status(400).json({ success: false, message: error.details[0].message });
     }
 
+    // 2. Room allocation check via BusinessRuleEngine
+    if (value.roomId) {
+      const roomCheck = await BusinessRuleEngine.canAllocateRoom(value.roomId);
+      if (!roomCheck.allowed) {
+        return res.status(400).json({ success: false, message: roomCheck.message });
+      }
+    }
+
     const resident = await residentService.createResident(value, userCtx);
 
     // If roomId & bedId provided on creation, trigger check-in assignment automatically
@@ -60,6 +78,16 @@ const createResident = async (req, res) => {
         logger.error("Auto check-in error on creation:", checkInErr);
       }
     }
+
+    // 3. Emit RESIDENT_CREATED event
+    EventBus.emit("RESIDENT_CREATED", {
+      workspaceId,
+      hostelId: userCtx.hostelId,
+      ownerId: userCtx.userId,
+      residentId: resident._id,
+      name: resident.name,
+      roomNumber: value.roomNumber,
+    });
 
     return res.status(201).json({
       success: true,
