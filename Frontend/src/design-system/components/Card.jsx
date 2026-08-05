@@ -17,18 +17,18 @@ export function Card({
       case "elevated":
         return {
           background: colors.background.elevated || "#1C2740",
-          border: `1px solid ${colors.border.default}`,
+          border: `1px solid ${colors.border.default || "#22304A"}`,
         };
       case "ai":
         return {
-          background: colors.background.card,
+          background: colors.background.card || "#162032",
           border: `1px solid ${colors.accent.ai || "#6C4CF5"}`,
         };
       case "default":
       default:
         return {
-          background: colors.background.card,
-          border: `1px solid ${colors.border.default}`,
+          background: colors.background.card || "#162032",
+          border: `1px solid ${colors.border.default || "#22304A"}`,
         };
     }
   };
@@ -39,8 +39,8 @@ export function Card({
     <motion.div
       initial={animations.pageLoad.initial}
       animate={animations.pageLoad.animate}
-      transition={animations.pageLoad.transition}
-      whileHover={hover && onClick ? animations.cardHover.whileHover : {}}
+      transition={{ duration: 0.2, ease: "easeOut" }}
+      whileHover={hover ? { y: -4, scale: 1.01, boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.4), 0 10px 10px -5px rgba(0, 0, 0, 0.4)" } : {}}
       onClick={onClick}
       role={onClick ? "button" : "region"}
       aria-label={ariaLabel}
@@ -48,10 +48,11 @@ export function Card({
       className={`${className}`}
       style={{
         ...variantStyles,
-        borderRadius: radius.xl,
-        padding: spacing.xl,
-        boxShadow: shadows.card || shadows.soft,
+        borderRadius: radius.xxl || "24px",
+        padding: spacing.xl || "24px",
+        boxShadow: shadows.card || shadows.soft || "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
         cursor: onClick ? "pointer" : "default",
+        transition: "transform 200ms ease, box-shadow 200ms ease, border-color 200ms ease",
         ...style
       }}
     >

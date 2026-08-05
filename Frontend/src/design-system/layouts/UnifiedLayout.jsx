@@ -4,28 +4,17 @@ import { getMenuConfig } from './menuConfigs';
 import UnifiedSidebar from './UnifiedSidebar';
 import UnifiedMobileNav from './UnifiedMobileNav';
 import UnifiedPageHeader from './UnifiedPageHeader';
+import TopHeader from '../components/TopHeader';
+import useSessionVerification from '../../hooks/useSessionVerification';
+import PageLoader from '../../components/PageLoader';
+import { useCurrentUser } from '../../contexts/HostelContext';
 
 /**
  * HostelMate Enterprise — Unified Layout
  *
  * The single layout component used across all roles.
- * Desktop: Sidebar (left) + Main content (right)
+ * Desktop: Sidebar (left) + Top Header (above) + Main content (right)
  * Mobile: Content + Bottom Navigation
- *
- * @param {string} role - 'owner' | 'admin' | 'warden' | 'cook' | 'accountant' | 'resident'
- * @param {Array} menuItems - Optional override for sidebar items
- * @param {Array} mobileItems - Optional override for mobile nav items
- * @param {ReactNode} children - Page content
- * @param {ReactNode} headerActions - Right-side actions for the page header
- * @param {Array} breadcrumbs - Array of { label, to? }
- * @param {string} pageTitle - Page title
- * @param {string} pageSubtitle - Page subtitle (optional)
- * @param {string|number} backTo - Back navigation target
- * @param {Function} onBack - Custom back handler
- * @param {Function} onLogout - Logout handler
- * @param {string} userName - Display name for sidebar profile
- * @param {string} userRole - Display role for sidebar profile
- * @param {string} userAvatar - Avatar URL for sidebar profile
  */
 export function UnifiedLayout({
   role = 'owner',
@@ -45,6 +34,8 @@ export function UnifiedLayout({
 }) {
   const { colors, spacing } = useTheme();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const { verifying } = useSessionVerification();
+  const { user } = useCurrentUser();
 
   // Resolve menu config from role if not provided
   const config = getMenuConfig(role);
@@ -52,6 +43,15 @@ export function UnifiedLayout({
   const mobileNavItems = mobileItems || config.mobile;
 
   const showPageHeader = pageTitle || breadcrumbs?.length > 0;
+
+  // Render full screen session verification load state to avoid layout flash
+  if (verifying) {
+    return <PageLoader />;
+  }
+
+  const finalUserName = userName || user?.ownerName || user?.name || 'Owner';
+  const finalUserRole = userRole || (role === 'owner' ? 'Hostel Owner' : role === 'admin' || role === 'superadmin' ? 'Administrator' : role);
+  const finalUserAvatar = userAvatar || user?.profileImage || user?.photo || '';
 
   return (
     <div
@@ -69,9 +69,9 @@ export function UnifiedLayout({
         collapsed={sidebarCollapsed}
         onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
         onLogout={onLogout}
-        userName={userName}
-        userRole={userRole}
-        userAvatar={userAvatar}
+        userName={finalUserName}
+        userRole={finalUserRole}
+        userAvatar={finalUserAvatar}
       />
 
       {/* Main Content Area */}
@@ -83,6 +83,9 @@ export function UnifiedLayout({
           minWidth: 0,
         }}
       >
+        {/* Unified Top Header */}
+        <TopHeader onMenuClick={() => setSidebarCollapsed(!sidebarCollapsed)} />
+
         {/* Page Header */}
         {showPageHeader && (
           <UnifiedPageHeader

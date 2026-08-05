@@ -270,10 +270,7 @@ const Residents = () => {
   };
 
   return (
-    
-    <OwnerLayout>
-      <PageContainer>
-        <Section className="py-4">
+    <PageContainer>
           {/* Top Search Area */}
           <div className="flex flex-col gap-4 mb-8">
             <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
@@ -458,8 +455,7 @@ const Residents = () => {
               )}
             </>
           )}
-        </Section>
-      </PageContainer>
+
   {showAddModal && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-[#0b1739] border border-white/10 rounded-2xl max-w-2xl w-full p-6 space-y-4 max-h-[90vh] overflow-y-auto text-xs">
@@ -852,8 +848,7 @@ const Residents = () => {
           </div>
         </div>
       )}
-
-    </OwnerLayout>
+    </PageContainer>
   );
 };
 

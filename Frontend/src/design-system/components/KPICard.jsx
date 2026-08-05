@@ -1,5 +1,7 @@
+import React from "react";
 import { Card } from "./Card";
 import { useTheme } from "../ThemeProvider";
+import { AlertTriangle, HelpCircle, Loader2 } from "lucide-react";
 
 export function KPICard({ 
   title, 
@@ -7,9 +9,12 @@ export function KPICard({
   trend, 
   trendDirection = "up", // up, down, neutral
   icon: Icon,
-  tone = "primary"
+  tone = "primary",
+  loading = false,
+  error = null,
+  empty = false
 }) {
-  const { colors, spacing, typography } = useTheme();
+  const { colors, spacing, typography, radius } = useTheme();
 
   const getGradient = () => {
     switch(tone) {
@@ -28,8 +33,85 @@ export function KPICard({
     return colors.accent.warning;
   };
 
+  if (loading) {
+    return (
+      <Card 
+        style={{ 
+          height: "100%", 
+          minHeight: "140px", 
+          borderRadius: radius.xxl, 
+          display: 'flex', 
+          flexDirection: 'column', 
+          justifyContent: 'center', 
+          alignItems: 'center' 
+        }}
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: spacing.sm }}>
+          <Loader2 className="animate-spin text-[#16A34A]" size={24} />
+          <span style={{ fontSize: '11px', color: colors.text.muted, fontFamily: typography.fontFamily }}>Loading...</span>
+        </div>
+      </Card>
+    );
+  }
+
+  if (error) {
+    return (
+      <Card 
+        style={{ 
+          height: "100%", 
+          minHeight: "140px", 
+          borderRadius: radius.xxl, 
+          display: 'flex', 
+          flexDirection: 'column', 
+          justifyContent: 'center', 
+          alignItems: 'center',
+          borderColor: colors.accent.danger
+        }}
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: spacing.xs, textAlign: 'center', padding: spacing.sm }}>
+          <AlertTriangle size={20} style={{ color: colors.accent.danger }} />
+          <span style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.semibold, color: colors.text.primary, fontFamily: typography.fontFamily }}>Error loading KPI</span>
+          <span style={{ fontSize: '10px', color: colors.text.muted, fontFamily: typography.fontFamily }}>{error?.message || error}</span>
+        </div>
+      </Card>
+    );
+  }
+
+  if (empty) {
+    return (
+      <Card 
+        style={{ 
+          height: "100%", 
+          minHeight: "140px", 
+          borderRadius: radius.xxl, 
+          display: 'flex', 
+          flexDirection: 'column', 
+          justifyContent: 'center', 
+          alignItems: 'center' 
+        }}
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: spacing.xs, textAlign: 'center', padding: spacing.sm }}>
+          <HelpCircle size={20} style={{ color: colors.text.muted }} />
+          <span style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.semibold, color: colors.text.primary, fontFamily: typography.fontFamily }}>No records</span>
+          <span style={{ fontSize: '10px', color: colors.text.muted, fontFamily: typography.fontFamily }}>{title}</span>
+        </div>
+      </Card>
+    );
+  }
+
   return (
-    <Card hover className="flex flex-col justify-between" style={{ minHeight: "140px" }} aria-label={`${title} KPI card`}>
+    <Card 
+      hover 
+      className="flex flex-col justify-between" 
+      style={{ 
+        height: "100%", 
+        minHeight: "140px", 
+        borderRadius: radius.xxl,
+        padding: spacing.xl,
+        boxSizing: "border-box"
+      }} 
+      aria-label={`${title} KPI card`}
+    >
       <div className="flex justify-between items-start">
         <div 
           className="rounded-full flex items-center justify-center"
@@ -45,16 +127,16 @@ export function KPICard({
         
         {trend && (
           <div className="flex flex-col items-end">
-            {/* Placeholder for Sparkline - implement with a tiny chart library later if needed */}
             <svg width="60" height="24" viewBox="0 0 60 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
               <path d="M0 20C10 20 15 4 25 4C35 4 45 16 50 16C55 16 58 10 60 10" stroke={getTrendColor()} strokeWidth="2" strokeLinecap="round"/>
             </svg>
             <span 
               style={{
                 color: getTrendColor(),
-                fontSize: typography.sizes.label,
+                fontSize: typography.sizes.label || '11px',
                 fontWeight: typography.weights.bold,
-                marginTop: spacing.xs
+                marginTop: spacing.xs,
+                fontFamily: typography.fontFamily
               }}
             >
               {trendDirection === "up" ? "▲" : trendDirection === "down" ? "▼" : "•"} {trend}
@@ -69,7 +151,8 @@ export function KPICard({
             color: colors.text.secondary,
             fontSize: typography.sizes.body,
             fontFamily: typography.fontFamily,
-            fontWeight: typography.weights.medium
+            fontWeight: typography.weights.medium,
+            margin: 0
           }}
         >
           {title}
@@ -77,10 +160,12 @@ export function KPICard({
         <h3 
           style={{ 
             color: colors.text.primary,
-            fontSize: typography.sizes.kpi,
+            fontSize: typography.sizes.kpi || '28px',
             fontWeight: typography.weights.extrabold,
             lineHeight: 1.2,
-            marginTop: spacing.xs
+            marginTop: spacing.xs,
+            margin: `4px 0 0 0`,
+            fontFamily: typography.fontFamily
           }}
         >
           {value}

@@ -4,5 +4,6 @@ export const radius = {
   lg: '16px',     // Small cards
   xl: '20px',     // Cards
   '2xl': '24px',  // Modals
+  xxl: '24px',    // Enterprise cards
   full: '9999px', // Badges, pills
 };

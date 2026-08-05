@@ -105,6 +105,37 @@ export const residentMobileItems = [
   { key: 'profile', label: 'Profile', icon: 'User', href: '/resident/profile' },
 ];
 
+export const adminMenuItems = [
+  { section: 'Console', items: [
+    { key: 'dashboard', label: 'Dashboard', icon: 'Home', href: '/admin/dashboard' },
+    { key: 'requests', label: 'Requests', icon: 'Clock', href: '/admin/requests' },
+    { key: 'hostels', label: 'Hostels', icon: 'Building', href: '/admin/hostels' },
+    { key: 'owners', label: 'Owners', icon: 'Users', href: '/admin/owners' },
+    { key: 'residents', label: 'Residents', icon: 'Users', href: '/admin/residents' },
+    { key: 'subscriptions', label: 'Subscriptions', icon: 'CreditCard', href: '/admin/subscriptions' },
+    { key: 'revenue', label: 'Revenue', icon: 'IndianRupee', href: '/admin/revenue' },
+    { key: 'finance', label: 'Finance', icon: 'Wallet', href: '/admin/finance' },
+  ]},
+  { section: 'Intelligence', items: [
+    { key: 'analytics', label: 'BI Analytics', icon: 'BarChart3', href: '/admin/analytics' },
+    { key: 'customer-success', label: 'Customer Success', icon: 'Activity', href: '/admin/customer-success' },
+  ]},
+  { section: 'Support & Security', items: [
+    { key: 'support', label: 'Support Desk', icon: 'HelpCircle', href: '/admin/support' },
+    { key: 'audit', label: 'Audit Trails', icon: 'Settings', href: '/admin/audit' },
+    { key: 'settings', label: 'Settings', icon: 'Settings', href: '/admin/settings' },
+    { key: 'profile', label: 'Profile', icon: 'User', href: '/admin/profile' },
+  ]},
+];
+
+export const adminMobileItems = [
+  { key: 'home', label: 'Home', icon: 'Home', href: '/admin/dashboard' },
+  { key: 'hostels', label: 'Hostels', icon: 'Building', href: '/admin/hostels' },
+  { key: 'plans', label: 'Plans', icon: 'CreditCard', href: '/admin/subscriptions' },
+  { key: 'support', label: 'Support', icon: 'HelpCircle', href: '/admin/support' },
+  { key: 'settings', label: 'Settings', icon: 'Settings', href: '/admin/settings' },
+];
+
 /**
  * Utility to get menu config by role string
  */
@@ -115,6 +146,8 @@ export function getMenuConfig(role) {
     case 'cook': return { sidebar: cookMenuItems, mobile: cookMobileItems };
     case 'accountant': return { sidebar: accountantMenuItems, mobile: accountantMobileItems };
     case 'resident': return { sidebar: residentMenuItems, mobile: residentMobileItems };
+    case 'admin':
+    case 'superadmin': return { sidebar: adminMenuItems, mobile: adminMobileItems };
     default: return { sidebar: ownerMenuItems, mobile: ownerMobileItems };
   }
 }

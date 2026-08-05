@@ -1,4 +1,6 @@
-import { AlertTriangle, ShieldCheck } from "lucide-react";
+import React from "react";
+import { AlertTriangle } from "lucide-react";
+import { formatSubscriptionStatus } from "../utils/subscriptionFormatter";
 
 const bannerStyles = {
   critical: {
@@ -12,52 +14,30 @@ const bannerStyles = {
 };
 
 export default function SubscriptionBanner({ status, daysLeft, warningLevel, renewalRequired }) {
-  if (status === "active" || status === "trial" || status === "freeAccess") return null;
-
-  const days = typeof daysLeft === "number" ? daysLeft : "a few";
-
-  if (status === "expired" || warningLevel === "critical") {
-    const s = bannerStyles.critical;
-    const message =
-      status === "expired"
-        ? "Your subscription has expired. Renew now to keep dashboard access."
-        : "Your subscription expires very soon. Renew immediately to avoid disruption.";
-
-    return (
-      <div className={`w-full rounded-[28px] border p-5 shadow-lg backdrop-blur-xl ${s.container}`}>
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
-          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-rose-500/15 text-rose-200 shadow-sm">
-            {s.icon}
-          </div>
-          <div className="flex-1">
-            <div className="text-sm font-semibold uppercase tracking-[0.18em] text-white/70">Urgent subscription alert</div>
-            <div className="mt-2 text-base font-semibold leading-7 text-white">{message}</div>
-            <div className="mt-2 text-sm text-rose-100/85">{renewalRequired ? "Renewal is required to keep hostel operations running." : "Please renew soon to avoid losing access."}</div>
-          </div>
-        </div>
-      </div>
-    );
+  const statusStr = formatSubscriptionStatus({ status, daysLeft, warningLevel, renewalRequired });
+  
+  const statusNormalized = (status || "").toLowerCase();
+  if (statusNormalized === "active" || statusNormalized === "unlimited" || statusNormalized === "lifetime") {
+    return null;
   }
 
-  if (warningLevel === "medium") {
-    const s = bannerStyles.medium;
+  const isCritical = statusNormalized === "expired" || warningLevel === "critical" || renewalRequired === true;
+  const s = isCritical ? bannerStyles.critical : bannerStyles.medium;
+  const title = isCritical ? "Urgent subscription alert" : "Renewal reminder";
+  const desc = isCritical ? "Renewal is required to keep hostel operations running." : "Renew now to keep HostelMate dashboard access uninterrupted.";
 
-    return (
-      <div className={`w-full rounded-[28px] border p-5 shadow-lg backdrop-blur-xl ${s.container}`}>
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-amber-500/15 text-amber-200 shadow-sm">
-            {s.icon}
-          </div>
-          <div className="flex-1">
-            <div className="text-sm font-semibold uppercase tracking-[0.18em] text-white/70">Renewal reminder</div>
-            <div className="mt-2 text-base font-semibold leading-7 text-white">Your subscription expires in {days} days.</div>
-            <div className="mt-2 text-sm text-amber-100/85">Renew now to keep HostelMate dashboard access uninterrupted.</div>
-          </div>
+  return (
+    <div className={`w-full rounded-[28px] border p-5 shadow-lg backdrop-blur-xl ${s.container}`}>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
+        <div className={`flex h-11 w-11 items-center justify-center rounded-2xl ${isCritical ? 'bg-rose-500/15 text-rose-200' : 'bg-amber-500/15 text-amber-200'} shadow-sm`}>
+          {s.icon}
+        </div>
+        <div className="flex-1">
+          <div className="text-sm font-semibold uppercase tracking-[0.18em] text-white/70">{title}</div>
+          <div className="mt-2 text-base font-semibold leading-7 text-white">{statusStr}</div>
+          <div className="mt-2 text-sm opacity-90">{desc}</div>
         </div>
       </div>
-    );
-  }
-
-  return null;
+    </div>
+  );
 }
-

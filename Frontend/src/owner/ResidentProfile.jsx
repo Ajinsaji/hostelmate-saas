@@ -48,23 +48,19 @@ const ResidentProfile = () => {
 
   if (loading) {
     return (
-      <OwnerLayout>
-        <PageContainer>
-          <div className="flex justify-center items-center h-64">
-            <span className="text-gray-500">Loading Profile...</span>
-          </div>
-        </PageContainer>
-      </OwnerLayout>
+      <PageContainer>
+        <div className="flex justify-center items-center h-64">
+          <span className="text-gray-500">Loading Profile...</span>
+        </div>
+      </PageContainer>
     );
   }
 
   if (!profile || !profile.resident) {
     return (
-      <OwnerLayout>
-        <PageContainer>
-          <EmptyState title="Profile Not Found" description="The resident profile could not be loaded." icon={User} />
-        </PageContainer>
-      </OwnerLayout>
+      <PageContainer>
+        <EmptyState title="Profile Not Found" description="The resident profile could not be loaded." icon={User} />
+      </PageContainer>
     );
   }
 
@@ -91,9 +87,7 @@ const ResidentProfile = () => {
   })) || [];
 
   return (
-    <OwnerLayout>
-      <PageContainer>
-        <Section className="py-4">
+    <PageContainer>
           
           {/* Top Actions */}
           <div className="flex items-center justify-between mb-6">
@@ -214,9 +208,7 @@ const ResidentProfile = () => {
               </div>
             )}
           </Card>
-        </Section>
       </PageContainer>
-    </OwnerLayout>
   );
 };
 

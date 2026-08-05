@@ -34,6 +34,8 @@ import { Button } from "../design-system/components/Button";
 import { StatusPill } from "../design-system/components/StatusPill";
 import SubscriptionBanner from "../components/SubscriptionBanner";
 import { useTheme } from "../design-system/ThemeProvider";
+import { useCurrentUser, useCurrentHostel } from "../contexts/HostelContext";
+import { formatSubscriptionStatus } from "../utils/subscriptionFormatter";
 
 import useGlobalPolling from "../hooks/useGlobalPolling";
 import useOwnerRealtimeSync from "../hooks/useOwnerRealtimeSync";

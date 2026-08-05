@@ -209,9 +209,7 @@ export const Rooms = () => {
 
   return (
     
-    <OwnerLayout>
       <PageContainer>
-        <Section className="py-4">
           
           {/* Top Search Area */}
           <div className="flex flex-col gap-4 mb-8">
@@ -325,9 +323,6 @@ export const Rooms = () => {
               ))}
             </CardGrid>
           )}
-
-        </Section>
-      </PageContainer>
       
       {/* Drawer */}
       <RoomDetailsDrawer 
@@ -528,7 +523,7 @@ export const Rooms = () => {
           </div>
         </div>
       )}
-    </OwnerLayout>
+    </PageContainer>
   );
 };
 

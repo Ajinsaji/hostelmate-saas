@@ -3,6 +3,9 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { useTheme } from '../ThemeProvider';
 import * as LucideIcons from 'lucide-react';
 import { Search, LogOut, ChevronLeft, ChevronRight, ShieldCheck } from 'lucide-react';
+import { useCurrentUser, useCurrentHostel, useCurrentStorage, useCurrentSubscription } from '../../contexts/HostelContext';
+import { formatSubscriptionStatus } from '../../utils/subscriptionFormatter';
+import HostelSwitcher from '../components/HostelSwitcher';
 
 function getIcon(name) {
   return LucideIcons[name] || LucideIcons.Circle;
@@ -133,7 +136,7 @@ export default function UnifiedSidebar({
               size={14}
               style={{
                 position: 'absolute',
-                left: spacing.sm,
+                left: '12px',
                 top: '50%',
                 transform: 'translateY(-50%)',
                 color: colors.text.muted,
@@ -147,10 +150,10 @@ export default function UnifiedSidebar({
               aria-label="Search menu items"
               style={{
                 width: '100%',
-                padding: `${spacing.xs} ${spacing.md} ${spacing.xs} 32px`,
-                background: colors.background.elevated,
+                padding: '8px 12px 8px 34px',
+                background: colors.background.secondary,
                 border: `1px solid ${colors.border.default}`,
-                borderRadius: radius.md,
+                borderRadius: '9999px',
                 color: colors.text.primary,
                 fontSize: typography.sizes.sm,
                 fontFamily: typography.fontFamily,
@@ -204,15 +207,16 @@ export default function UnifiedSidebar({
                       gap: spacing.sm,
                       padding: collapsed ? `${spacing.sm} 0` : `${spacing.sm} ${spacing.md}`,
                       justifyContent: collapsed ? 'center' : 'flex-start',
-                      background: active ? 'rgba(22, 163, 74, 0.12)' : 'transparent',
-                      border: active ? '1px solid rgba(22, 163, 74, 0.25)' : '1px solid transparent',
-                      borderRadius: radius.lg,
+                      background: active ? 'rgba(22, 163, 74, 0.15)' : 'transparent',
+                      border: active ? '1px solid rgba(22, 163, 74, 0.35)' : '1px solid transparent',
+                      borderRadius: radius.md,
+                      boxShadow: active ? '0 0 12px rgba(22, 163, 74, 0.25)' : 'none',
                       color: active ? colors.text.primary : colors.text.secondary,
                       fontSize: typography.sizes.sm,
                       fontWeight: active ? typography.weights.semibold : typography.weights.medium,
                       fontFamily: typography.fontFamily,
                       cursor: 'pointer',
-                      transition: 'all 150ms ease',
+                      transition: 'all 200ms ease',
                       textAlign: 'left',
                     }}
                     onMouseEnter={(e) => {
@@ -272,39 +276,93 @@ export default function UnifiedSidebar({
             <div
               style={{
                 display: 'flex',
-                alignItems: 'center',
-                gap: spacing.sm,
+                flexDirection: 'column',
+                gap: spacing.xs,
                 padding: spacing.sm,
                 background: colors.background.elevated,
-                borderRadius: radius.lg,
+                borderRadius: radius.xxl,
                 marginBottom: spacing.sm,
+                border: `1px solid ${colors.border.default}`,
               }}
             >
-              <div
-                style={{
-                  width: '36px',
-                  height: '36px',
-                  borderRadius: radius.full,
-                  background: colors.background.card,
-                  border: `1px solid ${colors.border.default}`,
-                  overflow: 'hidden',
-                  flexShrink: 0,
-                }}
-              >
-                {userAvatar ? (
-                  <img src={userAvatar} alt={userName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                ) : (
-                  <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: colors.text.muted }}>
-                    <LucideIcons.User size={16} />
+              {/* User Identity */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: spacing.sm }}>
+                <div
+                  style={{
+                    width: '36px',
+                    height: '36px',
+                    borderRadius: radius.full,
+                    background: colors.background.card,
+                    border: `1px solid ${colors.border.default}`,
+                    overflow: 'hidden',
+                    flexShrink: 0,
+                  }}
+                >
+                  {userAvatar ? (
+                    <img src={userAvatar} alt={userName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  ) : (
+                    <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: colors.text.muted }}>
+                      <LucideIcons.User size={16} />
+                    </div>
+                  )}
+                </div>
+                <div style={{ overflow: 'hidden', flex: 1 }}>
+                  <div style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.bold, color: colors.text.primary, fontFamily: typography.fontFamily, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {userName || 'User'}
+                  </div>
+                  <div style={{ fontSize: '11px', color: colors.text.muted, fontFamily: typography.fontFamily }}>
+                    {userRole || 'Role'}
+                  </div>
+                </div>
+              </div>
+
+              {/* Separator */}
+              <div style={{ borderTop: `1px solid ${colors.border.light}`, margin: '4px 0' }} />
+
+              {/* Hostel Switcher */}
+              <div style={{ margin: '2px 0' }}>
+                <HostelSwitcher />
+              </div>
+
+              {/* Meta details */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '11px', fontFamily: typography.fontFamily, color: colors.text.muted, marginTop: '2px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span>Plan:</span>
+                  <span style={{ color: colors.accent.success, fontWeight: typography.weights.bold }}>
+                    {user?.plan?.name || user?.subscription?.planName || 'Trial'}
+                  </span>
+                </div>
+                {user?.hostels?.length > 1 && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span>Hostels:</span>
+                    <span style={{ color: colors.text.secondary }}>
+                      {user.hostels.length} Hostels
+                    </span>
                   </div>
                 )}
-              </div>
-              <div style={{ overflow: 'hidden' }}>
-                <div style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.semibold, color: colors.text.primary, fontFamily: typography.fontFamily, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  {userName || 'User'}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', marginTop: '2px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span>Storage:</span>
+                    <span style={{ color: colors.text.secondary }}>
+                      {storage.limit === 'Unlimited' ? `${storage.used} GB Used` : `${storage.used} / ${storage.limit} GB`}
+                    </span>
+                  </div>
+                  {storage.limit !== 'Unlimited' && (
+                    <div style={{ width: '100%', height: '6px', background: 'rgba(255,255,255,0.06)', borderRadius: '3px', overflow: 'hidden', marginTop: '2px' }}>
+                      <div style={{ width: `${storage.percentage}%`, height: '100%', background: colors.accent.success, borderRadius: '3px' }} />
+                    </div>
+                  )}
+                  {storage.limit === 'Unlimited' && (
+                    <div style={{ width: '100%', height: '6px', background: 'rgba(255,255,255,0.06)', borderRadius: '3px', overflow: 'hidden', marginTop: '2px' }}>
+                      <div style={{ width: '40%', height: '100%', background: colors.accent.success, borderRadius: '3px' }} />
+                    </div>
+                  )}
                 </div>
-                <div style={{ fontSize: '11px', color: colors.text.muted, fontFamily: typography.fontFamily }}>
-                  {userRole || 'Role'}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '2px' }}>
+                  <span>Status:</span>
+                  <span style={{ color: colors.text.primary, fontWeight: typography.weights.semibold }}>
+                    {formatSubscriptionStatus(subscription)}
+                  </span>
                 </div>
               </div>
             </div>
@@ -321,7 +379,7 @@ export default function UnifiedSidebar({
                   padding: `${spacing.sm} ${spacing.md}`,
                   background: 'rgba(239, 68, 68, 0.1)',
                   border: '1px solid rgba(239, 68, 68, 0.2)',
-                  borderRadius: radius.lg,
+                  borderRadius: radius.md,
                   color: colors.accent.danger,
                   fontSize: typography.sizes.sm,
                   fontWeight: typography.weights.semibold,

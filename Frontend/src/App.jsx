@@ -8,6 +8,8 @@ import {
 } from "react-router-dom";
 import { useEffect, useState, Suspense, lazy } from 'react';
 import ErrorBoundary from './components/ErrorBoundary';
+import { HostelProvider } from "./contexts/HostelContext";
+import { NotificationProvider } from "./contexts/NotificationContext";
 
 import LandingPage from "./components/LandingPage";
 import LoginPage from "./components/LoginPage";
@@ -112,58 +114,7 @@ const AdminProfile = lazy(() => import("./superadmin/views/AdminProfile"));
 const LoadingState = lazy(() => import("./superadmin/components/feedback/LoadingState"));
 
 function NotificationBellHost() {
-  const location = useLocation();
-  const ownerToken = localStorage.getItem("ownerToken");
-  const adminToken = localStorage.getItem("adminToken");
-
-  let user = null;
-  try {
-    if (adminToken) {
-      user = JSON.parse(localStorage.getItem("adminUser") || "null");
-    } else {
-      user = JSON.parse(localStorage.getItem("ownerUser") || localStorage.getItem("user") || "null");
-    }
-  } catch {
-    user = null;
-  }
-
-  const role = user?.role;
-
-  // Only show bell inside authenticated app areas.
-  // DO NOT show on public/login/register/admission/landing.
-  const publicLikePaths = [
-    "/",
-    "/login",
-    "/register",
-    "/admissions",
-  ];
-
-  const isPublicLike = publicLikePaths.includes(location.pathname);
-
-  const shouldShowBell =
-    (!!ownerToken || !!adminToken) &&
-    !!user &&
-    !isPublicLike &&
-    ((role === "owner" && location.pathname.startsWith("/")) ||
-      (role === "admin" && location.pathname.startsWith("/admin")) ||
-      (role === "superadmin" && location.pathname.startsWith("/admin")) ||
-      (role === "warden" && location.pathname.startsWith("/warden")));
-
-  if (!shouldShowBell) return null;
-
-  return (
-    <div
-      style={{
-        position: "fixed",
-        top: 14,
-        right: 14,
-        zIndex: 3000,
-        pointerEvents: "auto",
-      }}
-    >
-      <NotificationBell />
-    </div>
-  );
+  return null;
 }
 
 
@@ -269,13 +220,15 @@ function App() {
       <PwaUpdateModal />
       <ErrorBoundary>
       <BrowserRouter>
-        <SessionGateWrapper />
-        {/* Router-bound service worker navigation handler */}
-        {/** Mounted here so it can call useNavigate() safely. */}
-        <SwMessageHandler />
-        <NotificationBellHost />
-
-        <Routes>
+        <HostelProvider>
+          <NotificationProvider>
+            <SessionGateWrapper />
+            {/* Router-bound service worker navigation handler */}
+            {/** Mounted here so it can call useNavigate() safely. */}
+            <SwMessageHandler />
+            <NotificationBellHost />
+ 
+            <Routes>
 
           {/* Pending approval enforcement (no login/register) */}
           <Route
@@ -699,25 +652,45 @@ function App() {
           path="/warden/notifications"
           element={
             <WardenProtectedRoute>
-              <Notifications />
+              <DesktopShell
+                variant="warden"
+                title="Warden Notifications"
+                breadcrumbs={[{ label: "Notifications" }]}
+                backTo="/warden/dashboard"
+              >
+                <Notifications />
+              </DesktopShell>
             </WardenProtectedRoute>
           }
         />
-
+ 
         <Route
           path="/cook/notifications"
           element={
             <CookProtectedRoute>
-              <Notifications />
+              <DesktopShell
+                variant="cook"
+                title="Cook Notifications"
+                breadcrumbs={[{ label: "Notifications" }]}
+                backTo="/cook/dashboard"
+              >
+                <Notifications />
+              </DesktopShell>
             </CookProtectedRoute>
           }
         />
-
+ 
         <Route
           path="/warden"
           element={
             <WardenProtectedRoute>
-              <WardenDashboard />
+              <DesktopShell
+                variant="warden"
+                title="Warden Dashboard"
+                breadcrumbs={[{ label: "Dashboard" }]}
+              >
+                <WardenDashboard />
+              </DesktopShell>
             </WardenProtectedRoute>
           }
         />
@@ -725,7 +698,13 @@ function App() {
           path="/warden/dashboard"
           element={
             <WardenProtectedRoute>
-              <WardenDashboard />
+              <DesktopShell
+                variant="warden"
+                title="Warden Dashboard"
+                breadcrumbs={[{ label: "Dashboard" }]}
+              >
+                <WardenDashboard />
+              </DesktopShell>
             </WardenProtectedRoute>
           }
         />
@@ -733,7 +712,13 @@ function App() {
           path="/cook"
           element={
             <CookProtectedRoute>
-              <CookDashboard />
+              <DesktopShell
+                variant="cook"
+                title="Cook Dashboard"
+                breadcrumbs={[{ label: "Dashboard" }]}
+              >
+                <CookDashboard />
+              </DesktopShell>
             </CookProtectedRoute>
           }
         />
@@ -741,7 +726,13 @@ function App() {
           path="/cook/dashboard"
           element={
             <CookProtectedRoute>
-              <CookDashboard />
+              <DesktopShell
+                variant="cook"
+                title="Cook Dashboard"
+                breadcrumbs={[{ label: "Dashboard" }]}
+              >
+                <CookDashboard />
+              </DesktopShell>
             </CookProtectedRoute>
           }
         />
@@ -749,7 +740,13 @@ function App() {
           path="/accountant"
           element={
             <AccountantProtectedRoute>
-              <AccountantDashboard />
+              <DesktopShell
+                variant="accountant"
+                title="Accountant Dashboard"
+                breadcrumbs={[{ label: "Dashboard" }]}
+              >
+                <AccountantDashboard />
+              </DesktopShell>
             </AccountantProtectedRoute>
           }
         />
@@ -757,7 +754,13 @@ function App() {
           path="/accountant/dashboard"
           element={
             <AccountantProtectedRoute>
-              <AccountantDashboard />
+              <DesktopShell
+                variant="accountant"
+                title="Accountant Dashboard"
+                breadcrumbs={[{ label: "Dashboard" }]}
+              >
+                <AccountantDashboard />
+              </DesktopShell>
             </AccountantProtectedRoute>
           }
         />
@@ -765,7 +768,14 @@ function App() {
           path="/accountant/notifications"
           element={
             <AccountantProtectedRoute>
-              <Notifications />
+              <DesktopShell
+                variant="accountant"
+                title="Accountant Notifications"
+                breadcrumbs={[{ label: "Notifications" }]}
+                backTo="/accountant/dashboard"
+              >
+                <Notifications />
+              </DesktopShell>
             </AccountantProtectedRoute>
           }
         />
@@ -829,7 +839,9 @@ function App() {
 
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
-    </BrowserRouter>
+          </NotificationProvider>
+        </HostelProvider>
+      </BrowserRouter>
     </ErrorBoundary>
     </ServerLoadingWrapper>
   );

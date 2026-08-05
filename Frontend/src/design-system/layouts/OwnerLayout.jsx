@@ -5,7 +5,7 @@ import React from 'react';
 import { UnifiedLayout } from './UnifiedLayout';
 import { ownerMenuItems, ownerMobileItems } from './menuConfigs';
 
-export function OwnerLayout({ children, ownerPhotoUrl, notificationCount = 0 }) {
+export function OwnerLayout({ children, ownerPhotoUrl, ...props }) {
   return (
     <UnifiedLayout
       role="owner"
@@ -14,8 +14,11 @@ export function OwnerLayout({ children, ownerPhotoUrl, notificationCount = 0 }) 
       userAvatar={ownerPhotoUrl}
       userName="Owner"
       userRole="Owner"
+      {...props}
     >
       {children}
     </UnifiedLayout>
   );
 }
+
+export default OwnerLayout;
