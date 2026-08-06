@@ -184,6 +184,8 @@ function RequestAutoRedirect() {
 import PwaUpdateModal from "./components/feedback/PwaUpdateModal";
 
 function App() {
+  const { showModal: showUpdateModal, latestRelease, handleUpdateNow, handleLater } = useVersionChecker();
+
   // Service worker navigation handler must run inside a Router.
   // We'll mount a small inner component that uses `useNavigate()` below inside <BrowserRouter/>.
 
