@@ -43,7 +43,6 @@ const webhookEventSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-webhookEventSchema.index({ eventId: 1 });
 webhookEventSchema.index({ processed: 1 });
 
 module.exports = mongoose.model("WebhookEvent", webhookEventSchema);

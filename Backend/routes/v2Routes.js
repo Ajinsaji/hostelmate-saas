@@ -16,7 +16,7 @@ const {
 const BusinessRuleEngine = require("../services/BusinessRuleEngine");
 const FeatureRegistry = require("../services/FeatureRegistry");
 
-const analyticsService = require("../services/AnalyticsService");
+const analyticsService = require("../services/analyticsService");
 const aiService = require("../services/AIService");
 const billingService = require("../services/BillingService");
 const storageService = require("../services/StorageService");
