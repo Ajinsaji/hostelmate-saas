@@ -1,187 +1,185 @@
-import { Download, TrendingUp, IndianRupee, BarChart3, Users, BedDouble } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
-import api from "../utils/apiClient";
+import React, { useState, useEffect } from "react";
+import {
+  FileText,
+  Download,
+  Mail,
+  Calendar,
+  Filter,
+  CheckCircle,
+  Clock,
+  Sparkles
+} from "lucide-react";
 import toast from "react-hot-toast";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
-import { useTheme } from "../design-system/ThemeProvider";
+import api from "../utils/apiClient";
+import { OwnerLayout } from "../design-system/layouts/OwnerLayout";
 import { PageContainer } from "../design-system/layouts/PageContainer";
 import { Card } from "../design-system/components/Card";
-import { KPICard } from "../design-system/components/KPICard";
+import { StatusPill } from "../design-system/components/StatusPill";
 
 export default function Reports() {
-  const { colors, radius } = useTheme();
-  const [payments, setPayments] = useState([]);
-  const [stats, setDashboardStats] = useState({});
   const [loading, setLoading] = useState(true);
-  const [dateFilter, setDateFilter] = useState("all");
+  const [reportsList, setReportsList] = useState([]);
+  const [selectedFormat, setSelectedFormat] = useState("PDF");
+  const [emailModal, setEmailModal] = useState(null);
+  const [emailInput, setEmailInput] = useState("");
+  const [generating, setGenerating] = useState(false);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        const [paymentRes, statsRes] = await Promise.all([
-          api.get("/api/payments/hostel"),
-          api.get("/api/owner/dashboard")
-        ]);
-        setPayments(paymentRes.data?.payments || []);
-        setDashboardStats(statsRes.data?.stats || {});
-      } catch (e) {
-        toast.error(e?.response?.data?.message || "Failed to load reports");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchData();
-  }, []);
-
-  const reportData = useMemo(() => {
-    let filteredPayments = payments;
-    
-    // Simple date filtering based on payment creation
-    if (dateFilter !== "all") {
-      const now = new Date();
-      filteredPayments = payments.filter(p => {
-        if (!p.entries || p.entries.length === 0) return true;
-        const lastPaymentDate = new Date(p.entries[p.entries.length-1].createdAt);
-        if (dateFilter === "month") {
-          return lastPaymentDate.getMonth() === now.getMonth() && lastPaymentDate.getFullYear() === now.getFullYear();
-        }
-        if (dateFilter === "year") {
-          return lastPaymentDate.getFullYear() === now.getFullYear();
-        }
-        return true;
-      });
+  const fetchReports = async () => {
+    try {
+      setLoading(true);
+      const res = await api.get("/api/v2/reports");
+      if (res.data?.success) setReportsList(res.data.reports || []);
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to load available reports");
+    } finally {
+      setLoading(false);
     }
-
-    const totalRent = filteredPayments.reduce((sum, p) => sum + Number(p.totalRent || 0), 0);
-    const totalPaid = filteredPayments.reduce((sum, p) => {
-      const entries = Array.isArray(p.entries) ? p.entries : [];
-      return sum + entries.reduce((s, e) => s + Number(e.amount || 0), 0);
-    }, 0);
-
-    const pending = Math.max(0, totalRent - totalPaid);
-
-    // Chart Data
-    const chartData = [
-      { name: 'Rent Due', amount: totalRent },
-      { name: 'Collected', amount: totalPaid },
-      { name: 'Pending', amount: pending }
-    ];
-
-    return { totalRent, totalPaid, pending, chartData };
-  }, [payments, dateFilter]);
-
-  const exportToCSV = () => {
-    let csvContent = "data:text/csv;charset=utf-8,";
-    csvContent += "Resident,Room,Bed,Month,Total Rent,Paid,Balance,Method,Status\n";
-    
-    payments.forEach((p) => {
-      const name = p.residentId?.name || "Unknown";
-      const room = p.residentId?.roomId?.roomNumber || p.room || "N/A";
-      const bed = p.residentId?.bedId?.bedNumber || p.bed || "N/A";
-      const paid = Array.isArray(p.entries) ? p.entries.reduce((s, e) => s + Number(e.amount || 0), 0) : 0;
-      const balance = Number(p.totalRent || 0) - paid;
-      const method = p.paymentMethod || p.method || "N/A";
-      const status = p.status || (balance <= 0 ? "paid" : paid > 0 ? "partial" : "pending");
-      csvContent += `${name},${room},${bed},${p.month || "N/A"},${p.totalRent || 0},${paid},${balance},${method},${status}\n`;
-    });
-
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", "hostelmate_report.csv");
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
   };
 
-  const exportToPDF = () => {
-    window.print();
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      fetchReports();
+    }, 0);
+    return () => clearTimeout(timer);
+  }, []);
+
+  const handleGenerate = async (reportId) => {
+    try {
+      setGenerating(true);
+      const res = await api.post("/api/v2/reports/generate", {
+        reportId,
+        format: selectedFormat
+      });
+      if (res.data?.success) {
+        toast.success(`Generated report in ${selectedFormat} format!`);
+      }
+    } catch (err) {
+      toast.error("Report generation failed");
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const handleSendEmail = async (e) => {
+    e.preventDefault();
+    if (!emailInput || !emailModal) return;
+    try {
+      setGenerating(true);
+      const res = await api.post("/api/v2/reports/email", {
+        reportId: emailModal.id,
+        recipientEmail: emailInput,
+        format: selectedFormat
+      });
+      if (res.data?.success) {
+        toast.success(res.data.message);
+        setEmailModal(null);
+        setEmailInput("");
+      }
+    } catch (err) {
+      toast.error("Failed to email report");
+    } finally {
+      setGenerating(false);
+    }
   };
 
   return (
-    <PageContainer>
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6">
-        <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.24em]" style={{ color: colors.text.muted }}>Dashboard</p>
-          <p className="text-lg font-semibold" style={{ color: colors.text.primary }}>Revenue & occupancy snapshot</p>
-        </div>
-        <select 
-          className="rounded-xl border px-3 py-2 text-sm outline-none font-medium" 
-          style={{ background: colors.background.card, borderColor: colors.border.default, color: colors.text.primary }} 
-          value={dateFilter} 
-          onChange={(e) => setDateFilter(e.target.value)}
-        >
-          <option value="all">All time</option>
-          <option value="month">This month</option>
-          <option value="year">This year</option>
-        </select>
-      </div>
-
-      {loading ? (
-        <Card className="text-center py-8">
-          <p style={{ color: colors.text.muted }}>Loading reports...</p>
-        </Card>
-      ) : (
-        <div className="space-y-6">
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            <KPICard title="Total collection" value={`₹${reportData.totalPaid.toLocaleString("en-IN")}`} trend="MTD" trendDirection="up" icon={TrendingUp} tone="success" />
-            <KPICard title="Pending dues" value={`₹${reportData.pending.toLocaleString("en-IN")}`} trend="Active" trendDirection="neutral" icon={IndianRupee} tone="danger" />
-            <KPICard title="Occupancy" value={`${stats.occupancyRate || 0}%`} trend="Live" trendDirection="up" icon={Users} tone="info" />
-            <KPICard title="Rooms" value={`${stats.totalRooms || stats.rooms || 0}`} trend="Total" trendDirection="neutral" icon={BedDouble} tone="primary" />
+    <OwnerLayout>
+      <PageContainer className="pt-6 pb-24 space-y-6" style={{ background: "#0B1120", minHeight: "100vh" }}>
+        
+        {/* Header */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-[#22304A] pb-6">
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-black text-white flex items-center gap-3">
+              <FileText className="text-emerald-400" /> Enterprise Reports & Exports
+            </h1>
+            <p className="text-slate-400 text-sm mt-1">
+              Export professional PDFs, Excel sheets, and CSVs for occupancy, financial statements, and compliance audits.
+            </p>
           </div>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-slate-400 font-bold">Export Format:</span>
+            <select
+              value={selectedFormat}
+              onChange={(e) => setSelectedFormat(e.target.value)}
+              className="bg-[#162032] border border-[#22304A] rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none"
+            >
+              <option value="PDF">PDF Document</option>
+              <option value="Excel">Excel Spreadsheet</option>
+              <option value="CSV">CSV Raw Data</option>
+            </select>
+          </div>
+        </div>
 
-          <div className="grid gap-6 xl:grid-cols-[1.4fr_0.8fr]">
-            <Card>
-              <div className="mb-4 flex items-center gap-2">
-                <BarChart3 size={18} style={{ color: colors.accent.primary }} />
-                <h3 className="text-lg font-semibold" style={{ color: colors.text.primary }}>Revenue trend</h3>
-              </div>
-              <div style={{ width: "100%", height: 250 }}>
-                <ResponsiveContainer>
-                  <BarChart data={reportData.chartData}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={colors.border.default} />
-                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: colors.text.muted, fontSize: 12 }} />
-                    <YAxis axisLine={false} tickLine={false} tick={{ fill: colors.text.muted, fontSize: 12 }} />
-                    <Tooltip cursor={{ fill: "transparent" }} contentStyle={{ backgroundColor: colors.background.elevated, borderColor: colors.border.default, borderRadius: radius.lg }} />
-                    <Bar dataKey="amount" fill={colors.accent.primary} radius={[6, 6, 0, 0]} barSize={40} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </Card>
+        {loading ? (
+          <div className="p-8 text-center text-slate-500 bg-[#162032] border border-[#22304A] rounded-3xl animate-pulse">
+            Loading report generators...
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {reportsList.map((rep) => (
+              <div key={rep.id} className="p-5 bg-[#162032] border border-[#22304A] rounded-3xl flex flex-col justify-between space-y-4">
+                <div>
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-[10px] font-bold uppercase text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                      {rep.category}
+                    </span>
+                    <span className="text-[10px] text-slate-400 font-mono font-bold">{rep.formats?.join(" • ")}</span>
+                  </div>
+                  <h3 className="font-bold text-white text-base">{rep.name}</h3>
+                  <p className="text-xs text-slate-400 mt-1">Includes detailed breakdowns, date ranges, and audit timestamps.</p>
+                </div>
 
-            <div className="space-y-6">
-              <Card>
-                <div className="mb-3 flex items-center gap-2">
-                  <Download size={18} style={{ color: colors.accent.primary }} />
-                  <h3 className="text-lg font-semibold" style={{ color: colors.text.primary }}>Export reports</h3>
-                </div>
-                <div className="space-y-2">
-                  <button 
-                    className="w-full rounded-xl px-4 py-2.5 text-sm font-semibold transition hover:opacity-95" 
-                    style={{ background: colors.background.elevated, color: colors.text.primary, border: `1px solid ${colors.border.default}` }} 
-                    onClick={exportToPDF}
+                <div className="flex gap-2 pt-2 border-t border-[#22304A]/60">
+                  <button
+                    onClick={() => handleGenerate(rep.id)}
+                    disabled={generating}
+                    className="flex-1 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 transition"
                   >
-                    Export PDF report
+                    <Download size={14} /> Download {selectedFormat}
                   </button>
-                  <button 
-                    className="w-full rounded-xl px-4 py-2.5 text-sm font-semibold transition hover:opacity-95" 
-                    style={{ background: colors.accent.primary, color: "#FFFFFF" }} 
-                    onClick={exportToCSV}
+                  <button
+                    onClick={() => setEmailModal(rep)}
+                    className="p-2 bg-white/10 hover:bg-white/20 text-slate-200 rounded-xl"
+                    title="Email Report"
                   >
-                    Export Excel (CSV)
+                    <Mail size={16} />
                   </button>
                 </div>
-              </Card>
-              <Card>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.24em]" style={{ color: colors.text.muted }}>Finance pulse</p>
-                <p className="mt-2 text-sm font-medium" style={{ color: colors.text.secondary }}>Track due amounts, revenue recovery, and growth patterns from one place.</p>
-              </Card>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Email Modal */}
+        {emailModal && (
+          <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="bg-[#0b1739] border border-[#22304A] rounded-2xl max-w-md w-full p-6 space-y-4 text-xs text-white">
+              <h3 className="text-lg font-bold border-b border-[#22304A] pb-3">Email Report: {emailModal.name}</h3>
+              <form onSubmit={handleSendEmail} className="space-y-3">
+                <div>
+                  <label className="block text-slate-400 font-bold mb-1">Recipient Email Address *</label>
+                  <input
+                    type="email"
+                    required
+                    value={emailInput}
+                    onChange={(e) => setEmailInput(e.target.value)}
+                    placeholder="e.g. owner@hostel.com"
+                    className="w-full bg-white/5 border border-[#22304A] rounded-xl p-2.5 text-white"
+                  />
+                </div>
+                <div className="flex gap-3 pt-2">
+                  <button type="button" onClick={() => setEmailModal(null)} className="w-1/2 py-2.5 bg-white/10 rounded-xl font-bold">Cancel</button>
+                  <button type="submit" disabled={generating} className="w-1/2 py-2.5 bg-emerald-500 text-slate-950 font-bold rounded-xl hover:bg-emerald-400">
+                    Send Email
+                  </button>
+                </div>
+              </form>
             </div>
           </div>
-        </div>
-      )}
-    </PageContainer>
+        )}
+
+      </PageContainer>
+    </OwnerLayout>
   );
 }

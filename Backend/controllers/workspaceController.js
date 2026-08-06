@@ -258,10 +258,236 @@ const createWorkspaceHostel = async (req, res) => {
   }
 };
 
+// Workspace activity timeline feed
+const getWorkspaceActivity = async (req, res) => {
+  try {
+    const { workspaceId } = req.context;
+    if (!workspaceId) {
+      return res.status(400).json({ success: false, message: "Workspace ID required" });
+    }
+
+    const AuditLog = require("../models/AuditLog");
+    const logs = await AuditLog.find({ workspaceId })
+      .sort({ timestamp: -1 })
+      .limit(20)
+      .lean();
+
+    const activities = logs.map(log => {
+      let title = log.details || `Activity on ${log.entity || "System"}`;
+      if (log.action === "CREATE_RESIDENT") {
+        title = `Resident Admitted: ${log.newValue?.name || "New Resident"}`;
+      } else if (log.action === "CREATE_PAYMENT") {
+        title = `Payment Collected: ₹${log.newValue?.amount || 0}`;
+      } else if (log.action === "CREATE_ROOM") {
+        title = `Room Created: Room ${log.newValue?.roomNumber || ""}`;
+      } else if (log.action === "CREATE_HOSTEL") {
+        title = `Hostel Created: ${log.newValue?.name || ""}`;
+      } else if (log.action === "UPDATE_SUBSCRIPTION") {
+        title = `Subscription Updated`;
+      } else if (log.action === "CREATE_EXPENSE") {
+        title = `Expense Recorded: ₹${log.newValue?.amount || 0}`;
+      }
+
+      return {
+        id: log._id,
+        title,
+        timestamp: log.timestamp || log.createdAt,
+        type: log.actionType || "INFO",
+        entity: log.entity,
+      };
+    });
+
+    res.status(200).json({ success: true, activities });
+  } catch (error) {
+    console.error("getWorkspaceActivity error:", error);
+    res.status(500).json({ success: false, message: "Internal server error" });
+  }
+};
+
+// Workspace universal search
+const workspaceUniversalSearch = async (req, res) => {
+  try {
+    const { workspaceId } = req.context;
+    const query = req.query.q || "";
+
+    if (!workspaceId) {
+      return res.status(400).json({ success: false, message: "Workspace ID required" });
+    }
+
+    if (!query) {
+      return res.status(200).json({
+        success: true,
+        results: { residents: [], rooms: [], payments: [], staff: [], hostels: [] }
+      });
+    }
+
+    const Staff = require("../models/Staff");
+    const regex = new RegExp(query, "i");
+
+    // Resolve workspace hostels
+    const hostels = await Hostel.find({ workspaceId }).select("_id hostelName name city").lean();
+    const hostelIds = hostels.map(h => h._id);
+
+    const [residents, rooms, payments, staff] = await Promise.all([
+      Resident.find({ hostelId: { $in: hostelIds }, name: regex }).limit(10).lean(),
+      Room.find({ hostelId: { $in: hostelIds }, roomNumber: regex }).limit(10).lean(),
+      Payment.find({ hostelId: { $in: hostelIds } })
+        .populate("residentId")
+        .limit(10)
+        .lean(),
+      Staff.find({ hostelId: { $in: hostelIds }, name: regex }).limit(10).lean(),
+    ]);
+
+    const filteredPayments = payments.filter(p => 
+      p.month?.toLowerCase().includes(query.toLowerCase()) || 
+      p.residentId?.name?.toLowerCase().includes(query.toLowerCase())
+    );
+
+    res.status(200).json({
+      success: true,
+      results: {
+        residents: residents.map(r => ({ id: r._id, name: r.name, phone: r.phone, status: r.status })),
+        rooms: rooms.map(rm => ({ id: rm._id, roomNumber: rm.roomNumber, roomType: rm.roomType })),
+        payments: filteredPayments.map(p => ({
+          id: p._id,
+          residentName: p.residentId?.name || "Resident",
+          month: p.month,
+          amount: p.totalRent || p.amount,
+          status: p.status
+        })),
+        staff: staff.map(s => ({ id: s._id, name: s.name, role: s.role || "Staff" })),
+        hostels: hostels.filter(h => (h.hostelName || h.name)?.match(regex)).map(h => ({
+          id: h._id,
+          name: h.hostelName || h.name,
+          city: h.city
+        }))
+      }
+    });
+
+  } catch (error) {
+    console.error("workspaceUniversalSearch error:", error);
+    res.status(500).json({ success: false, message: "Internal server error" });
+  }
+};
+
+// Workspace AI suggestions and insights
+const getWorkspaceInsights = async (req, res) => {
+  try {
+    const { workspaceId } = req.context;
+    if (!workspaceId) {
+      return res.status(400).json({ success: false, message: "Workspace ID required" });
+    }
+
+    const FeatureRegistry = require("../services/FeatureRegistry");
+
+    // Load hostels
+    const hostels = await Hostel.find({ workspaceId }).lean();
+    const hostelIds = hostels.map(h => h._id);
+
+    const insights = [];
+
+    // 1. Occupancy checks
+    for (const hostel of hostels) {
+      const totalRooms = await Room.countDocuments({ hostelId: hostel._id });
+      const occupiedRooms = await Room.countDocuments({ hostelId: hostel._id, occupiedBeds: { $gt: 0 } });
+      const rate = totalRooms > 0 ? (occupiedRooms / totalRooms) * 100 : 0;
+      if (rate < 60 && totalRooms > 0) {
+        insights.push({
+          type: "warning",
+          title: "Low Occupancy warning",
+          description: `Occupancy in ${hostel.hostelName || hostel.name} is below 60% (${rate.toFixed(0)}%).`
+        });
+      }
+    }
+
+    // 2. Pending payment checks
+    const pendingPayments = await Payment.find({ hostelId: { $in: hostelIds }, status: "partial" }).lean();
+    const totalPendingRent = pendingPayments.reduce((sum, p) => sum + (p.balance || 0), 0);
+    if (totalPendingRent > 5000) {
+      insights.push({
+        type: "warning",
+        title: "High Pending Rent",
+        description: `Pending rent has reached ₹${totalPendingRent.toLocaleString()} across your workspace.`
+      });
+    }
+
+    // 3. Top performing hostel
+    if (hostels.length > 1) {
+      let topHostel = null;
+      let topRate = -1;
+      let lowestHostel = null;
+      let lowestRate = 101;
+
+      for (const h of hostels) {
+        const total = await Room.countDocuments({ hostelId: h._id });
+        const occupied = await Room.countDocuments({ hostelId: h._id, occupiedBeds: { $gt: 0 } });
+        const rate = total > 0 ? (occupied / total) * 100 : 0;
+
+        if (rate > topRate) {
+          topRate = rate;
+          topHostel = h;
+        }
+        if (rate < lowestRate) {
+          lowestRate = rate;
+          lowestHostel = h;
+        }
+      }
+
+      if (topHostel && topRate > 0) {
+        insights.push({
+          type: "success",
+          title: "Top Performing Hostel",
+          description: `${topHostel.hostelName || topHostel.name} has the highest occupancy of ${topRate.toFixed(0)}%.`
+        });
+      }
+      if (lowestHostel && lowestRate < 60 && lowestHostel._id !== topHostel?._id) {
+        insights.push({
+          type: "info",
+          title: "Lowest Performing Hostel",
+          description: `${lowestHostel.hostelName || lowestHostel.name} has the lowest occupancy of ${lowestRate.toFixed(0)}%.`
+        });
+      }
+    }
+
+    // 4. Storage warn
+    const storage = await StorageUsage.findOne({ workspaceId }).lean();
+    if (storage) {
+      const limit = await FeatureRegistry.limit(workspaceId, "storage");
+      if (limit && limit !== 999999) {
+        const usagePct = (storage.usedBytes / limit) * 100;
+        if (usagePct >= 80) {
+          insights.push({
+            type: "warning",
+            title: "Storage Capacity Warning",
+            description: `Workspace storage is at ${usagePct.toFixed(0)}% capacity. Clean up or upgrade.`
+          });
+        }
+      }
+    }
+
+    // Fallback if no insights
+    if (insights.length === 0) {
+      insights.push({
+        type: "success",
+        title: "Workspace Healthy",
+        description: "All hostels are performing optimally. Rent collection is on track."
+      });
+    }
+
+    res.status(200).json({ success: true, insights });
+  } catch (error) {
+    console.error("getWorkspaceInsights error:", error);
+    res.status(500).json({ success: false, message: "Internal server error" });
+  }
+};
+
 module.exports = {
   getActiveContext,
   updateActiveContext,
   getWorkspaceOverview,
   listWorkspaceHostels,
   createWorkspaceHostel,
+  getWorkspaceActivity,
+  workspaceUniversalSearch,
+  getWorkspaceInsights,
 };

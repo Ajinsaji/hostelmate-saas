@@ -1,4 +1,3 @@
-import { useTheme } from "../design-system/ThemeProvider";
 import { PageContainer } from "../design-system/layouts/PageContainer";
 import { Card } from "../design-system/components/Card";
 import { useEffect, useState, useCallback } from "react";
@@ -17,9 +16,7 @@ import { api } from "../services/api";
 import toast from "react-hot-toast";
 import StaffAttendanceWidget from "../components/StaffAttendanceWidget";
 
-
 export default function WardenDashboard() {
-  
   const [stats, setStats] = useState({
     residents: 0,
     pendingDues: 0,
@@ -39,7 +36,10 @@ export default function WardenDashboard() {
   }, []);
 
   useEffect(() => {
-    fetchWardenStats();
+    const timer = setTimeout(() => {
+      fetchWardenStats();
+    }, 0);
+    return () => clearTimeout(timer);
   }, [fetchWardenStats]);
 
   return (

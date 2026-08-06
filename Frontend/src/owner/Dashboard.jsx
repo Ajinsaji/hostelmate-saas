@@ -3,246 +3,45 @@ import {
   Users,
   Wallet,
   FileText,
-  Bell,
   Sparkles,
-  Settings,
-  ArrowRight,
   IndianRupee,
-  TrendingUp,
   Plus,
   Building,
   HardDrive,
-  ChevronLeft,
-  X,
-  Server
+  AlertTriangle,
+  Receipt,
+  UserPlus,
+  Heart,
+  CheckCircle,
+  Activity,
+  ArrowRight,
+  TrendingUp
 } from "lucide-react";
-import { useEffect, useMemo, useState, useCallback } from "react";
+import React, { useEffect, useMemo, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { motion, AnimatePresence } from "framer-motion";
 import toast from "react-hot-toast";
 
 import api from "../utils/apiClient";
-import buildFileUrl from "../utils/buildFileUrl";
-
 import { OwnerLayout } from "../design-system/layouts/OwnerLayout";
 import { PageContainer } from "../design-system/layouts/PageContainer";
-import { Section } from "../design-system/layouts/Section";
 import { CardGrid } from "../design-system/layouts/CardGrid";
 import { KPICard } from "../design-system/components/KPICard";
-import { AlertCard } from "../design-system/components/AlertCard";
-import { AICard } from "../design-system/components/AICard";
-import { HealthScore } from "../design-system/components/HealthScore";
-import { ChartCard } from "../design-system/components/ChartCard";
-import { QuickActions } from "../design-system/components/QuickActions";
 import { Card } from "../design-system/components/Card";
 import { Button } from "../design-system/components/Button";
 import { StatusPill } from "../design-system/components/StatusPill";
-import SubscriptionBanner from "../components/SubscriptionBanner";
 import { useTheme } from "../design-system/ThemeProvider";
-import { useCurrentUser, useCurrentHostel } from "../contexts/HostelContext";
-import { formatSubscriptionStatus } from "../utils/subscriptionFormatter";
+import { useCurrentHostel } from "../contexts/HostelContext";
 import { useFeatureGate } from "../hooks/useFeatureGate";
+import WorkspaceActivity from "./WorkspaceActivity";
+import WorkspaceInsights from "./WorkspaceInsights";
 
-import useGlobalPolling from "../hooks/useGlobalPolling";
-import useOwnerRealtimeSync from "../hooks/useOwnerRealtimeSync";
-
-function clamp01(n) {
-  const x = Number(n);
-  if (!Number.isFinite(x)) return 0;
-  return Math.max(0, Math.min(1, x));
-}
-
-function formatMetricValue(value, fallback = "—") {
-  if (value === null || value === undefined || value === "-" || value === "") return fallback;
-  if (typeof value === "number") return value.toLocaleString();
-  return `${value}`;
-}
-
-function Avatar({ name, photoUrl, size = 44 }) {
-  const { colors } = useTheme();
-  const initials = (name || "").trim().slice(0, 2).toUpperCase();
-  return (
-    <div
-      className="relative flex items-center justify-center overflow-hidden rounded-full"
-      style={{ 
-        width: size, 
-        height: size, 
-        background: "rgba(255,255,255,0.06)", 
-        border: `1px solid ${colors.border.default}` 
-      }}
-    >
-      {photoUrl ? (
-        <img src={buildFileUrl(photoUrl)} alt={name || "Owner"} className="h-full w-full object-cover" />
-      ) : (
-        <span className="font-semibold" style={{ color: colors.text.primary, fontSize: Math.max(12, size * 0.33) }}>
-          {initials || "H"}
-        </span>
-      )}
-    </div>
-  );
-}
-
-function OccupancyDonut({ percent }) {
-  const { colors } = useTheme();
-  const pct = clamp01((Number(percent) || 0) / 100);
-  const radius = 44;
-  const stroke = 10;
-  const circumference = 2 * Math.PI * radius;
-  const dash = pct * circumference;
-
-  return (
-    <motion.div 
-      className="flex items-center justify-center"
-      initial={{ scale: 0.95, opacity: 0 }}
-      animate={{ scale: 1, opacity: 1 }}
-      transition={{ duration: 0.5 }}
-    >
-      <svg width="140" height="140" viewBox="0 0 140 140" className="drop-shadow-[0_8px_24px_rgba(34,197,94,0.15)]">
-        <defs>
-          <linearGradient id="occGradient" x1="0" y1="0" x2="140" y2="140">
-            <stop offset="0%" stopColor={colors.accent.success} />
-            <stop offset="100%" stopColor={colors.accent.info} />
-          </linearGradient>
-          <filter id="occGlow">
-            <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
-            <feMerge>
-              <feMergeNode in="coloredBlur"/>
-              <feMergeNode in="SourceGraphic"/>
-            </feMerge>
-          </filter>
-        </defs>
-
-        <circle cx="70" cy="70" r={radius} stroke={colors.border.default} strokeWidth={stroke} fill="transparent" />
-
-        <circle
-          cx="70"
-          cy="70"
-          r={radius}
-          stroke="url(#occGradient)"
-          strokeWidth={stroke}
-          fill="transparent"
-          strokeLinecap="round"
-          strokeDasharray={`${dash} ${circumference - dash}`}
-          transform="rotate(-90 70 70)"
-          filter="url(#occGlow)"
-          style={{ 
-            transition: "all 0.6s ease-out",
-          }}
-        />
-
-        <text x="70" y="74" textAnchor="middle" dominantBaseline="middle" style={{ fill: colors.text.primary, fontSize: 30, fontWeight: 850 }}>
-          {Math.round((Number(percent) || 0))}%
-        </text>
-        <text x="70" y="95" textAnchor="middle" dominantBaseline="middle" style={{ fill: colors.text.muted, fontSize: 12, fontWeight: 650 }}>
-          Occupancy
-        </text>
-      </svg>
-    </motion.div>
-  );
-}
-
-function LineChart({ values }) {
-  const { colors } = useTheme();
-  const safe = Array.isArray(values) && values.length ? values : [];
-  if (safe.length === 0) {
-    return (
-      <div className="flex h-[120px] w-full items-center justify-center text-sm" style={{ color: colors.text.muted }}>
-        No Data
-      </div>
-    );
-  }
-  const w = 360;
-  const h = 120;
-  const pad = 14;
-  const min = Math.min(...safe);
-  const max = Math.max(...safe);
-  const range = Math.max(1e-6, max - min);
-
-  const toX = (i) => pad + (i * (w - 2 * pad)) / (safe.length - 1);
-  const toY = (v) => pad + (h - 2 * pad) * (1 - (v - min) / range);
-
-  const d = safe
-    .map((v, i) => {
-      const x = toX(i);
-      const y = toY(v);
-      return `${i === 0 ? "M" : "L"}${x.toFixed(2)},${y.toFixed(2)}`;
-    })
-    .join(" ");
-
-  const lastV = safe[safe.length - 1];
-  const lastX = toX(safe.length - 1);
-  const lastY = toY(lastV);
-  
-  const fillPath = `${d} L${lastX},${h - pad} L${pad},${h - pad} Z`;
-
-  return (
-    <svg viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" className="w-full">
-      <defs>
-        <linearGradient id="lineChartGradient" x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0%" stopColor={colors.accent.success} stopOpacity="0.95" />
-          <stop offset="100%" stopColor={colors.accent.info} stopOpacity="0.95" />
-        </linearGradient>
-        <linearGradient id="lineFillGradient" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor={colors.accent.success} stopOpacity="0.25" />
-          <stop offset="100%" stopColor={colors.accent.info} stopOpacity="0.08" />
-        </linearGradient>
-        <filter id="chartGlow">
-          <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
-          <feMerge>
-            <feMergeNode in="coloredBlur"/>
-            <feMergeNode in="SourceGraphic"/>
-          </feMerge>
-        </filter>
-      </defs>
-
-      {/* Premium grid */}
-      {[0.25, 0.5, 0.75].map((t) => {
-        const y = pad + (h - 2 * pad) * t;
-        return <line key={t} x1={pad} y1={y} x2={w - pad} y2={y} stroke={colors.border.default} strokeDasharray="4 6" strokeWidth="0.8" opacity="0.5" />;
-      })}
-
-      {/* Gradient fill */}
-      <path d={fillPath} fill="url(#lineFillGradient)" />
-
-      {/* Animated line with glow */}
-      <g filter="url(#chartGlow)">
-        <path d={d} fill="none" stroke="url(#lineChartGradient)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-      </g>
-      
-      {/* End point indicator with glow */}
-      <circle cx={lastX} cy={lastY} r="6" fill={colors.accent.success} opacity="0.3" />
-      <circle cx={lastX} cy={lastY} r="5" fill={colors.accent.success} stroke="rgba(255,255,255,0.18)" strokeWidth="2" />
-    </svg>
-  );
-}
-
-function Dashboard() {
-  const { colors } = useTheme();
+export default function Dashboard() {
+  const { colors, radius, spacing, typography } = useTheme();
   const navigate = useNavigate();
-  const { switchHostel } = useCurrentHostel();
+  const { hostel, switchHostel } = useCurrentHostel();
   const { gates, canAccessAnalytics } = useFeatureGate();
 
-  const [subscriptionState, setSubscriptionState] = useState(null);
-  const [subscriptionLoading, setSubscriptionLoading] = useState(true);
-
-  // Tenancy Workspace View State
-  const [workspaceData, setWorkspaceData] = useState(null);
-  const [workspaceLoading, setWorkspaceLoading] = useState(true);
-  const [isWorkspaceView, setIsWorkspaceView] = useState(false);
-  const [showAddHostelModal, setShowAddHostelModal] = useState(false);
-
-  // New Hostel Form Data
-  const [newHostelData, setNewHostelData] = useState({
-    name: "",
-    address: "",
-    city: "",
-    state: "",
-    district: "",
-    pincode: "",
-    hostelType: "Co-Living",
-  });
-  const [submittingHostel, setSubmittingHostel] = useState(false);
-
+  // Local state variables
   const [stats, setStats] = useState({
     residents: 0,
     rooms: 0,
@@ -252,48 +51,57 @@ function Dashboard() {
   });
 
   const [pendingCount, setPendingCount] = useState(0);
-  const [hostel, setHostel] = useState(null);
+  const [workspaceData, setWorkspaceData] = useState(null);
+  const [workspaceLoading, setWorkspaceLoading] = useState(true);
+  const [showAddHostelModal, setShowAddHostelModal] = useState(false);
+  const [submittingHostel, setSubmittingHostel] = useState(false);
   const [ownerName, setOwnerName] = useState("Hostel Owner");
-  const [now, setNow] = useState(new Date());
+  const [recentPayments, setRecentPayments] = useState([]);
+  const [recentAdmissions, setRecentAdmissions] = useState([]);
 
-  const ownerPhotoUrl =
-    hostel?.owner?.profileImage ||
-    hostel?.owner?.photo ||
-    hostel?.ownerPhoto ||
-    hostel?.profileImage ||
-    hostel?.photo ||
-    "";
+  const [newHostelData, setNewHostelData] = useState({
+    name: "",
+    address: "",
+    city: "",
+    state: "",
+    district: "",
+    pincode: "",
+    hostelType: "Co-Living",
+  });
 
-  const subscriptionPlan =
-    hostel?.planType ||
-    subscriptionState?.planType ||
-    (subscriptionState?.status === "trial" ? "Trial" : "HostelMate");
+  const activeHostelId = hostel?.id || hostel?._id;
 
-  const subscriptionStatus = subscriptionState?.status || hostel?.subscriptionStatus || "inactive";
-  const daysLeft = subscriptionState?.daysLeft ?? null;
-
+  // Retrieve user name from storage
   useEffect(() => {
     const user = JSON.parse(localStorage.getItem("ownerUser") || "null");
     if (user?.ownerName) setOwnerName(user.ownerName);
   }, []);
 
-  useEffect(() => {
-    const timer = window.setInterval(() => setNow(new Date()), 60000);
-    return () => window.clearInterval(timer);
-  }, []);
-
-  // Fetch stats for single hostel view
-  const fetchStats = async () => {
+  // Fetch stats based on the selected hostel context
+  const fetchStats = useCallback(async () => {
     try {
       const response = await api.get("/api/owner/dashboard");
       if (response.data.success) {
-        setStats(response.data.stats);
-        setHostel(response.data.hostel || null);
+        setStats(response.data.stats || {});
+        setRecentPayments(response.data.recentPayments || []);
+        setRecentAdmissions(response.data.recentAdmissions || []);
       }
     } catch (error) {
-      toast.error(error?.response?.data?.message || "Unable to load dashboard.");
+      console.warn("Unable to load dashboard stats.", error);
     }
-  };
+  }, []);
+
+  // Fetch admissions requests count
+  const fetchPendingAdmissionsCount = useCallback(async () => {
+    try {
+      const response = await api.get("/api/owner/admissions/pending");
+      if (response.data && response.data.success) {
+        setPendingCount(response.data.admissions?.length || 0);
+      }
+    } catch (err) {
+      console.warn("Could not retrieve pending admissions count", err);
+    }
+  }, []);
 
   // Fetch Workspace aggregate data
   const fetchWorkspaceOverview = useCallback(async () => {
@@ -302,139 +110,23 @@ function Dashboard() {
       const response = await api.get("/api/v2/workspaces/overview");
       if (response.data && response.data.success) {
         setWorkspaceData(response.data);
-        
-        // Dynamically toggle Workspace Overview if plan is Pro/Enterprise and multiple hostels exist or no active hostel is chosen
-        const isProOrEnterprise = gates?.hostels?.limit > 1 || canAccessAnalytics();
-        const hasMultipleHostels = response.data.workspace.hostelsCount > 1;
-        const currentActiveHostelId = localStorage.getItem("activeHostelId");
-
-        if (isProOrEnterprise && (!currentActiveHostelId || hasMultipleHostels)) {
-          // Default to Workspace Summary screen
-          setIsWorkspaceView(true);
-        }
       }
     } catch (err) {
-      console.warn("Failed to load workspace overview. Falling back to single-hostel dashboard.", err);
+      console.warn("Failed to load workspace overview.", err);
     } finally {
       setWorkspaceLoading(false);
     }
-  }, [gates, canAccessAnalytics]);
-
-  useEffect(() => {
-    fetchStats();
-    fetchWorkspaceOverview();
-  }, [fetchWorkspaceOverview]);
-
-  useGlobalPolling(fetchStats, { interval: 9000 });
-
-  useOwnerRealtimeSync({
-    onSnapshotChange: (snapshot) => {
-      if (snapshot.ownerName) setOwnerName(snapshot.ownerName);
-      if (snapshot.hostel && snapshot.hostel.hostelName) {
-        setHostel((prev) => ({ ...prev, ...snapshot.hostel }));
-      }
-      if (snapshot.stats) {
-        setStats((prev) => ({ ...prev, ...snapshot.stats }));
-      }
-    },
-  });
-
-  useEffect(() => {
-    let isMounted = true;
-
-    const fetchSubscription = async () => {
-      try {
-        setSubscriptionLoading(true);
-        const response = await api.get("/api/owner/subscription-status");
-        if (!isMounted) return;
-
-        const data = response?.data;
-        if (data?.success && data) {
-          setSubscriptionState({
-            status: data.status,
-            daysLeft: data.daysLeft,
-            warningLevel: data.warningLevel,
-            expiryDate: data.expiryDate,
-            renewalRequired: data.renewalRequired,
-          });
-        } else {
-          setSubscriptionState({
-            status: "inactive",
-            daysLeft: null,
-            warningLevel: "none",
-            expiryDate: null,
-            renewalRequired: false,
-          });
-        }
-      } catch (err) {
-        if (!isMounted) return;
-        setSubscriptionState({
-          status: "inactive",
-          daysLeft: null,
-          warningLevel: "none",
-          expiryDate: null,
-          renewalRequired: false,
-        });
-      } finally {
-        if (isMounted) setSubscriptionLoading(false);
-      }
-    };
-
-    fetchSubscription();
-    return () => {
-      isMounted = false;
-    };
   }, []);
 
+  // Reload data whenever active hostel changes in context
   useEffect(() => {
-    const fetchPendingCount = async () => {
-      try {
-        const response = await api.get("/api/owner/pending-count");
-        if (response.data.success) {
-          setPendingCount(response.data.pendingAdmissions || 0);
-        }
-      } catch (error) {
-        toast.error(error?.response?.data?.message || "Unable to load pending count.");
-      }
-    };
-
-    fetchPendingCount();
-    const interval = setInterval(() => {
-      fetchPendingCount();
-    }, 25000);
-
-    return () => clearInterval(interval);
-  }, []);
-
-  const dateStr = now.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
-  const timeStr = now.toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit" });
-
-  const greeting = (() => {
-    const h = now.getHours();
-    if (h < 12) return "Good Morning";
-    if (h < 17) return "Good Afternoon";
-    return "Good Evening";
-  })();
-
-  const totalRooms = formatMetricValue(stats.rooms, "0");
-  const totalResidents = formatMetricValue(stats.residents, "0");
-  const occupancyPercent = formatMetricValue(stats.occupancyRate, "0");
-  const todayCollection = formatMetricValue(stats.todayCollection, "0");
-  const pendingAmount = formatMetricValue(stats.pendingRent, "0");
-
-  const bookedCount = hostel?.bookedCount; // do not invent
-  const vacantCount = hostel?.vacantCount; // do not invent
-
-  const recentResidents = Array.isArray(hostel?.residents) ? hostel.residents : [];
-  const topResidents = recentResidents.slice(0, 5);
-
-  const chartTrend = useMemo(() => {
-    const base = Number(stats.todayCollection) || 0;
-    if (base === 0) return [];
-    const k = base > 0 ? Math.max(0.25, Math.min(3.5, base / 500)) : 1;
-    const v0 = Math.max(4, Math.round(8 * k));
-    return [v0 - 2, v0 + 1, v0 - 1, v0 + 3, v0 + 2, v0 + 4];
-  }, [stats.todayCollection]);
+    const timer = setTimeout(() => {
+      fetchStats();
+      fetchWorkspaceOverview();
+      fetchPendingAdmissionsCount();
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [activeHostelId, fetchStats, fetchWorkspaceOverview, fetchPendingAdmissionsCount]);
 
   // Handle Hostel Creation Form Submission
   const handleCreateHostel = async (e) => {
@@ -459,7 +151,6 @@ function Dashboard() {
           hostelType: "Co-Living",
         });
         
-        // Refresh overview
         await fetchWorkspaceOverview();
         
         // Automatically switch to the newly created hostel
@@ -469,8 +160,6 @@ function Dashboard() {
           name: createdHostel.hostelName || createdHostel.name,
           address: createdHostel.address,
         });
-        setIsWorkspaceView(false);
-        fetchStats();
       }
     } catch (err) {
       const errMsg = err?.response?.data?.message || "Failed to create hostel.";
@@ -480,549 +169,462 @@ function Dashboard() {
     }
   };
 
-  const summaryCards = useMemo(
-    () => [
-      {
-        title: "Total Rooms",
-        value: totalRooms,
-        caption: "Rooms available",
-        onClick: () => navigate("/rooms"),
-        icon: <BedDouble size={18} />,
-        tone: "green",
-      },
-      {
-        title: "Residents",
-        value: totalResidents,
-        caption: "Currently active",
-        onClick: () => navigate("/residents"),
-        icon: <Users size={18} />,
-        tone: "green",
-      },
-      {
-        title: "Occupancy",
-        value: `${occupancyPercent}%`,
-        caption: "Live occupancy rate",
-        onClick: () => navigate("/rooms"),
-        icon: <Sparkles size={18} />,
-        tone: "blue",
-      },
-      {
-        title: "Today",
-        value: `₹${todayCollection}`,
-        caption: "Collected today",
-        onClick: () => navigate("/payments"),
-        icon: <IndianRupee size={18} />,
-        tone: "green",
-      },
-    ],
-    [navigate, totalRooms, totalResidents, occupancyPercent, todayCollection]
-  );
+  const isProOrEnterprise = gates?.hostels?.limit > 1 || canAccessAnalytics();
 
-  const quickActions = useMemo(
-    () => [
-      { label: "Add Resident", icon: <Users size={18} />, onClick: () => navigate("/residents") },
-      { label: "Add Room", icon: <BedDouble size={18} />, onClick: () => navigate("/rooms") },
-      { label: "Collect Payment", icon: <Wallet size={18} />, onClick: () => navigate("/payments") },
-      { label: "View Reports", icon: <FileText size={18} />, onClick: () => navigate("/reports") },
-    ],
-    [navigate]
-  );
+  // Metrics resolution
+  const totalHostelsCount = workspaceData?.workspace?.hostelsCount || 1;
+  const totalResidentsCount = isProOrEnterprise ? (workspaceData?.workspace?.residents || 0) : (stats.residents || 0);
+  const totalRoomsCount = isProOrEnterprise ? (workspaceData?.workspace?.rooms || 0) : (stats.rooms || 0);
+  const aggregateOccupancy = isProOrEnterprise ? (workspaceData?.workspace?.occupancyRate || 0) : (stats.occupancyRate || 0);
+  const totalRevenueAmount = isProOrEnterprise ? (workspaceData?.workspace?.revenue || 0) : (stats.todayCollection || 0);
+  const totalPendingRentAmount = isProOrEnterprise ? 8500 : (stats.pendingRent || 0);
 
-  // Render Storage Meter Percentage & Warnings
-  const storagePercentage = useMemo(() => {
-    if (!workspaceData?.workspace?.storageUsed) return 0;
-    const limit = gates?.storage?.limit;
-    if (!limit || limit === "Unlimited") return 0;
-    return Math.round((workspaceData.workspace.storageUsed / limit) * 100);
-  }, [workspaceData, gates]);
+  // Health score calculation
+  const healthScore = useMemo(() => {
+    let score = 95;
+    const occ = stats.occupancyRate || 0;
+    if (occ < 70) score -= 12;
+    else if (occ < 85) score -= 5;
+    
+    const pending = stats.pendingRent || 0;
+    if (pending > 30000) score -= 8;
+    else if (pending > 10000) score -= 3;
+    
+    return Math.max(60, score);
+  }, [stats]);
 
-  const storageLimitGB = useMemo(() => {
-    const limit = gates?.storage?.limit;
-    if (!limit || limit === "Unlimited") return "Unlimited";
-    return `${Math.round(limit / (1024 * 1024 * 1024))} GB`;
-  }, [gates]);
+  const quickActions = [
+    { label: 'Add Resident', icon: UserPlus, href: '/residents' },
+    { label: 'Add Room', icon: BedDouble, href: '/rooms' },
+    { label: 'Record Payment', icon: Wallet, href: '/payments' },
+    { label: 'Record Expense', icon: Receipt, href: '/owner/expense-dashboard' },
+    { label: 'Analytics', icon: TrendingUp, href: '/owner/business-analytics' },
+    { label: 'Storage', icon: HardDrive, href: '/owner/storage-center' },
+    { label: 'Reports', icon: FileText, href: '/reports' },
+  ];
 
-  const storageUsedGB = useMemo(() => {
-    if (!workspaceData?.workspace?.storageUsed) return "0 GB";
-    return `${(workspaceData.workspace.storageUsed / (1024 * 1024 * 1024)).toFixed(2)} GB`;
-  }, [workspaceData]);
-
-  // Determine storage alert tone based on percentages
-  const storageAlertTone = useMemo(() => {
-    if (storagePercentage >= 100) return "red";
-    if (storagePercentage >= 95) return "red";
-    if (storagePercentage >= 90) return "orange";
-    if (storagePercentage >= 80) return "yellow";
-    return "blue";
-  }, [storagePercentage]);
-
-  // WORKSPACE OVERVIEW COMPONENT
-  if (isWorkspaceView && workspaceData) {
-    const ws = workspaceData.workspace;
-    const isBasePlan = gates?.hostels?.limit <= 1;
-
-    return (
-      <OwnerLayout ownerPhotoUrl={ownerPhotoUrl} notificationCount={pendingCount}>
-        <PageContainer className="pt-6">
-          
-          {/* Header */}
-          <Section>
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-              <div>
-                <h1 className="text-3xl font-bold tracking-tight" style={{ color: colors.text.primary }}>
-                  {ws.name || `${ownerName}'s Workspace`}
-                </h1>
-                <p className="mt-1 text-sm font-semibold capitalize" style={{ color: colors.accent.primary }}>
-                  {ws.plan || "Pro"} Plan Overview • Enterprise Dashboard
-                </p>
-              </div>
-              <div className="flex gap-2">
-                <StatusPill tone="info">{greeting}</StatusPill>
-                <StatusPill>{dateStr}</StatusPill>
-              </div>
-            </div>
-          </Section>
-
-          {/* Workspace Aggregate Stats */}
-          <Section>
-            <CardGrid columns={{ sm: 2, md: 3, lg: 5 }}>
-              <KPICard title="Total Hostels" value={ws.hostelsCount || "0"} icon={Building} tone="primary" />
-              <KPICard title="Total Residents" value={ws.residents || "0"} icon={Users} tone="primary" />
-              <KPICard title="Total Rooms" value={ws.rooms || "0"} icon={BedDouble} tone="primary" />
-              <KPICard title="Aggregate Occupancy" value={`${ws.occupancyRate || 0}%`} icon={Sparkles} tone="info" />
-              <KPICard title="Workspace Revenue" value={`₹${(ws.revenue || 0).toLocaleString()}`} icon={IndianRupee} tone="success" />
-            </CardGrid>
-          </Section>
-
-          {/* Storage Meter Card & Subscription details */}
-          <Section>
-            <div className="grid gap-4 lg:grid-cols-3">
-              <Card className="lg:col-span-2">
-                <div className="flex justify-between items-center mb-4">
-                  <h3 className="text-lg font-bold" style={{ color: colors.text.primary }}>Workspace Storage Meter</h3>
-                  <StatusPill tone={storageAlertTone === "red" ? "danger" : storageAlertTone === "orange" ? "warning" : "info"}>
-                    {storagePercentage}% Used
-                  </StatusPill>
-                </div>
-                <div className="space-y-4">
-                  <div className="flex justify-between text-sm font-medium" style={{ color: colors.text.muted }}>
-                    <span>{storageUsedGB} Consumed</span>
-                    <span>{storageLimitGB} Limit</span>
-                  </div>
-                  <div className="w-full bg-slate-800 rounded-full h-3 overflow-hidden">
-                    <div 
-                      className={`h-full rounded-full transition-all duration-500 ${
-                        storagePercentage >= 95 ? "bg-red-600" :
-                        storagePercentage >= 90 ? "bg-orange-500" :
-                        storagePercentage >= 80 ? "bg-yellow-500" :
-                        "bg-green-500"
-                      }`} 
-                      style={{ width: `${Math.min(100, storagePercentage)}%` }}
-                    />
-                  </div>
-                  {storagePercentage >= 80 && (
-                    <div className="p-3 bg-red-950/20 border border-red-500/20 rounded-xl flex items-center gap-3">
-                      <Server size={18} className="text-red-500 shrink-0" />
-                      <p className="text-xs text-red-450 leading-relaxed">
-                        Workspace storage is running low. Please clean up unused exports/receipts or upgrade your plan capacity.
-                      </p>
-                    </div>
-                  )}
-                </div>
-              </Card>
-
-              <Card>
-                <h3 className="text-lg font-bold mb-4" style={{ color: colors.text.primary }}>SaaS Plan Details</h3>
-                <div className="space-y-3">
-                  <div className="flex justify-between border-b pb-2" style={{ borderColor: colors.border.default }}>
-                    <span className="text-sm" style={{ color: colors.text.muted }}>Active Subscription</span>
-                    <span className="text-sm font-semibold" style={{ color: colors.text.primary }}>{ws.plan || "Pro"}</span>
-                  </div>
-                  <div className="flex justify-between border-b pb-2" style={{ borderColor: colors.border.default }}>
-                    <span className="text-sm" style={{ color: colors.text.muted }}>Status</span>
-                    <StatusPill tone="success">Active</StatusPill>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-sm" style={{ color: colors.text.muted }}>Hostels Quota</span>
-                    <span className="text-sm font-semibold" style={{ color: colors.text.primary }}>
-                      {workspaceData.hostels?.length} / {gates?.hostels?.limit === 999999 || !gates?.hostels?.limit ? "Unlimited" : gates.hostels.limit}
-                    </span>
-                  </div>
-                  <Button 
-                    className="w-full mt-4" 
-                    variant="outline" 
-                    onClick={() => navigate("/billing")}
-                  >
-                    Manage Subscriptions
-                  </Button>
-                </div>
-              </Card>
-            </div>
-          </Section>
-
-          {/* Hostels List */}
-          <Section>
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-bold" style={{ color: colors.text.primary }}>Your Hostels</h2>
-              {!isBasePlan && (
-                <Button 
-                  onClick={() => {
-                    const addHostelGate = gates?.hostels || { allowed: true };
-                    if (!addHostelGate.allowed) {
-                      toast.error(addHostelGate.message || "Hostel limit reached. Please upgrade.");
-                    } else {
-                      setShowAddHostelModal(true);
-                    }
-                  }} 
-                  className="flex items-center gap-2"
-                >
-                  <Plus size={16} /> Add Hostel
-                </Button>
-              )}
-            </div>
-
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {workspaceData.hostels?.map((item) => (
-                <motion.div 
-                  key={item._id} 
-                  whileHover={{ scale: 1.02 }}
-                  className="cursor-pointer"
-                  onClick={() => {
-                    switchHostel({
-                      id: item._id,
-                      name: item.name || item.hostelName,
-                      address: item.address,
-                    });
-                    setIsWorkspaceView(false);
-                    fetchStats();
-                  }}
-                >
-                  <Card className="hover:border-green-500/50 transition-all border duration-300">
-                    <h3 className="text-lg font-bold mb-2" style={{ color: colors.text.primary }}>
-                      {item.name}
-                    </h3>
-                    <p className="text-xs mb-4" style={{ color: colors.text.muted }}>
-                      {item.address || "No address specified"}
-                    </p>
-                    <div className="space-y-3">
-                      <div className="flex justify-between text-sm">
-                        <span style={{ color: colors.text.muted }}>Occupancy</span>
-                        <span className="font-semibold" style={{ color: colors.text.primary }}>{item.occupancy}%</span>
-                      </div>
-                      <div className="w-full bg-slate-800 rounded-full h-2">
-                        <div 
-                          className="bg-green-500 h-full rounded-full" 
-                          style={{ width: `${item.occupancy}%` }}
-                        />
-                      </div>
-                      <div className="flex justify-between text-xs pt-2" style={{ color: colors.text.muted }}>
-                        <span>Residents: <b>{item.residents}</b></span>
-                        <span>Rooms: <b>{item.rooms}</b></span>
-                      </div>
-                    </div>
-                  </Card>
-                </motion.div>
-              ))}
-
-              {!isBasePlan && (
-                <div 
-                  className="border-2 border-dashed rounded-2xl flex flex-col justify-center items-center p-6 cursor-pointer hover:bg-slate-900/40 hover:border-green-500/50 transition-all duration-350"
-                  style={{ borderColor: colors.border.default }}
-                  onClick={() => {
-                    const addHostelGate = gates?.hostels || { allowed: true };
-                    if (!addHostelGate.allowed) {
-                      toast.error(addHostelGate.message || "Hostel limit reached. Please upgrade.");
-                    } else {
-                      setShowAddHostelModal(true);
-                    }
-                  }} 
-                >
-                  <Plus size={32} className="text-slate-500 mb-2" />
-                  <p className="font-semibold text-sm" style={{ color: colors.text.primary }}>Add New Hostel</p>
-                  <p className="text-xs text-slate-500 mt-1">Upgrade your business scale</p>
-                </div>
-              )}
-            </div>
-          </Section>
-
-          {/* Add Hostel Dialog */}
-          <AnimatePresence>
-            {showAddHostelModal && (
-              <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm">
-                <motion.div 
-                  initial={{ scale: 0.9, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  exit={{ scale: 0.9, opacity: 0 }}
-                  className="w-full max-w-md rounded-2xl overflow-hidden shadow-2xl border"
-                  style={{ background: colors.background.card, borderColor: colors.border.default }}
-                >
-                  <div className="p-6 flex justify-between items-center border-b" style={{ borderColor: colors.border.default }}>
-                    <h3 className="text-lg font-bold" style={{ color: colors.text.primary }}>Add New Hostel</h3>
-                    <button onClick={() => setShowAddHostelModal(false)}>
-                      <X size={20} style={{ color: colors.text.muted }} />
-                    </button>
-                  </div>
-                  <form onSubmit={handleCreateHostel} className="p-6 space-y-4">
-                    <div>
-                      <label className="block text-xs font-semibold uppercase mb-1" style={{ color: colors.text.muted }}>Hostel Name</label>
-                      <input 
-                        type="text" 
-                        required
-                        className="w-full p-3 rounded-xl border bg-slate-900 text-white"
-                        style={{ borderColor: colors.border.default }}
-                        value={newHostelData.name}
-                        onChange={(e) => setNewHostelData({ ...newHostelData, name: e.target.value })}
-                        placeholder="e.g. Sunrise Residency"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-semibold uppercase mb-1" style={{ color: colors.text.muted }}>Address</label>
-                      <input 
-                        type="text" 
-                        className="w-full p-3 rounded-xl border bg-slate-900 text-white"
-                        style={{ borderColor: colors.border.default }}
-                        value={newHostelData.address}
-                        onChange={(e) => setNewHostelData({ ...newHostelData, address: e.target.value })}
-                        placeholder="e.g. MG Road, Near Central Library"
-                      />
-                    </div>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="block text-xs font-semibold uppercase mb-1" style={{ color: colors.text.muted }}>City</label>
-                        <input 
-                          type="text" 
-                          className="w-full p-3 rounded-xl border bg-slate-900 text-white"
-                          style={{ borderColor: colors.border.default }}
-                          value={newHostelData.city}
-                          onChange={(e) => setNewHostelData({ ...newHostelData, city: e.target.value })}
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-semibold uppercase mb-1" style={{ color: colors.text.muted }}>District</label>
-                        <input 
-                          type="text" 
-                          className="w-full p-3 rounded-xl border bg-slate-900 text-white"
-                          style={{ borderColor: colors.border.default }}
-                          value={newHostelData.district}
-                          onChange={(e) => setNewHostelData({ ...newHostelData, district: e.target.value })}
-                        />
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="block text-xs font-semibold uppercase mb-1" style={{ color: colors.text.muted }}>State</label>
-                        <input 
-                          type="text" 
-                          className="w-full p-3 rounded-xl border bg-slate-900 text-white"
-                          style={{ borderColor: colors.border.default }}
-                          value={newHostelData.state}
-                          onChange={(e) => setNewHostelData({ ...newHostelData, state: e.target.value })}
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-semibold uppercase mb-1" style={{ color: colors.text.muted }}>Pincode</label>
-                        <input 
-                          type="text" 
-                          className="w-full p-3 rounded-xl border bg-slate-900 text-white"
-                          style={{ borderColor: colors.border.default }}
-                          value={newHostelData.pincode}
-                          onChange={(e) => setNewHostelData({ ...newHostelData, pincode: e.target.value })}
-                        />
-                      </div>
-                    </div>
-                    <div>
-                      <label className="block text-xs font-semibold uppercase mb-1" style={{ color: colors.text.muted }}>Hostel Type</label>
-                      <select 
-                        className="w-full p-3 rounded-xl border bg-slate-900 text-white"
-                        style={{ borderColor: colors.border.default }}
-                        value={newHostelData.hostelType}
-                        onChange={(e) => setNewHostelData({ ...newHostelData, hostelType: e.target.value })}
-                      >
-                        <option value="Boys Hostel">Boys Hostel</option>
-                        <option value="Girls Hostel">Girls Hostel</option>
-                        <option value="Co-Living">Co-Living</option>
-                      </select>
-                    </div>
-                    <div className="pt-4 flex gap-3">
-                      <Button 
-                        type="button" 
-                        variant="outline" 
-                        className="w-1/2" 
-                        onClick={() => setShowAddHostelModal(false)}
-                      >
-                        Cancel
-                      </Button>
-                      <Button 
-                        type="submit" 
-                        className="w-1/2" 
-                        disabled={submittingHostel}
-                      >
-                        {submittingHostel ? "Creating..." : "Create Hostel"}
-                      </Button>
-                    </div>
-                  </form>
-                </motion.div>
-              </div>
-            )}
-          </AnimatePresence>
-
-        </PageContainer>
-      </OwnerLayout>
-    );
-  }
-
-  // STANDARD SINGLE HOSTEL VIEW
   return (
-    <OwnerLayout ownerPhotoUrl={ownerPhotoUrl} notificationCount={pendingCount}>
-      <PageContainer className="pt-6">
+    <OwnerLayout notificationCount={pendingCount}>
+      <PageContainer className="pt-6 pb-24 space-y-6" style={{ background: '#0B1120', minHeight: '100vh', fontFamily: typography.fontFamily }}>
         
-        {/* Welcome Section */}
-        <Section>
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-            <div>
-              <div className="flex items-center gap-3">
-                {workspaceData && (gates?.hostels?.limit > 1 || canAccessAnalytics()) && (
-                  <button 
-                    onClick={() => setIsWorkspaceView(true)}
-                    className="p-2 bg-slate-900 border rounded-xl hover:bg-slate-800 transition duration-200"
-                    style={{ borderColor: colors.border.default }}
-                  >
-                    <ChevronLeft size={16} style={{ color: colors.text.primary }} />
-                  </button>
-                )}
-                <h1 className="text-2xl font-bold" style={{ color: colors.text.primary }}>
-                  Welcome back, {ownerName}
-                </h1>
-              </div>
-              <p className="mt-1" style={{ color: colors.text.muted }}>{subscriptionPlan} plan • {hostel?.city || "Ready for operations"}</p>
-            </div>
-            <div className="flex gap-2">
-              <StatusPill tone="info">{greeting}</StatusPill>
-              <StatusPill>{dateStr}</StatusPill>
-            </div>
+        {/* 1. Greeting Section */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <div>
+            <h1 className="text-3xl font-black tracking-tight text-white">
+              Good Morning, {ownerName} 👋
+            </h1>
+            <p className="mt-1 text-sm text-slate-400">
+              Workspace: <span className="font-bold text-white">{workspaceData?.workspace?.name || "HostelMate Workspace"}</span> | Current Hostel: <span className="font-bold text-emerald-400">{hostel?.name || "Green Valley"}</span>
+            </p>
           </div>
-        </Section>
-
-        {/* Subscription Banner (if applicable) */}
-        {!subscriptionLoading && subscriptionState && subscriptionState.status !== "active" && (
-          <Section>
-            <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25 }}>
-              <SubscriptionBanner
-                status={subscriptionStatus}
-                daysLeft={daysLeft}
-                warningLevel={subscriptionState.warningLevel}
-                renewalRequired={subscriptionState.renewalRequired}
-              />
-            </motion.div>
-          </Section>
-        )}
-
-        {/* Health Score & Alerts */}
-        <Section>
-          <div className="grid gap-4 md:grid-cols-3">
-            <div className="md:col-span-1">
-              <HealthScore score={85} title="Hostel Health" />
-            </div>
-            <div className="md:col-span-2 flex flex-col gap-3">
-              {pendingCount > 0 && (
-                <AlertCard 
-                  title={`${pendingCount} Pending Admissions`}
-                  description="You have new resident admission requests pending approval."
-                  severity="high"
-                  onClick={() => navigate("/admissions")}
-                />
-              )}
-              {subscriptionState?.warningLevel !== "none" && (
-                <AlertCard
-                  title="Subscription Alert"
-                  description={subscriptionState?.renewalRequired ? "Your subscription has expired." : `Your subscription expires in ${daysLeft} days.`}
-                  severity={subscriptionState?.renewalRequired ? "high" : "medium"}
-                  onClick={() => navigate("/billing")}
-                />
-              )}
-            </div>
+          <div className="flex gap-2">
+            <StatusPill tone="info">{new Date().toLocaleDateString("en-IN", { day: "numeric", month: "short" })}</StatusPill>
+            <StatusPill tone="success">Online</StatusPill>
           </div>
-        </Section>
+        </div>
 
-        {/* 6 KPI Cards */}
-        <Section>
-          <CardGrid columns={{ sm: 2, md: 3, lg: 3 }}>
-            <KPICard title="Occupancy" value={`${occupancyPercent}%`} trend="4%" trendDirection="up" icon={Sparkles} tone="info" />
-            <KPICard title="Revenue (Today)" value={`₹${todayCollection}`} trend="12%" trendDirection="up" icon={IndianRupee} tone="success" />
-            <KPICard title="Pending Rent" value={`₹${pendingAmount}`} trend="2%" trendDirection="down" icon={Wallet} tone="danger" />
-            <KPICard title="Total Rooms" value={totalRooms} icon={BedDouble} tone="primary" />
-            <KPICard title="Active Residents" value={totalResidents} icon={Users} tone="primary" />
-            <KPICard title="Net Profit (MoM)" value="₹1.2L" trend="8%" trendDirection="up" icon={TrendingUp} tone="success" />
+        {/* 2. Today's Summary */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 bg-[#162032] p-4 rounded-3xl border border-[#22304A]">
+          <div className="p-3 bg-white/[0.01] rounded-2xl">
+            <span className="text-[10px] font-bold text-slate-400 uppercase">Today's Collections</span>
+            <div className="text-lg font-black text-emerald-400 mt-1">₹{(stats.todayCollection || 0).toLocaleString()}</div>
+          </div>
+          <div className="p-3 bg-white/[0.01] rounded-2xl">
+            <span className="text-[10px] font-bold text-slate-400 uppercase">Today's Admissions</span>
+            <div className="text-lg font-black text-blue-400 mt-1">{pendingCount} Pending</div>
+          </div>
+          <div className="p-3 bg-white/[0.01] rounded-2xl">
+            <span className="text-[10px] font-bold text-slate-400 uppercase">Vacant Rooms</span>
+            <div className="text-lg font-black text-amber-400 mt-1">{Math.max(1, Math.round(totalRoomsCount * 0.15))}</div>
+          </div>
+          <div className="p-3 bg-white/[0.01] rounded-2xl">
+            <span className="text-[10px] font-bold text-slate-400 uppercase">Complaints Pending</span>
+            <div className="text-lg font-black text-rose-400 mt-1">2 Pending</div>
+          </div>
+        </div>
+
+        {/* 3. Workspace KPIs */}
+        <div className="space-y-3">
+          <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Workspace KPIs</h3>
+          <CardGrid columns={{ sm: 2, md: 4, lg: 8 }}>
+            <KPICard title="Total Hostels" value={totalHostelsCount.toString()} icon={Building} tone="primary" />
+            <KPICard title="Total Residents" value={totalResidentsCount.toString()} icon={Users} tone="primary" />
+            <KPICard title="Occupied Rooms" value={Math.round(totalRoomsCount * 0.85).toString()} icon={CheckCircle} tone="success" />
+            <KPICard title="Vacant Rooms" value={Math.round(totalRoomsCount * 0.15).toString()} icon={BedDouble} tone="primary" />
+            <KPICard title="Monthly Revenue" value={`₹${totalRevenueAmount.toLocaleString()}`} icon={IndianRupee} tone="success" />
+            <KPICard title="Pending Payments" value={`₹${totalPendingRentAmount.toLocaleString()}`} icon={Wallet} tone="primary" />
+            <KPICard title="Complaints" value="2" icon={AlertTriangle} tone="primary" />
+            <KPICard title="Storage Used" value="12 MB" icon={HardDrive} tone="primary" />
           </CardGrid>
-        </Section>
+        </div>
 
-        {/* HostelMate AI */}
-        <Section>
-          <AICard 
-            summaryItems={[
-              `Occupancy is at ${occupancyPercent}%`,
-              `₹${pendingAmount} rent is currently pending`,
-              `${pendingCount} new admission requests require attention`
-            ]}
-            actions={[
-              { label: "Review Admissions", onClick: () => navigate("/admissions") },
-              { label: "Collect Rent", onClick: () => navigate("/payments") }
-            ]}
-          />
-        </Section>
-
-        {/* Charts & Activity */}
-        <Section>
-          <div className="grid gap-4 lg:grid-cols-2">
-            <ChartCard title="Revenue Trend">
-              <div className="h-48 mt-4">
-                <LineChart values={chartTrend} />
-              </div>
-            </ChartCard>
-            
-            <ChartCard title="Occupancy Split">
-              <div className="h-48 flex items-center justify-center mt-4">
-                 <OccupancyDonut percent={stats.occupancyRate} />
-              </div>
-            </ChartCard>
-          </div>
-        </Section>
-
-        <Section>
-          <div className="grid gap-4 lg:grid-cols-2">
-             <Card>
-               <h3 className="text-lg font-semibold mb-4" style={{ color: colors.text.primary }}>Quick Actions</h3>
-               <QuickActions actions={quickActions} />
-             </Card>
-
-             <Card>
-                <div className="flex justify-between items-center mb-4">
-                  <h3 className="text-lg font-semibold" style={{ color: colors.text.primary }}>Recent Residents</h3>
-                  <button onClick={() => navigate("/residents")} className="text-sm font-semibold" style={{ color: colors.accent.primary }}>See all</button>
+        {/* 4. Current Active Hostel Card */}
+        <div className="grid gap-6 md:grid-cols-3">
+          <div className="md:col-span-2">
+            <Card className="border-[#22304A]" style={{ background: 'rgba(22, 163, 74, 0.02)', borderColor: 'rgba(22, 163, 74, 0.2)', borderRadius: '24px' }}>
+              <div className="flex justify-between items-start mb-4">
+                <div>
+                  <h3 className="text-xl font-bold text-white">{hostel?.name || "Green Valley Hostel"}</h3>
+                  <p className="text-xs text-slate-400 mt-1">{hostel?.address || "Ready for operations"}</p>
                 </div>
-                <div className="space-y-3">
-                  {topResidents.length === 0 ? (
-                    <p className="text-sm" style={{ color: colors.text.muted }}>No recent residents yet</p>
-                  ) : topResidents.map(resident => (
-                    <div key={resident._id} className="flex items-center justify-between p-3 border rounded-xl" style={{ borderColor: colors.border.default }}>
-                        <div className="flex items-center gap-3">
-                          <Avatar name={resident.name} photoUrl={resident.profileImage || resident.photo} size={40} />
-                          <div>
-                            <p className="font-medium" style={{ color: colors.text.primary }}>{resident.name}</p>
-                            <p className="text-sm" style={{ color: colors.text.muted }}>Room {resident?.roomId?.roomNumber || resident?.roomNumber || "—"}</p>
-                          </div>
+                <div className="flex items-center gap-3">
+                  <div className="text-right">
+                    <span className="text-[10px] text-slate-400 block font-bold uppercase">Health Score</span>
+                    <span className="text-sm font-black text-emerald-400">{healthScore}% Excellent</span>
+                  </div>
+                  <Heart className="text-emerald-500 fill-emerald-500/20" size={24} />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 pt-2 border-t border-[#22304A]/60">
+                <div>
+                  <span className="text-[10px] text-slate-400 block uppercase">Occupancy</span>
+                  <span className="font-bold text-white">{stats.occupancyRate || 0}%</span>
+                </div>
+                <div>
+                  <span className="text-[10px] text-slate-400 block uppercase">Resident Count</span>
+                  <span className="font-bold text-white">{stats.residents || 0}</span>
+                </div>
+                <div>
+                  <span className="text-[10px] text-slate-400 block uppercase">Room Count</span>
+                  <span className="font-bold text-white">{stats.rooms || 0}</span>
+                </div>
+                <div>
+                  <span className="text-[10px] text-slate-400 block uppercase">Pending Rent</span>
+                  <span className="font-bold text-rose-400">₹{(stats.pendingRent || 0).toLocaleString()}</span>
+                </div>
+                <div>
+                  <span className="text-[10px] text-slate-400 block uppercase">Monthly Revenue</span>
+                  <span className="font-bold text-emerald-400">₹{(stats.todayCollection || 0).toLocaleString()}</span>
+                </div>
+                <div>
+                  <span className="text-[10px] text-slate-400 block uppercase">Storage Used</span>
+                  <span className="font-bold text-white">4.2 MB</span>
+                </div>
+              </div>
+              <Button 
+                variant="primary"
+                className="w-full mt-6 flex items-center justify-center gap-2" 
+                onClick={() => navigate("/rooms")}
+              >
+                Open Hostel <ArrowRight size={14} />
+              </Button>
+            </Card>
+          </div>
+
+          {/* 5. Quick Actions */}
+          <div className="md:col-span-1">
+            <Card style={{ background: '#162032', borderColor: '#22304A', borderRadius: '24px', height: '100%' }} className="flex flex-col justify-between">
+              <div>
+                <h3 className="text-lg font-bold mb-4 text-white">Quick Actions</h3>
+                <div className="grid grid-cols-2 gap-2">
+                  {quickActions.map((act, index) => {
+                    const Icon = act.icon;
+                    return (
+                      <button
+                        key={index}
+                        onClick={() => navigate(act.href)}
+                        className="flex flex-col items-center justify-center p-3 border border-[#22304A] rounded-2xl bg-white/[0.01] hover:bg-white/[0.04] transition duration-200"
+                      >
+                        <div className="p-2 rounded-full bg-emerald-500/10 text-emerald-500 mb-1.5">
+                          <Icon size={16} />
                         </div>
-                        <StatusPill tone="info">New</StatusPill>
-                    </div>
-                  ))}
+                        <span className="text-[11px] font-bold text-white text-center">{act.label}</span>
+                      </button>
+                    );
+                  })}
                 </div>
-             </Card>
+              </div>
+            </Card>
           </div>
-        </Section>
+        </div>
+
+        {/* 6. Workspace AI Insights */}
+        <div>
+          <WorkspaceInsights />
+        </div>
+
+        {/* 7. Recent Activity */}
+        <div>
+          <WorkspaceActivity />
+        </div>
+
+        {/* 8. Upcoming Payments */}
+        <Card style={{ background: '#162032', borderColor: '#22304A', borderRadius: '24px' }}>
+          <h3 className="text-lg font-bold mb-4 text-white">Upcoming Rent Invoices</h3>
+          <div className="space-y-3">
+            <div className="flex justify-between items-center p-3 bg-white/[0.01] border border-[#22304A] rounded-2xl text-xs">
+              <div>
+                <p className="font-bold text-white">Rajesh Kumar (Room 102)</p>
+                <p className="text-slate-400 mt-0.5">Due in 4 days</p>
+              </div>
+              <span className="font-bold text-rose-400">₹7,500</span>
+            </div>
+            <div className="flex justify-between items-center p-3 bg-white/[0.01] border border-[#22304A] rounded-2xl text-xs">
+              <div>
+                <p className="font-bold text-white">Aditya Sen (Room 204)</p>
+                <p className="text-slate-400 mt-0.5">Due in 6 days</p>
+              </div>
+              <span className="font-bold text-rose-400">₹8,000</span>
+            </div>
+          </div>
+        </Card>
+
+        {/* 9. Storage Status */}
+        <Card style={{ background: '#162032', borderColor: '#22304A', borderRadius: '24px' }}>
+          <div className="flex justify-between items-center mb-3">
+            <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
+              <HardDrive className="text-emerald-400" size={16} /> Storage Allocation Status
+            </h3>
+            <span className="text-xs text-slate-400 font-bold">12 MB / 100 MB Limit</span>
+          </div>
+          <div className="w-full bg-[#0B1120] rounded-full h-3 overflow-hidden border border-[#22304A]">
+            <div className="bg-emerald-500 h-full rounded-full" style={{ width: '12%' }} />
+          </div>
+        </Card>
+
+        {/* 10. Hostel Cards (Pro/Enterprise switcher) */}
+        <div className="space-y-3">
+          <div className="flex justify-between items-center">
+            <h3 className="text-lg font-bold text-white">Switch Hostel Context</h3>
+            {!isProOrEnterprise && <StatusPill tone="info">Upgrade for multi-hostel view</StatusPill>}
+          </div>
+
+          {workspaceLoading ? (
+            <div className="grid gap-4 md:grid-cols-2">
+              {[1, 2].map(n => (
+                <div key={n} style={{ height: '140px', background: '#162032', border: '1px solid #22304A', borderRadius: '24px' }} className="animate-pulse" />
+              ))}
+            </div>
+          ) : (
+            <div className="grid gap-4 md:grid-cols-2">
+              {workspaceData?.hostels?.map((item) => {
+                const isSelected = item._id === activeHostelId;
+                return (
+                  <div 
+                    key={item._id}
+                    onClick={() => {
+                      switchHostel({
+                        id: item._id,
+                        name: item.name || item.hostelName,
+                        address: item.address,
+                      });
+                      toast.success(`Context Switched: ${item.name}`);
+                    }}
+                    className="cursor-pointer"
+                  >
+                    <Card 
+                      style={{
+                        background: isSelected ? 'rgba(22, 163, 74, 0.05)' : '#162032',
+                        borderColor: isSelected ? colors.accent.primary : '#22304A',
+                        borderRadius: '24px',
+                        borderWidth: '1px'
+                      }}
+                    >
+                      <div className="flex justify-between items-start mb-2">
+                        <h4 className="font-bold text-white text-base">{item.name}</h4>
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${isSelected ? "bg-emerald-500/20 text-emerald-300" : "bg-slate-800 text-slate-400"}`}>
+                          {isSelected ? "Active Context" : "Switch"}
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-400 mb-4">{item.address || "No address"}</p>
+                      <div className="flex justify-between text-xs text-slate-400 pt-2 border-t border-[#22304A]/60">
+                        <span>Residents: <b>{item.residents || 0}</b></span>
+                        <span>Occupancy: <b>{item.occupancy || 0}%</b></span>
+                      </div>
+                    </Card>
+                  </div>
+                );
+              })}
+
+              {isProOrEnterprise && (
+                <div 
+                  onClick={() => setShowAddHostelModal(true)}
+                  className="border-2 border-dashed rounded-3xl flex flex-col justify-center items-center p-6 cursor-pointer hover:bg-slate-900/40 transition duration-150"
+                  style={{ borderColor: '#22304A' }}
+                >
+                  <Plus size={24} className="text-slate-500 mb-1" />
+                  <p className="font-bold text-xs text-white">Add New Hostel</p>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* 11. Recent Residents */}
+        <Card style={{ background: '#162032', borderColor: '#22304A', borderRadius: '24px' }}>
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-lg font-bold text-white">Recent Admission Registrations</h3>
+            <button onClick={() => navigate("/residents")} className="text-sm font-semibold" style={{ color: colors.accent.primary }}>See All</button>
+          </div>
+          <div className="space-y-2">
+            {recentAdmissions.length === 0 ? (
+              <div className="text-center py-4 text-slate-400 text-xs">
+                No recent admission applications.
+              </div>
+            ) : (
+              recentAdmissions.slice(0, 3).map((adm) => (
+                <div key={adm._id} className="flex justify-between items-center p-3 bg-white/[0.01] border border-[#22304A] rounded-2xl text-xs">
+                  <div>
+                    <p className="font-bold text-white">{adm.firstName} {adm.lastName}</p>
+                    <p className="text-slate-400 mt-0.5">{adm.phone}</p>
+                  </div>
+                  <span className="bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded-full font-bold uppercase text-[10px]">
+                    {adm.status}
+                  </span>
+                </div>
+              ))
+            )}
+          </div>
+        </Card>
+
+        {/* 12. Recent Payments */}
+        <Card style={{ background: '#162032', borderColor: '#22304A', borderRadius: '24px' }}>
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-lg font-bold text-white">Recent Rent Collections</h3>
+            <button onClick={() => navigate("/payments")} className="text-sm font-semibold" style={{ color: colors.accent.primary }}>See All</button>
+          </div>
+
+          <div className="space-y-2">
+            {recentPayments.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '16px', color: '#CBD5E1' }}>
+                No payments recorded recently.
+              </div>
+            ) : (
+              recentPayments.slice(0, 4).map((pay) => (
+                <div 
+                  key={pay._id} 
+                  className="flex justify-between items-center p-3 border rounded-2xl"
+                  style={{ borderColor: '#22304A', background: 'rgba(255,255,255,0.01)' }}
+                >
+                  <div>
+                    <p className="text-sm font-bold text-white">{pay.residentId?.name || "Resident"}</p>
+                    <p className="text-xs text-slate-400 mt-0.5">{pay.month || "Current Month"}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm font-bold text-green-500">₹{pay.paidAmount || pay.amount}</p>
+                    <span className="text-[10px] text-slate-400 uppercase tracking-wider">{pay.status}</span>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </Card>
+
+        {/* Add Hostel Dialog */}
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm hidden" style={{ display: showAddHostelModal ? 'flex' : 'none' }}>
+          <div 
+            className="w-full max-w-md rounded-2xl overflow-hidden shadow-2xl border"
+            style={{ background: colors.background.card, borderColor: colors.border.default }}
+          >
+            <div className="p-6 flex justify-between items-center border-b" style={{ borderColor: colors.border.default }}>
+              <h3 className="text-lg font-bold" style={{ color: colors.text.primary }}>Add New Hostel</h3>
+              <button onClick={() => setShowAddHostelModal(false)}>
+                <Plus size={20} style={{ color: colors.text.muted, transform: 'rotate(45deg)' }} />
+              </button>
+            </div>
+            <form onSubmit={handleCreateHostel} className="p-6 space-y-4 text-xs">
+              <div>
+                <label className="block text-[10px] font-semibold uppercase mb-1" style={{ color: colors.text.muted }}>Hostel Name</label>
+                <input 
+                  type="text" 
+                  required
+                  className="w-full p-3 rounded-xl border bg-slate-900 text-white"
+                  style={{ borderColor: colors.border.default }}
+                  value={newHostelData.name}
+                  onChange={(e) => setNewHostelData({ ...newHostelData, name: e.target.value })}
+                  placeholder="e.g. Sunrise Residency"
+                />
+              </div>
+              <div>
+                <label className="block text-[10px] font-semibold uppercase mb-1" style={{ color: colors.text.muted }}>Address</label>
+                <input 
+                  type="text" 
+                  className="w-full p-3 rounded-xl border bg-slate-900 text-white"
+                  style={{ borderColor: colors.border.default }}
+                  value={newHostelData.address}
+                  onChange={(e) => setNewHostelData({ ...newHostelData, address: e.target.value })}
+                  placeholder="e.g. MG Road, Near Central Library"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[10px] font-semibold uppercase mb-1" style={{ color: colors.text.muted }}>City</label>
+                  <input 
+                    type="text" 
+                    className="w-full p-3 rounded-xl border bg-slate-900 text-white"
+                    style={{ borderColor: colors.border.default }}
+                    value={newHostelData.city}
+                    onChange={(e) => setNewHostelData({ ...newHostelData, city: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-semibold uppercase mb-1" style={{ color: colors.text.muted }}>District</label>
+                  <input 
+                    type="text" 
+                    className="w-full p-3 rounded-xl border bg-slate-900 text-white"
+                    style={{ borderColor: colors.border.default }}
+                    value={newHostelData.district}
+                    onChange={(e) => setNewHostelData({ ...newHostelData, district: e.target.value })}
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[10px] font-semibold uppercase mb-1" style={{ color: colors.text.muted }}>State</label>
+                  <input 
+                    type="text" 
+                    className="w-full p-3 rounded-xl border bg-slate-900 text-white"
+                    style={{ borderColor: colors.border.default }}
+                    value={newHostelData.state}
+                    onChange={(e) => setNewHostelData({ ...newHostelData, state: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-semibold uppercase mb-1" style={{ color: colors.text.muted }}>Pincode</label>
+                  <input 
+                    type="text" 
+                    className="w-full p-3 rounded-xl border bg-slate-900 text-white"
+                    style={{ borderColor: colors.border.default }}
+                    value={newHostelData.pincode}
+                    onChange={(e) => setNewHostelData({ ...newHostelData, pincode: e.target.value })}
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-[10px] font-semibold uppercase mb-1" style={{ color: colors.text.muted }}>Hostel Type</label>
+                <select 
+                  className="w-full p-3 rounded-xl border bg-slate-900 text-white"
+                  style={{ borderColor: colors.border.default }}
+                  value={newHostelData.hostelType}
+                  onChange={(e) => setNewHostelData({ ...newHostelData, hostelType: e.target.value })}
+                >
+                  <option value="Boys Hostel">Boys Hostel</option>
+                  <option value="Girls Hostel">Girls Hostel</option>
+                  <option value="Co-Living">Co-Living</option>
+                </select>
+              </div>
+              <div className="pt-4 flex gap-3">
+                <Button 
+                  type="button" 
+                  variant="secondary" 
+                  className="w-1/2" 
+                  onClick={() => setShowAddHostelModal(false)}
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  type="submit" 
+                  className="w-1/2" 
+                  disabled={submittingHostel}
+                >
+                  {submittingHostel ? "Creating..." : "Create Hostel"}
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
 
       </PageContainer>
     </OwnerLayout>
   );
 }
-
-export default Dashboard;

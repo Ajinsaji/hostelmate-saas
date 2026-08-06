@@ -11,12 +11,13 @@ function getIcon(name) {
 /**
  * Enterprise Unified Mobile Bottom Navigation
  */
-export default function UnifiedMobileNav({ items = [] }) {
+export default function UnifiedMobileNav({ items = [], onFabClick }) {
   const { colors, spacing, radius, typography } = useTheme();
   const location = useLocation();
   const navigate = useNavigate();
 
   const isActive = (href) => {
+    if (href === 'fab') return false;
     if (href === location.pathname) return true;
     if (href.length > 1 && location.pathname.startsWith(href + '/')) return true;
     return false;
@@ -41,7 +42,7 @@ export default function UnifiedMobileNav({ items = [] }) {
         background: 'rgba(11, 17, 32, 0.85)',
         backdropFilter: 'blur(24px)',
         WebkitBackdropFilter: 'blur(24px)',
-        borderTop: `1px solid ${colors.border.default}`,
+        borderTop: `1px solid ${colors.border.default || '#22304A'}`,
         boxShadow: '0 -8px 32px rgba(0, 0, 0, 0.3)',
       }}
     >
@@ -60,13 +61,20 @@ export default function UnifiedMobileNav({ items = [] }) {
         {items.map((item) => {
           const Icon = getIcon(item.icon);
           const active = isActive(item.href);
+          const isFab = item.key === 'fab' || item.href === 'fab';
 
           return (
             <button
               key={item.key}
-              onClick={() => navigate(item.href)}
+              onClick={() => {
+                if (isFab) {
+                  if (onFabClick) onFabClick();
+                } else {
+                  navigate(item.href);
+                }
+              }}
               aria-current={active ? 'page' : undefined}
-              aria-label={item.label}
+              aria-label={item.label || 'Quick action menu'}
               title={item.label}
               style={{
                 display: 'flex',
@@ -82,7 +90,7 @@ export default function UnifiedMobileNav({ items = [] }) {
                 fontWeight: active ? typography.weights.bold : typography.weights.semibold,
                 fontFamily: typography.fontFamily,
                 letterSpacing: '0.01em',
-                padding: '8px 2px',
+                padding: isFab ? '0px' : '8px 2px',
                 borderRadius: radius.lg,
                 minHeight: '60px',
                 transition: 'all 0.2s ease',
@@ -93,28 +101,35 @@ export default function UnifiedMobileNav({ items = [] }) {
                   scale: active ? 1.04 : 1,
                   boxShadow: active
                     ? '0 0 0 6px rgba(22, 163, 74, 0.14)'
+                    : isFab
+                    ? '0 4px 16px rgba(22, 163, 74, 0.4)'
                     : '0 0 0 0 rgba(22, 163, 74, 0)',
                 }}
                 transition={{ duration: 0.2 }}
                 style={{
-                  width: '40px',
-                  height: '40px',
-                  borderRadius: '14px',
+                  width: isFab ? '48px' : '40px',
+                  height: isFab ? '48px' : '40px',
+                  borderRadius: isFab ? '50%' : '14px',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  background: active
+                  background: isFab
+                    ? colors.accent.primary || '#16A34A'
+                    : active
                     ? 'linear-gradient(135deg, rgba(22, 163, 74, 0.2), rgba(22, 163, 74, 0.12))'
                     : 'rgba(255,255,255,0.04)',
-                  color: active ? colors.accent.primary : colors.text.muted,
-                  border: active
+                  color: isFab ? '#FFFFFF' : active ? colors.accent.primary : colors.text.muted,
+                  border: isFab
+                    ? 'none'
+                    : active
                     ? '1px solid rgba(22, 163, 74, 0.22)'
                     : '1px solid rgba(255,255,255,0.02)',
+                  marginTop: isFab ? '-12px' : '0px',
                 }}
               >
-                <Icon size={20} />
+                <Icon size={isFab ? 22 : 20} />
               </motion.div>
-              <span style={{ lineHeight: 1.2 }}>{item.label}</span>
+              <span>{item.label}</span>
             </button>
           );
         })}

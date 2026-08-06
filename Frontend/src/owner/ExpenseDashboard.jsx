@@ -1,30 +1,53 @@
-import { useTheme } from "../design-system/ThemeProvider";
 import { Card } from "../design-system/components/Card";
 import React, { useState, useEffect } from "react";
 import {
-  DollarSign,
   TrendingDown,
   TrendingUp,
   PieChart,
   Users,
-  Building,
   Plus,
   Search,
-  Filter,
-  CheckCircle2,
   Trash2,
-  Calendar,
-  AlertTriangle,
   Download,
-  Tag,
-  Wrench,
-  ShoppingBag,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import api from "../utils/apiClient";
+import { useCurrentHostel } from "../contexts/HostelContext";
+
+function ExpenseCard({ exp, onDelete }) {
+  return (
+    <Card hover className="p-4 border" style={{ borderColor: '#22304A', background: '#162032' }}>
+      <div className="flex justify-between items-start">
+        <div>
+          <span className="font-mono text-[10px] font-bold text-rose-400 block mb-1">{exp.expenseNumber}</span>
+          <h4 className="font-bold text-white text-sm">{exp.title}</h4>
+          <p className="text-xs text-slate-400 mt-1">{exp.categoryId?.categoryName || "General"} | {new Date(exp.expenseDate).toLocaleDateString()}</p>
+          <p className="text-xs text-slate-500 mt-1">Vendor: {exp.vendorId?.vendorName || "Direct"}</p>
+        </div>
+        <div className="text-right">
+          <div className="font-bold text-rose-400 text-base">₹{exp.netAmount}</div>
+          <span className={`inline-block mt-2 px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+            exp.status === "Paid" ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/30" :
+            exp.status === "Approved" ? "bg-blue-500/20 text-blue-300 border-blue-500/30" :
+            "bg-amber-500/20 text-amber-300 border-amber-500/30"
+          }`}>
+            {exp.status}
+          </span>
+        </div>
+      </div>
+      <div className="flex justify-end gap-2 mt-4 pt-3 border-t" style={{ borderColor: '#22304A' }}>
+        <button onClick={() => onDelete(exp._id)} className="p-1.5 bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 rounded-lg">
+          <Trash2 className="w-4 h-4" />
+        </button>
+      </div>
+    </Card>
+  );
+}
 
 export const ExpenseDashboard = () => {
-  
+  const { hostel } = useCurrentHostel();
+  const activeHostelId = hostel?.id || hostel?._id;
+
   const [activeTab, setActiveTab] = useState("expenses"); // expenses | vendors | budgets | pnl
   const [stats, setStats] = useState(null);
   const [expenses, setExpenses] = useState([]);
@@ -36,7 +59,6 @@ export const ExpenseDashboard = () => {
   // Search & Filters
   const [search, setSearch] = useState("");
   const [filterCategory, setFilterCategory] = useState("");
-  const [filterVendor, setFilterVendor] = useState("");
 
   // Modals
   const [showAddExpenseModal, setShowAddExpenseModal] = useState(false);
@@ -73,6 +95,14 @@ export const ExpenseDashboard = () => {
     budgetAmount: 10000,
   });
 
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
   const fetchData = async () => {
     try {
       setLoading(true);
@@ -98,8 +128,11 @@ export const ExpenseDashboard = () => {
   };
 
   useEffect(() => {
-    fetchData();
-  }, []);
+    const timer = setTimeout(() => {
+      fetchData();
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [activeHostelId]);
 
   const handleCreateExpense = async (e) => {
     e.preventDefault();
@@ -151,8 +184,7 @@ export const ExpenseDashboard = () => {
   const filteredExpenses = expenses.filter((e) => {
     const matchSearch = !search || e.title.toLowerCase().includes(search.toLowerCase()) || e.expenseNumber.toLowerCase().includes(search.toLowerCase());
     const matchCategory = !filterCategory || e.categoryId?._id === filterCategory || e.categoryId === filterCategory;
-    const matchVendor = !filterVendor || e.vendorId?._id === filterVendor || e.vendorId === filterVendor;
-    return matchSearch && matchCategory && matchVendor;
+    return matchSearch && matchCategory;
   });
 
   return (
@@ -303,58 +335,76 @@ export const ExpenseDashboard = () => {
               </div>
             </div>
 
-            <div className="bg-white/[0.02] border border-white/10 rounded-2xl overflow-hidden text-xs">
-              <table className="w-full text-left">
-                <thead className="bg-white/5 text-slate-400 font-bold uppercase border-b border-white/10">
-                  <tr>
-                    <th className="p-4">EXP #</th>
-                    <th className="p-4">Title / Purpose</th>
-                    <th className="p-4">Category</th>
-                    <th className="p-4">Vendor</th>
-                    <th className="p-4">Date</th>
-                    <th className="p-4">Net Amount</th>
-                    <th className="p-4">Status</th>
-                    <th className="p-4 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-white/5 text-slate-300">
-                  {filteredExpenses.length > 0 ? (
-                    filteredExpenses.map((exp) => (
-                      <tr key={exp._id} className="hover:bg-white/[0.02]">
-                        <td className="p-4 font-mono font-bold text-rose-400">{exp.expenseNumber}</td>
-                        <td className="p-4 font-bold text-white">{exp.title}</td>
-                        <td className="p-4">{exp.categoryId?.categoryName || "General"}</td>
-                        <td className="p-4 text-slate-400">{exp.vendorId?.vendorName || "Direct"}</td>
-                        <td className="p-4">{new Date(exp.expenseDate).toLocaleDateString()}</td>
-                        <td className="p-4 font-bold text-rose-400 text-sm">₹{exp.netAmount}</td>
-                        <td className="p-4">
-                          <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
-                            exp.status === "Paid" ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/30" :
-                            exp.status === "Approved" ? "bg-blue-500/20 text-blue-300 border-blue-500/30" :
-                            "bg-amber-500/20 text-amber-300 border-amber-500/30"
-                          }`}>
-                            {exp.status}
-                          </span>
-                        </td>
-                        <td className="p-4 text-right">
-                          <button
-                            onClick={() => handleDeleteExpense(exp._id)}
-                            className="p-1.5 bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 rounded-lg"
-                            title="Soft Delete"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </td>
-                      </tr>
-                    ))
-                  ) : (
+            {loading ? (
+              <div className="p-8 text-center text-slate-500 bg-white/[0.02] border border-white/10 rounded-2xl">Loading expenses...</div>
+            ) : isMobile ? (
+              <div className="grid grid-cols-1 gap-4">
+                {filteredExpenses.length > 0 ? (
+                  filteredExpenses.map((exp) => (
+                    <ExpenseCard 
+                      key={exp._id}
+                      exp={exp}
+                      onDelete={handleDeleteExpense}
+                    />
+                  ))
+                ) : (
+                  <div className="p-8 text-center text-slate-500 bg-white/[0.02] border border-white/10 rounded-2xl">No expense records found.</div>
+                )}
+              </div>
+            ) : (
+              <div className="bg-white/[0.02] border border-white/10 rounded-2xl overflow-hidden text-xs">
+                <table className="w-full text-left">
+                  <thead className="bg-white/5 text-slate-400 font-bold uppercase border-b border-white/10">
                     <tr>
-                      <td colSpan="8" className="p-8 text-center text-slate-500">No expense records found.</td>
+                      <th className="p-4">EXP #</th>
+                      <th className="p-4">Title / Purpose</th>
+                      <th className="p-4">Category</th>
+                      <th className="p-4">Vendor</th>
+                      <th className="p-4">Date</th>
+                      <th className="p-4">Net Amount</th>
+                      <th className="p-4">Status</th>
+                      <th className="p-4 text-right">Actions</th>
                     </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody className="divide-y divide-white/5 text-slate-300">
+                    {filteredExpenses.length > 0 ? (
+                      filteredExpenses.map((exp) => (
+                        <tr key={exp._id} className="hover:bg-white/[0.02]">
+                          <td className="p-4 font-mono font-bold text-rose-400">{exp.expenseNumber}</td>
+                          <td className="p-4 font-bold text-white">{exp.title}</td>
+                          <td className="p-4">{exp.categoryId?.categoryName || "General"}</td>
+                          <td className="p-4 text-slate-400">{exp.vendorId?.vendorName || "Direct"}</td>
+                          <td className="p-4">{new Date(exp.expenseDate).toLocaleDateString()}</td>
+                          <td className="p-4 font-bold text-rose-400 text-sm">₹{exp.netAmount}</td>
+                          <td className="p-4">
+                            <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
+                              exp.status === "Paid" ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/30" :
+                              exp.status === "Approved" ? "bg-blue-500/20 text-blue-300 border-blue-500/30" :
+                              "bg-amber-500/20 text-amber-300 border-amber-500/30"
+                            }`}>
+                              {exp.status}
+                            </span>
+                          </td>
+                          <td className="p-4 text-right">
+                            <button
+                              onClick={() => handleDeleteExpense(exp._id)}
+                              className="p-1.5 bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 rounded-lg"
+                              title="Soft Delete"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan="8" className="p-8 text-center text-slate-500">No expense records found.</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         )}
 

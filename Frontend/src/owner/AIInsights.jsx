@@ -1,138 +1,142 @@
 import React, { useState, useEffect } from "react";
+import { Sparkles, AlertTriangle, CheckCircle, Info, RefreshCcw, TrendingUp, ShieldAlert, Zap } from "lucide-react";
 import api from "../utils/apiClient";
-import { toast } from "react-toastify";
-import InsightScoreCard from "../components/ai/InsightScoreCard";
-import ForecastChart from "../components/ai/ForecastChart";
-import AIRecommendationCard from "../components/ai/AIRecommendationCard";
-import AnomalyCard from "../components/ai/AnomalyCard";
-import AIChatPanel from "../components/ai/AIChatPanel";
-import { Loader2 } from "lucide-react";
 import { useTheme } from "../design-system/ThemeProvider";
-import { PageContainer } from "../design-system/layouts/PageContainer";
-import { Section } from "../design-system/layouts/Section";
 
 export default function AIInsights() {
-  const { colors } = useTheme();
+  const { colors, spacing, radius, typography } = useTheme();
+  const [overview, setOverview] = useState(null);
+  const [recommendations, setRecommendations] = useState([]);
+  const [predictions, setPredictions] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [insights, setInsights] = useState(null);
+  const [error, setError] = useState(null);
 
-  useEffect(() => {
-    fetchInsights();
-  }, []);
-
-  const fetchInsights = async () => {
+  const fetchAIData = async () => {
     try {
-      const res = await api.get("/ai/dashboard");
-      if (res.data.success) {
-        setInsights(res.data.data);
-      }
-    } catch (error) {
-      toast.error("Failed to load AI Insights.");
+      setLoading(true);
+      setError(null);
+      const [ovRes, recRes, predRes] = await Promise.all([
+        api.get("/api/v2/ai/overview"),
+        api.get("/api/v2/ai/recommendations"),
+        api.get("/api/v2/ai/predictions")
+      ]);
+
+      if (ovRes.data?.success) setOverview(ovRes.data);
+      if (recRes.data?.success) setRecommendations(recRes.data.recommendations || []);
+      if (predRes.data?.success) setPredictions(predRes.data.predictions);
+    } catch (err) {
+      console.error(err);
+      setError("Unable to load AI predictions");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleRecommendationAction = async (id, action) => {
-    try {
-      const res = await api.post(`/ai/recommendations/${id}/action`, { action });
-      if (res.data.success) {
-        toast.success(res.data.message);
-        // Remove from local state
-        setInsights(prev => ({
-          ...prev,
-          recommendations: prev.recommendations.filter(r => r._id !== id)
-        }));
-      }
-    } catch (error) {
-      toast.error(`Failed to ${action.toLowerCase()} recommendation.`);
-    }
-  };
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      fetchAIData();
+    }, 0);
+    return () => clearTimeout(timer);
+  }, []);
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center h-[70vh]">
-        <Loader2 className="animate-spin mb-4" size={40} style={{ color: colors.accent.primary }} />
-        <p style={{ color: colors.text.muted }} className="font-medium">Analyzing enterprise data...</p>
+      <div className="p-6 bg-[#162032] border border-[#22304A] rounded-3xl animate-pulse space-y-3">
+        <div className="h-6 w-48 bg-white/5 rounded" />
+        <div className="h-16 bg-white/5 rounded-2xl" />
       </div>
     );
   }
 
-  if (!insights) return null;
-
-  const { executiveInsights, predictions, risks, recommendations } = insights;
+  if (error) {
+    return (
+      <div className="p-6 bg-[#162032] border border-[#22304A] rounded-3xl text-center text-slate-400 space-y-3">
+        <p>{error}</p>
+        <button onClick={fetchAIData} className="px-4 py-2 bg-emerald-500 text-white rounded-xl text-xs font-bold inline-flex items-center gap-2">
+          <RefreshCcw size={14} /> Retry AI Engine
+        </button>
+      </div>
+    );
+  }
 
   return (
-    <PageContainer>
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left Column - Core Health & Chat */}
-        <div className="lg:col-span-1 space-y-6">
-          <InsightScoreCard 
-            score={executiveInsights?.healthScore || 0} 
-            subtitle={`Top Risk: ${executiveInsights?.topRisk || "None"}`} 
-          />
-          <AIChatPanel />
-        </div>
-
-        {/* Middle/Right Columns - Forecasts & Recs */}
-        <div className="lg:col-span-2 space-y-6">
+    <div className="space-y-6">
+      
+      {/* AI Overview Banner */}
+      {overview && (
+        <div className="p-6 rounded-3xl border border-purple-500/30 bg-gradient-to-r from-purple-900/20 to-emerald-900/20 backdrop-blur-md space-y-3">
+          <div className="flex justify-between items-center">
+            <h3 className="text-base font-black text-white flex items-center gap-2">
+              <Sparkles className="text-purple-400" size={18} /> HostelMate AI Intelligence Engine
+            </h3>
+            <span className="px-3 py-1 rounded-full text-xs font-bold bg-purple-500/20 text-purple-300 border border-purple-500/30">
+              Confidence 98%
+            </span>
+          </div>
+          <p className="text-sm text-slate-300">{overview.summary}</p>
           
-          <Section>
-            <h2 className="text-xl font-bold border-b pb-2 mb-4" style={{ color: colors.text.primary, borderColor: colors.border.default }}>30-Day Forecasts</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <ForecastChart 
-                title="Occupancy Prediction"
-                current={predictions?.occupancy?.currentOccupancy}
-                forecast={predictions?.occupancy?.predictions?.days30}
-                unit="%"
-                trend={predictions?.occupancy?.predictions?.days30 >= predictions?.occupancy?.currentOccupancy ? "up" : "down"}
-              />
-              <ForecastChart 
-                title="Revenue Prediction"
-                current={(predictions?.revenue?.forecasts?.expectedRentIncomeNextMonth * 0.95).toFixed(0)} // mock current vs next
-                forecast={predictions?.revenue?.forecasts?.expectedRentIncomeNextMonth}
-                unit="$"
-                trend="up"
-              />
+          <div className="grid grid-cols-3 gap-3 pt-2 text-xs">
+            <div className="p-3 bg-white/5 border border-white/10 rounded-2xl">
+              <span className="text-slate-400 block text-[10px] uppercase font-bold">Vacancy Prediction</span>
+              <span className="text-emerald-400 font-bold mt-0.5 block">{overview.keyMetrics?.vacancyPrediction}</span>
             </div>
-          </Section>
+            <div className="p-3 bg-white/5 border border-white/10 rounded-2xl">
+              <span className="text-slate-400 block text-[10px] uppercase font-bold">Resident Churn Risk</span>
+              <span className="text-blue-400 font-bold mt-0.5 block">{overview.keyMetrics?.churnRisk}</span>
+            </div>
+            <div className="p-3 bg-white/5 border border-white/10 rounded-2xl">
+              <span className="text-slate-400 block text-[10px] uppercase font-bold">Payment Delay Alerts</span>
+              <span className="text-amber-400 font-bold mt-0.5 block">{overview.keyMetrics?.latePaymentRiskCount} Residents</span>
+            </div>
+          </div>
+        </div>
+      )}
 
-          <Section>
-            <h2 className="text-xl font-bold border-b pb-2 mb-4" style={{ color: colors.text.primary, borderColor: colors.border.default }}>Actionable Recommendations</h2>
-            {recommendations?.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {recommendations.map(rec => (
-                  <AIRecommendationCard 
-                    key={rec._id} 
-                    recommendation={rec}
-                    onAccept={(id) => handleRecommendationAction(id, "Accepted")}
-                    onDismiss={(id) => handleRecommendationAction(id, "Dismissed")}
-                  />
-                ))}
-              </div>
-            ) : (
-              <div className="border rounded-2xl p-6 text-center text-sm" style={{ backgroundColor: colors.background.card, borderColor: colors.border.default, color: colors.text.muted }}>
-                No pending recommendations at this time.
-              </div>
-            )}
-          </Section>
-
-          <Section>
-            <h2 className="text-xl font-bold border-b pb-2 mb-4" style={{ color: colors.text.primary, borderColor: colors.border.default }}>Detected Anomalies</h2>
-            <div className="border rounded-2xl p-4" style={{ backgroundColor: colors.background.card, borderColor: colors.border.default }}>
-              {risks?.expenses?.anomalies?.length > 0 || risks?.payroll?.anomalies?.length > 0 ? (
-                <div className="space-y-2 max-h-64 overflow-y-auto pr-2">
-                  {risks.expenses.anomalies.map((a, i) => <AnomalyCard key={`exp-${i}`} anomaly={a} />)}
-                  {risks.payroll.anomalies.map((a, i) => <AnomalyCard key={`pay-${i}`} anomaly={a} />)}
+      {/* Predictions Section */}
+      {predictions && (
+        <div className="bg-[#162032] border border-[#22304A] p-6 rounded-3xl space-y-4">
+          <h4 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
+            <Zap className="text-amber-400" size={16} /> Late Payment Risk & Predictive Churn Analysis
+          </h4>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {predictions.highRiskResidents?.map((res, idx) => (
+              <div key={idx} className="p-3 bg-[#0B1120] border border-[#22304A] rounded-2xl flex justify-between items-center text-xs">
+                <div>
+                  <p className="font-bold text-white">{res.name} (Room {res.room})</p>
+                  <p className="text-slate-400 mt-0.5">{res.reason}</p>
                 </div>
-              ) : (
-                <p className="text-sm text-center py-4" style={{ color: colors.text.muted }}>No anomalies detected in recent datasets.</p>
-              )}
-            </div>
-          </Section>
+                <span className="px-2 py-0.5 bg-amber-500/20 text-amber-300 rounded-full font-bold text-[10px]">
+                  High Risk
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
+      {/* Recommendations Cards */}
+      <div className="space-y-3">
+        <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Smart Operational Recommendations</h4>
+        <div className="space-y-2">
+          {recommendations.map((rec, index) => {
+            const isWarning = rec.type === "warning";
+            const isSuccess = rec.type === "success";
+            const Icon = isWarning ? AlertTriangle : isSuccess ? CheckCircle : Info;
+            return (
+              <div key={index} className="p-4 bg-[#162032] border border-[#22304A] rounded-2xl flex items-start gap-3 text-xs">
+                <div className={`p-2 rounded-xl mt-0.5 ${isWarning ? "bg-amber-500/20 text-amber-300" : isSuccess ? "bg-emerald-500/20 text-emerald-300" : "bg-blue-500/20 text-blue-300"}`}>
+                  <Icon size={16} />
+                </div>
+                <div className="flex-1">
+                  <h5 className="font-bold text-white text-sm">{rec.title}</h5>
+                  <p className="text-slate-400 mt-0.5 leading-relaxed">{rec.description}</p>
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
-    </PageContainer>
+
+    </div>
   );
 }

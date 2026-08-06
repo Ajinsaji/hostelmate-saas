@@ -276,7 +276,7 @@ export function UnifiedLayout({
       </div>
 
       {/* Mobile Bottom Navigation */}
-      <UnifiedMobileNav items={mobileNavItems} />
+      <UnifiedMobileNav items={mobileNavItems} onFabClick={() => setShowQuickAdd(true)} />
     </div>
   );
 }

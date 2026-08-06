@@ -1,8 +1,8 @@
-import React from 'react';
-import { Menu, Search, ShieldCheck } from "lucide-react";
+import { Menu, ShieldCheck } from "lucide-react";
 import { useTheme } from "../ThemeProvider";
 import { useCurrentUser, useCurrentHostel } from "../../contexts/HostelContext";
 import NotificationBell from "../../components/NotificationBell";
+import UniversalSearch from "./UniversalSearch";
 
 export function TopHeader({ onMenuClick }) {
   const { colors, typography, spacing, radius } = useTheme();
@@ -96,33 +96,9 @@ export function TopHeader({ onMenuClick }) {
           <span style={{ whiteSpace: 'nowrap' }}>{hostel?.name || 'Green Valley'}</span>
         </div>
 
-        {/* Search Field (Compact) */}
-        <div style={{ position: 'relative' }} className="hidden sm:block">
-          <Search 
-            size={14} 
-            style={{ 
-              position: 'absolute', 
-              left: '10px', 
-              top: '50%', 
-              transform: 'translateY(-50%)', 
-              color: colors.text.muted 
-            }} 
-          />
-          <input 
-            type="text" 
-            placeholder="Search console..." 
-            style={{
-              width: '160px',
-              padding: '6px 10px 6px 30px',
-              borderRadius: radius.md,
-              background: colors.background.elevated,
-              border: `1px solid ${colors.border.default}`,
-              color: colors.text.primary,
-              fontSize: '12px',
-              fontFamily: typography.fontFamily,
-              outline: 'none',
-            }}
-          />
+        {/* Universal Search Field */}
+        <div className="hidden sm:block">
+          <UniversalSearch />
         </div>
 
         {/* Stateful Notification Bell Dropdown */}

@@ -50,6 +50,20 @@ import StaffManagement from "./owner/StaffManagement";
 import AttendanceShiftManagement from "./owner/AttendanceShiftManagement";
 import PayrollManagement from "./owner/PayrollManagement";
 import BusinessIntelligence from "./owner/BusinessIntelligence";
+import BusinessAnalytics from "./owner/BusinessAnalytics";
+import StorageCenter from "./owner/StorageCenter";
+import BrandingSettings from "./owner/BrandingSettings";
+import DeveloperConsole from "./owner/DeveloperConsole";
+import Marketplace from "./owner/Marketplace";
+import AuditCenter from "./owner/AuditCenter";
+import BackupCenter from "./owner/BackupCenter";
+import EnterpriseConsole from "./owner/EnterpriseConsole";
+import ReleaseNotes from "./pages/ReleaseNotes";
+import ReleaseNotesAdmin from "./admin/ReleaseNotesAdmin";
+import UpdateModal from "./components/UpdateModal";
+import GlobalSearchModal from "./components/GlobalSearchModal";
+import OfflineBanner from "./components/OfflineBanner";
+import { useVersionChecker } from "./hooks/useVersionChecker";
 import AIInsights from "./owner/AIInsights";
 import MyPayroll from "./pages/MyPayroll";
 
@@ -215,9 +229,18 @@ function App() {
 
   const shouldRedirectPending = !!pending && !token;
 
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+
+  useEffect(() => {
+    const handleOpenSearch = () => setIsSearchOpen(true);
+    window.addEventListener("open-global-search", handleOpenSearch);
+    return () => window.removeEventListener("open-global-search", handleOpenSearch);
+  }, []);
+
   return (
     <ServerLoadingWrapper>
       <PwaUpdateModal />
+      <OfflineBanner />
       <ErrorBoundary>
       <BrowserRouter>
         <HostelProvider>
@@ -227,6 +250,15 @@ function App() {
             {/** Mounted here so it can call useNavigate() safely. */}
             <SwMessageHandler />
             <NotificationBellHost />
+            <GlobalSearchModal isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
+            {showUpdateModal && (
+              <UpdateModal
+                release={latestRelease}
+                onUpdateNow={handleUpdateNow}
+                onLater={handleLater}
+                onClose={handleLater}
+              />
+            )}
  
             <Routes>
 
@@ -521,6 +553,156 @@ function App() {
                 backTo={"/owner/dashboard"}
               >
                 <BusinessIntelligence />
+              </DesktopShell>
+            </OwnerProtectedRoute>
+          }
+        />
+        <Route
+          path="/owner/business-analytics"
+          element={
+            <OwnerProtectedRoute>
+              <DesktopShell
+                variant="owner"
+                title="Business Analytics Engine"
+                breadcrumbs={[{ label: "Analytics Engine" }]}
+                backTo={"/owner/dashboard"}
+              >
+                <BusinessAnalytics />
+              </DesktopShell>
+            </OwnerProtectedRoute>
+          }
+        />
+        <Route
+          path="/owner/storage-center"
+          element={
+            <OwnerProtectedRoute>
+              <DesktopShell
+                variant="owner"
+                title="Enterprise Storage Center"
+                breadcrumbs={[{ label: "Storage Center" }]}
+                backTo={"/owner/dashboard"}
+              >
+                <StorageCenter />
+              </DesktopShell>
+            </OwnerProtectedRoute>
+          }
+        />
+        <Route
+          path="/owner/branding-settings"
+          element={
+            <OwnerProtectedRoute>
+              <DesktopShell
+                variant="owner"
+                title="White-Label & Branding Settings"
+                breadcrumbs={[{ label: "Branding Settings" }]}
+                backTo={"/owner/dashboard"}
+              >
+                <BrandingSettings />
+              </DesktopShell>
+            </OwnerProtectedRoute>
+          }
+        />
+        <Route
+          path="/owner/developer-console"
+          element={
+            <OwnerProtectedRoute>
+              <DesktopShell
+                variant="owner"
+                title="Developer & API Console"
+                breadcrumbs={[{ label: "Developer Console" }]}
+                backTo={"/owner/dashboard"}
+              >
+                <DeveloperConsole />
+              </DesktopShell>
+            </OwnerProtectedRoute>
+          }
+        />
+        <Route
+          path="/owner/marketplace"
+          element={
+            <OwnerProtectedRoute>
+              <DesktopShell
+                variant="owner"
+                title="Enterprise Plugin Marketplace"
+                breadcrumbs={[{ label: "Plugin Marketplace" }]}
+                backTo={"/owner/dashboard"}
+              >
+                <Marketplace />
+              </DesktopShell>
+            </OwnerProtectedRoute>
+          }
+        />
+        <Route
+          path="/owner/audit-center"
+          element={
+            <OwnerProtectedRoute>
+              <DesktopShell
+                variant="owner"
+                title="Enterprise Audit Vault"
+                breadcrumbs={[{ label: "Audit Center" }]}
+                backTo={"/owner/dashboard"}
+              >
+                <AuditCenter />
+              </DesktopShell>
+            </OwnerProtectedRoute>
+          }
+        />
+        <Route
+          path="/owner/backup-center"
+          element={
+            <OwnerProtectedRoute>
+              <DesktopShell
+                variant="owner"
+                title="Enterprise Backup & Disaster Recovery"
+                breadcrumbs={[{ label: "Backup Manager" }]}
+                backTo={"/owner/dashboard"}
+              >
+                <BackupCenter />
+              </DesktopShell>
+            </OwnerProtectedRoute>
+          }
+        />
+        <Route
+          path="/owner/enterprise-console"
+          element={
+            <OwnerProtectedRoute>
+              <DesktopShell
+                variant="owner"
+                title="Enterprise Console"
+                breadcrumbs={[{ label: "Enterprise Console" }]}
+                backTo={"/owner/dashboard"}
+              >
+                <EnterpriseConsole />
+              </DesktopShell>
+            </OwnerProtectedRoute>
+          }
+        />
+        <Route
+          path="/release-notes"
+          element={
+            <OwnerProtectedRoute>
+              <DesktopShell
+                variant="owner"
+                title="Release Notes & Product Updates"
+                breadcrumbs={[{ label: "Release Notes" }]}
+                backTo={"/owner/dashboard"}
+              >
+                <ReleaseNotes />
+              </DesktopShell>
+            </OwnerProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/release-notes"
+          element={
+            <OwnerProtectedRoute>
+              <DesktopShell
+                variant="owner"
+                title="Release Notes Admin Console"
+                breadcrumbs={[{ label: "Release Admin" }]}
+                backTo={"/owner/dashboard"}
+              >
+                <ReleaseNotesAdmin />
               </DesktopShell>
             </OwnerProtectedRoute>
           }

@@ -149,6 +149,13 @@ connectDB().then(() => {
 const v2Routes = require("./routes/v2Routes");
 app.use("/api/v2", v2Routes);
 
+// SYSTEM HEALTH & MONITORING ENDPOINTS
+const { getHealthStatus, getDatabaseHealth, getStorageHealth, getCacheHealth } = require("./controllers/healthController");
+app.get("/api/health", getHealthStatus);
+app.get("/api/health/database", getDatabaseHealth);
+app.get("/api/health/storage", getStorageHealth);
+app.get("/api/health/cache", getCacheHealth);
+
 // AUTH
 app.use(
   "/api/auth",
