@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import api from "../utils/apiClient";
 
 export function useVersionChecker() {
-  const CURRENT_APP_VERSION = "v3.2.1";
+  const CURRENT_APP_VERSION = "v4.2.0";
   const [latestRelease, setLatestRelease] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -18,15 +18,14 @@ export function useVersionChecker() {
         const lastSeenVersion = localStorage.getItem("lastSeenVersion");
         const dismissedAt = localStorage.getItem("updateDismissedAt");
 
-        // If mandatory, always show
+        // Mandatory releases always show
         if (release.type === "mandatory") {
           setShowModal(true);
           return;
         }
 
-        // If version is newer than last seen
+        // Newer version check
         if (!lastSeenVersion || lastSeenVersion !== release.version) {
-          // Check 24-hour reminder if optional
           if (dismissedAt && release.type === "optional") {
             const hoursSinceDismiss = (Date.now() - parseInt(dismissedAt, 10)) / (1000 * 60 * 60);
             if (hoursSinceDismiss < 24) {
@@ -38,7 +37,7 @@ export function useVersionChecker() {
         }
       }
     } catch (err) {
-      console.error("useVersionChecker error:", err);
+      console.warn("useVersionChecker:", err?.message || err);
     } finally {
       setLoading(false);
     }
@@ -47,7 +46,7 @@ export function useVersionChecker() {
   useEffect(() => {
     const timer = setTimeout(() => {
       checkVersion();
-    }, 1000); // 1s delay post authentication
+    }, 1000);
     return () => clearTimeout(timer);
   }, []);
 
@@ -57,7 +56,7 @@ export function useVersionChecker() {
       try {
         await api.patch("/api/v2/releases/mark-read", { version: latestRelease.version });
       } catch (err) {
-        console.error(err);
+        console.warn(err);
       }
     }
     setShowModal(false);
@@ -71,9 +70,12 @@ export function useVersionChecker() {
 
   return {
     showModal,
+    showUpdateModal: showModal,
     latestRelease,
     handleUpdateNow,
     handleLater,
     loading
   };
 }
+
+export default useVersionChecker;

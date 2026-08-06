@@ -1,106 +1,69 @@
-import { useTheme } from "../design-system/ThemeProvider";
-import { PageContainer } from "../design-system/layouts/PageContainer";
-import { Card } from "../design-system/components/Card";
-import { ArrowLeft, User, Building, Lock, LogOut, QrCode, Copy, Download, Share2, X, Sparkles } from "lucide-react";
-
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
+import {
+  User,
+  Building,
+  Lock,
+  LogOut,
+  Bell,
+  CreditCard,
+  HardDrive,
+  ShieldCheck,
+  HelpCircle,
+  Info,
+  ChevronRight,
+  QrCode,
+  Share2,
+  Copy,
+  Download,
+  X
+} from "lucide-react";
+
 import { api } from "../services/api";
-import useOwnerRealtimeSync from "../hooks/useOwnerRealtimeSync";
+import { useTheme } from "../design-system/ThemeProvider";
 import { clearOwnerAuth } from "../utils/authToken";
 import buildQrUrl from "../utils/buildQrUrl";
+import {
+  Card,
+  DashboardCard,
+  Button,
+  Badge,
+  Avatar,
+  Modal,
+  SectionHeader
+} from "../design-system/components";
 
-
-
-function Profile() {
-  const { colors } = useTheme();
+export default function Profile() {
+  const { colors, typography } = useTheme();
   const navigate = useNavigate();
-  const [ownerData, setOwnerData] = useState({
-    ownerName: "", phone: "", email: ""
-  });
+  const [ownerData, setOwnerData] = useState({ ownerName: "", phone: "", email: "" });
   const [hostelData, setHostelData] = useState(null);
   const [showQRModal, setShowQRModal] = useState(false);
-  const [loadingHostel, setLoadingHostel] = useState(false);
+  const [pushEnabled, setPushEnabled] = useState(true);
 
   useEffect(() => {
     const user = JSON.parse(localStorage.getItem("ownerUser") || localStorage.getItem("user") || "{}");
-
     if (user) {
       setOwnerData({
         ownerName: user.ownerName || "Hostel Owner",
         phone: user.phone || "N/A",
-        email: user.email || ""
+        email: user.email || "owner@hostelmate.com"
       });
     }
 
     const fetchHostelData = async () => {
-      setLoadingHostel(true);
       try {
         const response = await api.get("/api/owner/dashboard");
         if (response.data?.success && response.data.hostel) {
           setHostelData(response.data.hostel);
-        } else {
-          toast.error(response.data?.message || "Unable to load hostel details.");
         }
       } catch (error) {
-        toast.error(error?.response?.data?.message || "Unable to load hostel details.");
-      } finally {
-        setLoadingHostel(false);
+        console.warn("Unable to load hostel details.", error);
       }
     };
     fetchHostelData();
   }, []);
-
-  useOwnerRealtimeSync({
-    onSnapshotChange: (snapshot) => {
-      setOwnerData((prev) => ({
-        ownerName: snapshot.ownerName || prev.ownerName,
-        phone: snapshot.phone || prev.phone,
-        email: snapshot.email || prev.email,
-      }));
-
-      if (snapshot.hostel && snapshot.hostel.hostelName) {
-        setHostelData((prev) => ({
-          ...prev,
-          ...snapshot.hostel,
-        }));
-      }
-    },
-  });
-
-  const handleCopy = (text) => {
-    navigator.clipboard.writeText(text);
-    toast.success("Copied to clipboard!");
-  };
-
-  const handleDownloadQR = () => {
-    if (!hostelData?.qrCodeUrl) {
-      toast.error("QR code not available");
-      return;
-    }
-    const link = document.createElement("a");
-    link.href = buildQrUrl(hostelData.qrCodeUrl);
-    link.download = `${hostelData.hostelName}-qr.png`;
-    link.click();
-    toast.success("QR code downloaded!");
-  };
-
-  const handleShareQR = () => {
-    const publicUrl = hostelData?.publicUrl || `${window.location.origin}/public/hostel/${hostelData?.uniqueCode}`;
-    const text = `Join ${hostelData?.hostelName}! Click here to apply: ${publicUrl}`;
-    
-    if (navigator.share) {
-      navigator.share({
-        title: hostelData?.hostelName,
-        text: text,
-        url: publicUrl,
-      }).catch(() => {});
-    } else {
-      navigator.clipboard.writeText(text);
-      toast.success("Link and text copied to clipboard!");
-    }
-  };
 
   const handleLogout = () => {
     clearOwnerAuth();
@@ -108,211 +71,198 @@ function Profile() {
     navigate("/login");
   };
 
+  const handleCopy = (text) => {
+    navigator.clipboard.writeText(text);
+    toast.success("Copied to clipboard!");
+  };
+
   return (
-    <PageContainer title="Settings" subtitle="Profile, secure access, and sharing" action={<button onClick={() => navigate(-1)} className="flex h-10 w-10 items-center justify-center rounded-full" style={{ background: "rgba(255,255,255,0.08)" }}><ArrowLeft size={18} /></button>}>
-      <Card>
-        <div className="flex items-center gap-4">
-          <div className="flex h-14 w-14 items-center justify-center rounded-2xl" style={{ background: `${colors.accent.primary}16`, color: colors.accent.primary }}><User size={24} /></div>
-          <div>
-            <h2 className="text-xl font-semibold">{ownerData.ownerName}</h2>
-            <p className="text-sm" style={{ color: colors.text.muted }}>{ownerData.phone}</p>
-          </div>
+    <div className="space-y-6 max-w-3xl mx-auto">
+      
+      {/* 1. Header & Profile Banner */}
+      <div className="flex items-center gap-4">
+        <Avatar name={ownerData.ownerName} size="xl" />
+        <div>
+          <h1 style={{ fontSize: typography.sizes["2xl"] || "24px", fontWeight: typography.weights.bold, color: colors.text.primary || "#FFFFFF", margin: 0 }}>
+            {ownerData.ownerName}
+          </h1>
+          <p style={{ fontSize: typography.sizes.sm || "14px", color: colors.text.secondary || "#94A3B8", margin: "2px 0 0" }}>
+            {ownerData.phone} • {ownerData.email}
+          </p>
         </div>
-      </Card>
+      </div>
 
-      <Card className="p-0 overflow-hidden">
-        <MenuItem icon={<Building size={20} style={{ color: colors.accent.primary }} />} title="Hostel Settings" subtitle="Update hostel details and address" onClick={() => navigate("/owner/settings")} />
-        <div style={{ borderTop: `1px solid ${colors.border.default}` }} />
-        <MenuItem icon={<Sparkles size={20} style={{ color: colors.accent.primary }} />} title="Subscription Info" subtitle="View active plan and billing" onClick={() => toast("Subscription details coming soon!")} />
-        <div style={{ borderTop: `1px solid ${colors.border.default}` }} />
-        <MenuItem icon={<QrCode size={20} style={{ color: colors.accent.primary }} />} title="View Public QR" subtitle="Share hostel admission link" onClick={() => setShowQRModal(true)} />
-        <div style={{ borderTop: `1px solid ${colors.border.default}` }} />
-        <MenuItem icon={<User size={20} style={{ color: colors.accent.primary }} />} title="Owner Profile" subtitle="Manage personal information" onClick={() => navigate("/owner/profile")} />
-        <div style={{ borderTop: `1px solid ${colors.border.default}` }} />
-        <MenuItem icon={<Lock size={20} style={{ color: colors.accent.primary }} />} title="Update Password" subtitle="Change your login password" onClick={() => navigate("/owner/update-password")} />
-        <div style={{ borderTop: `1px solid ${colors.border.default}` }} />
-        <div className="flex items-center justify-between p-4 px-6" style={{ background: "rgba(255,255,255,0.02)" }}>
-          <div>
-            <h3 className="text-sm font-medium" style={{ color: "#ffffff" }}>Push Notifications</h3>
-            <p className="text-xs" style={{ color: "rgba(255,255,255,0.6)" }}>Receive alerts for new residents</p>
+      {/* 2. Apple Settings Group 1: Account & Profile */}
+      <div>
+        <SectionHeader title="Account Settings" />
+        <DashboardCard padding="none" className="divide-y divide-[#202B45] overflow-hidden">
+          <SettingsRow
+            icon={User}
+            title="Edit Owner Profile"
+            subtitle="Update personal info and contact details"
+            onClick={() => navigate("/owner/profile-edit")}
+          />
+          <SettingsRow
+            icon={QrCode}
+            title="Public Admission QR Code"
+            subtitle="Share admission link or download printable QR"
+            onClick={() => setShowQRModal(true)}
+          />
+        </DashboardCard>
+      </div>
+
+      {/* 3. Apple Settings Group 2: Workspace & Hostel */}
+      <div>
+        <SectionHeader title="Workspace & Hostel" />
+        <DashboardCard padding="none" className="divide-y divide-[#202B45] overflow-hidden">
+          <SettingsRow
+            icon={Building}
+            title="Hostel Configurations"
+            subtitle={hostelData?.hostelName || "Manage hostel address, rooms, and rules"}
+            onClick={() => navigate("/owner/hostel-settings")}
+          />
+          <SettingsRow
+            icon={CreditCard}
+            title="Billing & Subscription"
+            subtitle="View plan status and payment invoices"
+            onClick={() => navigate("/owner/billing")}
+          />
+          <SettingsRow
+            icon={HardDrive}
+            title="Storage & Quota"
+            subtitle="Google Drive cloud storage allocation"
+            onClick={() => navigate("/owner/storage-center")}
+          />
+        </DashboardCard>
+      </div>
+
+      {/* 4. Apple Settings Group 3: Preferences & Security */}
+      <div>
+        <SectionHeader title="Security & Preferences" />
+        <DashboardCard padding="none" className="divide-y divide-[#202B45] overflow-hidden">
+          <SettingsRow
+            icon={Lock}
+            title="Security & Password"
+            subtitle="Change account password and 2FA settings"
+            onClick={() => navigate("/owner/update-password")}
+          />
+          <div className="flex items-center justify-between p-4" style={{ background: colors.background.card }}>
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 rounded-xl bg-emerald-500/10 text-emerald-400">
+                <Bell size={18} />
+              </div>
+              <div>
+                <h4 style={{ fontSize: "14px", fontWeight: typography.weights.bold, color: colors.text.primary || "#FFFFFF", margin: 0 }}>
+                  Push Notifications
+                </h4>
+                <p style={{ fontSize: "12px", color: colors.text.secondary || "#94A3B8", margin: "2px 0 0" }}>
+                  Alerts for new admissions and rent payments
+                </p>
+              </div>
+            </div>
+            <input
+              type="checkbox"
+              checked={pushEnabled}
+              onChange={() => setPushEnabled(!pushEnabled)}
+              className="w-5 h-5 accent-emerald-500 cursor-pointer"
+            />
           </div>
-          <label className="relative inline-flex cursor-pointer items-center">
-            <input type="checkbox" className="peer sr-only" defaultChecked />
-            <div className="peer h-6 w-11 rounded-full bg-slate-700 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-green-500 peer-checked:after:translate-x-full peer-checked:after:border-white peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-green-300"></div>
-          </label>
-        </div>
-      </Card>
+        </DashboardCard>
+      </div>
 
-      <Card>
-        <button onClick={handleLogout} className="flex w-full items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-semibold" style={{ background: "rgba(235,87,87,0.14)", color: colors.accent.danger }}>
-          <LogOut size={18} /> Logout
-        </button>
-      </Card>
+      {/* 5. Apple Settings Group 4: Support & About */}
+      <div>
+        <SectionHeader title="Support & Application" />
+        <DashboardCard padding="none" className="divide-y divide-[#202B45] overflow-hidden">
+          <SettingsRow
+            icon={HelpCircle}
+            title="Help Desk & Support"
+            subtitle="Contact HostelMate customer support team"
+            onClick={() => navigate("/owner/support")}
+          />
+          <SettingsRow
+            icon={Info}
+            title="About HostelMate Enterprise"
+            subtitle="Version 4.0 Pro • Enterprise Build"
+            onClick={() => {}}
+          />
+        </DashboardCard>
+      </div>
+
+      {/* 6. Logout Action */}
+      <div className="pt-2">
+        <Button variant="danger" fullWidth icon={LogOut} onClick={handleLogout}>
+          Log Out of HostelMate
+        </Button>
+      </div>
 
       {/* QR Modal */}
-      {showQRModal && hostelData && (
-        <div style={{
-          position: "fixed",
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: "rgba(0,0,0,0.7)",
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-          zIndex: 1000,
-          padding: "20px"
-        }}>
-          <div className="card glass-card" style={{
-            background: "rgba(11, 23, 57, 0.95)",
-            maxWidth: "400px",
-            width: "100%",
-            borderRadius: "20px",
-            padding: "24px"
-          }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
-              <h2 className="text-h2">Admission Link</h2>
-              <button
-                className="btn-icon"
-                onClick={() => setShowQRModal(false)}
-                style={{
-                  width: 40,
-                  height: 40,
-                  background: "rgba(255,255,255,0.08)",
-                  border: "1px solid rgba(255,255,255,0.10)",
-                  color: "white",
-                  display: "grid",
-                  placeItems: "center",
-                }}
-              >
-                <X size={20} />
-              </button>
+      <Modal
+        isOpen={showQRModal}
+        onClose={() => setShowQRModal(false)}
+        title="Hostel Admission QR Code"
+      >
+        {hostelData && (
+          <div className="text-center space-y-4">
+            <p style={{ fontSize: "14px", color: colors.text.secondary || "#94A3B8" }}>
+              {hostelData.hostelName || hostelData.name}
+            </p>
+
+            {hostelData.qrCodeUrl && (
+              <img 
+                src={buildQrUrl(hostelData.qrCodeUrl)} 
+                alt="QR Code" 
+                className="w-48 h-48 mx-auto rounded-xl border border-white/10" 
+              />
+            )}
+
+            <div className="p-3 rounded-xl bg-white/5 text-xs text-slate-300 break-all font-mono">
+              {hostelData.publicUrl || `${window.location.origin}/public/hostel/${hostelData.uniqueCode || hostelData._id}`}
             </div>
 
-            <div style={{ textAlign: "center", marginBottom: "20px" }}>
-              <p style={{ fontSize: "14px", color: "rgba(255,255,255,0.8)", marginBottom: "12px" }}>{hostelData.hostelName}</p>
-              {hostelData.qrCodeUrl && (
-                <img 
-                  src={buildQrUrl(hostelData.qrCodeUrl)}
-                  alt="Hostel QR Code" 
-                  style={{ width: "240px", height: "240px", borderRadius: "12px", marginBottom: "16px" }}
-                />
-              )}
-            </div>
-
-            <div style={{
-              background: "rgba(255,255,255,0.05)",
-              borderRadius: "12px",
-              padding: "12px",
-              marginBottom: "16px",
-              wordBreak: "break-all",
-              fontSize: "12px",
-              color: "rgba(255,255,255,0.7)"
-            }}>
-              {hostelData.publicUrl || `${window.location.origin}/public/hostel/${hostelData.uniqueCode}`}
-            </div>
-
-            <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-              <button
-                onClick={() => {
-                  const url = hostelData.publicUrl || `${window.location.origin}/public/hostel/${hostelData.uniqueCode}`;
-                  handleCopy(url);
-                }}
-                style={{
-                  padding: "12px",
-                  borderRadius: "12px",
-                  background: "rgba(34, 197, 94, 0.1)",
-                  border: "1px solid rgba(34, 197, 94, 0.3)",
-                  color: "#22c55e",
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: "8px",
-                  fontWeight: "600"
-                }}
+            <div className="flex gap-2">
+              <Button 
+                variant="secondary" 
+                fullWidth 
+                icon={Copy} 
+                onClick={() => handleCopy(hostelData.publicUrl || `${window.location.origin}/public/hostel/${hostelData.uniqueCode}`)}
               >
-                <Copy size={16} /> Copy Link
-              </button>
-
-              <button
-                onClick={handleDownloadQR}
-                style={{
-                  padding: "12px",
-                  borderRadius: "12px",
-                  background: "rgba(59, 130, 246, 0.1)",
-                  border: "1px solid rgba(59, 130, 246, 0.3)",
-                  color: "#3b82f6",
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: "8px",
-                  fontWeight: "600"
-                }}
-              >
-                <Download size={16} /> Download QR
-              </button>
-
-              <button
-                onClick={handleShareQR}
-                style={{
-                  padding: "12px",
-                  borderRadius: "12px",
-                  background: "rgba(168, 85, 247, 0.1)",
-                  border: "1px solid rgba(168, 85, 247, 0.3)",
-                  color: "#a855f7",
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: "8px",
-                  fontWeight: "600"
-                }}
-              >
-                <Share2 size={16} /> Share
-              </button>
+                Copy Link
+              </Button>
             </div>
           </div>
-        </div>
-      )}
-    </PageContainer>
-  );
-}
+        )}
+      </Modal>
 
-function MenuItem({ icon, title, subtitle, onClick }) {
-  const { colors } = useTheme();
-  return (
-    <div
-      className="flex items-center gap-4 p-4 cursor-pointer"
-      onClick={onClick}
-      role="button"
-      tabIndex={0}
-      style={{ 
-        transition: "all 0.2s ease-in-out",
-        borderRadius: "12px"
-      }}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.background = "rgba(16, 185, 129, 0.12)";
-        e.currentTarget.style.borderColor = "rgba(16, 185, 129, 0.35)";
-        e.currentTarget.style.transform = "translateY(-2px)";
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.background = "transparent";
-        e.currentTarget.style.borderColor = "transparent";
-        e.currentTarget.style.transform = "translateY(0)";
-      }}
-    >
-      <div style={{ width: 40, height: 40, borderRadius: 12, background: "rgba(37, 211, 102, 0.1)", display: "flex", justifyContent: "center", alignItems: "center" }}>
-        {icon}
-      </div>
-      <div>
-        <h3 className="text-h3" style={{ marginBottom: 2, color: "#ffffff" }}>{title}</h3>
-        <p className="text-small" style={{ color: "#ffffff" }}>{subtitle}</p>
-      </div>
     </div>
   );
 }
 
-export default Profile;
+function SettingsRow({ icon: Icon, title, subtitle, onClick }) {
+  const { colors, typography } = useTheme();
+
+  return (
+    <div
+      onClick={onClick}
+      className="flex items-center justify-between p-4 cursor-pointer hover:bg-white/[0.02] transition-colors"
+      style={{ background: colors.background.card || "#131C2E" }}
+    >
+      <div className="flex items-center gap-3">
+        <div className="p-2.5 rounded-xl bg-emerald-500/10 text-emerald-400">
+          <Icon size={18} />
+        </div>
+        <div>
+          <h4 style={{ fontSize: "14px", fontWeight: typography.weights.bold, color: colors.text.primary || "#FFFFFF", margin: 0 }}>
+            {title}
+          </h4>
+          {subtitle && (
+            <p style={{ fontSize: "12px", color: colors.text.secondary || "#94A3B8", margin: "2px 0 0" }}>
+              {subtitle}
+            </p>
+          )}
+        </div>
+      </div>
+      <ChevronRight size={18} style={{ color: colors.text.secondary || "#94A3B8" }} />
+    </div>
+  );
+}

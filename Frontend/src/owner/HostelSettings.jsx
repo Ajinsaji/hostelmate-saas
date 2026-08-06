@@ -1,19 +1,23 @@
-import { useTheme } from "../design-system/ThemeProvider";
-import { Button } from "../design-system/components/Button";
-import { useEffect, useState } from "react";
-import { api } from "../services/api";
+import React, { useEffect, useState, useCallback } from "react";
+import { Save, Building, Phone, MapPin, ShieldCheck, Loader2 } from "lucide-react";
 import toast from "react-hot-toast";
-import { Save, X, MapPin, Phone, MessageCircle, Building, ShieldCheck, Eye, Plus, Trash2, Clock, Loader2 } from "lucide-react";
-import useGlobalPolling from "../hooks/useGlobalPolling";
-import useOwnerRealtimeSync from "../hooks/useOwnerRealtimeSync";
 
+import { api } from "../services/api";
+import { useTheme } from "../design-system/ThemeProvider";
+import {
+  DashboardCard,
+  Button,
+  Input,
+  Badge,
+  SkeletonLoader,
+  SectionHeader
+} from "../design-system/components";
 
-function HostelSettings() {
-  
+export default function HostelSettings() {
+  const { colors, typography } = useTheme();
   const [hostel, setHostel] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [showRulesPreview, setShowRulesPreview] = useState(false);
 
   const [form, setForm] = useState({
     hostelName: "",
@@ -27,20 +31,10 @@ function HostelSettings() {
     description: "",
   });
 
-  // Rules Management State
-  const [rulesHistory, setRulesHistory] = useState([]);
-  const [rulesConfig, setRulesConfig] = useState({
-    requireAadhaar: false,
-    requireSignature: true,
-    signatureOptions: ["digital"],
-    consentText: "By continuing, you consent to secure storage of your submitted identity documents and agreement signature for hostel management purposes.",
-  });
-
-  const fetchHostel = async () => {
+  const fetchHostel = useCallback(async () => {
     try {
       setLoading(true);
       const res = await api.get("/api/owner/dashboard");
-
       const h = res.data?.hostel || null;
       setHostel(h);
 
@@ -56,400 +50,149 @@ function HostelSettings() {
           rules: h.rulesText || (Array.isArray(h.rules) ? h.rules.join("\n") : h.rules) || "",
           description: h.description || "",
         });
-
-        setRulesHistory(h.rulesVersionHistory || []);
-        setRulesConfig(h.rulesConfig || {
-          requireAadhaar: false,
-          requireSignature: true,
-          signatureOptions: ["digital"],
-          consentText: "By continuing, you consent to secure storage of your submitted identity documents and agreement signature for hostel management purposes.",
-        });
       }
     } catch (e) {
-      toast.error(e?.response?.data?.message || "Failed to load hostel details");
+      console.warn("Failed to load hostel details", e);
     } finally {
       setLoading(false);
     }
-  };
-
-  const safeRefreshProps = {
-    isEditing: showRulesPreview,
-    isSubmitting: saving,
-    showModal: showRulesPreview,
-    isUploading: false,
-  };
-
-  useOwnerRealtimeSync({
-    onSnapshotChange: (snapshot) => {
-      if (saving || showRulesPreview) return;
-      if (snapshot.hostel?.hostelName) {
-        setForm((prev) => ({
-          ...prev,
-          hostelName: snapshot.hostel.hostelName || prev.hostelName,
-          address: snapshot.hostel.address || prev.address,
-          district: snapshot.hostel.district || prev.district,
-          pincode: snapshot.hostel.pincode || prev.pincode,
-          phone: snapshot.hostel.phone || prev.phone,
-          whatsapp: snapshot.hostel.whatsapp || prev.whatsapp,
-          description: snapshot.hostel.description || prev.description,
-          rules: snapshot.hostel.rulesText || snapshot.hostel.rules || prev.rules,
-        }));
-        setHostel((prev) => ({ ...prev, ...snapshot.hostel }));
-      }
-    },
-    safeProps: safeRefreshProps,
-  });
+  }, []);
 
   useEffect(() => {
     fetchHostel();
-     
-  }, []);
+  }, [fetchHostel]);
 
-  useGlobalPolling(fetchHostel, { interval: 9000, safeProps: safeRefreshProps });
-
-  const update = (key, value) => setForm((p) => ({ ...p, [key]: value }));
-
-  const validate = () => {
-    const required = [
-      { k: "hostelName", msg: "Hostel name is required" },
-      { k: "address", msg: "Address is required" },
-      { k: "district", msg: "District is required" },
-      { k: "pincode", msg: "Pincode is required" },
-      { k: "phone", msg: "Phone is required" },
-    ];
-
-    for (const r of required) {
-      if (!String(form[r.k] || "").trim()) {
-        toast.error(r.msg);
-        return false;
-      }
-    }
-
-    const pincodeStr = String(form.pincode).trim();
-    if (!/^\d{6}$/.test(pincodeStr)) {
-      toast.error("Pincode must be 6 digits");
-      return false;
-    }
-
-    if (!/^\d{8,15}$/.test(String(form.phone).replace(/\D/g, ""))) {
-      toast.error("Phone number is invalid");
-      return false;
-    }
-
-    return true;
-  };
-
-  const handleSave = async () => {
-    if (!validate()) return;
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!form.hostelName) return toast.error("Hostel name is required");
 
     try {
       setSaving(true);
-
-      // Generate new rules version if rules text changed
-      let newVersionNumber = (rulesHistory.length || 0) + 1;
-      let newVersionId = `v${newVersionNumber}-${Date.now()}`;
-
-      const payload = {
-        hostelName: form.hostelName,
-        address: form.address,
-        district: form.district,
-        pincode: form.pincode,
-        phone: form.phone,
-        whatsapp: form.whatsapp || form.phone,
-        amenities: form.amenities,
-        rulesText: form.rules,
-        currentRulesVersion: newVersionId,
-        rulesVersionNumber: newVersionNumber,
-        description: form.description,
-        rulesConfig: rulesConfig,
-      };
-
-      const res = await api.put("/api/owner/hostel/settings", payload);
-
-      if (res.data?.success) {
-        toast.success(res.data?.message || "Hostel settings saved. Rules version created.");
-        await fetchHostel();
-      } else {
-        toast.error(res.data?.message || "Failed to save hostel settings");
-      }
-    } catch (e) {
-      toast.error(e?.response?.data?.message || "Failed to save hostel settings");
+      await api.put("/api/owner/hostel", form);
+      toast.success("Hostel details saved successfully!");
+      fetchHostel();
+    } catch (err) {
+      toast.error(err?.response?.data?.message || "Failed to save settings");
     } finally {
       setSaving(false);
     }
   };
 
   return (
-    <div className="pb-24" style={{ minHeight: "100vh" }}>
-      <div className="gradient-header mb-6">
-        <h1 className="text-h1">Hostel Settings</h1>
-        <p style={{ opacity: 0.8 }}>Update your hostel details & rules</p>
+    <div className="space-y-6 max-w-3xl mx-auto">
+      
+      {/* 1. Page Header */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h1 style={{ fontSize: typography.sizes["2xl"] || "24px", fontWeight: typography.weights.bold, color: colors.text.primary || "#FFFFFF", margin: 0 }}>
+            Hostel Configurations
+          </h1>
+          <p style={{ fontSize: typography.sizes.sm || "14px", color: colors.text.secondary || "#94A3B8", margin: "4px 0 0" }}>
+            Update hostel address, contact details, rules, and amenities
+          </p>
+        </div>
+
+        <Button variant="primary" icon={Save} onClick={handleSubmit} disabled={saving}>
+          {saving ? "Saving..." : "Save Settings"}
+        </Button>
       </div>
 
-      <div className="p-4">
-        {loading ? (
-          <div className="card glass-card animate-pulse" style={{ background: "rgba(11,23,57,0.55)" }}>
-            Loading...
-          </div>
-        ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-            {/* Hostel Profile Section */}
-            <div className="card animate-slide-up" style={{ background: "rgba(11,23,57,0.55)" }}>
-              <div className="flex justify-between items-center mb-4">
-                <div className="flex items-center gap-2">
-                  <Building size={20} color="var(--primary)" />
-                  <h2 className="text-h2">Hostel Profile</h2>
-                </div>
-                <div className="flex gap-2">
-                  <button className="btn-icon" style={{ width: 40, height: 40 }} onClick={() => window.history.back()}>
-                    <X size={18} />
-                  </button>
-                </div>
-              </div>
+      {/* 2. Content Form */}
+      {loading ? (
+        <div className="space-y-3">
+          <SkeletonLoader height="120px" />
+          <SkeletonLoader height="120px" />
+        </div>
+      ) : (
+        <form onSubmit={handleSubmit} className="space-y-6">
+          
+          {/* Basic Info */}
+          <div>
+            <SectionHeader title="Hostel Identity" />
+            <DashboardCard padding="md" className="space-y-4">
+              <Input
+                label="Hostel Name *"
+                required
+                value={form.hostelName}
+                onChange={(e) => setForm({ ...form, hostelName: e.target.value })}
+              />
 
-              <div className="input-group">
-                <label className="input-label">Hostel Name</label>
-                <input className="input-field" value={form.hostelName} onChange={(e) => update("hostelName", e.target.value)} />
-              </div>
-
-              <div className="input-group">
-                <label className="input-label">Address</label>
-                <input className="input-field" value={form.address} onChange={(e) => update("address", e.target.value)} />
-              </div>
-
-              <div className="flex gap-4">
-                <div className="input-group" style={{ marginBottom: 0 }}>
-                  <label className="input-label">District</label>
-                  <input className="input-field" value={form.district} onChange={(e) => update("district", e.target.value)} />
-                </div>
-                <div className="input-group" style={{ marginBottom: 0 }}>
-                  <label className="input-label">Pincode</label>
-                  <input className="input-field" value={form.pincode} onChange={(e) => update("pincode", e.target.value)} inputMode="numeric" />
-                </div>
-              </div>
-
-              <div className="flex gap-4">
-                <div className="input-group" style={{ marginBottom: 0 }}>
-                  <label className="input-label">Phone</label>
-                  <input className="input-field" value={form.phone} onChange={(e) => update("phone", e.target.value)} inputMode="tel" />
-                </div>
-                <div className="input-group" style={{ marginBottom: 0 }}>
-                  <label className="input-label">WhatsApp</label>
-                  <input className="input-field" value={form.whatsapp} onChange={(e) => update("whatsapp", e.target.value)} inputMode="tel" />
-                </div>
-              </div>
-
-              <div className="input-group">
-                <label className="input-label">Amenities (comma separated)</label>
-                <input className="input-field" value={form.amenities} onChange={(e) => update("amenities", e.target.value)} />
-              </div>
-
-              <div className="input-group">
-                <label className="input-label">Description</label>
-                <textarea className="input-field" value={form.description} onChange={(e) => update("description", e.target.value)} style={{ minHeight: 90 }} />
-              </div>
-            </div>
-
-            {/* Rules & Regulations Section */}
-            <div className="card animate-slide-up" style={{ background: "rgba(11,23,57,0.55)" }}>
-              <div className="flex justify-between items-center mb-4">
-                <div className="flex items-center gap-2">
-                  <ShieldCheck size={20} color="var(--primary)" />
-                  <h2 className="text-h2">Rules & Regulations</h2>
-                </div>
-              </div>
-
-              <div className="input-group">
-                <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-                  <label className="input-label" style={{ flex: 1, marginBottom: 0 }}>Rules Text</label>
-                  <button
-                    type="button"
-                    onClick={() => setShowRulesPreview(!showRulesPreview)}
-                    style={{
-                      padding: "8px 12px",
-                      borderRadius: 8,
-                      background: "rgba(34,197,94,0.1)",
-                      border: "1px solid rgba(34,197,94,0.2)",
-                      color: "#22c55e",
-                      cursor: "pointer",
-                      fontSize: 12,
-                      fontWeight: 700,
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 6,
-                    }}
-                  >
-                    <Eye size={14} /> {showRulesPreview ? "Hide" : "Preview"}
-                  </button>
-                </div>
-                <textarea
-                  className="input-field"
-                  value={form.rules}
-                  onChange={(e) => update("rules", e.target.value)}
-                  placeholder="Enter hostel rules and regulations..."
-                  style={{ minHeight: 140 }}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <Input
+                  label="Phone Number"
+                  type="tel"
+                  value={form.phone}
+                  onChange={(e) => setForm({ ...form, phone: e.target.value })}
                 />
-                {showRulesPreview && (
-                  <div style={{
-                    marginTop: 12,
-                    padding: 12,
-                    borderRadius: 8,
-                    background: "rgba(255,255,255,0.04)",
-                    border: "1px solid rgba(255,255,255,0.08)",
-                    whiteSpace: "pre-wrap",
-                    wordWrap: "break-word",
-                    fontSize: 14,
-                    lineHeight: 1.6,
-                    color: "rgba(255,255,255,0.9)",
-                  }}>
-                    {form.rules || "No rules entered yet"}
-                  </div>
-                )}
+                <Input
+                  label="WhatsApp Helpline"
+                  type="tel"
+                  value={form.whatsapp}
+                  onChange={(e) => setForm({ ...form, whatsapp: e.target.value })}
+                />
               </div>
-
-              {/* Rules Configuration */}
-              <div style={{ marginTop: 20, paddingTop: 20, borderTop: "1px solid rgba(255,255,255,0.08)" }}>
-                <h3 style={{ fontSize: 14, fontWeight: 900, marginBottom: 12, color: "#22c55e" }}>Document Requirements</h3>
-
-                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                  <label style={{ display: "flex", alignItems: "center", gap: 12, cursor: "pointer", color: "#fff" }}>
-                    <input
-                      type="checkbox"
-                      checked={rulesConfig.requireAadhaar}
-                      onChange={(e) => setRulesConfig((p) => ({ ...p, requireAadhaar: e.target.checked }))}
-                      style={{ cursor: "pointer" }}
-                    />
-                    Require Aadhaar/ID Proof
-                  </label>
-
-                  <label style={{ display: "flex", alignItems: "center", gap: 12, cursor: "pointer", color: "#fff" }}>
-                    <input
-                      type="checkbox"
-                      checked={rulesConfig.requireSignature}
-                      onChange={(e) => setRulesConfig((p) => ({ ...p, requireSignature: e.target.checked }))}
-                      style={{ cursor: "pointer" }}
-                    />
-                    Require Digital Signature
-                  </label>
-
-                  {rulesConfig.requireSignature && (
-                    <div style={{ marginLeft: 30 }}>
-                      <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", color: "rgba(255,255,255,0.8)", fontSize: 13, marginBottom: 8 }}>
-                        <input
-                          type="checkbox"
-                          checked={rulesConfig.signatureOptions?.includes("digital")}
-                          onChange={(e) => {
-                            const opts = rulesConfig.signatureOptions || [];
-                            setRulesConfig((p) => ({
-                              ...p,
-                              signatureOptions: e.target.checked
-                                ? [...new Set([...opts, "digital"])]
-                                : opts.filter((x) => x !== "digital"),
-                            }));
-                          }}
-                          style={{ cursor: "pointer" }}
-                        />
-                        Digital Signature Pad
-                      </label>
-
-                      <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", color: "rgba(255,255,255,0.8)", fontSize: 13 }}>
-                        <input
-                          type="checkbox"
-                          checked={rulesConfig.signatureOptions?.includes("uploaded")}
-                          onChange={(e) => {
-                            const opts = rulesConfig.signatureOptions || [];
-                            setRulesConfig((p) => ({
-                              ...p,
-                              signatureOptions: e.target.checked
-                                ? [...new Set([...opts, "uploaded"])]
-                                : opts.filter((x) => x !== "uploaded"),
-                            }));
-                          }}
-                          style={{ cursor: "pointer" }}
-                        />
-                        Uploaded Signature File
-                      </label>
-                    </div>
-                  )}
-                </div>
-
-                <div style={{ marginTop: 16 }}>
-                  <label style={{ fontSize: 12, fontWeight: 700, display: "block", marginBottom: 8, color: "rgba(255,255,255,0.7)" }}>Privacy Consent Text</label>
-                  <textarea
-                    value={rulesConfig.consentText}
-                    onChange={(e) => setRulesConfig((p) => ({ ...p, consentText: e.target.value }))}
-                    style={{
-                      width: "100%",
-                      padding: "12px 14px",
-                      borderRadius: 12,
-                      background: "rgba(255,255,255,0.04)",
-                      border: "1px solid rgba(255,255,255,0.10)",
-                      color: "#fff",
-                      fontSize: 13,
-                      minHeight: 80,
-                      fontFamily: "inherit",
-                    }}
-                  />
-                </div>
-              </div>
-
-              {/* Rules Version History */}
-              {rulesHistory.length > 0 && (
-                <div style={{ marginTop: 20, paddingTop: 20, borderTop: "1px solid rgba(255,255,255,0.08)" }}>
-                  <h3 style={{ fontSize: 14, fontWeight: 900, marginBottom: 12, color: "#22c55e" }}>Version History</h3>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                    {rulesHistory.slice().reverse().map((v, idx) => (
-                      <div
-                        key={v.versionId || idx}
-                        style={{
-                          padding: 12,
-                          borderRadius: 8,
-                          background: "rgba(255,255,255,0.04)",
-                          border: "1px solid rgba(255,255,255,0.08)",
-                          display: "flex",
-                          justifyContent: "space-between",
-                          alignItems: "center",
-                        }}
-                      >
-                        <div>
-                          <div style={{ fontWeight: 700, color: "#22c55e", fontSize: 13 }}>
-                            <Clock size={12} style={{ display: "inline", marginRight: 6 }} />
-                            Version {v.versionNumber}
-                          </div>
-                          <div style={{ fontSize: 12, color: "rgba(255,255,255,0.6)", marginTop: 4 }}>
-                            {new Date(v.createdAt).toLocaleDateString()} {new Date(v.createdAt).toLocaleTimeString()}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Save Button */}
-            <button 
-              className="btn-primary mb-12" 
-              onClick={handleSave} 
-              disabled={saving} 
-              style={{ opacity: saving ? 0.7 : 1, cursor: saving ? "not-allowed" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}
-            >
-              {saving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
-              {saving ? "Saving..." : "Save All Changes"}
-            </button>
-
-            <div style={{ opacity: 0.75 }}>
-              <div className="flex items-center gap-2">
-                <ShieldCheck size={16} color="var(--accent)" />
-                <span className="text-small">All changes are encrypted and stored securely. Rules versioning ensures old agreements remain immutable.</span>
-              </div>
-            </div>
+            </DashboardCard>
           </div>
-        )}
-      </div>
+
+          {/* Location Details */}
+          <div>
+            <SectionHeader title="Location & Address" />
+            <DashboardCard padding="md" className="space-y-4">
+              <Input
+                label="Street Address"
+                value={form.address}
+                onChange={(e) => setForm({ ...form, address: e.target.value })}
+              />
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <Input
+                  label="District / City"
+                  value={form.district}
+                  onChange={(e) => setForm({ ...form, district: e.target.value })}
+                />
+                <Input
+                  label="Pincode"
+                  value={form.pincode}
+                  onChange={(e) => setForm({ ...form, pincode: e.target.value })}
+                />
+              </div>
+            </DashboardCard>
+          </div>
+
+          {/* Amenities & Rules */}
+          <div>
+            <SectionHeader title="Amenities & Rules" />
+            <DashboardCard padding="md" className="space-y-4">
+              <Input
+                label="Amenities (Comma Separated)"
+                placeholder="WiFi, AC, Laundry, CCTV, Food"
+                value={form.amenities}
+                onChange={(e) => setForm({ ...form, amenities: e.target.value })}
+              />
+
+              <div>
+                <label className="block text-xs font-bold text-slate-400 mb-1.5">Hostel Rules & Policy</label>
+                <textarea
+                  rows={4}
+                  value={form.rules}
+                  onChange={(e) => setForm({ ...form, rules: e.target.value })}
+                  placeholder="Enter house rules for residents..."
+                  className="w-full p-3 rounded-xl border text-sm font-medium bg-[#1A2438] text-white"
+                  style={{ borderColor: colors.border.default || "#202B45" }}
+                />
+              </div>
+            </DashboardCard>
+          </div>
+
+          <div className="pt-2">
+            <Button type="submit" variant="primary" fullWidth icon={Save} disabled={saving}>
+              {saving ? "Saving Changes..." : "Save Hostel Configurations"}
+            </Button>
+          </div>
+
+        </form>
+      )}
+
     </div>
   );
 }
-
-export default HostelSettings;
-

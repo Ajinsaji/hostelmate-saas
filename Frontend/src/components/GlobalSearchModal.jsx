@@ -56,10 +56,9 @@ export default function GlobalSearchModal({ isOpen, onClose }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center pt-16 sm:pt-24 p-4 bg-slate-950/70 backdrop-blur-md transition-all">
-      <div className="relative w-full max-w-xl bg-[#0b1739]/95 border border-[#22304A] rounded-3xl shadow-2xl overflow-hidden space-y-3 p-4 text-white">
-        
-        {/* Search Header */}
-        <div className="relative flex items-center border-b border-[#22304A] pb-3">
+      <div className="relative w-full max-w-xl border rounded-[24px] shadow-2xl overflow-hidden space-y-3 p-4 text-white" style={{ background: "linear-gradient(180deg, rgba(17,24,39,0.96) 0%, rgba(11,18,32,0.96) 100%)", borderColor: "#22304A" }}>
+
+        <div className="relative flex items-center border-b pb-3" style={{ borderColor: "rgba(255,255,255,0.08)" }}>
           <Search className="absolute left-3 w-5 h-5 text-slate-400" />
           <input
             type="text"
@@ -69,12 +68,11 @@ export default function GlobalSearchModal({ isOpen, onClose }) {
             placeholder="Search residents, rooms, payments, reports, settings (Ctrl+K)..."
             className="w-full bg-transparent pl-10 pr-10 py-2 text-sm text-white focus:outline-none"
           />
-          <button onClick={onClose} className="absolute right-2 p-1.5 bg-white/5 hover:bg-white/10 text-slate-400 rounded-full">
+          <button onClick={onClose} className="absolute right-2 p-1.5 bg-white/5 hover:bg-white/10 text-slate-400 rounded-full" style={{ minWidth: "36px", minHeight: "36px" }}>
             <X size={16} />
           </button>
         </div>
 
-        {/* Results List */}
         <div className="max-h-80 overflow-y-auto space-y-1 text-xs">
           {filteredItems.length === 0 ? (
             <p className="p-4 text-center text-slate-400">No matching workspace resources found for "{query}"</p>
@@ -88,6 +86,7 @@ export default function GlobalSearchModal({ isOpen, onClose }) {
                   className={`p-3 rounded-2xl flex justify-between items-center cursor-pointer transition ${
                     selectedIndex === idx ? "bg-emerald-500/10 text-emerald-400 font-bold border border-emerald-500/30" : "hover:bg-white/5 text-slate-300"
                   }`}
+                  style={{ minHeight: "48px" }}
                 >
                   <div className="flex items-center gap-3">
                     <div className="p-2 bg-white/5 rounded-xl">
@@ -106,7 +105,7 @@ export default function GlobalSearchModal({ isOpen, onClose }) {
         </div>
 
         {/* Footer shortcuts */}
-        <div className="flex justify-between items-center text-[10px] text-slate-400 pt-2 border-t border-[#22304A]/60">
+        <div className="flex justify-between items-center text-[10px] text-slate-400 pt-2 border-t" style={{ borderColor: "rgba(255,255,255,0.08)" }}>
           <span>Use <b>↑ ↓</b> to navigate</span>
           <span>Press <b>ESC</b> to close</span>
         </div>

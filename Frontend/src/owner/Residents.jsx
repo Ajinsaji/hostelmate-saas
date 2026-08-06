@@ -1,76 +1,39 @@
-import { useTheme } from "../design-system/ThemeProvider";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
-  Search,
-  Plus,
   Users,
+  Plus,
   BedDouble,
   CreditCard,
+  Eye,
+  Trash2,
 } from "lucide-react";
 import toast from "react-hot-toast";
+
 import api from "../utils/apiClient";
-import buildFileUrl from "../utils/buildFileUrl";
-import { OwnerLayout } from "../design-system/layouts/OwnerLayout";
-import { PageContainer } from "../design-system/layouts/PageContainer";
-import { CardGrid } from "../design-system/layouts/CardGrid";
-import { Button } from "../design-system/components/Button";
-import FilterChip from "../design-system/components/FilterChip";
-import { KPICard } from "../design-system/components/KPICard";
-import ResidentCard from "../design-system/components/ResidentCard";
-import { AISearchBar } from "../design-system/components/AISearchBar";
-import { EmptyState } from "../design-system/components/EmptyState";
-import { LoadingSkeleton } from "../design-system/components/LoadingSkeleton";
+import { useTheme } from "../design-system/ThemeProvider";
 import { useCurrentHostel } from "../contexts/HostelContext";
+import {
+  MetricCard,
+  Button,
+  Badge,
+  Avatar,
+  Input,
+  SearchBox,
+  Table,
+  TableRow,
+  TableCell,
+  MobileCard,
+  SkeletonLoader,
+  EmptyState,
+  Modal,
+  Drawer,
+  FormWizard
+} from "../design-system/components";
 
-function ResidentTable({ residents, onAction, getStatusBadge }) {
-  return (
-    <div className="overflow-x-auto rounded-2xl border" style={{ borderColor: '#22304A', background: '#162032' }}>
-      <table className="w-full text-left border-collapse">
-        <thead>
-          <tr className="border-b" style={{ borderColor: '#22304A', background: 'rgba(255,255,255,0.02)' }}>
-            <th className="p-4 text-xs font-bold text-slate-400 uppercase">Resident</th>
-            <th className="p-4 text-xs font-bold text-slate-400 uppercase">Phone & Email</th>
-            <th className="p-4 text-xs font-bold text-slate-400 uppercase">Room Info</th>
-            <th className="p-4 text-xs font-bold text-slate-400 uppercase">Status</th>
-            <th className="p-4 text-xs font-bold text-slate-400 uppercase">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {residents.map(res => (
-            <tr key={res._id} className="border-b hover:bg-white/5 transition" style={{ borderColor: '#22304A' }}>
-              <td className="p-4">
-                <div className="font-semibold text-white">{res.name || `${res.firstName} ${res.lastName}`}</div>
-                <div className="text-xs text-slate-400 capitalize">{res.gender}</div>
-              </td>
-              <td className="p-4">
-                <div className="text-sm text-white">{res.phone}</div>
-                <div className="text-xs text-slate-400">{res.email || '—'}</div>
-              </td>
-              <td className="p-4 text-sm text-white">
-                Room {res.roomId?.roomNumber || '—'} (Bed {res.bedId?.bedNumber || '—'})
-              </td>
-              <td className="p-4">
-                {getStatusBadge(res.status)}
-              </td>
-              <td className="p-4">
-                <div className="flex gap-2">
-                  <Button variant="secondary" onClick={() => onAction('view', res)} size="sm">View</Button>
-                  <Button variant="secondary" onClick={() => onAction('edit', res)} size="sm">Edit</Button>
-                  <Button variant="secondary" onClick={() => onAction('delete', res)} size="sm">Delete</Button>
-                </div>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
-const Residents = () => {
+export default function Residents() {
   const { hostel } = useCurrentHostel();
   const activeHostelId = hostel?.id || hostel?._id;
-  const { colors } = useTheme();
+  const { colors, typography } = useTheme();
 
   // State hooks
   const [residents, setResidents] = useState([]);
@@ -82,32 +45,17 @@ const Residents = () => {
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
   const [filterGender, setFilterGender] = useState("");
-  const [filterFood, setFilterFood] = useState("");
   const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [totalCount, setTotalCount] = useState(0);
 
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingResident, setEditingResident] = useState(null);
-  const [showCheckInModal, setShowCheckInModal] = useState(false);
-  const [showCheckOutModal, setShowCheckOutModal] = useState(false);
-  const [showTransferModal, setShowTransferModal] = useState(false);
-  const [selectedResident, setSelectedResident] = useState(null);
   const [showProfileDrawer, setShowProfileDrawer] = useState(false);
   const [profileData, setProfileData] = useState(null);
-
-  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
-
-  useEffect(() => {
-    const handleResize = () => setIsMobile(window.innerWidth < 768);
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, []);
+  const [formStep, setFormStep] = useState(0);
 
   const [form, setForm] = useState({
     firstName: "",
     lastName: "",
-    fullName: "",
     phone: "",
     email: "",
     gender: "Male",
@@ -128,11 +76,7 @@ const Residents = () => {
     status: "Pending Admission",
   });
 
-  const [checkInForm, setCheckInForm] = useState({ roomId: "", bedId: "", checkInDate: new Date().toISOString().split("T")[0] });
-  const [checkOutForm, setCheckOutForm] = useState({ actualCheckoutDate: new Date().toISOString().split("T")[0], remarks: "" });
-  const [transferForm, setTransferForm] = useState({ newRoomId: "", newBedId: "", reason: "" });
-
-  const fetchResidents = async () => {
+  const fetchResidents = useCallback(async () => {
     try {
       setLoading(true);
       const params = new URLSearchParams({
@@ -141,7 +85,6 @@ const Residents = () => {
         ...(search && { search }),
         ...(filterStatus && { status: filterStatus }),
         ...(filterGender && { gender: filterGender }),
-        ...(filterFood && { foodPreference: filterFood }),
       });
 
       const [resData, statsData, roomsData] = await Promise.all([
@@ -150,799 +93,433 @@ const Residents = () => {
         api.get("/api/rooms"),
       ]);
 
-      if (resData.data?.success) {
-        setResidents(resData.data.residents || []);
-        setTotalPages(resData.data.totalPages || 1);
-        setTotalCount(resData.data.total || 0);
+      if (resData.data.success) {
+        setResidents(resData.data.data.residents || resData.data.residents || []);
       }
 
-      if (statsData.data?.success) {
-        setStats(statsData.data);
+      if (statsData.data.success) {
+        setStats(statsData.data.data);
       }
 
-      if (roomsData.data?.rooms) {
-        setRooms(roomsData.data.rooms);
+      if (roomsData.data.success) {
+        setRooms(roomsData.data.rooms || []);
       }
     } catch (err) {
-      console.error(err);
-      toast.error("Failed to load resident data");
+      console.warn("Failed to load residents.", err);
     } finally {
       setLoading(false);
     }
-  };
+  }, [page, search, filterStatus, filterGender]);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      fetchResidents();
-    }, 0);
-    return () => clearTimeout(timer);
-  }, [page, search, filterStatus, filterGender, filterFood, activeHostelId]);
+    fetchResidents();
+  }, [fetchResidents, activeHostelId]);
 
-  const handleFetchBedsForRoom = async (roomId) => {
-    if (!roomId) {
+  const handleRoomSelect = (roomId) => {
+    setForm((prev) => ({ ...prev, roomId, bedId: "" }));
+    const selectedRoom = rooms.find((r) => r._id === roomId);
+    if (selectedRoom) {
+      const vacantBeds = (selectedRoom.beds || []).filter((b) => b.status === "Vacant");
+      setAvailableBeds(vacantBeds);
+    } else {
       setAvailableBeds([]);
-      return;
-    }
-    try {
-      const res = await api.get(`/api/beds?roomId=${roomId}`);
-      if (res.data?.beds) {
-        setAvailableBeds(res.data.beds.filter((b) => b.status === "vacant" || b.status === "available"));
-      }
-    } catch (err) {
-      console.error(err);
     }
   };
 
-  const handleSaveResident = async (e) => {
-    e.preventDefault();
+  const handleFormSubmit = async (e) => {
+    if (e && e.preventDefault) e.preventDefault();
+    if (!form.firstName || !form.phone) {
+      return toast.error("First name and phone number are required.");
+    }
+
     try {
       if (editingResident) {
         await api.put(`/api/residents/${editingResident._id}`, form);
-        toast.success("Resident updated successfully");
+        toast.success("Resident updated successfully!");
       } else {
         await api.post("/api/residents", form);
-        toast.success("Resident added successfully");
+        toast.success("Resident registered successfully!");
       }
       setShowAddModal(false);
+      setEditingResident(null);
+      setFormStep(0);
       fetchResidents();
-    } catch (error) {
-      toast.error(error.response?.data?.message || "Failed to save resident");
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Operation failed.");
     }
   };
 
-  const handleCheckInSubmit = async (e) => {
-    e.preventDefault();
+  const handleDelete = async (id) => {
+    if (!window.confirm("Are you sure you want to delete this resident?")) return;
     try {
-      await api.patch("/api/residents/checkin", {
-        residentId: selectedResident._id,
-        ...checkInForm,
-      });
-      toast.success("Resident checked in successfully");
-      setShowCheckInModal(false);
+      await api.delete(`/api/residents/${id}`);
+      toast.success("Resident deleted.");
       fetchResidents();
     } catch (err) {
-      toast.error(err.response?.data?.message || "Check-in failed");
-    }
-  };
-
-  const handleCheckOutSubmit = async (e) => {
-    e.preventDefault();
-    try {
-      await api.patch("/api/residents/checkout", {
-        residentId: selectedResident._id,
-        ...checkOutForm,
-      });
-      toast.success("Resident checked out successfully");
-      setShowCheckOutModal(false);
-      fetchResidents();
-    } catch (err) {
-      toast.error(err.response?.data?.message || "Check-out failed");
-    }
-  };
-
-  const handleTransferSubmit = async (e) => {
-    e.preventDefault();
-    try {
-      await api.patch("/api/residents/transfer-room", {
-        residentId: selectedResident._id,
-        ...transferForm,
-      });
-      toast.success("Resident transferred successfully");
-      setShowTransferModal(false);
-      fetchResidents();
-    } catch (err) {
-      toast.error(err.response?.data?.message || "Transfer failed");
-    }
-  };
-
-  const handleDeleteResident = async (residentId) => {
-    if (!window.confirm("Are you sure you want to soft delete this resident? Historical financial records will be preserved.")) return;
-    try {
-      await api.delete(`/api/residents/${residentId}`);
-      toast.success("Resident soft deleted");
-      fetchResidents();
-    } catch (err) {
-      toast.error(err.response?.data?.message || "Delete failed");
-    }
-  };
-
-  const handleRestoreResident = async (residentId) => {
-    try {
-      await api.patch(`/api/residents/${residentId}/restore`);
-      toast.success("Resident restored successfully");
-      fetchResidents();
-    } catch (err) {
-      toast.error(err.response?.data?.message || "Restore failed");
-    }
-  };
-
-  const handleViewProfile = async (resident) => {
-    try {
-      const res = await api.get(`/api/residents/${resident._id}`);
-      if (res.data?.success) {
-        setProfileData(res.data);
-        setShowProfileDrawer(true);
-      }
-    } catch (err) {
-      toast.error("Failed to load profile");
+      toast.error("Failed to delete resident.");
     }
   };
 
   const getStatusBadge = (status) => {
-    switch (status) {
-      case "Active":
+    switch (status?.toLowerCase()) {
       case "active":
-        return <span className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-xs px-2.5 py-0.5 rounded-full font-bold">Active</span>;
-      case "Pending Admission":
+      case "checkedin":
+        return <Badge variant="success">Active</Badge>;
       case "pending":
-        return <span className="bg-blue-500/20 text-blue-300 border border-blue-500/30 text-xs px-2.5 py-0.5 rounded-full font-bold">Pending Admission</span>;
-      case "Notice Period":
-        return <span className="bg-amber-500/20 text-amber-300 border border-amber-500/30 text-xs px-2.5 py-0.5 rounded-full font-bold">Notice Period</span>;
-      case "Checked Out":
-      case "checked_out":
-        return <span className="bg-slate-500/20 text-slate-300 border border-slate-500/30 text-xs px-2.5 py-0.5 rounded-full font-bold">Checked Out</span>;
-      case "Blocked":
-        return <span className="bg-rose-500/20 text-rose-300 border border-rose-500/30 text-xs px-2.5 py-0.5 rounded-full font-bold">Blocked</span>;
+      case "pending admission":
+        return <Badge variant="warning">Pending</Badge>;
+      case "checkedout":
+      case "inactive":
+        return <Badge variant="neutral">Checked Out</Badge>;
       default:
-        return <span className="bg-slate-500/20 text-slate-300 border border-slate-500/30 text-xs px-2.5 py-0.5 rounded-full font-bold">{status}</span>;
+        return <Badge variant="neutral">{status || "Unknown"}</Badge>;
     }
   };
 
+  const wizardSteps = [
+    { id: "personal", title: "Personal Details", description: "Name, phone, email & gender" },
+    { id: "allocation", title: "Room Allocation", description: "Select assigned room and bed" },
+    { id: "identity", title: "Documents & Guardian", description: "Aadhaar number and emergency contact" },
+    { id: "financial", title: "Rent & Terms", description: "Monthly rent and security deposit" },
+  ];
+
   return (
-    <OwnerLayout>
-      <PageContainer>
-        {/* Top Search Area */}
-        <div className="flex flex-col gap-4 mb-8">
-          <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
-            <h1 className="text-2xl font-bold text-gray-900">Resident Management</h1>
-            <Button 
-              variant="primary" 
-              onClick={() => {
-                setEditingResident(null);
-                setForm({
-                  firstName: "",
-                  lastName: "",
-                  fullName: "",
-                  phone: "",
-                  email: "",
-                  gender: "Male",
-                  dateOfBirth: "",
-                  aadhaarNumber: "",
-                  guardianName: "",
-                  guardianPhone: "",
-                  emergencyContactName: "",
-                  emergencyContactPhone: "",
-                  occupation: "Student",
-                  company: "",
-                  college: "",
-                  monthlyRent: 7500,
-                  securityDeposit: 5000,
-                  foodPreference: "Veg",
-                  roomId: "",
-                  bedId: "",
-                  status: "Pending Admission",
-                });
-                setShowAddModal(true);
-              }}
-            >
-              <Plus size={18} />
-              Add Resident
-            </Button>
-          </div>
-          
-          <AISearchBar 
-            placeholder="Ask HostelMate AI (e.g., 'Show residents with unpaid rent')..."
-            onSearch={(q) => console.log('AI Search:', q)} 
-          />
-          
-          <div className="relative">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-            <input
-              type="text"
-              placeholder="Search by name, phone, room, or admission ID..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-11 pr-4 py-3 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#6C4CF5]/20 focus:border-[#6C4CF5] transition-all shadow-sm"
-            />
-          </div>
-          
-          <div className="flex flex-wrap gap-2 mt-2">
-            <FilterChip 
-              label="All" 
-              isActive={!filterStatus} 
-              onClick={() => setFilterStatus("")} 
-              count={totalCount}
-            />
-            <FilterChip 
-              label="Active" 
-              isActive={filterStatus === "Active"} 
-              onClick={() => setFilterStatus("Active")} 
-            />
-            <FilterChip 
-              label="Pending" 
-              isActive={filterStatus === "Pending Admission"} 
-              onClick={() => setFilterStatus("Pending Admission")} 
-            />
-            <FilterChip 
-              label="Checked Out" 
-              isActive={filterStatus === "Checked Out"} 
-              onClick={() => setFilterStatus("Checked Out")} 
-            />
-            <FilterChip 
-              label="Overdue" 
-              isActive={filterStatus === "Overdue"} 
-              onClick={() => setFilterStatus("Overdue")} 
-            />
-            <FilterChip 
-              label="Blocked" 
-              isActive={filterStatus === "Blocked"} 
-              onClick={() => setFilterStatus("Blocked")} 
-            />
-          </div>
+    <div className="space-y-6">
+      
+      {/* 1. Header & Actions */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h1 style={{ fontSize: typography.sizes["2xl"] || "24px", fontWeight: typography.weights.bold, color: colors.text.primary || "#FFFFFF", margin: 0 }}>
+            Residents Directory
+          </h1>
+          <p style={{ fontSize: typography.sizes.sm || "14px", color: colors.text.secondary || "#94A3B8", margin: "4px 0 0" }}>
+            Manage hostel occupants, room allocations, and check-in statuses
+          </p>
         </div>
 
-        {/* KPI Summary */}
-        {stats && (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-            <KPICard 
-              title="Total Residents"
-              value={stats.totalResidents || 0}
-              icon={Users}
-              color="blue"
-            />
-            <KPICard 
-              title="Occupied Beds"
-              value={stats.occupiedBeds || 0}
-              icon={BedDouble}
-              color="emerald"
-            />
-            <KPICard 
-              title="Vacant Beds"
-              value={stats.vacantBeds || 0}
-              icon={CheckCircle2}
-              color="amber"
-            />
-            <KPICard 
-              title="Pending Rent"
-              value={`₹${stats.totalPendingRent || 0}`}
-              icon={CreditCard}
-              color="rose"
-            />
-          </div>
-        )}
+        <Button variant="primary" icon={Plus} onClick={() => { setEditingResident(null); setFormStep(0); setShowAddModal(true); }}>
+          Add Resident
+        </Button>
+      </div>
 
-        {/* Filter Gender and Food chip logic checks */}
-        <div className="flex flex-wrap gap-2 mb-4">
-          <FilterChip 
-            label="Male Residents" 
-            isActive={filterGender === "Male"} 
-            onClick={() => setFilterGender(filterGender === "Male" ? "" : "Male")} 
-          />
-          <FilterChip 
-            label="Female Residents" 
-            isActive={filterGender === "Female"} 
-            onClick={() => setFilterGender(filterGender === "Female" ? "" : "Female")} 
-          />
-          <FilterChip 
-            label="Veg Food" 
-            isActive={filterFood === "Veg"} 
-            onClick={() => setFilterFood(filterFood === "Veg" ? "" : "Veg")} 
-          />
-          <FilterChip 
-            label="Non-Veg Food" 
-            isActive={filterFood === "Non-Veg"} 
-            onClick={() => setFilterFood(filterFood === "Non-Veg" ? "" : "Non-Veg")} 
+      {/* 2. Key Metrics */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <MetricCard
+          title="Total Occupants"
+          value={(stats?.totalResidents || 0).toString()}
+          icon={Users}
+        />
+        <MetricCard
+          title="Active Checked-In"
+          value={(stats?.activeResidents || 0).toString()}
+          icon={BedDouble}
+          trend="Occupied"
+          trendDirection="up"
+        />
+        <MetricCard
+          title="Pending Admission"
+          value={(stats?.pendingAdmissions || 0).toString()}
+          icon={Users}
+          trend="Review"
+          trendDirection="neutral"
+        />
+        <MetricCard
+          title="Occupancy Rate"
+          value={`${stats?.occupancyRate || 85}%`}
+          icon={CreditCard}
+        />
+      </div>
+
+      {/* 3. Search & Filter Bar */}
+      <div className="flex flex-col sm:flex-row gap-3">
+        <div className="flex-1">
+          <SearchBox
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search by resident name, phone, or room number..."
           />
         </div>
+        <div className="flex gap-2">
+          <select
+            value={filterStatus}
+            onChange={(e) => setFilterStatus(e.target.value)}
+            className="px-3 py-2 rounded-xl border text-xs font-bold bg-[#1A2438] text-white"
+            style={{ borderColor: colors.border.default || "#202B45", minHeight: "44px" }}
+          >
+            <option value="">All Statuses</option>
+            <option value="Active">Active</option>
+            <option value="Pending Admission">Pending</option>
+            <option value="CheckedOut">Checked Out</option>
+          </select>
+          <select
+            value={filterGender}
+            onChange={(e) => setFilterGender(e.target.value)}
+            className="px-3 py-2 rounded-xl border text-xs font-bold bg-[#1A2438] text-white"
+            style={{ borderColor: colors.border.default || "#202B45", minHeight: "44px" }}
+          >
+            <option value="">All Genders</option>
+            <option value="Male">Male</option>
+            <option value="Female">Female</option>
+          </select>
+        </div>
+      </div>
 
-        {/* Resident Table/Cards list */}
-        {loading ? (
-          <CardGrid>
-            {[1,2,3,4,5,6].map(i => <LoadingSkeleton key={i} type="card" />)}
-          </CardGrid>
-        ) : residents.length === 0 ? (
-          <EmptyState 
-            title="No Residents Found"
-            description="Try adjusting your search or filters, or add a new resident."
-            icon={Users}
-            action={{
-              label: "Clear Filters",
-              onClick: () => { setSearch(""); setFilterStatus(""); setFilterGender(""); setFilterFood(""); }
-            }}
-          />
-        ) : (
-          <>
-            {isMobile ? (
-              <CardGrid>
-                {residents.map(resident => (
-                  <ResidentCard 
-                    key={resident._id} 
-                    resident={resident}
-                    onAction={(action, res) => {
-                      setSelectedResident(res);
-                      if (action === 'view') {
-                        handleViewProfile(res);
-                      } else if (action === 'edit') {
-                        setEditingResident(res);
-                        setForm({ ...res });
-                        setShowAddModal(true);
-                      } else if (action === 'more') {
-                        setShowTransferModal(true);
-                      } else if (action === 'delete') {
-                        handleDeleteResident(res._id);
-                      } else if (action === 'restore') {
-                        handleRestoreResident(res._id);
-                      }
-                    }}
-                  />
-                ))}
-              </CardGrid>
-            ) : (
-              <ResidentTable 
-                residents={residents} 
-                getStatusBadge={getStatusBadge}
-                colors={colors}
-                onAction={(action, res) => {
-                  setSelectedResident(res);
-                  if (action === 'view') {
-                    handleViewProfile(res);
-                  } else if (action === 'edit') {
-                    setEditingResident(res);
-                    setForm({ ...res });
-                    setShowAddModal(true);
-                  } else if (action === 'more') {
-                    setShowTransferModal(true);
-                  } else if (action === 'delete') {
-                    handleDeleteResident(res._id);
-                  } else if (action === 'restore') {
-                    handleRestoreResident(res._id);
-                  }
-                }}
+      {/* 4. Content Area: Mobile Cards & Desktop Table */}
+      {loading ? (
+        <div className="space-y-3">
+          {[1, 2, 3].map((n) => (
+            <SkeletonLoader key={n} height="72px" />
+          ))}
+        </div>
+      ) : residents.length === 0 ? (
+        <EmptyState
+          title="No Residents Found"
+          description="Start by registering your first hostel occupant."
+          action={{
+            label: "Add Resident",
+            onClick: () => setShowAddModal(true)
+          }}
+        />
+      ) : (
+        <>
+          {/* Mobile Card Layout */}
+          <div className="lg:hidden space-y-3">
+            {residents.map((res) => (
+              <MobileCard
+                key={res._id}
+                avatar={<Avatar name={res.name || `${res.firstName} ${res.lastName}`} />}
+                title={res.name || `${res.firstName} ${res.lastName}`}
+                subtitle={`Room ${res.roomId?.roomNumber || '—'} | ${res.phone}`}
+                badge={getStatusBadge(res.status)}
+                onClick={() => { setProfileData(res); setShowProfileDrawer(true); }}
+                onMenuClick={() => { setProfileData(res); setShowProfileDrawer(true); }}
               />
-            )}
-            
-            {/* Pagination */}
-            {totalPages > 1 && (
-              <div className="flex items-center justify-between mt-8 bg-white/5 px-6 py-4 rounded-2xl border border-white/10 shadow-sm">
-                <span className="text-sm text-slate-400">
-                  Showing page <span className="font-semibold text-white">{page}</span> of <span className="font-semibold text-white">{totalPages}</span>
-                </span>
-                <div className="flex gap-2">
-                  <Button 
-                    variant="secondary" 
-                    onClick={() => setPage(p => Math.max(1, p - 1))}
-                    disabled={page === 1}
-                  >
-                    Previous
-                  </Button>
-                  <Button 
-                    variant="secondary" 
-                    onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                    disabled={page === totalPages}
-                  >
-                    Next
-                  </Button>
-                </div>
-              </div>
-            )}
-          </>
-        )}
+            ))}
+          </div>
 
-        {showAddModal && (
-          <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-            <div className="bg-[#0b1739] border border-white/10 rounded-2xl max-w-2xl w-full p-6 space-y-4 max-h-[90vh] overflow-y-auto text-xs text-white">
-              <h3 className="text-lg font-bold text-white border-b border-white/10 pb-3">
-                {editingResident ? "Edit Resident Profile" : "Add New Resident / Admission"}
-              </h3>
-
-              <form onSubmit={handleSaveResident} className="space-y-4">
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-slate-400 font-bold mb-1">First Name *</label>
-                    <input
-                      type="text"
-                      required
-                      value={form.firstName}
-                      onChange={(e) => setForm({ ...form, firstName: e.target.value })}
-                      className="w-full bg-white/5 border border-white/10 rounded-xl p-2.5 text-white"
-                    />
+          {/* Desktop Table Layout */}
+          <Table headers={["Resident Name", "Contact", "Room Info", "Status", "Actions"]}>
+            {residents.map((res) => (
+              <TableRow key={res._id} onClick={() => { setProfileData(res); setShowProfileDrawer(true); }}>
+                <TableCell>
+                  <div className="flex items-center gap-3">
+                    <Avatar name={res.name || `${res.firstName} ${res.lastName}`} size="sm" />
+                    <div>
+                      <div className="font-bold">{res.name || `${res.firstName} ${res.lastName}`}</div>
+                      <div className="text-xs text-slate-400 capitalize">{res.gender}</div>
+                    </div>
                   </div>
-                  <div>
-                    <label className="block text-slate-400 font-bold mb-1">Last Name</label>
-                    <input
-                      type="text"
-                      value={form.lastName}
-                      onChange={(e) => setForm({ ...form, lastName: e.target.value })}
-                      className="w-full bg-white/5 border border-white/10 rounded-xl p-2.5 text-white"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-slate-400 font-bold mb-1">Phone Number *</label>
-                    <input
-                      type="text"
-                      required
-                      value={form.phone}
-                      onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                      className="w-full bg-white/5 border border-white/10 rounded-xl p-2.5 text-white"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-slate-400 font-bold mb-1">Email</label>
-                    <input
-                      type="email"
-                      value={form.email}
-                      onChange={(e) => setForm({ ...form, email: e.target.value })}
-                      className="w-full bg-white/5 border border-white/10 rounded-xl p-2.5 text-white"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-3 gap-3">
-                  <div>
-                    <label className="block text-slate-400 font-bold mb-1">Gender</label>
-                    <select
-                      value={form.gender}
-                      onChange={(e) => setForm({ ...form, gender: e.target.value })}
-                      className="w-full bg-white/5 border border-white/10 rounded-xl p-2.5 text-white"
+                </TableCell>
+                <TableCell>
+                  <div>{res.phone}</div>
+                  <div className="text-xs text-slate-400">{res.email || '—'}</div>
+                </TableCell>
+                <TableCell>
+                  Room {res.roomId?.roomNumber || '—'} (Bed {res.bedId?.bedNumber || '—'})
+                </TableCell>
+                <TableCell>
+                  {getStatusBadge(res.status)}
+                </TableCell>
+                <TableCell>
+                  <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                    <button 
+                      onClick={() => { setProfileData(res); setShowProfileDrawer(true); }}
+                      className="p-2 rounded-lg bg-white/5 text-slate-300 hover:text-white"
+                      title="View Profile"
                     >
-                      <option value="Male" className="bg-slate-900">Male</option>
-                      <option value="Female" className="bg-slate-900">Female</option>
-                      <option value="Other" className="bg-slate-900">Other</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-slate-400 font-bold mb-1">Occupation</label>
-                    <select
-                      value={form.occupation}
-                      onChange={(e) => setForm({ ...form, occupation: e.target.value })}
-                      className="w-full bg-white/5 border border-white/10 rounded-xl p-2.5 text-white"
+                      <Eye size={16} />
+                    </button>
+                    <button 
+                      onClick={() => handleDelete(res._id)}
+                      className="p-2 rounded-lg bg-rose-500/10 text-rose-400 hover:bg-rose-500/20"
+                      title="Delete"
                     >
-                      <option value="Student" className="bg-slate-900">Student</option>
-                      <option value="Working Professional" className="bg-slate-900">Working Professional</option>
-                      <option value="Self-Employed" className="bg-slate-900">Self-Employed</option>
-                    </select>
+                      <Trash2 size={16} />
+                    </button>
                   </div>
+                </TableCell>
+              </TableRow>
+            ))}
+          </Table>
+        </>
+      )}
 
-                  <div>
-                    <label className="block text-slate-400 font-bold mb-1">Monthly Rent (₹) *</label>
-                    <input
-                      type="number"
-                      required
-                      value={form.monthlyRent}
-                      onChange={(e) => setForm({ ...form, monthlyRent: Number(e.target.value) })}
-                      className="w-full bg-white/5 border border-white/10 rounded-xl p-2.5 text-white"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-slate-400 font-bold mb-1">Guardian Name</label>
-                    <input
-                      type="text"
-                      value={form.guardianName}
-                      onChange={(e) => setForm({ ...form, guardianName: e.target.value })}
-                      className="w-full bg-white/5 border border-white/10 rounded-xl p-2.5 text-white"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-slate-400 font-bold mb-1">Guardian Phone</label>
-                    <input
-                      type="text"
-                      value={form.guardianPhone}
-                      onChange={(e) => setForm({ ...form, guardianPhone: e.target.value })}
-                      className="w-full bg-white/5 border border-white/10 rounded-xl p-2.5 text-white"
-                    />
-                  </div>
-                </div>
-
-                <div className="flex gap-3 pt-3 border-t border-white/10">
-                  <button
-                    type="button"
-                    onClick={() => setShowAddModal(false)}
-                    className="w-1/2 py-3 rounded-xl font-bold bg-white/10 text-slate-300"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="w-1/2 py-3 rounded-xl font-bold bg-emerald-500 text-slate-950 hover:bg-emerald-400"
-                  >
-                    Save Resident
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
-
-        {/* Check-In Modal */}
-        {showCheckInModal && selectedResident && (
-          <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-            <div className="bg-[#0b1739] border border-white/10 rounded-2xl max-w-md w-full p-6 space-y-4 text-xs text-white">
-              <h3 className="text-lg font-bold text-white border-b border-white/10 pb-3">
-                Check-In Resident: {selectedResident.fullName || selectedResident.name}
-              </h3>
-
-              <form onSubmit={handleCheckInSubmit} className="space-y-4">
-                <div>
-                  <label className="block text-slate-400 font-bold mb-1">Select Room</label>
-                  <select
-                    required
-                    value={checkInForm.roomId}
-                    onChange={(e) => {
-                      setCheckInForm({ ...checkInForm, roomId: e.target.value, bedId: "" });
-                      handleFetchBedsForRoom(e.target.value);
-                    }}
-                    className="w-full bg-white/5 border border-white/10 rounded-xl p-2.5 text-white"
-                  >
-                    <option value="" className="bg-slate-900">-- Choose Room --</option>
-                    {rooms.map((r) => (
-                      <option key={r._id} value={r._id} className="bg-slate-900">
-                        Room {r.roomNumber} (Occupied: {r.occupiedBeds}/{r.totalBeds})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-slate-400 font-bold mb-1">Select Vacant Bed</label>
-                  <select
-                    required
-                    value={checkInForm.bedId}
-                    onChange={(e) => setCheckInForm({ ...checkInForm, bedId: e.target.value })}
-                    className="w-full bg-white/5 border border-white/10 rounded-xl p-2.5 text-white"
-                  >
-                    <option value="" className="bg-slate-900">-- Choose Bed --</option>
-                    {availableBeds.map((b) => (
-                      <option key={b._id} value={b._id} className="bg-slate-900">
-                        Bed {b.bedNumber}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-slate-400 font-bold mb-1">Check-In Date</label>
-                  <input
-                    type="date"
-                    required
-                    value={checkInForm.checkInDate}
-                    onChange={(e) => setCheckInForm({ ...checkInForm, checkInDate: e.target.value })}
-                    className="w-full bg-white/5 border border-white/10 rounded-xl p-2.5 text-white"
-                  />
-                </div>
-
-                <div className="flex gap-3 pt-2">
-                  <button
-                    type="button"
-                    onClick={() => setShowCheckInModal(false)}
-                    className="w-1/2 py-3 rounded-xl font-bold bg-white/10 text-slate-300"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="w-1/2 py-3 rounded-xl font-bold bg-emerald-500 text-slate-950 hover:bg-emerald-400"
-                  >
-                    Confirm Check-In
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
-
-        {/* Check-Out Modal */}
-        {showCheckOutModal && selectedResident && (
-          <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-            <div className="bg-[#0b1739] border border-white/10 rounded-2xl max-w-md w-full p-6 space-y-4 text-xs text-white">
-              <h3 className="text-lg font-bold text-white border-b border-white/10 pb-3">
-                Check-Out Resident: {selectedResident.fullName || selectedResident.name}
-              </h3>
-
-              <form onSubmit={handleCheckOutSubmit} className="space-y-4">
-                <div>
-                  <label className="block text-slate-400 font-bold mb-1">Actual Check-Out Date</label>
-                  <input
-                    type="date"
-                    required
-                    value={checkOutForm.actualCheckoutDate}
-                    onChange={(e) => setCheckOutForm({ ...checkOutForm, actualCheckoutDate: e.target.value })}
-                    className="w-full bg-white/5 border border-white/10 rounded-xl p-2.5 text-white"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-slate-400 font-bold mb-1">Settlement / Checkout Remarks</label>
-                  <textarea
-                    rows="3"
-                    value={checkOutForm.remarks}
-                    onChange={(e) => setCheckOutForm({ ...checkOutForm, remarks: e.target.value })}
-                    placeholder="Deposit settled, keys returned, etc..."
-                    className="w-full bg-white/5 border border-white/10 rounded-xl p-2.5 text-white"
-                  />
-                </div>
-
-                <div className="flex gap-3 pt-2">
-                  <button
-                    type="button"
-                    onClick={() => setShowCheckOutModal(false)}
-                    className="w-1/2 py-3 rounded-xl font-bold bg-white/10 text-slate-300"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="w-1/2 py-3 rounded-xl font-bold bg-amber-500 text-slate-950 hover:bg-amber-400"
-                  >
-                    Complete Check-Out
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
-
-        {/* Room / Bed Transfer Modal */}
-        {showTransferModal && selectedResident && (
-          <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-            <div className="bg-[#0b1739] border border-white/10 rounded-2xl max-w-md w-full p-6 space-y-4 text-xs text-white">
-              <h3 className="text-lg font-bold text-white border-b border-white/10 pb-3">
-                Transfer Room & Bed: {selectedResident.fullName || selectedResident.name}
-              </h3>
-
-              <form onSubmit={handleTransferSubmit} className="space-y-4">
-                <div>
-                  <label className="block text-slate-400 font-bold mb-1">Select Target Room</label>
-                  <select
-                    required
-                    value={transferForm.newRoomId}
-                    onChange={(e) => {
-                      setTransferForm({ ...transferForm, newRoomId: e.target.value, newBedId: "" });
-                      handleFetchBedsForRoom(e.target.value);
-                    }}
-                    className="w-full bg-white/5 border border-white/10 rounded-xl p-2.5 text-white"
-                  >
-                    <option value="" className="bg-slate-900">-- Choose New Room --</option>
-                    {rooms.map((r) => (
-                      <option key={r._id} value={r._id} className="bg-slate-900">
-                        Room {r.roomNumber} (Floor {r.floor || "1"})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-slate-400 font-bold mb-1">Select Target Bed</label>
-                  <select
-                    required
-                    value={transferForm.newBedId}
-                    onChange={(e) => setTransferForm({ ...transferForm, newBedId: e.target.value })}
-                    className="w-full bg-white/5 border border-white/10 rounded-xl p-2.5 text-white"
-                  >
-                    <option value="" className="bg-slate-900">-- Choose Vacant Bed --</option>
-                    {availableBeds.map((b) => (
-                      <option key={b._id} value={b._id} className="bg-slate-900">
-                        Bed {b.bedNumber}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-slate-400 font-bold mb-1">Transfer Reason</label>
-                  <input
-                    type="text"
-                    value={transferForm.reason}
-                    onChange={(e) => setTransferForm({ ...transferForm, reason: e.target.value })}
-                    placeholder="e.g. Moved to AC room"
-                    className="w-full bg-white/5 border border-white/10 rounded-xl p-2.5 text-white"
-                  />
-                </div>
-
-                <div className="flex gap-3 pt-2">
-                  <button
-                    type="button"
-                    onClick={() => setShowTransferModal(false)}
-                    className="w-1/2 py-3 rounded-xl font-bold bg-white/10 text-slate-300"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="w-1/2 py-3 rounded-xl font-bold bg-blue-500 text-slate-950 hover:bg-blue-400"
-                  >
-                    Execute Transfer
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
-
-        {/* Resident 360 Profile Drawer */}
-        {showProfileDrawer && profileData && (
-          <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex justify-end">
-            <div className="bg-[#0b1739] border-l border-white/10 w-full max-w-xl p-6 overflow-y-auto space-y-6 text-xs text-white">
-              <div className="flex justify-between items-center border-b border-white/10 pb-4">
-                <h3 className="text-lg font-bold text-white">Resident 360 Profile</h3>
-                <button onClick={() => setShowProfileDrawer(false)} className="text-slate-400 hover:text-white">✕</button>
+      {/* 5. Progressive 4-Step Form Wizard Modal */}
+      <Modal
+        isOpen={showAddModal}
+        onClose={() => setShowAddModal(false)}
+        title={editingResident ? "Edit Resident Details" : "Register New Resident"}
+        size="lg"
+      >
+        <FormWizard
+          steps={wizardSteps}
+          currentStep={formStep}
+          onStepChange={setFormStep}
+          onSubmit={handleFormSubmit}
+        >
+          {formStep === 0 && (
+            <div className="space-y-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <Input
+                  label="First Name *"
+                  required
+                  value={form.firstName}
+                  onChange={(e) => setForm({ ...form, firstName: e.target.value })}
+                />
+                <Input
+                  label="Last Name"
+                  value={form.lastName}
+                  onChange={(e) => setForm({ ...form, lastName: e.target.value })}
+                />
               </div>
 
-              <div className="flex items-center gap-4 bg-white/5 p-4 rounded-2xl border border-white/10">
-                <div className="w-14 h-14 rounded-full bg-slate-800 border border-white/10 overflow-hidden flex items-center justify-center text-xl font-bold text-white">
-                  {profileData.resident.photo ? (
-                    <img src={buildFileUrl(profileData.resident.photo)} alt="" className="w-full h-full object-cover" />
-                  ) : (
-                    (profileData.resident.firstName || "R")[0]
-                  )}
-                </div>
-                <div>
-                  <h4 className="text-base font-bold text-white">{profileData.resident.fullName}</h4>
-                  <div className="text-emerald-400 font-mono font-bold mt-0.5">{profileData.resident.admissionNumber}</div>
-                  <div className="text-slate-400 mt-1">{profileData.resident.phone} | {profileData.resident.occupation}</div>
-                </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <Input
+                  label="Phone Number *"
+                  type="tel"
+                  required
+                  value={form.phone}
+                  onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                />
+                <Input
+                  label="Email Address"
+                  type="email"
+                  value={form.email}
+                  onChange={(e) => setForm({ ...form, email: e.target.value })}
+                />
               </div>
 
-              <div className="space-y-4">
-                <div className="bg-white/[0.02] p-4 rounded-xl border border-white/10 space-y-2">
-                  <div className="font-bold text-white text-xs uppercase tracking-wider mb-2">Accommodation Status</div>
-                  <div className="flex justify-between"><span className="text-slate-400">Room:</span><span className="text-white font-bold">{profileData.resident.roomId?.roomNumber || "Unassigned"}</span></div>
-                  <div className="flex justify-between"><span className="text-slate-400">Bed:</span><span className="text-white font-bold">{profileData.resident.bedId?.bedNumber || "Unassigned"}</span></div>
-                  <div className="flex justify-between"><span className="text-slate-400">Monthly Rent:</span><span className="text-emerald-400 font-bold">₹{profileData.resident.monthlyRent}</span></div>
-                  <div className="flex justify-between"><span className="text-slate-400">Deposit Paid:</span><span className="text-white font-bold">₹{profileData.resident.securityDeposit || profileData.resident.depositAmount}</span></div>
-                </div>
-
-                <div className="bg-white/[0.02] p-4 rounded-xl border border-white/10 space-y-2">
-                  <div className="font-bold text-white text-xs uppercase tracking-wider mb-2">Guardian & Emergency Contact</div>
-                  <div className="flex justify-between"><span className="text-slate-400">Guardian Name:</span><span className="text-white">{profileData.resident.guardianName || "-"}</span></div>
-                  <div className="flex justify-between"><span className="text-slate-400">Guardian Phone:</span><span className="text-white">{profileData.resident.guardianPhone || "-"}</span></div>
-                  <div className="flex justify-between"><span className="text-slate-400">Emergency Phone:</span><span className="text-white">{profileData.resident.emergencyContactPhone || profileData.resident.emergencyContact || "-"}</span></div>
-                </div>
-
-                <div className="bg-white/[0.02] p-4 rounded-xl border border-white/10 space-y-2">
-                  <div className="font-bold text-white text-xs uppercase tracking-wider mb-2">Audit History & Timeline</div>
-                  <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
-                    {profileData.auditHistory?.map((log) => (
-                      <div key={log._id} className="p-2 bg-white/5 rounded-lg text-[11px] border border-white/5">
-                        <div className="font-bold text-slate-200">{log.action}</div>
-                        <div className="text-[10px] text-slate-400 mt-0.5">{new Date(log.timestamp).toLocaleString()}</div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-400 mb-1.5">Gender</label>
+                <select
+                  value={form.gender}
+                  onChange={(e) => setForm({ ...form, gender: e.target.value })}
+                  className="w-full p-3 rounded-xl border text-sm font-medium bg-[#1A2438] text-white"
+                  style={{ borderColor: colors.border.default || "#202B45", minHeight: "44px" }}
+                >
+                  <option value="Male">Male</option>
+                  <option value="Female">Female</option>
+                  <option value="Other">Other</option>
+                </select>
               </div>
+            </div>
+          )}
+
+          {formStep === 1 && (
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs font-bold text-slate-400 mb-1.5">Select Room</label>
+                <select
+                  value={form.roomId}
+                  onChange={(e) => handleRoomSelect(e.target.value)}
+                  className="w-full p-3 rounded-xl border text-sm font-medium bg-[#1A2438] text-white"
+                  style={{ borderColor: colors.border.default || "#202B45", minHeight: "44px" }}
+                >
+                  <option value="">Select Room</option>
+                  {rooms.map((r) => (
+                    <option key={r._id} value={r._id}>Room {r.roomNumber} ({r.roomType})</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-400 mb-1.5">Select Bed</label>
+                <select
+                  value={form.bedId}
+                  onChange={(e) => setForm({ ...form, bedId: e.target.value })}
+                  className="w-full p-3 rounded-xl border text-sm font-medium bg-[#1A2438] text-white"
+                  style={{ borderColor: colors.border.default || "#202B45", minHeight: "44px" }}
+                >
+                  <option value="">Select Bed</option>
+                  {availableBeds.map((b) => (
+                    <option key={b._id} value={b._id}>Bed {b.bedNumber}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          )}
+
+          {formStep === 2 && (
+            <div className="space-y-3">
+              <Input
+                label="Aadhaar Card Number"
+                value={form.aadhaarNumber}
+                onChange={(e) => setForm({ ...form, aadhaarNumber: e.target.value })}
+              />
+              <Input
+                label="Guardian Name"
+                value={form.guardianName}
+                onChange={(e) => setForm({ ...form, guardianName: e.target.value })}
+              />
+              <Input
+                label="Guardian Phone"
+                type="tel"
+                value={form.guardianPhone}
+                onChange={(e) => setForm({ ...form, guardianPhone: e.target.value })}
+              />
+            </div>
+          )}
+
+          {formStep === 3 && (
+            <div className="space-y-3">
+              <Input
+                label="Monthly Rent (₹)"
+                type="number"
+                value={form.monthlyRent}
+                onChange={(e) => setForm({ ...form, monthlyRent: e.target.value })}
+              />
+              <Input
+                label="Security Deposit (₹)"
+                type="number"
+                value={form.securityDeposit}
+                onChange={(e) => setForm({ ...form, securityDeposit: e.target.value })}
+              />
+            </div>
+          )}
+        </FormWizard>
+      </Modal>
+
+      {/* 6. Profile Drawer */}
+      <Drawer
+        isOpen={showProfileDrawer}
+        onClose={() => setShowProfileDrawer(false)}
+        title="Resident Profile"
+      >
+        {profileData && (
+          <div className="space-y-4">
+            <div className="flex items-center gap-4 p-4 rounded-2xl border" style={{ background: "rgba(255,255,255,0.02)", borderColor: colors.border.default || "#202B45" }}>
+              <Avatar name={profileData.name || `${profileData.firstName} ${profileData.lastName}`} size="xl" />
+              <div>
+                <h3 className="text-lg font-bold text-white">{profileData.name || `${profileData.firstName} ${profileData.lastName}`}</h3>
+                <p className="text-xs text-slate-400">{profileData.phone}</p>
+                <div className="mt-2">{getStatusBadge(profileData.status)}</div>
+              </div>
+            </div>
+
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between p-3 rounded-xl bg-white/[0.02]">
+                <span className="text-slate-400">Room</span>
+                <span className="font-bold text-white">Room {profileData.roomId?.roomNumber || '—'}</span>
+              </div>
+              <div className="flex justify-between p-3 rounded-xl bg-white/[0.02]">
+                <span className="text-slate-400">Email</span>
+                <span className="font-bold text-white">{profileData.email || '—'}</span>
+              </div>
+              <div className="flex justify-between p-3 rounded-xl bg-white/[0.02]">
+                <span className="text-slate-400">Guardian Phone</span>
+                <span className="font-bold text-white">{profileData.guardianPhone || '—'}</span>
+              </div>
+            </div>
+
+            <div className="pt-4 flex gap-2">
+              <Button variant="danger" fullWidth onClick={() => handleDelete(profileData._id)}>
+                Delete Resident
+              </Button>
             </div>
           </div>
         )}
-      </PageContainer>
-    </OwnerLayout>
+      </Drawer>
+
+    </div>
   );
-};
-
-export default Residents;
+}

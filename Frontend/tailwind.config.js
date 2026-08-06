@@ -5,17 +5,26 @@ export default {
     './src/**/*.{js,ts,jsx,tsx}',
   ],
   theme: {
+    screens: {
+      xs: '360px',
+      sm: '390px',
+      mobile: '412px',
+      md: '768px',
+      lg: '1024px',
+      xl: '1280px',
+      '2xl': '1440px',
+    },
     extend: {
       colors: {
         // Background system
-        'ds-bg-primary': '#0B1120',
-        'ds-bg-secondary': '#111827',
-        'ds-bg-card': '#162032',
-        'ds-bg-elevated': '#1C2740',
-        'ds-bg-sidebar': '#0F172A',
-        'ds-bg-nav': '#101827',
+        'ds-bg-primary': '#0B1220',
+        'ds-bg-secondary': '#0F172A',
+        'ds-bg-card': '#131C2E',
+        'ds-bg-elevated': '#1A2438',
+        'ds-bg-sidebar': '#0B1220',
+        'ds-bg-nav': '#0B1220',
         // Accent colors
-        'ds-accent': '#16A34A',
+        'ds-accent': '#22C55E',
         'ds-success': '#22C55E',
         'ds-warning': '#F59E0B',
         'ds-danger': '#EF4444',
@@ -23,28 +32,28 @@ export default {
         'ds-ai': '#6C4CF5',
         // Text
         'ds-text': '#FFFFFF',
-        'ds-text-secondary': '#CBD5E1',
+        'ds-text-secondary': '#94A3B8',
         'ds-text-muted': '#94A3B8',
         'ds-text-disabled': '#64748B',
         // Border
-        'ds-border': '#22304A',
+        'ds-border': '#202B45',
         // Hover
-        'ds-hover': '#1E2B44',
-        // Legacy aliases (keep for backward compatibility, remove in Phase 8)
+        'ds-hover': '#1A263D',
+        // Legacy aliases
         primary: {
-          DEFAULT: '#16A34A',
-          dark: '#15803D',
-          light: '#22C55E',
+          DEFAULT: '#22C55E',
+          dark: '#16A34A',
+          light: '#4ADE80',
         },
         gold: {
           DEFAULT: '#F59E0B',
           light: '#FBBF24',
         },
         surface: {
-          DEFAULT: '#162032',
-          glass: 'rgba(22, 32, 50, 0.72)',
+          DEFAULT: '#131C2E',
+          glass: 'rgba(19, 28, 46, 0.85)',
         },
-        background: '#0B1120',
+        background: '#0B1220',
       },
       fontFamily: {
         sans: ['Inter', 'SF Pro Display', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
@@ -61,8 +70,8 @@ export default {
         'ds-sm': '0 1px 3px rgba(0, 0, 0, 0.3), 0 1px 2px rgba(0, 0, 0, 0.2)',
         'ds-md': '0 4px 6px rgba(0, 0, 0, 0.3), 0 2px 4px rgba(0, 0, 0, 0.2)',
         'ds-lg': '0 10px 25px rgba(0, 0, 0, 0.4), 0 4px 10px rgba(0, 0, 0, 0.3)',
-        'ds-glow-primary': '0 0 20px rgba(22, 163, 74, 0.3)',
-        'ds-glow-ai': '0 0 20px rgba(108, 76, 245, 0.3)',
+        'ds-glow-primary': '0 0 16px rgba(34, 197, 94, 0.25)',
+        'ds-glow-ai': '0 0 16px rgba(108, 76, 245, 0.25)',
       },
     },
   },

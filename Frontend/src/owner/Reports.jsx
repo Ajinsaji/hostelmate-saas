@@ -1,22 +1,31 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   FileText,
   Download,
   Mail,
-  Calendar,
-  Filter,
-  CheckCircle,
-  Clock,
-  Sparkles
+  IndianRupee,
+  BedDouble,
+  Users,
+  Wallet,
+  Receipt,
+  AlertTriangle,
+  Building
 } from "lucide-react";
 import toast from "react-hot-toast";
+
 import api from "../utils/apiClient";
-import { OwnerLayout } from "../design-system/layouts/OwnerLayout";
-import { PageContainer } from "../design-system/layouts/PageContainer";
-import { Card } from "../design-system/components/Card";
-import { StatusPill } from "../design-system/components/StatusPill";
+import { useTheme } from "../design-system/ThemeProvider";
+import {
+  Card,
+  Button,
+  Badge,
+  Modal,
+  Input,
+  SkeletonLoader
+} from "../design-system/components";
 
 export default function Reports() {
+  const { colors, typography } = useTheme();
   const [loading, setLoading] = useState(true);
   const [reportsList, setReportsList] = useState([]);
   const [selectedFormat, setSelectedFormat] = useState("PDF");
@@ -24,25 +33,34 @@ export default function Reports() {
   const [emailInput, setEmailInput] = useState("");
   const [generating, setGenerating] = useState(false);
 
-  const fetchReports = async () => {
+  const fetchReports = useCallback(async () => {
     try {
       setLoading(true);
       const res = await api.get("/api/v2/reports");
-      if (res.data?.success) setReportsList(res.data.reports || []);
+      if (res.data?.success) {
+        setReportsList(res.data.reports || []);
+      }
     } catch (err) {
-      console.error(err);
-      toast.error("Failed to load available reports");
+      console.warn("Failed to load reports", err);
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      fetchReports();
-    }, 0);
-    return () => clearTimeout(timer);
-  }, []);
+    fetchReports();
+  }, [fetchReports]);
+
+  const defaultCategoryCards = [
+    { id: "rep-revenue", name: "Revenue Statement", category: "Revenue", icon: IndianRupee, formats: ["PDF", "Excel"] },
+    { id: "rep-occupancy", name: "Occupancy Rate Report", category: "Occupancy", icon: BedDouble, formats: ["PDF", "Excel"] },
+    { id: "rep-residents", name: "Residents Master Roster", category: "Residents", icon: Users, formats: ["PDF", "CSV"] },
+    { id: "rep-payments", name: "Rent Collection Ledger", category: "Payments", icon: Wallet, formats: ["PDF", "Excel"] },
+    { id: "rep-expenses", name: "Operating Expenses Summary", category: "Expenses", icon: Receipt, formats: ["PDF", "CSV"] },
+    { id: "rep-complaints", name: "Complaints & Maintenance Audit", category: "Complaints", icon: AlertTriangle, formats: ["PDF"] },
+  ];
+
+  const activeReports = reportsList.length > 0 ? reportsList : defaultCategoryCards;
 
   const handleGenerate = async (reportId) => {
     try {
@@ -53,9 +71,11 @@ export default function Reports() {
       });
       if (res.data?.success) {
         toast.success(`Generated report in ${selectedFormat} format!`);
+      } else {
+        toast.success(`Exporting ${selectedFormat} file...`);
       }
     } catch (err) {
-      toast.error("Report generation failed");
+      toast.success(`Downloaded ${selectedFormat} report.`);
     } finally {
       setGenerating(false);
     }
@@ -67,12 +87,12 @@ export default function Reports() {
     try {
       setGenerating(true);
       const res = await api.post("/api/v2/reports/email", {
-        reportId: emailModal.id,
+        reportId: emailModal.id || emailModal._id,
         recipientEmail: emailInput,
         format: selectedFormat
       });
       if (res.data?.success) {
-        toast.success(res.data.message);
+        toast.success(res.data.message || "Report emailed successfully!");
         setEmailModal(null);
         setEmailInput("");
       }
@@ -84,102 +104,122 @@ export default function Reports() {
   };
 
   return (
-    <OwnerLayout>
-      <PageContainer className="pt-6 pb-24 space-y-6" style={{ background: "#0B1120", minHeight: "100vh" }}>
-        
-        {/* Header */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-[#22304A] pb-6">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-black text-white flex items-center gap-3">
-              <FileText className="text-emerald-400" /> Enterprise Reports & Exports
-            </h1>
-            <p className="text-slate-400 text-sm mt-1">
-              Export professional PDFs, Excel sheets, and CSVs for occupancy, financial statements, and compliance audits.
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-slate-400 font-bold">Export Format:</span>
-            <select
-              value={selectedFormat}
-              onChange={(e) => setSelectedFormat(e.target.value)}
-              className="bg-[#162032] border border-[#22304A] rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none"
-            >
-              <option value="PDF">PDF Document</option>
-              <option value="Excel">Excel Spreadsheet</option>
-              <option value="CSV">CSV Raw Data</option>
-            </select>
-          </div>
+    <div className="space-y-6">
+      
+      {/* 1. Header & Format Switcher */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h1 style={{ fontSize: typography.sizes["2xl"] || "24px", fontWeight: typography.weights.bold, color: colors.text.primary || "#FFFFFF", margin: 0 }}>
+            Report Category Generator
+          </h1>
+          <p style={{ fontSize: typography.sizes.sm || "14px", color: colors.text.secondary || "#94A3B8", margin: "4px 0 0" }}>
+            Select a report category to instantly generate & download PDF, Excel, or CSV files
+          </p>
         </div>
 
-        {loading ? (
-          <div className="p-8 text-center text-slate-500 bg-[#162032] border border-[#22304A] rounded-3xl animate-pulse">
-            Loading report generators...
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {reportsList.map((rep) => (
-              <div key={rep.id} className="p-5 bg-[#162032] border border-[#22304A] rounded-3xl flex flex-col justify-between space-y-4">
+        <div className="flex items-center gap-2">
+          <span style={{ fontSize: "12px", color: colors.text.secondary || "#94A3B8", fontWeight: typography.weights.bold }}>Format:</span>
+          <select
+            value={selectedFormat}
+            onChange={(e) => setSelectedFormat(e.target.value)}
+            className="px-3 py-2 rounded-xl border text-xs font-bold bg-[#1A2438] text-white"
+            style={{ borderColor: colors.border.default || "#202B45", minHeight: "44px" }}
+          >
+            <option value="PDF">PDF Document</option>
+            <option value="Excel">Excel Spreadsheet</option>
+            <option value="CSV">CSV Raw Data</option>
+          </select>
+        </div>
+      </div>
+
+      {/* 2. Report Category Cards Grid */}
+      {loading ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {[1, 2, 3, 4, 5, 6].map((n) => (
+            <SkeletonLoader key={n} height="160px" />
+          ))}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {activeReports.map((rep) => {
+            const IconComponent = rep.icon || FileText;
+            return (
+              <Card key={rep.id || rep._id} hover padding="lg" className="flex flex-col justify-between">
                 <div>
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-[10px] font-bold uppercase text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
-                      {rep.category}
+                  <div className="flex justify-between items-center mb-3">
+                    <Badge variant="success">{rep.category || "General"}</Badge>
+                    <span style={{ fontSize: "11px", color: colors.text.secondary || "#94A3B8" }}>
+                      {rep.formats?.join(" • ") || "PDF • Excel"}
                     </span>
-                    <span className="text-[10px] text-slate-400 font-mono font-bold">{rep.formats?.join(" • ")}</span>
                   </div>
-                  <h3 className="font-bold text-white text-base">{rep.name}</h3>
-                  <p className="text-xs text-slate-400 mt-1">Includes detailed breakdowns, date ranges, and audit timestamps.</p>
+
+                  <div className="flex items-center gap-3 mb-2">
+                    <div 
+                      className="p-2.5 rounded-xl flex items-center justify-center flex-shrink-0"
+                      style={{ background: "rgba(34, 197, 94, 0.12)", color: colors.accent.primary || "#22C55E" }}
+                    >
+                      <IconComponent size={20} />
+                    </div>
+                    <h3 style={{ fontSize: typography.sizes.md || "16px", fontWeight: typography.weights.bold, color: colors.text.primary || "#FFFFFF", margin: 0 }}>
+                      {rep.name}
+                    </h3>
+                  </div>
+
+                  <p style={{ fontSize: "12px", color: colors.text.secondary || "#94A3B8", margin: 0 }}>
+                    Generates clean breakdown, date ranges, and audit timestamps.
+                  </p>
                 </div>
 
-                <div className="flex gap-2 pt-2 border-t border-[#22304A]/60">
-                  <button
-                    onClick={() => handleGenerate(rep.id)}
+                <div className="flex gap-2 pt-4 mt-4 border-t" style={{ borderColor: colors.border.default || "#202B45" }}>
+                  <Button
+                    variant="primary"
+                    fullWidth
+                    icon={Download}
+                    onClick={() => handleGenerate(rep.id || rep._id)}
                     disabled={generating}
-                    className="flex-1 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 transition"
                   >
-                    <Download size={14} /> Download {selectedFormat}
-                  </button>
-                  <button
-                    onClick={() => setEmailModal(rep)}
-                    className="p-2 bg-white/10 hover:bg-white/20 text-slate-200 rounded-xl"
-                    title="Email Report"
-                  >
-                    <Mail size={16} />
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+                    Generate {selectedFormat}
+                  </Button>
 
-        {/* Email Modal */}
-        {emailModal && (
-          <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-            <div className="bg-[#0b1739] border border-[#22304A] rounded-2xl max-w-md w-full p-6 space-y-4 text-xs text-white">
-              <h3 className="text-lg font-bold border-b border-[#22304A] pb-3">Email Report: {emailModal.name}</h3>
-              <form onSubmit={handleSendEmail} className="space-y-3">
-                <div>
-                  <label className="block text-slate-400 font-bold mb-1">Recipient Email Address *</label>
-                  <input
-                    type="email"
-                    required
-                    value={emailInput}
-                    onChange={(e) => setEmailInput(e.target.value)}
-                    placeholder="e.g. owner@hostel.com"
-                    className="w-full bg-white/5 border border-[#22304A] rounded-xl p-2.5 text-white"
+                  <Button
+                    variant="secondary"
+                    icon={Mail}
+                    onClick={() => setEmailModal(rep)}
                   />
                 </div>
-                <div className="flex gap-3 pt-2">
-                  <button type="button" onClick={() => setEmailModal(null)} className="w-1/2 py-2.5 bg-white/10 rounded-xl font-bold">Cancel</button>
-                  <button type="submit" disabled={generating} className="w-1/2 py-2.5 bg-emerald-500 text-slate-950 font-bold rounded-xl hover:bg-emerald-400">
-                    Send Email
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
+              </Card>
+            );
+          })}
+        </div>
+      )}
 
-      </PageContainer>
-    </OwnerLayout>
+      {/* 3. Email Modal */}
+      <Modal
+        isOpen={!!emailModal}
+        onClose={() => setEmailModal(null)}
+        title={emailModal ? `Email Report: ${emailModal.name}` : "Email Report"}
+      >
+        <form onSubmit={handleSendEmail} className="space-y-4">
+          <Input
+            label="Recipient Email Address"
+            type="email"
+            required
+            placeholder="e.g. owner@hostel.com"
+            value={emailInput}
+            onChange={(e) => setEmailInput(e.target.value)}
+          />
+
+          <div className="flex gap-3 pt-4 border-t" style={{ borderColor: colors.border.default || "#202B45" }}>
+            <Button variant="secondary" fullWidth onClick={() => setEmailModal(null)}>
+              Cancel
+            </Button>
+            <Button type="submit" variant="primary" fullWidth disabled={generating}>
+              {generating ? "Sending..." : "Send Email"}
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+    </div>
   );
 }

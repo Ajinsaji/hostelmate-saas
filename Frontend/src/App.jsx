@@ -61,9 +61,10 @@ import EnterpriseConsole from "./owner/EnterpriseConsole";
 import ReleaseNotes from "./pages/ReleaseNotes";
 import ReleaseNotesAdmin from "./admin/ReleaseNotesAdmin";
 import UpdateModal from "./components/UpdateModal";
+import PwaUpdateModal from "./components/feedback/PwaUpdateModal";
+import { useVersionChecker } from "./hooks/useVersionChecker";
 import GlobalSearchModal from "./components/GlobalSearchModal";
 import OfflineBanner from "./components/OfflineBanner";
-import { useVersionChecker } from "./hooks/useVersionChecker";
 import AIInsights from "./owner/AIInsights";
 import MyPayroll from "./pages/MyPayroll";
 
@@ -181,10 +182,12 @@ function RequestAutoRedirect() {
   return shouldRedirect ? <Navigate to="/request-status" replace /> : null;
 }
 
-import PwaUpdateModal from "./components/feedback/PwaUpdateModal";
-
 function App() {
-  const { showModal: showUpdateModal, latestRelease, handleUpdateNow, handleLater } = useVersionChecker();
+  const versionCheck = useVersionChecker() || {};
+  const showUpdateModal = Boolean(versionCheck.showUpdateModal || versionCheck.showModal);
+  const latestRelease = versionCheck.latestRelease;
+  const handleUpdateNow = versionCheck.handleUpdateNow || (() => window.location.reload());
+  const handleLater = versionCheck.handleLater || (() => {});
 
   // Service worker navigation handler must run inside a Router.
   // We'll mount a small inner component that uses `useNavigate()` below inside <BrowserRouter/>.

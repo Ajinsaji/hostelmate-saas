@@ -1,28 +1,22 @@
-import { Menu, ShieldCheck } from "lucide-react";
+import React from "react";
+import { Menu, Search } from "lucide-react";
 import { useTheme } from "../ThemeProvider";
 import { useCurrentUser, useCurrentHostel } from "../../contexts/HostelContext";
 import NotificationBell from "../../components/NotificationBell";
-import UniversalSearch from "./UniversalSearch";
+import HostelSwitcher from "./HostelSwitcher";
+import { useNavigate } from "react-router-dom";
 
 export function TopHeader({ onMenuClick }) {
   const { colors, typography, spacing, radius } = useTheme();
   const { user } = useCurrentUser();
   const { hostel } = useCurrentHostel();
-
-  const now = new Date();
-  const greeting = (() => {
-    const h = now.getHours();
-    if (h < 12) return "Good Morning";
-    if (h < 17) return "Good Afternoon";
-    return "Good Evening";
-  })();
-
-  const dateStr = now.toLocaleDateString("en-IN", { 
-    day: "numeric", 
-    month: "short" 
-  });
+  const navigate = useNavigate();
 
   const displayName = user?.ownerName || user?.name || "Owner";
+
+  const handleOpenSearch = () => {
+    window.dispatchEvent(new CustomEvent("open-global-search"));
+  };
 
   return (
     <header 
@@ -31,103 +25,98 @@ export function TopHeader({ onMenuClick }) {
         alignItems: 'center',
         justifyContent: 'space-between',
         width: '100%',
-        padding: `${spacing.sm} ${spacing.lg}`,
-        background: 'rgba(11, 17, 32, 0.4)',
-        backdropFilter: 'blur(20px)',
-        WebkitBackdropFilter: 'blur(20px)',
-        borderBottom: `1px solid ${colors.border.default}`,
-        height: '64px',
+        padding: `${spacing.sm || "12px"} ${spacing.lg || "20px"}`,
+        background: 'rgba(11, 18, 32, 0.9)',
+        backdropFilter: 'blur(16px)',
+        WebkitBackdropFilter: 'blur(16px)',
+        borderBottom: `1px solid ${colors.border.default || "#202B45"}`,
+        height: '68px',
         boxSizing: 'border-box',
         zIndex: 30,
+        position: 'sticky',
+        top: 0,
       }}
     >
-      {/* Left section: Hamburger menu & Greeting info */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: spacing.md, minWidth: 0 }}>
+      {/* Left section: Hamburger menu & Hostel Switcher */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: spacing.md || "16px", minWidth: 0 }}>
         <button 
           onClick={onMenuClick}
           className="lg:hidden"
           style={{ 
             background: 'transparent',
             border: 'none',
-            color: colors.text.primary,
+            color: colors.text.primary || "#FFFFFF",
             cursor: 'pointer',
-            padding: spacing.xs,
+            width: "44px",
+            height: "44px",
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
           }}
-          aria-label="Open menu"
+          aria-label="Open navigation menu"
         >
           <Menu size={20} />
         </button>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: spacing.sm, fontFamily: typography.fontFamily, fontSize: typography.sizes.sm, minWidth: 0 }}>
-          <span style={{ fontWeight: typography.weights.semibold, color: colors.text.primary, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-            {greeting}, <span style={{ color: colors.accent.primary }}>{displayName}</span>
-          </span>
-          <span style={{ color: colors.text.disabled, fontSize: typography.sizes.xs }}>|</span>
-          <span style={{ fontSize: typography.sizes.xs, color: colors.text.muted, fontWeight: typography.weights.medium, whiteSpace: 'nowrap' }}>
-            {dateStr}
-          </span>
-        </div>
+        {/* Current Hostel Selector Dropdown */}
+        <HostelSwitcher />
       </div>
 
-      {/* Right section: Search, Status, Notifications, Profile */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: spacing.md, flexShrink: 0 }}>
+      {/* Right section: Search icon trigger, Notifications, Profile */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: spacing.sm || "12px", flexShrink: 0 }}>
         
-        {/* Active Hostel Indicator */}
-        <div 
+        {/* Search Icon button (triggers Global Search modal) */}
+        <button
+          onClick={handleOpenSearch}
+          aria-label="Search"
           style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px',
-            padding: '4px 10px',
-            borderRadius: '9999px',
-            background: 'rgba(22, 163, 74, 0.08)',
-            border: '1px solid rgba(22, 163, 74, 0.25)',
-            fontSize: '11px',
-            color: colors.accent.success,
-            fontWeight: typography.weights.bold,
-            fontFamily: typography.fontFamily,
+            width: "44px",
+            height: "44px",
+            borderRadius: radius.full || "9999px",
+            background: "rgba(255, 255, 255, 0.05)",
+            border: `1px solid ${colors.border.default || "#202B45"}`,
+            color: colors.text.primary || "#FFFFFF",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            cursor: "pointer",
+            transition: "all 150ms ease-out",
           }}
-          className="hidden md:flex"
         >
-          <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: colors.accent.success, animation: 'pulse 2s infinite' }} />
-          <span style={{ whiteSpace: 'nowrap' }}>{hostel?.name || 'Green Valley'}</span>
-        </div>
+          <Search size={18} />
+        </button>
 
-        {/* Universal Search Field */}
-        <div className="hidden sm:block">
-          <UniversalSearch />
-        </div>
-
-        {/* Stateful Notification Bell Dropdown */}
+        {/* Notification Bell */}
         <div style={{ display: 'flex', alignItems: 'center' }}>
           <NotificationBell />
         </div>
 
-        {/* User Profile Avatar */}
-        <div 
+        {/* User Profile Button */}
+        <button
+          onClick={() => navigate('/owner/profile')}
+          aria-label="Profile settings"
           style={{ 
-            width: "32px", 
-            height: "32px", 
-            borderRadius: radius.full,
-            border: `1px solid ${colors.border.default}`,
-            background: colors.background.elevated,
+            width: "40px", 
+            height: "40px", 
+            borderRadius: radius.full || "9999px",
+            border: `1px solid ${colors.border.default || "#202B45"}`,
+            background: colors.background.elevated || "#1A2438",
             overflow: "hidden",
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
+            cursor: 'pointer',
+            padding: 0,
           }}
         >
           {user?.profileImage || user?.photo ? (
             <img src={user.profileImage || user.photo} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
           ) : (
-            <div style={{ color: colors.text.muted, fontSize: '12px', fontWeight: 'bold', fontFamily: typography.fontFamily }}>
+            <div style={{ color: colors.text.muted || "#94A3B8", fontSize: '13px', fontWeight: 'bold', fontFamily: typography.fontFamily }}>
               {displayName.slice(0, 1).toUpperCase()}
             </div>
           )}
-        </div>
+        </button>
       </div>
     </header>
   );

@@ -1,37 +1,39 @@
 /**
- * HostelMate Enterprise — Data-driven Menu Configurations
+ * HostelMate Enterprise v4.0 — Grouped Navigation & Information Architecture
  * 
- * Icon names are strings that map to lucide-react icon components.
- * The layout components resolve them dynamically.
+ * Defines structured menu hierarchies for Desktop Sidebar and 5-Tab Mobile Navigation.
  */
 
 export const ownerMenuItems = [
-  { section: 'Main', items: [
+  { section: 'Dashboard', items: [
     { key: 'dashboard', label: 'Dashboard', icon: 'Home', href: '/owner/dashboard' },
-    { key: 'rooms', label: 'Rooms', icon: 'BedDouble', href: '/rooms' },
+  ]},
+  { section: 'Operations', items: [
     { key: 'residents', label: 'Residents', icon: 'Users', href: '/residents' },
+    { key: 'rooms', label: 'Rooms', icon: 'BedDouble', href: '/rooms' },
     { key: 'admissions', label: 'Admissions', icon: 'UserPlus', href: '/owner/pending-admissions' },
+    { key: 'complaints', label: 'Complaints', icon: 'AlertTriangle', href: '/owner/dashboard' },
   ]},
   { section: 'Finance', items: [
     { key: 'payments', label: 'Payments', icon: 'Wallet', href: '/payments' },
-    { key: 'rent', label: 'Rent Collection', icon: 'IndianRupee', href: '/owner/rent-dashboard' },
     { key: 'expenses', label: 'Expenses', icon: 'Receipt', href: '/owner/expense-dashboard' },
-    { key: 'billing', label: 'Subscription', icon: 'CreditCard', href: '/owner/billing' },
-  ]},
-  { section: 'Operations', items: [
-    { key: 'kitchen', label: 'Kitchen', icon: 'ChefHat', href: '/owner/kitchen-dashboard' },
-    { key: 'attendance', label: 'Attendance', icon: 'ClipboardList', href: '/owner/attendance' },
-    { key: 'staff', label: 'Staff', icon: 'UserCog', href: '/owner/staff-management' },
-    { key: 'payroll', label: 'Payroll', icon: 'Banknote', href: '/owner/payroll' },
-  ]},
-  { section: 'Intelligence', items: [
     { key: 'reports', label: 'Reports', icon: 'FileText', href: '/reports' },
-    { key: 'bi', label: 'Analytics', icon: 'BarChart3', href: '/owner/business-intelligence' },
-    { key: 'ai', label: 'AI Insights', icon: 'Sparkles', href: '/owner/ai-insights' },
   ]},
-  { section: 'Account', items: [
+  { section: 'Business', items: [
+    { key: 'analytics', label: 'Analytics', icon: 'BarChart3', href: '/owner/business-intelligence' },
+    { key: 'ai', label: 'AI Insights', icon: 'Sparkles', href: '/owner/ai-insights' },
+    { key: 'storage', label: 'Storage', icon: 'HardDrive', href: '/owner/storage-center' },
+  ]},
+  { section: 'Workspace', items: [
+    { key: 'hostels', label: 'Hostel Settings', icon: 'Building', href: '/owner/hostel-settings' },
+    { key: 'staff', label: 'Staff Management', icon: 'UserCog', href: '/owner/staff-management' },
     { key: 'settings', label: 'Settings', icon: 'Settings', href: '/owner/settings' },
-    { key: 'profile', label: 'Profile', icon: 'User', href: '/owner/profile' },
+  ]},
+  { section: 'Enterprise', items: [
+    { key: 'marketplace', label: 'Marketplace', icon: 'Store', href: '/owner/marketplace' },
+    { key: 'developer', label: 'Developer Console', icon: 'Code', href: '/owner/developer-console' },
+    { key: 'audit', label: 'Audit Center', icon: 'ShieldCheck', href: '/owner/audit-center' },
+    { key: 'backup', label: 'Backup Center', icon: 'Database', href: '/owner/backup-center' },
   ]},
 ];
 
@@ -136,9 +138,6 @@ export const adminMobileItems = [
   { key: 'settings', label: 'Settings', icon: 'Settings', href: '/admin/settings' },
 ];
 
-/**
- * Utility to get menu config by role string
- */
 export function getMenuConfig(role) {
   switch (role) {
     case 'owner': return { sidebar: ownerMenuItems, mobile: ownerMobileItems };
@@ -151,3 +150,5 @@ export function getMenuConfig(role) {
     default: return { sidebar: ownerMenuItems, mobile: ownerMobileItems };
   }
 }
+
+export default getMenuConfig;

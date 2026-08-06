@@ -1,5 +1,4 @@
 import React from "react";
-import clsx from "clsx";
 import { useTheme } from "../ThemeProvider";
 
 /**
@@ -8,14 +7,14 @@ import { useTheme } from "../ThemeProvider";
  * @param {String} activeTab - Currently active tab id
  * @param {Function} onChange - Callback when tab changes
  */
-export default function Tabs({ tabs, activeTab, onChange }) {
+export function Tabs({ tabs, activeTab, onChange }) {
   const { colors, spacing, radius, typography } = useTheme();
 
   return (
     <div className="w-full">
       <div 
-        className="flex overflow-x-auto hide-scrollbar"
-        style={{ borderBottom: `1px solid ${colors.border.default}` }}
+        className="flex overflow-x-auto hide-scrollbar border-b"
+        style={{ borderColor: colors.border.default || "#202B45" }}
       >
         {tabs.map((tab) => {
           const isActive = activeTab === tab.id;
@@ -26,34 +25,22 @@ export default function Tabs({ tabs, activeTab, onChange }) {
               onClick={() => onChange(tab.id)}
               className="group relative min-w-fit flex items-center gap-2 transition-colors cursor-pointer"
               style={{
-                padding: `${spacing.md} ${spacing.lg}`,
-                fontSize: typography.sizes.sm,
-                fontWeight: typography.weights.medium,
-                color: isActive ? colors.accent.primary : colors.text.secondary,
-                background: 'transparent',
-                border: 'none',
+                padding: `${spacing.md || "16px"} ${spacing.lg || "20px"}`,
+                fontSize: typography.sizes.sm || "14px",
+                fontWeight: typography.weights.bold,
+                color: isActive ? (colors.accent.primary || "#22C55E") : (colors.text.secondary || "#94A3B8"),
+                background: "transparent",
+                border: "none",
                 fontFamily: typography.fontFamily,
-                outline: 'none',
-              }}
-              onMouseEnter={e => {
-                if (!isActive) {
-                  e.currentTarget.style.color = colors.text.primary;
-                  e.currentTarget.style.background = 'rgba(255, 255, 255, 0.02)';
-                }
-              }}
-              onMouseLeave={e => {
-                if (!isActive) {
-                  e.currentTarget.style.color = colors.text.secondary;
-                  e.currentTarget.style.background = 'transparent';
-                }
+                outline: "none",
               }}
             >
               {Icon && (
                 <Icon
                   size={18}
                   style={{
-                    color: isActive ? colors.accent.primary : colors.text.muted,
-                    transition: 'color 200ms ease',
+                    color: isActive ? (colors.accent.primary || "#22C55E") : (colors.text.secondary || "#94A3B8"),
+                    transition: "color 150ms ease",
                   }}
                 />
               )}
@@ -62,26 +49,26 @@ export default function Tabs({ tabs, activeTab, onChange }) {
               {tab.badge !== undefined && tab.badge !== null && (
                 <span
                   style={{
-                    marginLeft: spacing.xs,
-                    padding: '2px 8px',
-                    fontSize: typography.sizes.xs,
-                    fontWeight: typography.weights.semibold,
-                    borderRadius: radius.full,
-                    background: isActive ? 'rgba(22, 163, 74, 0.15)' : colors.background.elevated,
-                    color: isActive ? colors.accent.primary : colors.text.muted,
+                    marginLeft: spacing.xs || "8px",
+                    padding: "2px 8px",
+                    fontSize: "11px",
+                    fontWeight: typography.weights.bold,
+                    borderRadius: radius.full || "9999px",
+                    background: isActive ? "rgba(34, 197, 94, 0.15)" : "rgba(255, 255, 255, 0.08)",
+                    color: isActive ? (colors.accent.primary || "#22C55E") : (colors.text.secondary || "#94A3B8"),
                   }}
                 >
                   {tab.badge}
                 </span>
               )}
 
-              {/* Active Indicator */}
+              {/* Active Indicator Bar */}
               {isActive && (
                 <div 
                   className="absolute bottom-0 left-0 right-0 h-0.5 rounded-t-full"
                   style={{
-                    background: colors.accent.primary,
-                    boxShadow: '0 -2px 10px rgba(22, 163, 74, 0.4)',
+                    background: colors.accent.primary || "#22C55E",
+                    boxShadow: "0 -2px 10px rgba(34, 197, 94, 0.4)",
                   }}
                 />
               )}
@@ -93,3 +80,4 @@ export default function Tabs({ tabs, activeTab, onChange }) {
   );
 }
 
+export default Tabs;

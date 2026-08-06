@@ -1,74 +1,67 @@
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  /* Premium SaaS Green Theme */
-  --primary: #0F5D46;
-  --primary-dark: #0F5D46;
-  --primary-light: #0F7A5E;
+  /* HostelMate Enterprise Standard Tokens */
+  --primary: #22C55E;
+  --primary-dark: #16A34A;
+  --primary-light: #4ADE80;
 
+  --accent: #22C55E;
+  --accent-2: #16A34A;
 
-  /* Accent */
-  --accent: #D4AF37;
-  --accent-2: #E2C95E;
-
-  /* Background */
-  --bg-1: #0B1120;
-  --bg-2: #111827;
-  --bg-3: #111827;
+  /* Backgrounds */
+  --bg-1: #0B1220;
+  --bg-2: #0F172A;
+  --bg-3: #131C2E;
 
   /* Card + Surfaces */
-  --surface: rgba(15, 93, 70, 0.18);
-  --surface-2: rgba(15, 93, 70, 0.10);
-  --surface-glass: rgba(23, 32, 51, 0.72);
+  --surface: #131C2E;
+  --surface-2: #1A2438;
+  --surface-glass: rgba(19, 28, 46, 0.85);
 
   /* Text */
   --text-main: #FFFFFF;
-  --text-secondary: #D1D5DB;
-  --text-muted: rgba(209, 213, 219, 0.75);
-  --text-inverse: #0B1120;
+  --text-secondary: #94A3B8;
+  --text-muted: #94A3B8;
+  --text-inverse: #0B1220;
 
+  /* Status */
+  --status-warning: #F59E0B;
+  --status-error: #EF4444;
+  --status-success: #22C55E;
 
+  --border-radius: 16px;
+  --border-radius-sm: 12px;
 
-  /* Status / Trial / Error / Success */
-  --status-warning: #B45309;
-  --status-error: #DC2626;
-  --status-success: #059669;
+  --border: #202B45;
+  --border-strong: rgba(255, 255, 255, 0.15);
+  --bg-color: #0B1220;
+  --input-bg: #1A2438;
+  --surface-light: rgba(255, 255, 255, 0.04);
 
-  --border-radius: 26px;
-  --border-radius-sm: 16px;
-
-  --border: rgba(255,255,255,0.08);
-  --border-strong: rgba(255,255,255,0.18);
-  --bg-color: #111827;
-  --input-bg: #1E293B;
-  --surface-light: rgba(255,255,255,0.04);
-
-  --shadow-sm: 0 10px 30px rgba(15, 93, 70, 0.10);
-  --shadow-md: 0 18px 60px rgba(15, 93, 70, 0.16);
-  --shadow-glass: 0 10px 30px rgba(15, 93, 70, 0.12);
-
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.3);
+  --shadow-glass: 0 8px 32px rgba(0, 0, 0, 0.35);
 }
 
 * {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
-  font-family: 'Outfit', sans-serif;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
   -webkit-tap-highlight-color: transparent;
 }
 
 body {
   min-height: 100vh;
-  display: flex;
-  justify-content: center;
-  background: #F8FAFC;
-  color: #111827;
+  background: #0B1220;
+  color: #FFFFFF;
   overflow-x: hidden;
-  font-family: 'Inter', 'SF Pro Display', sans-serif;
+  font-family: 'Inter', 'SF Pro Display', system-ui, -apple-system, sans-serif;
 }
 
 /* Global cleanup: ensure no accidental light-mode overflow on mobile */

@@ -1,9 +1,18 @@
 import React from "react";
-import { Rocket, Check, ArrowRight, X, Sparkles, ShieldAlert } from "lucide-react";
+import { Rocket, Check, ArrowRight, X, Sparkles } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 export default function UpdateModal({ release, onUpdateNow, onLater, onClose }) {
   const navigate = useNavigate();
+
+  const handleDismiss = () => {
+    if (onClose) onClose();
+    else if (onLater) onLater();
+  };
+
+  const handleUpdate = () => {
+    if (onUpdateNow) onUpdateNow();
+  };
 
   if (!release) return null;
 
@@ -11,7 +20,7 @@ export default function UpdateModal({ release, onUpdateNow, onLater, onClose }) 
   const isCritical = release.type === "critical";
 
   const handleReadMore = () => {
-    onLater();
+    handleDismiss();
     navigate("/release-notes");
   };
 
@@ -28,7 +37,7 @@ export default function UpdateModal({ release, onUpdateNow, onLater, onClose }) 
         {/* Close Button (If not mandatory) */}
         {!isMandatory && (
           <button
-            onClick={onLater}
+            onClick={handleDismiss}
             className="absolute top-4 right-4 p-2 bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white rounded-full transition"
           >
             <X size={18} />
@@ -42,13 +51,13 @@ export default function UpdateModal({ release, onUpdateNow, onLater, onClose }) 
           </div>
           <h2 className="text-2xl font-black text-white mt-2">HostelMate Updated!</h2>
           <div className="inline-flex items-center gap-2 px-3 py-1 bg-emerald-500/10 border border-emerald-500/30 rounded-full text-xs font-bold text-emerald-400">
-            <Sparkles size={14} /> Version {release.version} ({release.type?.toUpperCase()})
+            <Sparkles size={14} /> Version {release.version || "4.2.0"} ({release.type?.toUpperCase() || "UPDATE"})
           </div>
         </div>
 
         {/* Short Description */}
         <p className="text-xs sm:text-sm text-slate-300 text-center leading-relaxed">
-          {release.description}
+          {release.description || "A new update for HostelMate is ready. Enjoy performance improvements and security updates."}
         </p>
 
         {/* Key Highlights Divider */}
@@ -85,14 +94,14 @@ export default function UpdateModal({ release, onUpdateNow, onLater, onClose }) 
         <div className="flex flex-col sm:flex-row gap-3 pt-2">
           {!isMandatory && !isCritical && (
             <button
-              onClick={onLater}
+              onClick={handleDismiss}
               className="w-full sm:w-1/2 py-3 border border-[#22304A] hover:bg-white/5 text-slate-300 font-bold rounded-2xl text-xs transition"
             >
               Remind Later
             </button>
           )}
           <button
-            onClick={onUpdateNow}
+            onClick={handleUpdate}
             className={`w-full ${!isMandatory && !isCritical ? "sm:w-1/2" : "w-full"} py-3 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black rounded-2xl text-xs shadow-lg shadow-emerald-500/20 transition`}
           >
             Update Now
