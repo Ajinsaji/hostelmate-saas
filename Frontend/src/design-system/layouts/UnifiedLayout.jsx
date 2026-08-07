@@ -9,9 +9,10 @@ import TopHeader from '../components/TopHeader';
 import BottomSheet from '../components/BottomSheet';
 import MobileDrawer from '../components/MobileDrawer';
 import useSessionVerification from '../../hooks/useSessionVerification';
+import useIsMobile from '../../hooks/useIsMobile';
 import PageLoader from '../../components/PageLoader';
 import { useCurrentUser } from '../../contexts/HostelContext';
-import { UserPlus, BedDouble, Wallet, Receipt, AlertTriangle, UserCog, Users, Clock, ChevronDown, ChevronUp } from 'lucide-react';
+import { UserPlus, BedDouble, Wallet, Receipt, AlertTriangle } from 'lucide-react';
 
 export function UnifiedLayout({
   role = 'owner',
@@ -32,15 +33,15 @@ export function UnifiedLayout({
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
   const [showQuickAdd, setShowQuickAdd] = useState(false);
-  const [showMoreActions, setShowMoreActions] = useState(false);
   const { verifying } = useSessionVerification();
   const { user } = useCurrentUser();
+  const isMobile = useIsMobile();
   const navigate = useNavigate();
 
   const config = getMenuConfig(role);
   const sidebarItems = menuItems || config.sidebar;
 
-  const showPageHeader = pageTitle || breadcrumbs?.length > 0;
+  const showPageHeader = !isMobile && Boolean(pageTitle || breadcrumbs?.length > 0);
 
   if (verifying) {
     return <PageLoader />;
@@ -69,16 +70,17 @@ export function UnifiedLayout({
         fontFamily: typography.fontFamily,
       }}
     >
-      {/* Desktop Sidebar */}
-      <UnifiedSidebar
-        menuItems={sidebarItems}
-        collapsed={sidebarCollapsed}
-        onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
-        onLogout={onLogout}
-        userName={finalUserName}
-        userRole={finalUserRole}
-        userAvatar={finalUserAvatar}
-      />
+      {!isMobile && (
+        <UnifiedSidebar
+          menuItems={sidebarItems}
+          collapsed={sidebarCollapsed}
+          onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
+          onLogout={onLogout}
+          userName={finalUserName}
+          userRole={finalUserRole}
+          userAvatar={finalUserAvatar}
+        />
+      )}
 
       {/* Main Content Area */}
       <div
@@ -87,6 +89,7 @@ export function UnifiedLayout({
           display: 'flex',
           flexDirection: 'column',
           minWidth: 0,
+          width: '100%',
           background: 'linear-gradient(180deg, rgba(11,18,32,0.98) 0%, rgba(7,12,22,0.98) 100%)',
         }}
       >
@@ -109,9 +112,9 @@ export function UnifiedLayout({
         <main
           style={{
             flex: 1,
-            padding: '24px',
-            paddingBottom: '110px',
-            maxWidth: '1400px',
+            padding: isMobile ? '16px 16px 110px' : '24px',
+            paddingBottom: isMobile ? '116px' : '110px',
+            maxWidth: isMobile ? '100%' : '1400px',
             width: '100%',
             margin: '0 auto',
             boxSizing: 'border-box',
