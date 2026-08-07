@@ -295,17 +295,16 @@ export const MobileDrawer = memo(function MobileDrawer({ isOpen, onClose }) {
               ))}
             </nav>
 
-            {/* Compressed Profile Card (Max Height 110px) */}
+            {/* Apple Settings Style Profile Footer with Logout */}
             <div
               style={{
-                maxHeight: '110px',
                 borderTop: `1px solid ${colors.border.default || '#202B45'}`,
                 padding: '12px 16px',
                 background: colors.background.card || '#131C2E',
                 flexShrink: 0,
                 display: 'flex',
                 flexDirection: 'column',
-                justifyContent: 'center',
+                gap: '8px',
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -334,20 +333,11 @@ export const MobileDrawer = memo(function MobileDrawer({ isOpen, onClose }) {
                   >
                     {userRole} • {activeHostelName}
                   </div>
-                  <div
-                    style={{
-                      fontSize: '11px',
-                      fontWeight: 500,
-                      color: colors.accent.primary || '#22C55E',
-                      margin: '2px 0 0',
-                    }}
-                  >
-                    {planName}
-                  </div>
                 </div>
 
                 <button
                   onClick={() => handleNavClick('/owner/profile')}
+                  aria-label="Profile settings"
                   style={{
                     display: 'flex',
                     alignItems: 'center',
@@ -358,13 +348,42 @@ export const MobileDrawer = memo(function MobileDrawer({ isOpen, onClose }) {
                     fontSize: '12px',
                     fontWeight: 700,
                     cursor: 'pointer',
-                    padding: '4px',
+                    minHeight: '44px',
+                    padding: '4px 8px',
                     flexShrink: 0,
                   }}
                 >
                   Settings <ChevronRight size={14} />
                 </button>
               </div>
+
+              {/* Logout Button */}
+              <button
+                onClick={() => {
+                  onClose();
+                  localStorage.clear();
+                  sessionStorage.clear();
+                  navigate('/login');
+                }}
+                style={{
+                  width: '100%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  padding: '8px 12px',
+                  borderRadius: '10px',
+                  background: 'rgba(239, 68, 68, 0.1)',
+                  border: '1px solid rgba(239, 68, 68, 0.25)',
+                  color: '#EF4444',
+                  fontSize: '13px',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  minHeight: '44px',
+                }}
+              >
+                Logout
+              </button>
             </div>
           </motion.div>
         </div>
@@ -374,3 +393,4 @@ export const MobileDrawer = memo(function MobileDrawer({ isOpen, onClose }) {
 });
 
 export default MobileDrawer;
+

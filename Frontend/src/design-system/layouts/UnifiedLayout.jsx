@@ -50,20 +50,13 @@ export function UnifiedLayout({
   const finalUserRole = userRole || (role === 'owner' ? 'Hostel Owner' : role);
   const finalUserAvatar = userAvatar || user?.profileImage || user?.photo || '';
 
-  // Top High-Frequency Owner Tasks
-  const topPrimaryActions = [
-    { label: 'Add Resident', icon: UserPlus, href: '/residents', desc: 'Register a new resident' },
-    { label: 'Collect Payment', icon: Wallet, href: '/payments', desc: 'Log rent or deposits received' },
-    { label: 'View Residents', icon: Users, href: '/residents', desc: 'Browse resident directory' },
-    { label: 'View Pending Rent', icon: Clock, href: '/payments?tab=pending', desc: 'Check overdue rent balances' },
-    { label: 'View Complaints', icon: AlertTriangle, href: '/owner/dashboard', desc: 'Review active issues' },
-  ];
-
-  // Secondary Actions
-  const secondaryActions = [
-    { label: 'Add Room', icon: BedDouble, href: '/rooms', desc: 'Create a new room space' },
-    { label: 'Add Expense', icon: Receipt, href: '/owner/expense-dashboard', desc: 'File new purchase or utility bill' },
-    { label: 'Add Staff', icon: UserCog, href: '/owner/staff-management', desc: 'Add warden or staff member' },
+  // Top High-Frequency Owner FAB Actions
+  const fabActions = [
+    { label: 'Add Resident', icon: UserPlus, href: '/residents?action=add', desc: 'Register a new resident' },
+    { label: 'Add Room', icon: BedDouble, href: '/rooms?action=add', desc: 'Create a new room space' },
+    { label: 'Collect Payment', icon: Wallet, href: '/payments?action=collect', desc: 'Log rent or deposits received' },
+    { label: 'Add Expense', icon: Receipt, href: '/owner/expense-dashboard?action=add', desc: 'File purchase or utility bill' },
+    { label: 'Register Complaint', icon: AlertTriangle, href: '/owner/dashboard?action=complaint', desc: 'Log resident complaint' },
   ];
 
   return (
@@ -138,11 +131,11 @@ export function UnifiedLayout({
       <BottomSheet
         isOpen={showQuickAdd}
         onClose={() => setShowQuickAdd(false)}
-        title="High-Frequency Actions"
-        subtitle="Top owner tasks reachable in 3 taps"
+        title="Quick Actions"
+        subtitle="Perform common owner tasks in 1-2 taps"
       >
-        <div className="space-y-2">
-          {topPrimaryActions.map((act, index) => {
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          {fabActions.map((act, index) => {
             const IconComponent = act.icon;
             return (
               <button
@@ -151,57 +144,30 @@ export function UnifiedLayout({
                   setShowQuickAdd(false);
                   navigate(act.href);
                 }}
-                className="w-full flex items-center gap-3 p-3 rounded-2xl hover:bg-white/[0.04] transition text-left border"
-                style={{ borderColor: colors.border.default || '#202B45', background: 'rgba(255,255,255,0.03)', minHeight: '48px' }}
+                style={{
+                  width: '100%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '12px',
+                  padding: '12px 14px',
+                  borderRadius: '14px',
+                  border: `1px solid ${colors.border.default || '#202B45'}`,
+                  background: 'rgba(255, 255, 255, 0.03)',
+                  textAlign: 'left',
+                  cursor: 'pointer',
+                  minHeight: '48px',
+                }}
               >
-                <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-400">
-                  <IconComponent size={18} />
+                <div style={{ padding: '8px', borderRadius: '10px', background: 'rgba(34, 197, 94, 0.12)', color: colors.accent.primary || '#22C55E', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <IconComponent size={22} />
                 </div>
                 <div>
-                  <div style={{ fontSize: '14px', fontWeight: typography.weights.bold, color: '#FFFFFF' }}>{act.label}</div>
+                  <div style={{ fontSize: '14px', fontWeight: 700, color: '#FFFFFF' }}>{act.label}</div>
                   <div style={{ fontSize: '12px', color: colors.text.secondary || '#94A3B8' }}>{act.desc}</div>
                 </div>
               </button>
             );
           })}
-
-          {/* Secondary Actions Collapsible */}
-          <div className="pt-2">
-            <button
-              onClick={() => setShowMoreActions(!showMoreActions)}
-              className="w-full py-2 text-xs font-bold text-slate-400 hover:text-white flex items-center justify-center gap-1"
-            >
-              {showMoreActions ? 'Hide Secondary Actions' : 'More Actions'}
-              {showMoreActions ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-            </button>
-
-            {showMoreActions && (
-              <div className="space-y-2 pt-2">
-                {secondaryActions.map((act, index) => {
-                  const IconComponent = act.icon;
-                  return (
-                    <button
-                      key={index}
-                      onClick={() => {
-                        setShowQuickAdd(false);
-                        navigate(act.href);
-                      }}
-                      className="w-full flex items-center gap-3 p-3 rounded-2xl hover:bg-white/[0.04] transition text-left border"
-                      style={{ borderColor: colors.border.default || '#202B45', background: 'rgba(255,255,255,0.03)', minHeight: '48px' }}
-                    >
-                      <div className="p-2 rounded-lg bg-white/5 text-slate-300">
-                        <IconComponent size={18} />
-                      </div>
-                      <div>
-                        <div style={{ fontSize: '14px', fontWeight: typography.weights.bold, color: '#FFFFFF' }}>{act.label}</div>
-                        <div style={{ fontSize: '12px', color: colors.text.secondary || '#94A3B8' }}>{act.desc}</div>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </div>
         </div>
       </BottomSheet>
 

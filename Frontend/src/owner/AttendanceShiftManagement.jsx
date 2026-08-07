@@ -6,37 +6,26 @@ import { useEffect, useState } from "react";
 import {
   Clock,
   CheckCircle2,
-  XCircle,
   AlertTriangle,
   Users,
   Plus,
   Calendar,
   Check,
   X,
-  FileCheck,
-  ShieldCheck,
-  RefreshCw,
-  Sun,
-  Sunset,
-  Moon,
   Clock3,
 } from "lucide-react";
 import { api } from "../services/api";
 import toast from "react-hot-toast";
 
-
 export default function AttendanceShiftManagement() {
-  
-  const [activeTab, setActiveTab] = useState("attendance"); // attendance, shifts, corrections, approvals
+  const [activeTab, setActiveTab] = useState("attendance");
   const [summary, setSummary] = useState(null);
   const [shifts, setShifts] = useState([]);
   const [staffList, setStaffList] = useState([]);
   const [corrections, setCorrections] = useState([]);
   const [leaves, setLeaves] = useState([]);
   const [overtimes, setOvertimes] = useState([]);
-  const [loading, setLoading] = useState(false);
 
-  // Shift modals
   const [isShiftModalOpen, setIsShiftModalOpen] = useState(false);
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
   const [shiftForm, setShiftForm] = useState({
@@ -49,12 +38,7 @@ export default function AttendanceShiftManagement() {
   });
   const [assignForm, setAssignForm] = useState({ staffId: "", shiftId: "", effectiveFrom: new Date().toISOString().slice(0, 10) });
 
-  useEffect(() => {
-    fetchData();
-  }, []);
-
   const fetchData = async () => {
-    setLoading(true);
     try {
       const [sumRes, shiftRes, staffRes, corrRes, leaveRes, otRes] = await Promise.all([
         api.get("/api/attendance/summary"),
@@ -73,10 +57,12 @@ export default function AttendanceShiftManagement() {
       if (otRes.data.success) setOvertimes(otRes.data.overtimeRequests || []);
     } catch (error) {
       toast.error("Unable to load attendance & shift management data");
-    } finally {
-      setLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchData();
+  }, []);
 
   const handleCreateShift = async () => {
     try {
