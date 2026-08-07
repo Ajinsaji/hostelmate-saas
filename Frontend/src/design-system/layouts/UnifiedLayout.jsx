@@ -7,6 +7,7 @@ import UnifiedMobileNav from './UnifiedMobileNav';
 import UnifiedPageHeader from './UnifiedPageHeader';
 import TopHeader from '../components/TopHeader';
 import BottomSheet from '../components/BottomSheet';
+import MobileDrawer from '../components/MobileDrawer';
 import useSessionVerification from '../../hooks/useSessionVerification';
 import PageLoader from '../../components/PageLoader';
 import { useCurrentUser } from '../../contexts/HostelContext';
@@ -15,7 +16,6 @@ import { UserPlus, BedDouble, Wallet, Receipt, AlertTriangle, UserCog, Users, Cl
 export function UnifiedLayout({
   role = 'owner',
   menuItems,
-  mobileItems,
   children,
   headerActions,
   breadcrumbs,
@@ -28,8 +28,9 @@ export function UnifiedLayout({
   userRole,
   userAvatar,
 }) {
-  const { colors, spacing, typography } = useTheme();
+  const { colors, typography } = useTheme();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
   const [showQuickAdd, setShowQuickAdd] = useState(false);
   const [showMoreActions, setShowMoreActions] = useState(false);
   const { verifying } = useSessionVerification();
@@ -38,7 +39,6 @@ export function UnifiedLayout({
 
   const config = getMenuConfig(role);
   const sidebarItems = menuItems || config.sidebar;
-  const mobileNavItems = mobileItems || config.mobile;
 
   const showPageHeader = pageTitle || breadcrumbs?.length > 0;
 
@@ -50,16 +50,16 @@ export function UnifiedLayout({
   const finalUserRole = userRole || (role === 'owner' ? 'Hostel Owner' : role);
   const finalUserAvatar = userAvatar || user?.profileImage || user?.photo || '';
 
-  // Top 5 High-Frequency Owner Tasks (Reachable in <= 3 Taps)
+  // Top High-Frequency Owner Tasks
   const topPrimaryActions = [
     { label: 'Add Resident', icon: UserPlus, href: '/residents', desc: 'Register a new resident' },
     { label: 'Collect Payment', icon: Wallet, href: '/payments', desc: 'Log rent or deposits received' },
     { label: 'View Residents', icon: Users, href: '/residents', desc: 'Browse resident directory' },
     { label: 'View Pending Rent', icon: Clock, href: '/payments?tab=pending', desc: 'Check overdue rent balances' },
-    { label: 'View Complaints', icon: AlertTriangle, href: '/complaints', desc: 'Review active issues' },
+    { label: 'View Complaints', icon: AlertTriangle, href: '/owner/dashboard', desc: 'Review active issues' },
   ];
 
-  // Secondary Actions (Under "More Actions")
+  // Secondary Actions
   const secondaryActions = [
     { label: 'Add Room', icon: BedDouble, href: '/rooms', desc: 'Create a new room space' },
     { label: 'Add Expense', icon: Receipt, href: '/owner/expense-dashboard', desc: 'File new purchase or utility bill' },
@@ -98,7 +98,7 @@ export function UnifiedLayout({
         }}
       >
         {/* Unified Top Header */}
-        <TopHeader onMenuClick={() => setSidebarCollapsed(!sidebarCollapsed)} />
+        <TopHeader onMenuClick={() => setMobileDrawerOpen(true)} />
 
         {/* Page Header */}
         {showPageHeader && (
@@ -128,7 +128,13 @@ export function UnifiedLayout({
         </main>
       </div>
 
-      {/* Quick Add Bottom Sheet (Top 5 High-Frequency Tasks First) */}
+      {/* Mobile Redesigned Drawer */}
+      <MobileDrawer
+        isOpen={mobileDrawerOpen}
+        onClose={() => setMobileDrawerOpen(false)}
+      />
+
+      {/* Quick Add Bottom Sheet */}
       <BottomSheet
         isOpen={showQuickAdd}
         onClose={() => setShowQuickAdd(false)}
@@ -199,10 +205,10 @@ export function UnifiedLayout({
         </div>
       </BottomSheet>
 
-      {/* Mobile Bottom Navigation */}
+      {/* Mobile 5-Tab Bottom Navigation */}
       <UnifiedMobileNav
-        items={mobileNavItems}
         onQuickAddClick={() => setShowQuickAdd(true)}
+        onMoreClick={() => setMobileDrawerOpen(true)}
       />
     </div>
   );

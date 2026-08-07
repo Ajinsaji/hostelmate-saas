@@ -139,12 +139,14 @@ function AdminLogin() {
           </button>
 
           <p className="text-center text-body" style={{ marginBottom: 0 }}>
-            <span
-              onClick={() => navigate("/")}
-              style={{ color: "var(--primary)", fontWeight: 600, cursor: "pointer" }}
-            >
-              Back to Home
-            </span>
+               <button
+                 type="button"
+                 onClick={() => navigate("/")}
+                 className="btn-primary"
+                 aria-label="Back to Home"
+               >
+                 Back to Home
+               </button>
           </p>
         </div>
       </div>
