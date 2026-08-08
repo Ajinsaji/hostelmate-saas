@@ -88,6 +88,10 @@ const getFeatureGateStatus = async (req, res) => {
   }
 };
 
+// Public release checking endpoints (un-gated for app updates)
+router.get("/releases/latest", getLatestRelease);
+router.get("/releases/:version", getReleaseByVersion);
+
 // Apply ownerAuth to all v2 workspace routes
 router.use(ownerAuth);
 

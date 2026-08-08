@@ -119,16 +119,17 @@ export const PlatformSettings = React.memo(() => {
       <ContentContainer>
         <div className="flex flex-col md:flex-row gap-6">
           <div className="w-full md:w-64 shrink-0">
-            <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden p-2">
+            <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden p-2 flex md:flex-col overflow-x-auto custom-scrollbar gap-1">
               {tabs.map((tab) => {
                 const Icon = tab.icon;
                 const isActive = activeTab === tab.id;
                 return (
                   <button
                     key={tab.id}
+                    type="button"
                     onClick={() => setActiveTab(tab.id)}
-                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
-                      isActive ? "bg-indigo-500/10 text-indigo-400" : "text-slate-400 hover:bg-slate-800 hover:text-slate-200"
+                    className={`shrink-0 md:shrink flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors min-h-[44px] ${
+                      isActive ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" : "text-slate-400 hover:bg-slate-800 hover:text-slate-200"
                     }`}
                   >
                     <Icon className="w-4 h-4" />

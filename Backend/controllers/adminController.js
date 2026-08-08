@@ -326,35 +326,93 @@ const finalizeHostelActivation = async (req, res) => {
 // REJECT REQUEST
 // ==========================
 
-const rejectRequest =
-  async (req, res) => {
-    try {
+const rejectRequest = async (req, res) => {
+  try {
+    const { reason } = req.body || {};
+    const updated = await HostelRequest.findByIdAndUpdate(
+      req.params.id,
+      {
+        status: "rejected",
+        rejectionReason: reason || "Rejected by Superadmin",
+        $push: { timeline: { action: `Rejected: ${reason || 'No reason provided'}`, by: req.user?.role || "SuperAdmin", date: new Date() } }
+      },
+      { new: true }
+    );
 
-      const updated = await HostelRequest.findByIdAndUpdate(
-        req.params.id,
-        {
-          status: "rejected",
-        },
-        { new: true }
-      );
-
-      if (!updated) {
-        return res.status(404).json({ success: false, message: "Request not found" });
-      }
-
-      res.status(200).json({
-        success: true,
-
-        message:
-          "Request Rejected",
-      });
-
-    } catch (error) {
-
-      res.status(500).json(error);
-
+    if (!updated) {
+      return res.status(404).json({ success: false, message: "Request not found" });
     }
-  };
+
+    res.status(200).json({
+      success: true,
+      message: "Request Rejected",
+      request: updated
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+const getAdminsTeam = async (req, res) => {
+  try {
+    const Admin = require("../models/Admin");
+    const admins = await Admin.find({ status: "active" }).select("_id fullName username email role").lean();
+    
+    const teamMembers = (admins || []).map(a => ({
+      id: a._id,
+      name: a.fullName || a.username,
+      email: a.email,
+      role: a.role === "super_admin" ? "Super Admin" : "Operations Admin"
+    }));
+
+    // Fallback standard verification teams if single admin account
+    if (teamMembers.length <= 1) {
+      teamMembers.push(
+        { id: "team-verification", name: "Verification Team", role: "Compliance & Audit" },
+        { id: "team-operations", name: "Operations Team", role: "Onboarding Ops" },
+        { id: "team-compliance", name: "Compliance Team", role: "Legal & Regulatory" }
+      );
+    }
+
+    res.status(200).json({
+      success: true,
+      team: teamMembers
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+const assignRequest = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { adminId, teamName } = req.body || {};
+    
+    const assigneeName = teamName || adminId || "Operations Team";
+    const updatePayload = {
+      assignedTeam: assigneeName,
+      $push: { timeline: { action: `Assigned to ${assigneeName}`, by: req.user?.role || "SuperAdmin", date: new Date() } }
+    };
+
+    if (mongoose.Types.ObjectId.isValid(adminId)) {
+      updatePayload.assignedTo = adminId;
+    }
+
+    const request = await HostelRequest.findByIdAndUpdate(
+      id,
+      updatePayload,
+      { new: true }
+    );
+
+    if (!request) {
+      return res.status(404).json({ success: false, message: "Request not found" });
+    }
+
+    res.status(200).json({ success: true, message: `Assigned to ${assigneeName}`, request });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
 
 
 // ==========================
@@ -1562,3 +1620,5 @@ module.exports.runBackup = runBackup;
 module.exports.getBackups = getBackups;
 module.exports.downloadBackup = downloadBackup;
 module.exports.impersonateOwner = impersonateOwner;
+module.exports.getAdminsTeam = getAdminsTeam;
+module.exports.assignRequest = assignRequest;

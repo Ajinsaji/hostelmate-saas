@@ -271,30 +271,30 @@ export const AdminProfile = React.memo(() => {
 
         {/* Change Password Modal */}
         {isChangePasswordOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-            <div className="bg-slate-900 border border-slate-800 rounded-xl w-full max-w-md overflow-hidden shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 p-0 sm:p-4">
+            <div className="bg-slate-900 border-t sm:border border-slate-800 rounded-t-3xl sm:rounded-xl w-full max-w-md overflow-hidden shadow-2xl">
               <div className="flex items-center justify-between p-4 border-b border-slate-800">
                 <h3 className="text-lg font-semibold text-slate-200">Change Password</h3>
-                <button onClick={() => setIsChangePasswordOpen(false)} className="text-slate-400 hover:text-slate-200">
+                <button onClick={() => setIsChangePasswordOpen(false)} className="text-slate-400 hover:text-slate-200 p-2 min-h-[44px] min-w-[44px] flex items-center justify-center">
                   <X className="w-5 h-5" />
                 </button>
               </div>
               <form onSubmit={handleChangePasswordSubmit} className="p-4 space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-400 mb-1">Old Password</label>
-                  <input type="password" value={passwordData.oldPassword} onChange={e=>setPasswordData({...passwordData, oldPassword: e.target.value})} className="w-full bg-slate-800 border border-slate-700 text-slate-200 rounded-lg px-4 py-2 focus:outline-none focus:border-indigo-500" required />
+                  <input type="password" value={passwordData.oldPassword} onChange={e=>setPasswordData({...passwordData, oldPassword: e.target.value})} className="w-full bg-slate-800 border border-slate-700 text-slate-200 rounded-xl px-4 py-3 min-h-[44px] focus:outline-none focus:border-emerald-500" required />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-400 mb-1">New Password</label>
-                  <input type="password" value={passwordData.newPassword} onChange={e=>setPasswordData({...passwordData, newPassword: e.target.value})} className="w-full bg-slate-800 border border-slate-700 text-slate-200 rounded-lg px-4 py-2 focus:outline-none focus:border-indigo-500" required />
+                  <input type="password" value={passwordData.newPassword} onChange={e=>setPasswordData({...passwordData, newPassword: e.target.value})} className="w-full bg-slate-800 border border-slate-700 text-slate-200 rounded-xl px-4 py-3 min-h-[44px] focus:outline-none focus:border-emerald-500" required />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-400 mb-1">Confirm New Password</label>
-                  <input type="password" value={passwordData.confirmPassword} onChange={e=>setPasswordData({...passwordData, confirmPassword: e.target.value})} className="w-full bg-slate-800 border border-slate-700 text-slate-200 rounded-lg px-4 py-2 focus:outline-none focus:border-indigo-500" required />
+                  <input type="password" value={passwordData.confirmPassword} onChange={e=>setPasswordData({...passwordData, confirmPassword: e.target.value})} className="w-full bg-slate-800 border border-slate-700 text-slate-200 rounded-xl px-4 py-3 min-h-[44px] focus:outline-none focus:border-emerald-500" required />
                 </div>
                 <div className="flex justify-end gap-3 mt-6">
-                  <button type="button" onClick={() => setIsChangePasswordOpen(false)} className="px-4 py-2 text-sm font-medium text-slate-300 hover:text-white transition-colors">Cancel</button>
-                  <button type="submit" disabled={savingPassword} className="bg-rose-600 hover:bg-rose-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50">
+                  <button type="button" onClick={() => setIsChangePasswordOpen(false)} className="px-4 py-3 min-h-[44px] text-sm font-medium text-slate-300 hover:text-white transition-colors">Cancel</button>
+                  <button type="submit" disabled={savingPassword} className="bg-rose-600 hover:bg-rose-700 text-white px-5 py-3 rounded-xl min-h-[44px] text-sm font-medium transition-colors disabled:opacity-50 active:scale-95">
                     {savingPassword ? "Updating..." : "Update Password"}
                   </button>
                 </div>

@@ -117,15 +117,15 @@ export const OwnersList = React.memo(() => {
                 </div>
 
                 {/* Quick Actions Footer */}
-                <div className="p-3 bg-black/20 border-t border-white/5 flex gap-2">
-                  <button onClick={() => handleAction('Activate', owner.id)} className="flex-1 py-1.5 rounded-lg flex items-center justify-center gap-1.5 text-[10px] font-bold text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 transition">
-                    <Play size={12} /> Activate
+                <div className="p-3 bg-black/20 border-t border-white/5 flex flex-col sm:flex-row gap-2">
+                  <button onClick={() => handleAction('Activate', owner.id)} className="flex-1 min-h-[44px] py-2.5 rounded-xl flex items-center justify-center gap-1.5 text-xs font-bold text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 transition active:scale-[0.98]">
+                    <Play size={14} /> Activate
                   </button>
-                  <button onClick={() => handleAction('Suspend', owner.id)} className="flex-1 py-1.5 rounded-lg flex items-center justify-center gap-1.5 text-[10px] font-bold text-rose-400 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 transition">
-                    <Pause size={12} /> Suspend
+                  <button onClick={() => handleAction('Suspend', owner.id)} className="flex-1 min-h-[44px] py-2.5 rounded-xl flex items-center justify-center gap-1.5 text-xs font-bold text-rose-400 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 transition active:scale-[0.98]">
+                    <Pause size={14} /> Suspend
                   </button>
-                  <button onClick={() => handleAction('Reset Password', owner.id)} className="flex-1 py-1.5 rounded-lg flex items-center justify-center gap-1.5 text-[10px] font-bold text-slate-300 bg-white/5 hover:bg-white/10 border border-white/10 transition">
-                    <KeyRound size={12} /> Reset Pwd
+                  <button onClick={() => handleAction('Reset Password', owner.id)} className="flex-1 min-h-[44px] py-2.5 rounded-xl flex items-center justify-center gap-1.5 text-xs font-bold text-slate-300 bg-white/5 hover:bg-white/10 border border-white/10 transition active:scale-[0.98]">
+                    <KeyRound size={14} /> Reset Pwd
                   </button>
                 </div>
               </div>

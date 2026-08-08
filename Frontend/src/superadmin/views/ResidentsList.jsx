@@ -71,17 +71,17 @@ export const ResidentsList = React.memo(() => {
         </td>
         <td className="px-6 py-4">
           <div className="flex items-center justify-center gap-2">
-            <button onClick={() => handleAction('View', row.id)} className="p-1.5 rounded-lg border border-white/5 hover:bg-white/10 text-emerald-400 transition" title="View">
-              <Eye size={14} />
+            <button onClick={() => handleAction('View', row.id)} className="p-2 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl border border-white/5 hover:bg-white/10 text-emerald-400 transition active:scale-95" title="View">
+              <Eye size={16} />
             </button>
-            <button onClick={() => handleAction('Edit', row.id)} className="p-1.5 rounded-lg border border-white/5 hover:bg-white/10 text-blue-400 transition" title="Edit">
-              <Edit2 size={14} />
+            <button onClick={() => handleAction('Edit', row.id)} className="p-2 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl border border-white/5 hover:bg-white/10 text-blue-400 transition active:scale-95" title="Edit">
+              <Edit2 size={16} />
             </button>
-            <button onClick={() => handleAction('Transfer', row.id)} className="p-1.5 rounded-lg border border-white/5 hover:bg-white/10 text-amber-400 transition" title="Transfer">
-              <ArrowRightLeft size={14} />
+            <button onClick={() => handleAction('Transfer', row.id)} className="p-2 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl border border-white/5 hover:bg-white/10 text-amber-400 transition active:scale-95" title="Transfer">
+              <ArrowRightLeft size={16} />
             </button>
-            <button onClick={() => handleAction('Checkout', row.id)} className="p-1.5 rounded-lg border border-white/5 hover:bg-white/10 text-rose-400 transition" title="Checkout">
-              <LogOut size={14} />
+            <button onClick={() => handleAction('Checkout', row.id)} className="p-2 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl border border-white/5 hover:bg-white/10 text-rose-400 transition active:scale-95" title="Checkout">
+              <LogOut size={16} />
             </button>
           </div>
         </td>

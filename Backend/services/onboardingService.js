@@ -22,22 +22,39 @@ const approveHostelRegistration = async ({
   aadhaarFile,
   licensePhoto,
 }) => {
-  const session = await mongoose.startSession();
-  session.startTransaction();
+  let session = null;
+  const topologyType = mongoose.connection?.client?.topology?.description?.type;
+  const isReplicaSet = ["ReplicaSetNoPrimary", "ReplicaSetWithPrimary", "Sharded"].includes(topologyType);
+
+  if (isReplicaSet) {
+    try {
+      session = await mongoose.startSession();
+      session.startTransaction();
+    } catch (e) {
+      session = null;
+    }
+  }
+
+  const sessionOption = session ? { session } : {};
 
   try {
     // 1. Generate unique slug
     let baseSlug = hostelName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)+/g, "");
-    let slug = baseSlug;
+    let slug = baseSlug || "hostel";
     let counter = 1;
-    while (await Hostel.findOne({ slug }).session(session)) {
+
+    while (true) {
+      const query = Hostel.findOne({ slug });
+      if (session) query.session(session);
+      const existing = await query;
+      if (!existing) break;
       counter++;
       slug = `${baseSlug}-${counter}`;
     }
 
     // 2. Generate URLs
-    const publicLink = `${process.env.FRONTEND_URL}/hostel/${slug}`;
-    const publicRegistrationLink = `${process.env.FRONTEND_URL}/hostel/${slug}/apply`;
+    const publicLink = `${process.env.FRONTEND_URL || "https://hostelmate.in"}/hostel/${slug}`;
+    const publicRegistrationLink = `${process.env.FRONTEND_URL || "https://hostelmate.in"}/hostel/${slug}/apply`;
     
     // 3. Generate QR Code
     const { generateQRCode } = require("../utils/qrCodeService");
@@ -65,7 +82,7 @@ const approveHostelRegistration = async ({
       }
     });
 
-    await newHostel.save({ session });
+    await newHostel.save(sessionOption);
 
     // 5. Generate Temporary Password
     const tempPassword = crypto.randomBytes(4).toString("hex"); // e.g. 8 chars
@@ -74,44 +91,44 @@ const approveHostelRegistration = async ({
 
     // 6. Create Owner
     const newOwner = new Owner({
-      name: ownerName,
+      ownerName: ownerName,
       email,
       phone,
       password: hashedPassword,
       role: "owner",
-      hostel: newHostel._id,
-      requiresPasswordChange: true, // Force password change on first login
-      aadhaarFile: aadhaarFile || "",
-      licensePhoto: licensePhoto || "",
+      hostelId: newHostel._id,
+      mustChangePassword: true,
       status: "active"
     });
 
-    await newOwner.save({ session });
+    await newOwner.save(sessionOption);
     newHostel.owner = newOwner._id;
-    await newHostel.save({ session });
+    await newHostel.save(sessionOption);
 
-    // We can initialize subscription here if Subscription model exists.
-
-    await session.commitTransaction();
-    session.endSession();
+    if (session) {
+      await session.commitTransaction();
+      session.endSession();
+    }
 
     return {
       success: true,
       hostel: newHostel,
+      tempPassword,
       owner: {
         _id: newOwner._id,
         name: newOwner.name,
         email: newOwner.email,
         phone: newOwner.phone,
       },
-      
       publicLink,
       publicRegistrationLink,
       qrCode
     };
   } catch (error) {
-    await session.abortTransaction();
-    session.endSession();
+    if (session) {
+      try { await session.abortTransaction(); } catch {}
+      try { session.endSession(); } catch {}
+    }
     logger.error("Error in onboardingService:", error);
     throw error;
   }

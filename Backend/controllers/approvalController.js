@@ -57,21 +57,28 @@ const Owner = require("../models/Owner");
 const approveOnboardingRequest = async (req, res) => {
   try {
     const { id } = req.params;
-    const requestData = req.body;
+    const requestData = req.body || {};
     
+    let existingRequest = null;
+    if (id && id !== "new") {
+      existingRequest = await HostelRequest.findById(id);
+    }
+
+    const payload = {
+      hostelName: requestData.hostelName || existingRequest?.hostelName || "Hostel",
+      ownerName: requestData.ownerName || existingRequest?.ownerName || "Owner",
+      email: requestData.email || existingRequest?.email || "",
+      phone: requestData.phone || existingRequest?.phone || "",
+      city: requestData.city || existingRequest?.city || "",
+      address: requestData.address || existingRequest?.hostelAddress || existingRequest?.ownerAddress || "",
+      coverImage: requestData.coverImage || "",
+      logo: requestData.logo || "",
+      aadhaarFile: requestData.aadhaarFile || existingRequest?.aadhaarFile || "",
+      licensePhoto: requestData.licensePhoto || existingRequest?.licensePhoto || ""
+    };
+
     // Call existing shared service
-    const result = await approveHostelRegistration({
-      hostelName: requestData.hostelName,
-      ownerName: requestData.ownerName,
-      email: requestData.email,
-      phone: requestData.phone,
-      city: requestData.city,
-      address: requestData.address,
-      coverImage: requestData.coverImage,
-      logo: requestData.logo,
-      aadhaarFile: requestData.aadhaarFile,
-      licensePhoto: requestData.licensePhoto
-    });
+    const result = await approveHostelRegistration(payload);
 
     const hostelId = result.hostel._id;
     const tempPassword = result.tempPassword;

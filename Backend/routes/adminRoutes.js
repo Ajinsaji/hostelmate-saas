@@ -54,6 +54,8 @@ const {
   getBackups,
   downloadBackup,
   impersonateOwner,
+  getAdminsTeam,
+  assignRequest,
   // NOTE: Phase 4.2B handlers are implemented in hostelAdminController
   // and imported separately below to avoid module.exports mismatch.
 } = require("../controllers/adminController");
@@ -149,9 +151,16 @@ router.get("/health-score", resolvedHealthScoreHandler);
 
 router.get("/requests", getAllRequests);
 
+router.get("/team", getAdminsTeam);
+
 router.put("/approve/:id", approveHostel);
+router.post("/approve/:id", approveHostel);
 
 router.put("/reject/:id", rejectRequest);
+router.post("/reject/:id", rejectRequest);
+
+router.post("/assign/:id", assignRequest);
+router.put("/assign/:id", assignRequest);
 
 router.post(
   "/finalize-hostel-activation/:hostelId",

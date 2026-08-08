@@ -34,6 +34,7 @@ export function useActionQueue() {
 
       // 1. Requests Center
       const mappedRequests = rawRequests.map(r => ({
+        ...r,
         id: r._id,
         type: "request",
         title: "Hostel Registration",

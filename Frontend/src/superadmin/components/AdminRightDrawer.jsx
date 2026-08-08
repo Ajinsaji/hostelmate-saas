@@ -9,6 +9,8 @@ import { COLORS } from "../constants/theme";
 // import OwnerDrawerPanel from "./panels/OwnerDrawerPanel";
 // import RequestDrawerPanel from "./panels/RequestDrawerPanel";
 
+import RegistrationDetailsDrawer from "./drawers/RegistrationDetailsDrawer";
+
 export const AdminRightDrawer = React.memo(() => {
   const { isOpen, view, data, closeDrawer } = useDrawer();
 
@@ -22,6 +24,20 @@ export const AdminRightDrawer = React.memo(() => {
   }, [isOpen, closeDrawer]);
 
   if (!isOpen && !view) return null;
+
+  if (view === "request") {
+    return (
+      <RegistrationDetailsDrawer
+        isOpen={isOpen}
+        onClose={closeDrawer}
+        requestData={data}
+        onActionComplete={() => {
+          closeDrawer();
+          window.location.reload();
+        }}
+      />
+    );
+  }
 
   const renderContent = () => {
     switch (view) {

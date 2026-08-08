@@ -126,11 +126,11 @@ const contextMiddleware = async (req, res, next) => {
     };
 
     // Cross-workspace protection:
-    // If a hostelId is present, verify it belongs to the user's workspace
-    if (hostelId) {
+    // If a hostelId is present, verify it belongs to the user's workspace (unless superadmin/admin)
+    if (hostelId && !["super_admin", "admin", "eps_admin"].includes(role)) {
       const Hostel = require("../models/Hostel");
       const hostelRecord = await Hostel.findById(hostelId).select("workspaceId").lean();
-      if (hostelRecord && hostelRecord.workspaceId && String(hostelRecord.workspaceId) !== String(workspaceId)) {
+      if (hostelRecord && hostelRecord.workspaceId && workspaceId && String(hostelRecord.workspaceId) !== String(workspaceId)) {
         return res.status(403).json({
           success: false,
           message: "Forbidden: Access denied to this hostel under your workspace context.",

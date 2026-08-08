@@ -1,6 +1,5 @@
-import React, { useMemo, useState } from "react";
+import React, { useState } from "react";
 import PageContainer from "../layouts/PageContainer";
-import { COLORS } from "../constants/theme";
 import BackupManagerModal from "../components/modals/BackupManagerModal";
 import { useDrawer } from "../contexts/DrawerContext";
 import { useNavigate } from "react-router-dom";
@@ -16,12 +15,12 @@ import useOwners from "../hooks/useOwners";
 
 // Icons
 import { 
-  Activity, CheckSquare, Zap, ArrowRight, ShieldCheck, Database, Server,
-  AlertTriangle, CheckCircle, Clock, Search, FileText, User, Building,
-  PlusCircle, RefreshCcw, Send, Settings, ShieldAlert, BarChart3, LineChart,
-  DollarSign, Users, ChevronRight, Download
+  CheckSquare, Zap, ArrowRight, ShieldCheck, Database, Server,
+  AlertTriangle, CheckCircle, FileText, User, Building,
+  PlusCircle, ShieldAlert, DollarSign, Users
 } from "lucide-react";
 import LoadingState from "../components/feedback/LoadingState";
+import ConfirmActionModal from "../components/modals/ConfirmActionModal";
 
 export const DashboardOverview = React.memo(() => {
   const { openDrawer } = useDrawer();
@@ -30,13 +29,14 @@ export const DashboardOverview = React.memo(() => {
   const { data: hostelsData } = useHostels({ page: 1, pageSize: 3 });
   const { data: ownersData } = useOwners();
   const [isBackupModalOpen, setIsBackupModalOpen] = useState(false);
+  const [actionModal, setActionModal] = useState(null); // { actionType, item }
 
   // Data hooks
   const { data: summaryData, loading: summaryLoading } = useExecutiveSummary();
   const { data: statsData, loading: statsLoading } = useDashboardStats();
   const { data: revenueData, loading: revenueLoading } = useRevenueMetrics();
-  const { data: telemetryData, loading: telemetryLoading } = usePlatformMonitoring();
-  const { workQueue, requests, improvements, recentActivity, loading: queueLoading } = useActionQueue();
+  const { loading: telemetryLoading } = usePlatformMonitoring();
+  const { workQueue, improvements, recentActivity, loading: queueLoading, refetch } = useActionQueue();
 
   const isLoading = summaryLoading || statsLoading || revenueLoading || telemetryLoading || queueLoading;
 
@@ -193,56 +193,106 @@ export const DashboardOverview = React.memo(() => {
       </section>
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-8 mb-8">
-        {/* 3. TODAY'S WORK QUEUE (Action Queue) */}
+        {/* 3. TODAY'S WORK QUEUE (Action Queue / Action Required) */}
         <section className="xl:col-span-2">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-bold text-white tracking-wide">Today's Work Queue</h3>
+            <div className="flex items-center gap-2">
+              <div className="w-2.5 h-2.5 rounded-full bg-[#EF4444] animate-pulse" />
+              <h3 className="text-sm font-bold text-white tracking-wide uppercase">Today's Work Queue</h3>
+              <span className="px-2 py-0.5 rounded-full bg-[#EF4444]/10 border border-[#EF4444]/20 text-[#EF4444] text-[10px] font-bold">
+                {workQueue.length} Action Required
+              </span>
+            </div>
             <button onClick={() => navigate("/admin/requests")} className="text-xs font-bold text-emerald-400 hover:text-emerald-300">View All Tasks</button>
           </div>
           
-          <div className="bg-slate-900/50 border border-white/5 rounded-2xl overflow-hidden flex flex-col">
+          <div className="bg-slate-900/60 border border-[#202B45] rounded-2xl overflow-hidden flex flex-col shadow-xl">
             {workQueue.length === 0 ? (
-              <div className="p-8 text-center text-slate-500 text-sm">No pending tasks in queue! 🎉</div>
+              <div className="p-8 text-center text-slate-500 text-sm flex flex-col items-center justify-center gap-2">
+                <CheckCircle size={28} className="text-emerald-400 opacity-60" />
+                <span>No pending tasks in queue! All actions completed. 🎉</span>
+              </div>
             ) : (
-              <div className="flex flex-col">
-                {workQueue.slice(0, 5).map((item, idx) => (
-                  <div key={item.id || idx} className="flex items-center justify-between p-4 border-b border-white/5 hover:bg-white/[0.02] transition">
-                    <div className="flex items-start gap-4">
-                      <div className="mt-1">
-                        {item.type === "request" ? (
-                          <div className="p-1.5 rounded bg-blue-500/10 text-blue-400"><CheckSquare size={16} /></div>
-                        ) : (
-                          <div className="p-1.5 rounded bg-amber-500/10 text-amber-400"><AlertTriangle size={16} /></div>
-                        )}
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider" style={{ background: "rgba(255,255,255,0.1)", color: "#fff" }}>
-                            {item.queueCategory}
-                          </span>
-                          <span className="text-xs font-bold text-white">{item.title}</span>
+              <div className="flex flex-col divide-y divide-[#202B45]">
+                {workQueue.slice(0, 5).map((item, idx) => {
+                  const isPendingRequest = item.type === "request" && item.queueCategory === "Needs Approval";
+                  return (
+                    <div 
+                      key={item.id || item._id || idx} 
+                      className={`flex flex-col sm:flex-row sm:items-center justify-between p-5 gap-4 transition ${
+                        isPendingRequest 
+                          ? "bg-[#EF4444]/[0.03] border-l-4 border-l-[#EF4444] hover:bg-[#EF4444]/[0.06]" 
+                          : "hover:bg-white/[0.02]"
+                      }`}
+                    >
+                      <div className="flex items-start gap-4">
+                        <div className="mt-0.5 shrink-0">
+                          {isPendingRequest ? (
+                            <div className="w-9 h-9 rounded-xl bg-[#EF4444]/10 border border-[#EF4444]/20 text-[#EF4444] flex items-center justify-center">
+                              <ShieldAlert size={18} />
+                            </div>
+                          ) : item.type === "request" ? (
+                            <div className="w-9 h-9 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-400 flex items-center justify-center">
+                              <CheckSquare size={18} />
+                            </div>
+                          ) : (
+                            <div className="w-9 h-9 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center">
+                              <AlertTriangle size={18} />
+                            </div>
+                          )}
                         </div>
-                        <p className="text-xs text-slate-400 font-medium">
-                          {safeRender(item.subtitle)} • {safeRender(item.owner)}
-                        </p>
+                        <div>
+                          <div className="flex items-center gap-2 mb-1 flex-wrap">
+                            <span 
+                              className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider ${
+                                isPendingRequest 
+                                  ? "bg-[#EF4444]/20 border border-[#EF4444]/30 text-[#EF4444]" 
+                                  : "bg-white/10 text-white"
+                              }`}
+                            >
+                              🔴 {item.queueCategory || "ACTION REQUIRED"}
+                            </span>
+                            <span className="text-xs font-bold text-white">{item.title}</span>
+                            <span className="text-[10px] font-semibold text-[#EF4444] bg-[#EF4444]/10 px-1.5 py-0.2 rounded">
+                              Priority: HIGH
+                            </span>
+                          </div>
+                          <h4 className="text-sm font-bold text-white">
+                            {safeRender(item.subtitle)} • <span className="text-slate-300 font-medium">{safeRender(item.owner)}</span>
+                          </h4>
+                          <p className="text-xs text-slate-400 font-medium mt-0.5">
+                            Submitted: {new Date(item.timestamp || 0).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' })} • Status: <span className="text-slate-300 capitalize">{item.status || "Pending"}</span>
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 shrink-0 w-full sm:w-auto mt-2 sm:mt-0">
+                        {item.type === "request" && (
+                          <>
+                            <button 
+                              onClick={() => setActionModal({ actionType: "approve", item })}
+                              className="flex-1 sm:flex-initial min-h-[44px] px-4 py-2.5 rounded-xl text-xs font-bold text-white bg-emerald-500 hover:bg-emerald-600 shadow-md shadow-emerald-500/20 transition flex items-center justify-center gap-1.5 active:scale-[0.98]"
+                            >
+                              <CheckCircle size={14} /> Approve
+                            </button>
+                            <button 
+                              onClick={() => setActionModal({ actionType: "reject", item })}
+                              className="flex-1 sm:flex-initial min-h-[44px] px-4 py-2.5 rounded-xl text-xs font-bold text-[#EF4444] bg-[#EF4444]/10 hover:bg-[#EF4444]/20 border border-[#EF4444]/30 transition flex items-center justify-center gap-1.5 active:scale-[0.98]"
+                            >
+                              <ShieldAlert size={14} /> Reject
+                            </button>
+                          </>
+                        )}
+                        <button 
+                          onClick={() => openDrawer("request", item)}
+                          className="flex-1 sm:flex-initial min-h-[44px] px-4 py-2.5 rounded-xl text-xs font-bold text-slate-300 bg-white/5 hover:bg-white/10 border border-white/10 transition flex items-center justify-center active:scale-[0.98]"
+                        >
+                          View Details
+                        </button>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      {item.type === "request" && (
-                        <>
-                          <button className="px-3 py-1.5 rounded-lg text-[10px] font-bold text-white bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/30 transition">Approve</button>
-                          <button className="px-3 py-1.5 rounded-lg text-[10px] font-bold text-white bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 transition">Reject</button>
-                        </>
-                      )}
-                      <button 
-                        onClick={() => openDrawer(item.type, item)}
-                        className="px-3 py-1.5 rounded-lg text-[10px] font-bold text-slate-300 bg-white/5 hover:bg-white/10 border border-white/10 transition"
-                      >
-                        View Details
-                      </button>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
@@ -477,6 +527,17 @@ export const DashboardOverview = React.memo(() => {
       <BackupManagerModal 
         isOpen={isBackupModalOpen} 
         onClose={() => setIsBackupModalOpen(false)} 
+      />
+
+      <ConfirmActionModal
+        isOpen={!!actionModal}
+        onClose={() => setActionModal(null)}
+        actionType={actionModal?.actionType}
+        requestData={actionModal?.item}
+        onSuccess={() => {
+          refetch();
+          setActionModal(null);
+        }}
       />
     </PageContainer>
   );
