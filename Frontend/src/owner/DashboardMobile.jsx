@@ -184,7 +184,7 @@ export const DashboardMobile = memo(function DashboardMobile({
               fontSize: "13px",
               fontWeight: 700,
               cursor: "pointer",
-              minHeight: "44px",
+              minHeight: "48px",
               display: "flex",
               alignItems: "center",
               gap: "4px",
@@ -213,7 +213,7 @@ export const DashboardMobile = memo(function DashboardMobile({
               alignItems: "center",
               justifyContent: "space-between",
               cursor: "pointer",
-              minHeight: "44px",
+              minHeight: "48px",
             }}
           >
             <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
@@ -242,7 +242,7 @@ export const DashboardMobile = memo(function DashboardMobile({
               alignItems: "center",
               justifyContent: "space-between",
               cursor: "pointer",
-              minHeight: "44px",
+              minHeight: "48px",
             }}
           >
             <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
@@ -269,7 +269,7 @@ export const DashboardMobile = memo(function DashboardMobile({
               alignItems: "center",
               justifyContent: "space-between",
               cursor: "pointer",
-              minHeight: "44px",
+              minHeight: "48px",
             }}
           >
             <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
@@ -314,7 +314,7 @@ export const DashboardMobile = memo(function DashboardMobile({
               fontWeight: 700,
               fontSize: "14px",
               cursor: "pointer",
-              minHeight: "44px",
+              minHeight: "48px",
               boxShadow: "0 4px 12px rgba(34, 197, 94, 0.3)",
             }}
           >
@@ -339,7 +339,7 @@ export const DashboardMobile = memo(function DashboardMobile({
               fontWeight: 700,
               fontSize: "14px",
               cursor: "pointer",
-              minHeight: "44px",
+              minHeight: "48px",
             }}
           >
             <Wallet size={22} style={{ color: "#22C55E" }} />
@@ -363,7 +363,7 @@ export const DashboardMobile = memo(function DashboardMobile({
               fontWeight: 700,
               fontSize: "14px",
               cursor: "pointer",
-              minHeight: "44px",
+              minHeight: "48px",
             }}
           >
             <Receipt size={22} style={{ color: "#F59E0B" }} />
@@ -387,7 +387,7 @@ export const DashboardMobile = memo(function DashboardMobile({
               fontWeight: 700,
               fontSize: "14px",
               cursor: "pointer",
-              minHeight: "44px",
+              minHeight: "48px",
             }}
           >
             <FileText size={22} style={{ color: "#94A3B8" }} />
@@ -428,7 +428,7 @@ export const DashboardMobile = memo(function DashboardMobile({
               border: "none",
               color: "#FFFFFF",
               cursor: "pointer",
-              minHeight: "44px",
+              minHeight: "48px",
             }}
           >
             <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
@@ -468,7 +468,7 @@ export const DashboardMobile = memo(function DashboardMobile({
               border: "none",
               color: "#FFFFFF",
               cursor: "pointer",
-              minHeight: "44px",
+              minHeight: "48px",
             }}
           >
             <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
@@ -508,7 +508,7 @@ export const DashboardMobile = memo(function DashboardMobile({
               border: "none",
               color: "#FFFFFF",
               cursor: "pointer",
-              minHeight: "44px",
+              minHeight: "48px",
             }}
           >
             <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
@@ -536,7 +536,7 @@ export const DashboardMobile = memo(function DashboardMobile({
                   fontSize: "13px",
                   fontWeight: 700,
                   cursor: "pointer",
-                  minHeight: "44px",
+                  minHeight: "48px",
                   display: "flex",
                   alignItems: "center",
                   gap: "4px",
@@ -571,7 +571,7 @@ export const DashboardMobile = memo(function DashboardMobile({
                 border: "none",
                 color: "#FFFFFF",
                 cursor: "pointer",
-                minHeight: "44px",
+                minHeight: "48px",
               }}
             >
               <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
@@ -598,7 +598,7 @@ export const DashboardMobile = memo(function DashboardMobile({
                         alignItems: "center",
                         justifyContent: "space-between",
                         cursor: "pointer",
-                        minHeight: "44px",
+                        minHeight: "48px",
                       }}
                     >
                       <div>

@@ -12,19 +12,23 @@ export const ConfirmActionModal = React.memo(({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   
-  // Rejection state
-  const [rejectReason, setRejectReason] = useState("");
-  
-  // Assignment state
-  const [teamList, setTeamList] = useState([]);
-  const [selectedAssignee, setSelectedAssignee] = useState("");
-  const [loadingTeam, setLoadingTeam] = useState(false);
+  // Activation / Subscription state
+  const [planType, setPlanType] = useState("Pro");
+  const [amount, setAmount] = useState(2499);
+  const [isTrial, setIsTrial] = useState(false);
+  const [isFreeAccess, setIsFreeAccess] = useState(false);
+  const [activationNotes, setActivationNotes] = useState("");
 
   useEffect(() => {
     if (isOpen) {
       setError(null);
       setRejectReason("");
       setSelectedAssignee("");
+      setPlanType("Pro");
+      setAmount(2499);
+      setIsTrial(false);
+      setIsFreeAccess(false);
+      setActivationNotes("");
       
       if (actionType === "assign") {
         fetchTeam();
@@ -64,6 +68,7 @@ export const ConfirmActionModal = React.memo(({
   if (!isOpen || !requestData) return null;
 
   const requestId = requestData._id || requestData.id;
+  const targetHostelId = requestData.hostelId || requestData._id || requestData.id;
   const hostelName = requestData.hostelName || requestData.subtitle || "Hostel";
   const ownerName = requestData.ownerName || requestData.owner || "Owner";
 
@@ -72,17 +77,37 @@ export const ConfirmActionModal = React.memo(({
     setError(null);
     try {
       if (actionType === "approve") {
-        // Call backend approve API
+        // Call backend approve API (Creates Hostel draft with pendingActivation = true)
         const endpoint = `/api/admin/approve/${requestId}`;
         const res = await api.put(endpoint, requestData).catch(() => 
           api.post(`/api/auth/approve/${requestId}`, requestData)
         );
         
         if (res.data?.success !== false) {
-          onSuccess && onSuccess("approved", res.data?.message || "Registration approved successfully");
+          onSuccess && onSuccess("activation_pending", res.data?.message || "Registration approved! Draft created and pending activation.");
           onClose();
         } else {
           setError(res.data?.message || "Unable to approve this request.");
+        }
+      } else if (actionType === "activate") {
+        // Call canonical finalizeHostelActivation API
+        const endpoint = `/api/admin/hostels/${targetHostelId}/finalize-activation`;
+        const res = await api.post(endpoint, {
+          planType,
+          amount: Number(amount),
+          isTrial,
+          isFreeAccess,
+          notes: activationNotes,
+        });
+
+        if (res.data?.success) {
+          onSuccess && onSuccess(
+            "activated", 
+            `Hostel activated successfully! Temp Password: ${res.data.credentials?.tempPassword || "Sent via WhatsApp"}`
+          );
+          onClose();
+        } else {
+          setError(res.data?.message || "Failed to finalize hostel activation.");
         }
       } else if (actionType === "reject") {
         if (!rejectReason.trim()) {
@@ -255,6 +280,68 @@ export const ConfirmActionModal = React.memo(({
               )}
             </div>
           )}
+
+          {actionType === "activate" && (
+            <div className="space-y-4">
+              <p className="text-xs text-slate-300">
+                Configure subscription options to finalize activation for <strong className="text-white">{hostelName}</strong>. This will create the Owner account, issue login credentials, and send WhatsApp notifications.
+              </p>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Plan Type</label>
+                  <select 
+                    value={planType} 
+                    onChange={(e) => setPlanType(e.target.value)}
+                    className="w-full bg-[#0B1220] border border-[#202B45] rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500"
+                  >
+                    <option value="Pro">Pro Plan (₹2499/mo)</option>
+                    <option value="Basic">Basic Plan (₹1499/mo)</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Amount (₹)</label>
+                  <input 
+                    type="number" 
+                    value={amount} 
+                    onChange={(e) => setAmount(e.target.value)}
+                    className="w-full bg-[#0B1220] border border-[#202B45] rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center gap-4 py-1">
+                <label className="flex items-center gap-2 text-xs text-slate-300 cursor-pointer select-none">
+                  <input 
+                    type="checkbox" 
+                    checked={isTrial} 
+                    onChange={(e) => setIsTrial(e.target.checked)} 
+                    className="rounded border-[#202B45] text-emerald-500 focus:ring-0 bg-transparent"
+                  />
+                  <span>14-Day Free Trial</span>
+                </label>
+                <label className="flex items-center gap-2 text-xs text-slate-300 cursor-pointer select-none">
+                  <input 
+                    type="checkbox" 
+                    checked={isFreeAccess} 
+                    onChange={(e) => setIsFreeAccess(e.target.checked)} 
+                    className="rounded border-[#202B45] text-emerald-500 focus:ring-0 bg-transparent"
+                  />
+                  <span>Comp Access (Free)</span>
+                </label>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Notes / Internal Terms</label>
+                <input 
+                  type="text" 
+                  value={activationNotes} 
+                  onChange={(e) => setActivationNotes(e.target.value)}
+                  placeholder="Optional billing notes..."
+                  className="w-full bg-[#0B1220] border border-[#202B45] rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+                />
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Footer Actions */}
@@ -279,7 +366,24 @@ export const ConfirmActionModal = React.memo(({
                   Approving...
                 </>
               ) : (
-                "Approve"
+                "Approve Draft"
+              )}
+            </button>
+          )}
+
+          {actionType === "activate" && (
+            <button
+              onClick={handleExecute}
+              disabled={loading}
+              className="flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-xs font-bold text-white bg-emerald-500 hover:bg-emerald-600 shadow-lg shadow-emerald-500/20 transition disabled:opacity-50 min-h-[48px]"
+            >
+              {loading ? (
+                <>
+                  <Loader2 size={14} className="animate-spin" />
+                  Activating & Creating Owner...
+                </>
+              ) : (
+                "Finalize Activation"
               )}
             </button>
           )}

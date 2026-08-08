@@ -269,12 +269,21 @@ export const DashboardOverview = React.memo(() => {
                       <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 shrink-0 w-full sm:w-auto mt-2 sm:mt-0">
                         {item.type === "request" && (
                           <>
-                            <button 
-                              onClick={() => setActionModal({ actionType: "approve", item })}
-                              className="flex-1 sm:flex-initial min-h-[44px] px-4 py-2.5 rounded-xl text-xs font-bold text-white bg-emerald-500 hover:bg-emerald-600 shadow-md shadow-emerald-500/20 transition flex items-center justify-center gap-1.5 active:scale-[0.98]"
-                            >
-                              <CheckCircle size={14} /> Approve
-                            </button>
+                            {item.status === "activation_pending" ? (
+                              <button 
+                                onClick={() => setActionModal({ actionType: "activate", item })}
+                                className="flex-1 sm:flex-initial min-h-[44px] px-4 py-2.5 rounded-xl text-xs font-bold text-slate-950 bg-amber-500 hover:bg-amber-600 shadow-md shadow-amber-500/20 transition flex items-center justify-center gap-1.5 active:scale-[0.98]"
+                              >
+                                <CheckCircle size={14} /> Finalize Activation
+                              </button>
+                            ) : (
+                              <button 
+                                onClick={() => setActionModal({ actionType: "approve", item })}
+                                className="flex-1 sm:flex-initial min-h-[44px] px-4 py-2.5 rounded-xl text-xs font-bold text-white bg-emerald-500 hover:bg-emerald-600 shadow-md shadow-emerald-500/20 transition flex items-center justify-center gap-1.5 active:scale-[0.98]"
+                              >
+                                <CheckCircle size={14} /> Approve Draft
+                              </button>
+                            )}
                             <button 
                               onClick={() => setActionModal({ actionType: "reject", item })}
                               className="flex-1 sm:flex-initial min-h-[44px] px-4 py-2.5 rounded-xl text-xs font-bold text-[#EF4444] bg-[#EF4444]/10 hover:bg-[#EF4444]/20 border border-[#EF4444]/30 transition flex items-center justify-center gap-1.5 active:scale-[0.98]"

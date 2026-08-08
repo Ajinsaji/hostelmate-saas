@@ -166,6 +166,10 @@ router.post(
   "/finalize-hostel-activation/:hostelId",
   finalizeHostelActivation
 );
+router.post(
+  "/hostels/:hostelId/finalize-activation",
+  finalizeHostelActivation
+);
 
 // ==========================
 // HOSTELS

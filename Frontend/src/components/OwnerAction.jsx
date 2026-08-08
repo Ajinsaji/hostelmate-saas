@@ -149,14 +149,11 @@ export default function OwnerAction() {
   };
 
   const handleRulesSave = async () => {
-    if (!rules.rulesText.trim()) {
-      toast.error("Enter your hostel rules");
-      return;
-    }
+    const rulesText = typeof rules === "string" ? rules.trim() : (rules.rulesText || "").trim();
     setLoading(true);
     try {
       const res = await api.put("/api/owner/onboarding/rules", {
-        rulesText: rules.rulesText.trim(),
+        rulesText: rulesText,
       });
       if (!res?.data?.success) {
         toast.error(res?.data?.message || "Failed to save rules");
@@ -170,6 +167,17 @@ export default function OwnerAction() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleRulesSkip = async () => {
+    setRules({ rulesText: "" });
+    try {
+      await api.put("/api/owner/onboarding/rules", { rulesText: "" });
+    } catch {
+      // skip fail-open
+    }
+    toast.success("Skipped rules step");
+    setStep(4);
   };
 
   const handleAddRoom = () => {
@@ -427,39 +435,114 @@ export default function OwnerAction() {
 
             {step === 3 && (
               <div>
-                <div style={{ fontSize: 22, fontWeight: 900, marginBottom: 8 }}>Rules & Regulations</div>
-                <div style={{ color: "rgba(255,255,255,0.82)", fontSize: 13, marginBottom: 18 }}>Write the hostel rules residents must follow.</div>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                  <div>
+                    <div style={{ fontSize: 12, fontWeight: 800, color: "#22C55E", textTransform: "uppercase", letterSpacing: "1px", marginBottom: 4 }}>
+                      🏠 Step 3 of 4
+                    </div>
+                    <div style={{ fontSize: 22, fontWeight: 900, color: "#FFFFFF" }}>Enter Your Hostel Rules</div>
+                    <div style={{ color: "#94A3B8", fontSize: 13, marginTop: 4 }}>
+                      Add the rules and policies you want residents to follow in your hostel.
+                    </div>
+                  </div>
+                  <div style={{ fontSize: 12, fontFamily: "monospace", color: "#94A3B8", background: "#0B1220", padding: "6px 12px", borderRadius: 20, border: "1px solid #202B45" }}>
+                    {(typeof rules === "string" ? rules : rules.rulesText || "").length} / 2000
+                  </div>
+                </div>
 
-                <label style={{ display: "grid", gap: 8 }}>
-                  <div style={{ fontSize: 13, fontWeight: 800, color: "rgba(255,255,255,0.85)" }}>Rules</div>
+                <div style={{ background: "#131C2E", border: "1px solid #202B45", borderRadius: 20, padding: 18, marginBottom: 18 }}>
+                  <label style={{ display: "block", fontSize: 12, fontWeight: 800, color: "#FFFFFF", uppercase: "true", letterSpacing: "1px", marginBottom: 8 }}>
+                    Hostel Rules
+                  </label>
                   <textarea
                     rows={8}
-                    value={rules.rulesText}
-                    onChange={(e) => setRules({ rulesText: e.target.value })}
-                    placeholder="Enter hostel rules..."
+                    value={typeof rules === "string" ? rules : rules.rulesText || ""}
+                    onChange={(e) => {
+                      const val = e.target.value.slice(0, 2000);
+                      setRules(typeof rules === "string" ? val : { ...rules, rulesText: val });
+                    }}
+                    placeholder={`Enter your hostel rules here...\n\nExample:\n• Maintain cleanliness in rooms and common areas.\n• No smoking inside the hostel.\n• Visitors are allowed only during permitted hours.\n• Maintain silence after 10 PM.\n• Use electricity and water responsibly.`}
                     style={{
                       width: "100%",
                       padding: 14,
-                      borderRadius: 16,
-                      background: "rgba(255,255,255,0.04)",
-                      border: "1px solid rgba(255,255,255,0.10)",
-                      color: "white",
+                      borderRadius: 14,
+                      background: "#0B1220",
+                      border: "1px solid #202B45",
+                      color: "#FFFFFF",
+                      fontSize: 15,
                       outline: "none",
                       resize: "vertical",
+                      minHeight: 180,
                     }}
                   />
-                </label>
+                  <div style={{ fontSize: 11, color: "#94A3B8", marginTop: 10 }}>
+                    Powered by <strong style={{ color: "#22C55E" }}>BetaMind Tech Solutions</strong> • Creators of HostelMate
+                  </div>
+                </div>
 
-                <button
-                  type="button"
-                  onClick={handleRulesSave}
-                  disabled={loading}
-                  style={{
-                    width: "100%",
-                    marginTop: 18,
-                    background: "linear-gradient(135deg, #10b981 0%, #0f5d44 100%)",
-                    border: "none",
-                    color: "white",
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+                  <button
+                    type="button"
+                    onClick={() => setStep(2)}
+                    disabled={loading}
+                    style={{
+                      padding: "12px 20px",
+                      borderRadius: 14,
+                      background: "rgba(255,255,255,0.05)",
+                      border: "1px solid rgba(255,255,255,0.10)",
+                      color: "#FFFFFF",
+                      fontSize: 13,
+                      fontWeight: 800,
+                      cursor: "pointer",
+                      minHeight: 48,
+                    }}
+                  >
+                    Back
+                  </button>
+
+                  <div style={{ display: "flex", gap: 10 }}>
+                    <button
+                      type="button"
+                      onClick={handleRulesSkip}
+                      disabled={loading}
+                      style={{
+                        padding: "12px 18px",
+                        borderRadius: 14,
+                        background: "transparent",
+                        border: "none",
+                        color: "#94A3B8",
+                        fontSize: 13,
+                        fontWeight: 800,
+                        cursor: "pointer",
+                        minHeight: 48,
+                      }}
+                    >
+                      Skip for now
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={handleRulesSave}
+                      disabled={loading}
+                      style={{
+                        padding: "12px 24px",
+                        borderRadius: 14,
+                        background: "linear-gradient(135deg, #22C55E 0%, #15803D 100%)",
+                        border: "none",
+                        color: "#FFFFFF",
+                        fontSize: 13,
+                        fontWeight: 900,
+                        cursor: "pointer",
+                        minHeight: 48,
+                        boxShadow: "0 4px 15px rgba(34, 197, 94, 0.25)",
+                      }}
+                    >
+                      {loading ? "Saving…" : "Save & Continue →"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
                     padding: 16,
                     borderRadius: 20,
                     fontWeight: 900,

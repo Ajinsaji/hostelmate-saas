@@ -5,7 +5,9 @@ const getBearerToken = (req) => {
   return authHeader.startsWith("Bearer ") ? authHeader.slice("Bearer ".length) : null;
 };
 
-const auth = (req, res, next) => {
+const OwnerSession = require("../models/OwnerSession");
+
+const auth = async (req, res, next) => {
   try {
     const token = getBearerToken(req);
     if (!token) {
@@ -22,15 +24,32 @@ const auth = (req, res, next) => {
       return res.status(401).json({ success: false, message: "Invalid token payload" });
     }
 
-    // hostId is optional depending on role.
-    // For notifications isolation we will scope by hostelId only when present.
+    // Check if session has been revoked or expired
+    if (payload.sessionId) {
+      const session = await OwnerSession.findOne({ sessionId: payload.sessionId });
+      const isExpired = session?.expiresAt ? new Date(session.expiresAt).getTime() < Date.now() : false;
+
+      if (session && (session.isRevoked || isExpired)) {
+        return res.status(401).json({
+          success: false,
+          message: "Your session has ended. Please sign in again.",
+          code: "SESSION_REVOKED",
+        });
+      }
+      // Update last active timestamp silently
+      if (session) {
+        session.lastActiveAt = new Date();
+        session.save().catch(() => {});
+      }
+    }
+
+    req.sessionId = payload.sessionId || req.headers["x-session-id"] || null;
     req.user = {
       id: payload.userId || payload.ownerId,
       userId: payload.userId || payload.ownerId,
       role: payload.role,
       hostelId: payload.hostelId || null,
     };
-
 
     return next();
   } catch (error) {

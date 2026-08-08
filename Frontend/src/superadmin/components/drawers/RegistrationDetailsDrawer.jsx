@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { 
   X, ArrowLeft, Building2, User, FileText, CheckCircle2, ShieldAlert, UserCheck,
   MapPin, Phone, Mail, Hash, Calendar, ShieldCheck, Eye, Download, Image as ImageIcon,
-  ExternalLink, Layers, Award, Clock
+  ExternalLink, Layers, Award, Clock, Zap
 } from "lucide-react";
 import ConfirmActionModal from "../modals/ConfirmActionModal";
 
@@ -40,6 +40,12 @@ export const RegistrationDetailsDrawer = React.memo(({
         return (
           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-bold uppercase tracking-wider">
             <CheckCircle2 size={12} /> Activated / Approved
+          </span>
+        );
+      case "activation_pending":
+        return (
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs font-bold uppercase tracking-wider">
+            <Clock size={12} /> Activation Pending
           </span>
         );
       case "rejected":
@@ -347,14 +353,24 @@ export const RegistrationDetailsDrawer = React.memo(({
 
           {/* Footer Action Bar */}
           <div className="p-4 sm:p-5 bg-[#131C2E] border-t border-[#202B45] flex flex-col sm:flex-row gap-2.5 shrink-0 shadow-2xl">
-            <button
-              onClick={() => setModalAction("approve")}
-              disabled={requestData.status === "activated" || requestData.status === "approved"}
-              className="flex-1 min-h-[48px] py-3 px-4 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-40 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 active:scale-[0.98]"
-            >
-              <CheckCircle2 size={16} />
-              Approve Request
-            </button>
+            {requestData.status === "activation_pending" ? (
+              <button
+                onClick={() => setModalAction("activate")}
+                className="flex-1 min-h-[48px] py-3 px-4 bg-amber-500 hover:bg-amber-600 text-slate-950 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 shadow-lg shadow-amber-500/20 active:scale-[0.98]"
+              >
+                <Zap size={16} />
+                Finalize Activation & Subscription
+              </button>
+            ) : (
+              <button
+                onClick={() => setModalAction("approve")}
+                disabled={requestData.status === "activated" || requestData.status === "approved"}
+                className="flex-1 min-h-[48px] py-3 px-4 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-40 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 active:scale-[0.98]"
+              >
+                <CheckCircle2 size={16} />
+                {requestData.status === "activated" || requestData.status === "approved" ? "Activated" : "Approve Request"}
+              </button>
+            )}
 
             <button
               onClick={() => setModalAction("reject")}

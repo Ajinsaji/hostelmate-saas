@@ -40,6 +40,7 @@ import PendingAdmissions from "./owner/PendingAdmissions";
 import HostelSettings from "./owner/HostelSettings";
 import OwnerProfileEdit from "./owner/OwnerProfileEdit";
 import UpdatePassword from "./owner/UpdatePassword";
+import SecurityDevices from "./owner/SecurityDevices";
 import SubscriptionExpired from "./pages/SubscriptionExpired";
 import SubscriptionBilling from "./owner/SubscriptionBilling";
 import OwnerBillingDashboard from "./owner/OwnerBillingDashboard";
@@ -497,6 +498,36 @@ function App() {
                 backTo={"/owner/dashboard"}
               >
                 <UpdatePassword />
+              </DesktopShell>
+            </OwnerProtectedRoute>
+          }
+        />
+        <Route
+          path="/owner/security/devices"
+          element={
+            <OwnerProtectedRoute>
+              <DesktopShell
+                variant="owner"
+                title="Your Devices"
+                breadcrumbs={[{ label: "Profile", to: "/profile" }, { label: "Security & Devices" }]}
+                backTo={"/profile"}
+              >
+                <SecurityDevices />
+              </DesktopShell>
+            </OwnerProtectedRoute>
+          }
+        />
+        <Route
+          path="/security/devices"
+          element={
+            <OwnerProtectedRoute>
+              <DesktopShell
+                variant="owner"
+                title="Your Devices"
+                breadcrumbs={[{ label: "Profile", to: "/profile" }, { label: "Security & Devices" }]}
+                backTo={"/profile"}
+              >
+                <SecurityDevices />
               </DesktopShell>
             </OwnerProtectedRoute>
           }

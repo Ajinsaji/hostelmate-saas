@@ -9,6 +9,7 @@ import {
   ChevronRight,
   ShieldCheck,
   Bell,
+  Laptop,
   X,
   Copy,
   Download
@@ -93,7 +94,7 @@ export const ProfileMobile = memo(function ProfileMobile({
               alignItems: "center",
               justifyContent: "space-between",
               cursor: "pointer",
-              minHeight: "44px",
+              minHeight: "48px",
             }}
           >
             <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
@@ -132,7 +133,7 @@ export const ProfileMobile = memo(function ProfileMobile({
               justifyContent: "space-between",
               cursor: "pointer",
               borderBottom: `1px solid ${colors.border.default || "#202B45"}`,
-              minHeight: "44px",
+              minHeight: "48px",
             }}
           >
             <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
@@ -154,7 +155,7 @@ export const ProfileMobile = memo(function ProfileMobile({
               justifyContent: "space-between",
               cursor: "pointer",
               borderBottom: `1px solid ${colors.border.default || "#202B45"}`,
-              minHeight: "44px",
+              minHeight: "48px",
             }}
           >
             <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
@@ -175,7 +176,7 @@ export const ProfileMobile = memo(function ProfileMobile({
               alignItems: "center",
               justifyContent: "space-between",
               cursor: "pointer",
-              minHeight: "44px",
+              minHeight: "48px",
             }}
           >
             <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
@@ -212,7 +213,7 @@ export const ProfileMobile = memo(function ProfileMobile({
               alignItems: "center",
               justifyContent: "space-between",
               borderBottom: `1px solid ${colors.border.default || "#202B45"}`,
-              minHeight: "44px",
+              minHeight: "48px",
             }}
           >
             <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
@@ -231,12 +232,34 @@ export const ProfileMobile = memo(function ProfileMobile({
           </div>
 
           <div
+            onClick={() => navigate("/owner/security/devices")}
             style={{
               padding: "16px 20px",
               display: "flex",
               alignItems: "center",
               justifyContent: "space-between",
-              minHeight: "44px",
+              borderBottom: `1px solid ${colors.border.default || "#202B45"}`,
+              cursor: "pointer",
+              minHeight: "48px",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+              <Laptop size={20} style={{ color: "#22C55E" }} />
+              <div>
+                <div style={{ fontSize: "14px", fontWeight: 700, color: "#FFFFFF" }}>Your Devices</div>
+                <div style={{ fontSize: "12px", color: "#94A3B8" }}>Manage active sessions & logged in devices</div>
+              </div>
+            </div>
+            <ChevronRight size={18} style={{ color: "#94A3B8" }} />
+          </div>
+
+          <div
+            style={{
+              padding: "16px 20px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              minHeight: "48px",
             }}
           >
             <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
@@ -266,7 +289,7 @@ export const ProfileMobile = memo(function ProfileMobile({
           alignItems: "center",
           justifyContent: "center",
           gap: "8px",
-          minHeight: "44px",
+          minHeight: "48px",
           marginTop: "12px",
         }}
       >

@@ -13,6 +13,22 @@ const safeJsonParse = (value) => {
   }
 };
 
+export const getDeviceId = () => {
+  try {
+    let deviceId = localStorage.getItem("deviceId");
+    if (!deviceId) {
+      deviceId =
+        typeof crypto !== "undefined" && crypto.randomUUID
+          ? crypto.randomUUID()
+          : "dev-" + Math.random().toString(36).substring(2, 15);
+      localStorage.setItem("deviceId", deviceId);
+    }
+    return deviceId;
+  } catch {
+    return "dev-fallback-id";
+  }
+};
+
 export const getOwnerToken = () => {
   try {
     return localStorage.getItem(OWNER_TOKEN_KEY) || localStorage.getItem("token");

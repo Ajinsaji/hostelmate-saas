@@ -48,7 +48,7 @@ export const HostelSettingsMobile = memo(function HostelSettingsMobile({
             display: "flex",
             alignItems: "center",
             gap: "6px",
-            minHeight: "44px",
+            minHeight: "48px",
             boxShadow: "0 4px 12px rgba(34, 197, 94, 0.3)",
           }}
         >

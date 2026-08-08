@@ -86,7 +86,7 @@ export const RoomsMobile = memo(function RoomsMobile({
             display: "flex",
             alignItems: "center",
             gap: "6px",
-            minHeight: "44px",
+            minHeight: "48px",
             boxShadow: "0 4px 12px rgba(34, 197, 94, 0.3)",
           }}
         >
@@ -150,7 +150,7 @@ export const RoomsMobile = memo(function RoomsMobile({
                 fontWeight: isSel ? 700 : 500,
                 cursor: "pointer",
                 whiteSpace: "nowrap",
-                minHeight: "44px",
+                minHeight: "48px",
               }}
             >
               {st}
@@ -254,7 +254,7 @@ export const RoomsMobile = memo(function RoomsMobile({
                     alignItems: "center",
                     justifyContent: "center",
                     gap: "6px",
-                    minHeight: "44px",
+                    minHeight: "48px",
                   }}
                 >
                   Manage Room Beds <ChevronRight size={16} />

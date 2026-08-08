@@ -28,10 +28,17 @@ const hostelRequestSchema = new mongoose.Schema(
     hostelType: String,
 
     aadhaarFile: String,
-
+    aadhaarBack: String,
+    selfie: String,
     ownerPhoto: String,
-
     licensePhoto: String,
+
+    idType: { type: String, default: "Aadhaar" },
+    idNumber: { type: String, default: "" },
+    altPhone: { type: String, default: "" },
+    roomsCount: { type: Number, default: 0 },
+    capacity: { type: Number, default: 0 },
+    amenities: { type: [String], default: [] },
 
     status: {
       type: String,

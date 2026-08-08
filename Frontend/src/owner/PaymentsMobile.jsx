@@ -88,7 +88,7 @@ export const PaymentsMobile = memo(function PaymentsMobile({
             display: "flex",
             alignItems: "center",
             gap: "6px",
-            minHeight: "44px",
+            minHeight: "48px",
             boxShadow: "0 4px 12px rgba(34, 197, 94, 0.3)",
           }}
         >
@@ -152,7 +152,7 @@ export const PaymentsMobile = memo(function PaymentsMobile({
                 fontWeight: isSel ? 700 : 500,
                 cursor: "pointer",
                 whiteSpace: "nowrap",
-                minHeight: "44px",
+                minHeight: "48px",
               }}
             >
               {tb.label}

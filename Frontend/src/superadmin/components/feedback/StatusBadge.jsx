@@ -11,12 +11,15 @@ export const StatusBadge = React.memo(({
   const getBadgeConfig = () => {
     switch (normalizedStatus) {
       case "active":
+      case "activated":
       case "paid":
       case "approved":
       case "success":
       case "resolved":
         return { text: COLORS.success, bg: COLORS.successBg, border: "rgba(5, 150, 105, 0.2)" };
       
+      case "activation_pending":
+      case "activation pending":
       case "trial":
       case "pending":
       case "in_progress":

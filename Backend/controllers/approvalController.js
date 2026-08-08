@@ -62,6 +62,43 @@ const approveOnboardingRequest = async (req, res) => {
     let existingRequest = null;
     if (id && id !== "new") {
       existingRequest = await HostelRequest.findById(id);
+    } else if (id === "new") {
+      // Create a new HostelRequest in status 'pending' for manual admin creation
+      const newRequest = await HostelRequest.create({
+        ownerName: requestData.ownerName || requestData.fullName || "Owner",
+        phone: requestData.phone || "",
+        email: requestData.email || "",
+        company: requestData.company || "",
+        hostelName: requestData.hostelName || "Hostel",
+        ownerAddress: requestData.address || requestData.ownerAddress || "",
+        hostelAddress: requestData.address || requestData.hostelAddress || "",
+        city: requestData.city || "",
+        district: requestData.district || requestData.city || "",
+        state: requestData.state || "",
+        pincode: requestData.pincode || "110001",
+        hostelType: requestData.hostelType || "PG",
+        aadhaarFile: requestData.aadhaarFile || requestData.aadhaarPhoto || "default_aadhaar.png",
+        aadhaarBack: requestData.aadhaarBack || "",
+        selfie: requestData.selfie || "",
+        ownerPhoto: requestData.ownerPhoto || requestData.selfie || "default_owner.png",
+        licensePhoto: requestData.licensePhoto || "default_license.png",
+        idType: requestData.idType || "Aadhaar",
+        idNumber: requestData.idNumber || "",
+        altPhone: requestData.altPhone || "",
+        roomsCount: Number(requestData.roomsCount || requestData.rooms) || 0,
+        capacity: Number(requestData.capacity) || 0,
+        amenities: Array.isArray(requestData.amenities) ? requestData.amenities : [],
+        status: "pending",
+        timeline: [{ action: "Admin Manual Registration Created", by: "Admin" }]
+      });
+
+      return res.status(201).json({
+        success: true,
+        message: "Owner Registration Created Successfully (Pending Approval)",
+        status: "pending",
+        request: newRequest,
+        requestId: newRequest._id,
+      });
     }
 
     const payload = {
@@ -77,33 +114,16 @@ const approveOnboardingRequest = async (req, res) => {
       licensePhoto: requestData.licensePhoto || existingRequest?.licensePhoto || ""
     };
 
-    // Call existing shared service
+    // Call shared service to create Hostel draft (pendingActivation = true)
     const result = await approveHostelRegistration(payload);
 
     const hostelId = result.hostel._id;
-    const tempPassword = result.tempPassword;
-
-    // Finalize Activation logic
-    await Hostel.findByIdAndUpdate(hostelId, {
-      pendingActivation: false,
-      subscriptionStatus: "active",
-      planType: requestData.planType || "Pro",
-    });
-
-    const subscriptionDoc = await Subscription.create({
-      hostelId: hostelId,
-      planType: requestData.planType || "Pro",
-      subscriptionStatus: "active",
-      amount: requestData.amount || 0,
-      subscriptionStartDate: new Date(),
-      residentLimit: 60
-    });
 
     if (id && id !== "new") {
       await HostelRequest.findByIdAndUpdate(id, {
-        status: "activated",
+        status: "activation_pending",
         hostelId: hostelId,
-        $push: { timeline: { action: "Approved & Activated", by: "SuperAdmin" } }
+        $push: { timeline: { action: "Approved - Activation Pending", by: "SuperAdmin" } }
       });
     }
 
@@ -117,7 +137,7 @@ const approveOnboardingRequest = async (req, res) => {
           userId: admin._id,
           type: "system_update",
           title: "Hostel Request Approved",
-          message: `${requestData.hostelName} - Activated`,
+          message: `${payload.hostelName} - Activation Pending (Subscription Setup Required)`,
           meta: { route: "/admin/hostels", relatedId: hostelId },
           role: admin.role,
         });
@@ -126,26 +146,13 @@ const approveOnboardingRequest = async (req, res) => {
       logger.error("Hostel approval notification failed:", e?.message || e);
     }
 
-    // Try to send WhatsApp via existing util if available
-    try {
-      const { sendOwnerOnboarding } = require("../utils/sendOwnerOnboarding");
-      const loginUrl = process.env.PUBLIC_URL || "https://hostelmate-saas.vercel.app/login";
-      await sendOwnerOnboarding({
-        ownerName: requestData.ownerName,
-        hostelName: requestData.hostelName,
-        phone: requestData.phone,
-        username: requestData.phone,
-        tempPassword,
-        planType: requestData.planType || "Pro",
-        expiryDate: subscriptionDoc.subscriptionEndDate,
-        qrUrl: result.qrCode,
-        loginUrl,
-      });
-    } catch (e) {
-      logger.error("WhatsApp notification failed:", e);
-    }
-
-    res.status(200).json({ success: true, hostelId, tempPassword, message: "Onboarding complete" });
+    res.status(200).json({ 
+      success: true, 
+      hostelId, 
+      status: "activation_pending",
+      requiresSubscriptionSetup: true,
+      message: "Hostel request approved. Proceed to subscription setup for final activation." 
+    });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

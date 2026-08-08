@@ -62,9 +62,13 @@ const approveHostelRegistration = async ({
     const qrResult = await generateQRCode(publicRegistrationLink, qrFilename);
     const qrCode = qrResult.success ? qrResult.url : `QR_CODE_FOR_${slug}`;
 
-    // 4. Create Hostel
+    // 4. Create Hostel Draft (pendingActivation = true)
     const newHostel = new Hostel({
       name: hostelName,
+      hostelName: hostelName,
+      ownerName: ownerName || "",
+      phone: phone || "",
+      email: email || "",
       slug,
       publicLink,
       publicRegistrationLink,
@@ -73,7 +77,9 @@ const approveHostelRegistration = async ({
       city: city || "",
       coverImage: coverImage || "",
       logo: logo || "",
+      ownerPhoto: coverImage || logo || "",
       status: "active",
+      pendingActivation: true, // Draft hostel waiting for subscription activation
       features: {
         publicRegistration: true,
         showBeds: true,
@@ -84,27 +90,6 @@ const approveHostelRegistration = async ({
 
     await newHostel.save(sessionOption);
 
-    // 5. Generate Temporary Password
-    const tempPassword = crypto.randomBytes(4).toString("hex"); // e.g. 8 chars
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(tempPassword, salt);
-
-    // 6. Create Owner
-    const newOwner = new Owner({
-      ownerName: ownerName,
-      email,
-      phone,
-      password: hashedPassword,
-      role: "owner",
-      hostelId: newHostel._id,
-      mustChangePassword: true,
-      status: "active"
-    });
-
-    await newOwner.save(sessionOption);
-    newHostel.owner = newOwner._id;
-    await newHostel.save(sessionOption);
-
     if (session) {
       await session.commitTransaction();
       session.endSession();
@@ -113,13 +98,6 @@ const approveHostelRegistration = async ({
     return {
       success: true,
       hostel: newHostel,
-      tempPassword,
-      owner: {
-        _id: newOwner._id,
-        name: newOwner.name,
-        email: newOwner.email,
-        phone: newOwner.phone,
-      },
       publicLink,
       publicRegistrationLink,
       qrCode

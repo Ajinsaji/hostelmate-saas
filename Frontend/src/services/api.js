@@ -65,10 +65,17 @@ const isAdminContext = () => window.location.pathname.startsWith("/admin");
 
 
 
+import { getDeviceId } from "../utils/authToken";
+
 api.interceptors.request.use(
 
   (config) => {
     config.headers = config.headers || {};
+
+    const deviceId = getDeviceId();
+    if (deviceId) {
+      config.headers["x-device-id"] = deviceId;
+    }
 
     const requestUrl = config.url || "";
     const isAdminRequest =

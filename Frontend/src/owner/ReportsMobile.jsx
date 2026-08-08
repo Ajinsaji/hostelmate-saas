@@ -63,7 +63,7 @@ export const ReportsMobile = memo(function ReportsMobile({
                 fontSize: "13px",
                 fontWeight: isSel ? 700 : 500,
                 cursor: "pointer",
-                minHeight: "44px",
+                minHeight: "48px",
               }}
             >
               {fmt}

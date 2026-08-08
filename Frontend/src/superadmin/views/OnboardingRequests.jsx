@@ -61,7 +61,16 @@ export const OnboardingRequests = React.memo(() => {
       <div className="flex flex-col sm:flex-row gap-4 mb-6">
         <SearchBar placeholder="Search requests..." onChange={() => {}} />
         <FilterBar 
-          filters={[{ key: "status", label: "Status", options: [{ label: "Pending", value: "pending" }, { label: "Approved", value: "approved" }] }]} 
+          filters={[{ 
+            key: "status", 
+            label: "Status", 
+            options: [
+              { label: "Pending", value: "pending" }, 
+              { label: "Activation Pending", value: "activation_pending" },
+              { label: "Activated", value: "activated" },
+              { label: "Rejected", value: "rejected" }
+            ] 
+          }]} 
           onFilterChange={() => {}}
         />
       </div>

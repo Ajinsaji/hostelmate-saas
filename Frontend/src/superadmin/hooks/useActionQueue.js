@@ -59,10 +59,13 @@ export function useActionQueue() {
       }));
 
       // 3. Today's Work Queue (Aggregated & Categorized)
-      // We take pending requests and open tickets
-      const pendingReqs = mappedRequests.filter(r => r.status === "pending").map(r => ({
-        ...r, queueCategory: "Needs Approval"
-      }));
+      // We take pending and activation_pending requests and open tickets
+      const pendingReqs = mappedRequests
+        .filter(r => r.status === "pending" || r.status === "activation_pending")
+        .map(r => ({
+          ...r, 
+          queueCategory: r.status === "activation_pending" ? "Activation Pending" : "Needs Approval"
+        }));
       
       const highPriorityTickets = mappedImprovements.filter(t => t.status === "Open" && (t.priority === "High" || t.priority === "Critical")).map(t => ({
         ...t, queueCategory: "Needs Attention"

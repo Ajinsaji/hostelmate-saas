@@ -59,5 +59,16 @@ router.put("/owners/:ownerId/status", adminGuard, setOwnerStatus);
 router.put("/owners/force-logout", adminGuard, forceLogout);
 router.put("/owners/transfer-ownership", adminGuard, transferOwnership);
 
+const {
+  getActiveSessions,
+  revokeSession,
+  revokeAllOtherSessions,
+} = require("../controllers/ownerSessionController");
+
+// Owner session management
+router.get("/sessions", ownerAuth, getActiveSessions);
+router.post("/sessions/:sessionId/revoke", ownerAuth, revokeSession);
+router.post("/sessions/revoke-others", ownerAuth, revokeAllOtherSessions);
+
 module.exports = router;
 

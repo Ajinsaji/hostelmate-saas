@@ -449,52 +449,85 @@ const Step2Content = memo(
 );
 Step2Content.displayName = "Step2Content";
 
-const Step3Content = memo(({ rules, onRulesChange, onBack, onSave, loading }) => {
-  const charCount = rules.length;
+const Step3Content = memo(({ rules, onRulesChange, onBack, onSkip, onSave, loading }) => {
+  const charCount = (rules || "").length;
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.35, ease: "easeOut" }}
+      className="space-y-6"
     >
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-white">House rules and expectations</h2>
-          <p className="mt-2 text-slate-300">Set clear expectations for residents from day one in a way that&apos;s easy to follow.</p>
+          <div className="flex items-center gap-2 text-emerald-400 font-bold text-xs uppercase tracking-wider mb-1">
+            <span className="text-lg">🏠</span> Step 3 of 4
+          </div>
+          <h2 className="text-2xl font-black text-white">Enter Your Hostel Rules</h2>
+          <p className="mt-1 text-sm text-slate-300">
+            Add the rules and policies you want residents to follow in your hostel.
+          </p>
         </div>
-        <div className="rounded-[1.1rem] border border-white/10 bg-slate-900/80 px-3 py-2 text-right shadow-sm">
-          <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400">Characters</div>
-          <div className="text-lg font-extrabold text-emerald-300">{charCount}</div>
+        <div className="self-end sm:self-auto text-xs font-mono text-slate-400 bg-[#0B1220] px-3 py-1.5 rounded-full border border-[#202B45]">
+          {charCount} / 2000
         </div>
       </div>
 
-      <div className="mt-6 rounded-[1.5rem] border border-white/10 bg-slate-900/70 p-4 shadow-[0_16px_45px_rgba(2,8,23,0.22)] sm:p-5">
-        <div className="rounded-[1.25rem] border border-emerald-400/20 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-200">
-          Tip: include quiet hours, guest policy, smoking rules, and maintenance expectations.
+      <div className="rounded-2xl border border-[#202B45] bg-[#131C2E] p-4 sm:p-6 shadow-xl space-y-4">
+        <label htmlFor="hostelRules" className="block text-xs font-bold uppercase tracking-wider text-slate-300">
+          Hostel Rules
+        </label>
+        
+        <div className="relative">
+          <textarea
+            id="hostelRules"
+            value={rules || ""}
+            onChange={(e) => onRulesChange(e.target.value.slice(0, 2000))}
+            placeholder={`Enter your hostel rules here...\n\nExample:\n• Maintain cleanliness in rooms and common areas.\n• No smoking inside the hostel.\n• Visitors are allowed only during permitted hours.\n• Maintain silence after 10 PM.\n• Use electricity and water responsibly.`}
+            className="w-full rounded-xl border border-[#202B45] bg-[#0B1220] p-4 text-base text-white placeholder-slate-500 focus:border-emerald-500 focus:outline-none transition min-h-[180px] sm:min-h-[220px] resize-y"
+            rows={8}
+            maxLength={2000}
+          />
+          <div className="absolute bottom-3 right-3 text-[11px] font-mono text-slate-500 pointer-events-none">
+            {charCount}/2000
+          </div>
         </div>
 
-        <Textarea
-          id="hostelRules"
-          label="Rules"
-          required
-          value={rules}
-          onChange={(e) => onRulesChange(e.target.value)}
-          placeholder="Example: Quiet hours after 10pm, visitors allowed until 7pm, no smoking in rooms, keep common areas clean, and report maintenance issues promptly."
-          rows={10}
-          maxLength={4000}
-          description="Keep the guidance clear, actionable, and easy to follow."
-          ariaDescribedBy="rules-help"
-        />
+        <div className="text-[11px] text-slate-400">
+          Powered by <strong className="text-emerald-400">BetaMind Tech Solutions</strong> • Creators of HostelMate
+        </div>
       </div>
 
-      <div className="mt-6 grid gap-3 sm:grid-cols-[1fr_2fr]">
-        <Button variant="secondary" disabled={loading} loading={false} onClick={onBack}>
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
+        <button
+          type="button"
+          onClick={onBack}
+          disabled={loading}
+          className="w-full sm:w-auto px-5 py-3.5 rounded-xl font-bold text-xs text-slate-300 hover:text-white bg-white/5 border border-white/10 transition disabled:opacity-40 min-h-[48px]"
+        >
           Back
-        </Button>
-        <Button disabled={loading || !String(rules || "").trim()} loading={loading} onClick={onSave}>
-          {loading ? "Saving..." : "Save & Continue"}
-        </Button>
+        </button>
+
+        <div className="flex items-center gap-3 w-full sm:w-auto">
+          <button
+            type="button"
+            onClick={onSkip}
+            disabled={loading}
+            className="flex-1 sm:flex-initial px-5 py-3.5 rounded-xl font-bold text-xs text-slate-400 hover:text-white bg-transparent transition disabled:opacity-40 min-h-[48px]"
+          >
+            Skip for now
+          </button>
+          
+          <button
+            type="button"
+            onClick={onSave}
+            disabled={loading}
+            className="flex-1 sm:flex-initial px-6 py-3.5 rounded-xl font-bold text-xs text-white bg-emerald-500 hover:bg-emerald-600 shadow-lg shadow-emerald-500/20 transition disabled:opacity-40 flex items-center justify-center gap-2 min-h-[48px]"
+          >
+            {loading ? "Saving..." : "Save & Continue →"}
+          </button>
+        </div>
       </div>
     </motion.div>
   );
@@ -801,16 +834,11 @@ function OnboardingFlow() {
   };
 
   const handleStep3Save = async () => {
-    if (!String(rules || "").trim()) {
-      toast.error("Please enter hostel rules and regulations");
-      return;
-    }
-
     setLoading(true);
     try {
       const response = await api.put(
         `/api/owner/onboarding/rules`,
-        { rules }
+        { rulesText: String(rules || "").trim() }
       );
 
       if (response.data.success) {
@@ -824,6 +852,17 @@ function OnboardingFlow() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleStep3Skip = async () => {
+    setRules("");
+    try {
+      await api.put(`/api/owner/onboarding/rules`, { rulesText: "" });
+    } catch {
+      // skip fail-open
+    }
+    toast.success("Skipped rules step");
+    setCurrentStep(4);
   };
 
   const handleAddRoom = () => {
@@ -964,6 +1003,7 @@ function OnboardingFlow() {
                 rules={rules}
                 onRulesChange={setRules}
                 onBack={() => setCurrentStep(2)}
+                onSkip={handleStep3Skip}
                 onSave={handleStep3Save}
                 loading={loading}
               />

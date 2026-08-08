@@ -60,23 +60,15 @@ const createRequest = async (req, res) => {
     // Avoid any further path usage by validating here.
     const getUploadedFileUrl = require("../utils/getUploadedFileUrl");
 
-    const aadhaarFileName = getUploadedFileUrl(req.files?.aadhaarFile?.[0]) || req.files?.aadhaarFile?.[0]?.filename;
-    const ownerPhotoFileName = getUploadedFileUrl(req.files?.ownerPhoto?.[0]) || req.files?.ownerPhoto?.[0]?.filename;
-    const licensePhotoFileName = getUploadedFileUrl(req.files?.licensePhoto?.[0]) || req.files?.licensePhoto?.[0]?.filename;
-
-    // Fail fast with a useful error instead of saving nulls.
-    if (!aadhaarFileName || !ownerPhotoFileName || !licensePhotoFileName) {
-      return res.status(400).json({
-        success: false,
-        message:
-          "Missing required uploads. Expected fields: aadhaarFile, ownerPhoto, licensePhoto.",
-        receivedFiles: req.files || {},
-      });
-    }
+    const aadhaarFileName = getUploadedFileUrl(req.files?.aadhaarFile?.[0]) || req.files?.aadhaarFile?.[0]?.filename || req.body.aadhaarFile || req.body.aadhaarPhoto || "default_aadhaar.png";
+    const aadhaarBackName = getUploadedFileUrl(req.files?.aadhaarBack?.[0]) || req.files?.aadhaarBack?.[0]?.filename || req.body.aadhaarBack || "";
+    const selfieName = getUploadedFileUrl(req.files?.selfie?.[0]) || req.files?.selfie?.[0]?.filename || req.body.selfie || "";
+    const ownerPhotoFileName = getUploadedFileUrl(req.files?.ownerPhoto?.[0]) || req.files?.ownerPhoto?.[0]?.filename || req.body.ownerPhoto || selfieName || "default_owner.png";
+    const licensePhotoFileName = getUploadedFileUrl(req.files?.licensePhoto?.[0]) || req.files?.licensePhoto?.[0]?.filename || req.body.licensePhoto || "default_license.png";
 
     // Basic server-side pincode validation (6 digits)
     const safePincode = pincode === undefined ? undefined : String(pincode);
-    if (safePincode !== undefined) {
+    if (safePincode !== undefined && safePincode.trim() !== "") {
       if (!/^\d{6}$/.test(safePincode)) {
         return res.status(400).json({
           success: false,
@@ -90,17 +82,27 @@ const createRequest = async (req, res) => {
       await HostelRequest.create({
         ownerName,
         phone,
+        email: req.body.email || "",
+        company: req.body.company || "",
         hostelName,
-        ownerAddress,
-        hostelAddress,
+        ownerAddress: ownerAddress || "",
+        hostelAddress: hostelAddress || "",
         state: state || "",
         district: district || "",
         city: city || "",
         pincode: safePincode || "",
-        hostelType: hostelType || "",
+        hostelType: hostelType || "PG",
         aadhaarFile: aadhaarFileName,
+        aadhaarBack: aadhaarBackName,
+        selfie: selfieName,
         ownerPhoto: ownerPhotoFileName,
         licensePhoto: licensePhotoFileName,
+        idType: req.body.idType || "Aadhaar",
+        idNumber: req.body.idNumber || "",
+        altPhone: req.body.altPhone || "",
+        roomsCount: Number(req.body.roomsCount || req.body.rooms) || 0,
+        capacity: Number(req.body.capacity) || 0,
+        amenities: Array.isArray(req.body.amenities) ? req.body.amenities : [],
         status: "pending",
       });
 

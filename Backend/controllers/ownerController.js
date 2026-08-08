@@ -1,3 +1,4 @@
+const crypto = require("crypto");
 const { logger } = require("../utils/logger");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
@@ -6,6 +7,8 @@ const Staff = require("../models/Staff");
 const User = require("../models/User");
 const Hostel = require("../models/Hostel");
 const Subscription = require("../models/Subscription");
+const OwnerSession = require("../models/OwnerSession");
+const { parseUserAgent } = require("./ownerSessionController");
 const Room = require("../models/Room");
 const Bed = require("../models/Bed");
 const Resident = require("../models/Resident");
@@ -200,10 +203,40 @@ const loginOwner = async (req, res) => {
 
     const needsOnboarding = owner ? (!!owner.firstLogin || !owner.onboardingCompleted) : false;
 
+    const sessionId = crypto.randomUUID();
+    const deviceId = req.body?.deviceId || req.headers["x-device-id"] || crypto.randomUUID();
+    const userAgentStr = req.headers["user-agent"] || "";
+    const uaInfo = parseUserAgent(userAgentStr);
+
+    const deviceName = req.body?.deviceName || `${uaInfo.operatingSystem} • ${uaInfo.browser}`;
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+
+    if (owner || authUser || staff) {
+      try {
+        await OwnerSession.create({
+          ownerId: userId,
+          hostelId: hostelId || null,
+          sessionId,
+          deviceId,
+          deviceName,
+          deviceType: uaInfo.deviceType,
+          browser: uaInfo.browser,
+          operatingSystem: uaInfo.operatingSystem,
+          ipAddress: req.ip || req.headers["x-forwarded-for"] || "",
+          userAgent: userAgentStr,
+          expiresAt,
+          isRevoked: false,
+        });
+      } catch (sessErr) {
+        logger.error("Error creating owner session record:", sessErr);
+      }
+    }
+
     const payload = {
       userId,
       hostelId,
       role: userRole,
+      sessionId,
       mustChangePassword: !!owner?.mustChangePassword,
       onboardingCompleted: !!owner?.onboardingCompleted,
       onboardingStep: owner?.onboardingStep || 1,
@@ -215,7 +248,6 @@ const loginOwner = async (req, res) => {
     logger.info("Owner firstLogin:", owner?.firstLogin);
     logger.info("Owner rulesConfigured:", owner?.rulesConfigured);
     logger.info("Owner roomsConfigured:", owner?.roomsConfigured);
-
 
     const secret = process.env.JWT_SECRET;
     if (!secret) {

@@ -138,11 +138,13 @@ const approveHostel = async (req, res) => {
       licensePhoto: request.licensePhoto || ""
     });
 
-    request.status = "activated";
+    request.status = "activation_pending";
     request.hostelId = String(result.hostel._id);
+    if (!request.timeline) request.timeline = [];
+    request.timeline.push({ action: "Approved - Activation Pending", by: "SuperAdmin" });
     await request.save();
 
-    // NOTIFICATION: Hostel request approved by admin
+    // NOTIFICATION: Hostel request approved by admin (Pending Activation)
     try {
       const { publishNotification } = require("../utils/notificationPublisher");
       const Admin = require("../models/Admin");
@@ -153,7 +155,7 @@ const approveHostel = async (req, res) => {
           userId: admin._id,
           type: "system_update",
           title: "Hostel Request Approved",
-          message: `${result.hostel.name} - Activated`,
+          message: `${result.hostel.name} - Activation Pending (Subscription Setup Required)`,
           meta: { route: "/admin/hostels", relatedId: result.hostel._id },
           role: admin.role,
         });
@@ -165,7 +167,9 @@ const approveHostel = async (req, res) => {
     return res.status(200).json({
       success: true,
       hostelId: result.hostel._id,
-      requiresSubscriptionSetup: false,
+      status: "activation_pending",
+      requiresSubscriptionSetup: true,
+      message: "Hostel request approved. Subscription setup required for final activation.",
     });
   } catch (error) {
     console.log(error);
@@ -252,7 +256,8 @@ const finalizeHostelActivation = async (req, res) => {
       notes: notes || "",
     });
 
-    // Update hostel activation gating + store subscription canonical fields
+    // Update hostel activation gating + store subscription canonical fields + link owner
+    hostel.owner = createdOwner._id;
     hostel.pendingActivation = false;
     hostel.subscriptionStatus = subscriptionDoc.subscriptionStatus;
     hostel.planType = subscriptionDoc.planType;
@@ -264,9 +269,13 @@ const finalizeHostelActivation = async (req, res) => {
     await hostel.save();
 
     // Update hostel request status -> activated (ONLY here finalizes activation)
-    const relatedRequest = await HostelRequest.findOne({ phone: hostel.phone, hostelName: hostel.hostelName });
+    const relatedRequest = await HostelRequest.findOne({
+      $or: [{ hostelId: String(hostel._id) }, { phone: hostel.phone }]
+    });
     if (relatedRequest) {
       relatedRequest.status = "activated";
+      if (!relatedRequest.timeline) relatedRequest.timeline = [];
+      relatedRequest.timeline.push({ action: "Activated & Credentials Generated", by: "SuperAdmin" });
       await relatedRequest.save();
       console.log("Hostel request activated:", relatedRequest._id);
     }

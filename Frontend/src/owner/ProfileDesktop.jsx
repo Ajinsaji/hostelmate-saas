@@ -103,8 +103,14 @@ export const ProfileDesktop = memo(function ProfileDesktop({
           <SettingsRow
             icon={Lock}
             title="Security & Password"
-            subtitle="Change account password and 2FA settings"
+            subtitle="Change account password"
             onClick={() => navigate("/owner/update-password")}
+          />
+          <SettingsRow
+            icon={Laptop}
+            title="Your Devices & Active Sessions"
+            subtitle="Manage logged in devices and active sessions"
+            onClick={() => navigate("/owner/security/devices")}
           />
           <div className="flex items-center justify-between p-4" style={{ background: colors.background.card }}>
             <div className="flex items-center gap-3">
