@@ -322,52 +322,71 @@ export default function UnifiedSidebar({
               {/* Separator */}
               <div style={{ borderTop: `1px solid ${colors.border.light}`, margin: '4px 0' }} />
 
-              {/* Hostel Switcher */}
-              <div style={{ margin: '2px 0' }}>
-                <HostelSwitcher />
-              </div>
+              {/* Hostel Switcher & Meta Details for Owner / Role Info for Admin */}
+              {role === 'admin' || role === 'superadmin' || location.pathname.startsWith('/admin') ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '11px', fontFamily: typography.fontFamily, color: colors.text.muted, marginTop: '2px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span>Console:</span>
+                    <span style={{ color: colors.accent.success, fontWeight: typography.weights.bold }}>
+                      Super Admin
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span>Access:</span>
+                    <span style={{ color: colors.text.primary, fontWeight: typography.weights.semibold }}>
+                      Full Privilege
+                    </span>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div style={{ margin: '2px 0' }}>
+                    <HostelSwitcher />
+                  </div>
 
-              {/* Meta details */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '11px', fontFamily: typography.fontFamily, color: colors.text.muted, marginTop: '2px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span>Plan:</span>
-                  <span style={{ color: colors.accent.success, fontWeight: typography.weights.bold }}>
-                    {user?.plan?.name || user?.subscription?.planName || 'Trial'}
-                  </span>
-                </div>
-                {user?.hostels?.length > 1 && (
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span>Hostels:</span>
-                    <span style={{ color: colors.text.secondary }}>
-                      {user.hostels.length} Hostels
-                    </span>
-                  </div>
-                )}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', marginTop: '2px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span>Storage:</span>
-                    <span style={{ color: colors.text.secondary }}>
-                      {storage.limit === 'Unlimited' ? `${storage.used} GB Used` : `${storage.used} / ${storage.limit} GB`}
-                    </span>
-                  </div>
-                  {storage.limit !== 'Unlimited' && (
-                    <div style={{ width: '100%', height: '6px', background: 'rgba(255,255,255,0.06)', borderRadius: '3px', overflow: 'hidden', marginTop: '2px' }}>
-                      <div style={{ width: `${storage.percentage}%`, height: '100%', background: colors.accent.success, borderRadius: '3px' }} />
+                  {/* Meta details */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '11px', fontFamily: typography.fontFamily, color: colors.text.muted, marginTop: '2px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span>Plan:</span>
+                      <span style={{ color: colors.accent.success, fontWeight: typography.weights.bold }}>
+                        {user?.plan?.name || user?.subscription?.planName || 'Trial'}
+                      </span>
                     </div>
-                  )}
-                  {storage.limit === 'Unlimited' && (
-                    <div style={{ width: '100%', height: '6px', background: 'rgba(255,255,255,0.06)', borderRadius: '3px', overflow: 'hidden', marginTop: '2px' }}>
-                      <div style={{ width: '40%', height: '100%', background: colors.accent.success, borderRadius: '3px' }} />
+                    {user?.hostels?.length > 1 && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span>Hostels:</span>
+                        <span style={{ color: colors.text.secondary }}>
+                          {user.hostels.length} Hostels
+                        </span>
+                      </div>
+                    )}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', marginTop: '2px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span>Storage:</span>
+                        <span style={{ color: colors.text.secondary }}>
+                          {storage.limit === 'Unlimited' ? `${storage.used} GB Used` : `${storage.used} / ${storage.limit} GB`}
+                        </span>
+                      </div>
+                      {storage.limit !== 'Unlimited' && (
+                        <div style={{ width: '100%', height: '6px', background: 'rgba(255,255,255,0.06)', borderRadius: '3px', overflow: 'hidden', marginTop: '2px' }}>
+                          <div style={{ width: `${storage.percentage}%`, height: '100%', background: colors.accent.success, borderRadius: '3px' }} />
+                        </div>
+                      )}
+                      {storage.limit === 'Unlimited' && (
+                        <div style={{ width: '100%', height: '6px', background: 'rgba(255,255,255,0.06)', borderRadius: '3px', overflow: 'hidden', marginTop: '2px' }}>
+                          <div style={{ width: '40%', height: '100%', background: colors.accent.success, borderRadius: '3px' }} />
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '2px' }}>
-                  <span>Status:</span>
-                  <span style={{ color: colors.text.primary, fontWeight: typography.weights.semibold }}>
-                    {formatSubscriptionStatus(subscription)}
-                  </span>
-                </div>
-              </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '2px' }}>
+                      <span>Status:</span>
+                      <span style={{ color: colors.text.primary, fontWeight: typography.weights.semibold }}>
+                        {formatSubscriptionStatus(subscription)}
+                      </span>
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
             {onLogout && (
               <button

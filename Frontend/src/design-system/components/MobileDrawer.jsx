@@ -58,12 +58,27 @@ const drawerSections = [
   }
 ];
 
-export const MobileDrawer = memo(function MobileDrawer({ isOpen, onClose }) {
+export const MobileDrawer = memo(function MobileDrawer({
+  isOpen,
+  onClose,
+  role = 'owner',
+  menuItems,
+  userName: propUserName,
+  userRole: propUserRole,
+  userAvatar: propUserAvatar,
+  onLogout
+}) {
   const { colors, radius } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
-  const { user } = useCurrentUser();
-  const { hostel } = useCurrentHostel();
+
+  const isAdmin = role === 'admin' || role === 'superadmin' || location.pathname.startsWith('/admin');
+
+  // Safely invoke Owner context hooks only when in Owner mode
+  const ownerContext = useCurrentUser();
+  const hostelContext = useCurrentHostel();
+  const user = isAdmin ? null : ownerContext?.user;
+  const hostel = isAdmin ? null : hostelContext?.hostel;
 
   useEffect(() => {
     if (isOpen) {
@@ -89,9 +104,8 @@ export const MobileDrawer = memo(function MobileDrawer({ isOpen, onClose }) {
   if (!isOpen) return null;
 
   const activeHostelName = hostel?.name || hostel?.hostelName || 'Green Valley Hostel';
-  const userName = user?.ownerName || user?.name || 'Ajin KS';
-  const userRole = user?.role ? (user.role === 'owner' ? 'Hostel Owner' : user.role) : 'Hostel Owner';
-  const planName = user?.plan?.name || user?.subscription?.planName || 'Trial Plan';
+  const displayUserName = propUserName || user?.ownerName || user?.name || (isAdmin ? 'Admin Console' : 'Owner');
+  const displayUserRole = propUserRole || (isAdmin ? 'Administrator' : user?.role === 'owner' ? 'Hostel Owner' : 'Owner');
 
   const handleSearchClick = () => {
     onClose();
@@ -203,10 +217,12 @@ export const MobileDrawer = memo(function MobileDrawer({ isOpen, onClose }) {
                 </button>
               </div>
 
-              {/* Compact Hostel Selector */}
-              <div style={{ marginTop: '2px' }}>
-                <HostelSwitcher />
-              </div>
+              {/* Compact Hostel Selector for Owner / Admin Badge for Admin */}
+              {!isAdmin && (
+                <div style={{ marginTop: '2px' }}>
+                  <HostelSwitcher />
+                </div>
+              )}
             </div>
 
             {/* Search Trigger */}
@@ -245,7 +261,7 @@ export const MobileDrawer = memo(function MobileDrawer({ isOpen, onClose }) {
                 gap: '16px',
               }}
             >
-              {drawerSections.map((section) => (
+              {(isAdmin && menuItems ? menuItems.map(sec => ({ title: sec.section || sec.title, items: sec.items })) : drawerSections).map((section) => (
                 <div key={section.title}>
                   <div
                     style={{
@@ -261,11 +277,18 @@ export const MobileDrawer = memo(function MobileDrawer({ isOpen, onClose }) {
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
                     {section.items.map((item) => {
-                      const Icon = item.icon;
-                      const isActive = location.pathname === item.href || (item.href !== '/owner/dashboard' && location.pathname.startsWith(item.href));
+                      let Icon = item.icon;
+                      if (typeof Icon === 'string') {
+                        const iconMap = {
+                          Home, Users, BedDouble, Wallet, Receipt, FileText, BarChart3, Settings, HelpCircle, ShieldCheck,
+                          Building: BedDouble, CreditCard: Wallet, IndianRupee: Wallet, User: Users, Clock: HelpCircle, Activity: BarChart3
+                        };
+                        Icon = iconMap[Icon] || FileText;
+                      }
+                      const isActive = location.pathname === item.href || (item.href !== '/owner/dashboard' && item.href !== '/admin/dashboard' && location.pathname.startsWith(item.href));
                       return (
                         <button
-                          key={item.key}
+                          key={item.key || item.href}
                           onClick={() => handleNavClick(item.href)}
                           style={{
                             width: '100%',
@@ -319,7 +342,7 @@ export const MobileDrawer = memo(function MobileDrawer({ isOpen, onClose }) {
                       textOverflow: 'ellipsis',
                     }}
                   >
-                    {userName}
+                    {displayUserName}
                   </div>
                   <div
                     style={{
@@ -331,12 +354,12 @@ export const MobileDrawer = memo(function MobileDrawer({ isOpen, onClose }) {
                       textOverflow: 'ellipsis',
                     }}
                   >
-                    {userRole} • {activeHostelName}
+                    {displayUserRole}{!isAdmin && ` • ${activeHostelName}`}
                   </div>
                 </div>
 
                 <button
-                  onClick={() => handleNavClick('/owner/profile')}
+                  onClick={() => handleNavClick(isAdmin ? '/admin/profile' : '/owner/profile')}
                   aria-label="Profile settings"
                   style={{
                     display: 'flex',
@@ -361,9 +384,17 @@ export const MobileDrawer = memo(function MobileDrawer({ isOpen, onClose }) {
               <button
                 onClick={() => {
                   onClose();
-                  localStorage.clear();
-                  sessionStorage.clear();
-                  navigate('/login');
+                  if (onLogout) {
+                    onLogout();
+                  } else if (isAdmin) {
+                    localStorage.removeItem('adminToken');
+                    localStorage.removeItem('adminUser');
+                    navigate('/admin/login');
+                  } else {
+                    localStorage.clear();
+                    sessionStorage.clear();
+                    navigate('/login');
+                  }
                 }}
                 style={{
                   width: '100%',

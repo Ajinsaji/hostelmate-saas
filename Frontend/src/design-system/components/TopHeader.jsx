@@ -1,17 +1,19 @@
 import React from "react";
-import { Menu, Search } from "lucide-react";
+import { Menu, ShieldCheck } from "lucide-react";
 import { useTheme } from "../ThemeProvider";
-import { useCurrentUser, useCurrentHostel } from "../../contexts/HostelContext";
+import { useCurrentUser } from "../../contexts/HostelContext";
 import NotificationBell from "../../components/NotificationBell";
 import HostelSwitcher from "./HostelSwitcher";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 
-export function TopHeader({ onMenuClick }) {
+export function TopHeader({ role, userName, userRole, userAvatar, onLogout, onMenuClick }) {
   const { colors, typography } = useTheme();
   const { user } = useCurrentUser();
   const navigate = useNavigate();
+  const location = useLocation();
 
-  const displayName = user?.ownerName || user?.name || "Owner";
+  const isAdmin = role === 'admin' || role === 'superadmin' || location.pathname.startsWith('/admin');
+  const displayName = userName || user?.ownerName || user?.name || (isAdmin ? "Admin Console" : "Owner");
 
   return (
     <header 
@@ -32,7 +34,7 @@ export function TopHeader({ onMenuClick }) {
         top: 0,
       }}
     >
-      {/* Left section: Hamburger Menu & Hostel Selector */}
+      {/* Left section: Hamburger Menu & Hostel Selector or Admin Title */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
         <button 
           onClick={onMenuClick}
@@ -55,22 +57,31 @@ export function TopHeader({ onMenuClick }) {
           <Menu size={22} />
         </button>
 
-        {/* Current Hostel Selector Dropdown */}
-        <div style={{ minWidth: 0 }}>
-          <HostelSwitcher />
-        </div>
+        {/* Current Hostel Selector Dropdown for Owner / Admin Badge for Admin */}
+        {isAdmin ? (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 12px', background: 'rgba(34, 197, 94, 0.1)', border: `1px solid ${colors.border.default || '#202B45'}`, borderRadius: '10px' }}>
+            <ShieldCheck size={18} style={{ color: colors.accent.primary || '#22C55E' }} />
+            <span style={{ fontSize: '13px', fontWeight: 700, color: '#FFFFFF' }}>Admin Console</span>
+          </div>
+        ) : (
+          <div style={{ minWidth: 0 }}>
+            <HostelSwitcher />
+          </div>
+        )}
       </div>
 
       {/* Right section: Notifications & Profile */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
-        {/* Notification Bell */}
-        <div style={{ display: 'flex', alignItems: 'center', minWidth: '44px', minHeight: '44px', justifyContent: 'center' }}>
-          <NotificationBell />
-        </div>
+        {/* Notification Bell (Owner Only) */}
+        {!isAdmin && (
+          <div style={{ display: 'flex', alignItems: 'center', minWidth: '44px', minHeight: '44px', justifyContent: 'center' }}>
+            <NotificationBell />
+          </div>
+        )}
 
         {/* User Profile Avatar Button */}
         <button
-          onClick={() => navigate('/owner/profile')}
+          onClick={() => navigate(isAdmin ? '/admin/profile' : '/owner/profile')}
           aria-label="Profile settings"
           style={{ 
             width: "44px", 
@@ -86,8 +97,8 @@ export function TopHeader({ onMenuClick }) {
             padding: 0,
           }}
         >
-          {user?.profileImage || user?.photo ? (
-            <img src={user.profileImage || user.photo} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          {userAvatar || user?.profileImage || user?.photo ? (
+            <img src={userAvatar || user?.profileImage || user?.photo} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
           ) : (
             <div style={{ color: colors.text.primary || "#FFFFFF", fontSize: '14px', fontWeight: 700, fontFamily: typography.fontFamily }}>
               {displayName.slice(0, 1).toUpperCase()}

@@ -40,6 +40,7 @@ export function UnifiedLayout({
 
   const config = getMenuConfig(role);
   const sidebarItems = menuItems || config.sidebar;
+  const mobileNavItems = mobileItems || config.mobile;
 
   const showPageHeader = !isMobile && Boolean(pageTitle || breadcrumbs?.length > 0);
 
@@ -47,8 +48,8 @@ export function UnifiedLayout({
     return <PageLoader />;
   }
 
-  const finalUserName = userName || user?.ownerName || user?.name || 'Owner';
-  const finalUserRole = userRole || (role === 'owner' ? 'Hostel Owner' : role);
+  const finalUserName = userName || user?.ownerName || user?.name || (role === 'admin' || role === 'superadmin' ? 'Admin Console' : 'Owner');
+  const finalUserRole = userRole || (role === 'owner' ? 'Hostel Owner' : role === 'admin' || role === 'superadmin' ? 'Administrator' : role);
   const finalUserAvatar = userAvatar || user?.profileImage || user?.photo || '';
 
   // Top High-Frequency Owner FAB Actions
@@ -72,6 +73,7 @@ export function UnifiedLayout({
     >
       {!isMobile && (
         <UnifiedSidebar
+          role={role}
           menuItems={sidebarItems}
           collapsed={sidebarCollapsed}
           onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
@@ -94,7 +96,14 @@ export function UnifiedLayout({
         }}
       >
         {/* Unified Top Header */}
-        <TopHeader onMenuClick={() => setMobileDrawerOpen(true)} />
+        <TopHeader
+          role={role}
+          userName={finalUserName}
+          userRole={finalUserRole}
+          userAvatar={finalUserAvatar}
+          onLogout={onLogout}
+          onMenuClick={() => setMobileDrawerOpen(true)}
+        />
 
         {/* Page Header */}
         {showPageHeader && (
@@ -126,56 +135,66 @@ export function UnifiedLayout({
 
       {/* Mobile Redesigned Drawer */}
       <MobileDrawer
+        role={role}
         isOpen={mobileDrawerOpen}
         onClose={() => setMobileDrawerOpen(false)}
+        menuItems={sidebarItems}
+        userName={finalUserName}
+        userRole={finalUserRole}
+        userAvatar={finalUserAvatar}
+        onLogout={onLogout}
       />
 
-      {/* Quick Add Bottom Sheet */}
-      <BottomSheet
-        isOpen={showQuickAdd}
-        onClose={() => setShowQuickAdd(false)}
-        title="Quick Actions"
-        subtitle="Perform common owner tasks in 1-2 taps"
-      >
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          {fabActions.map((act, index) => {
-            const IconComponent = act.icon;
-            return (
-              <button
-                key={index}
-                onClick={() => {
-                  setShowQuickAdd(false);
-                  navigate(act.href);
-                }}
-                style={{
-                  width: '100%',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '12px',
-                  padding: '12px 14px',
-                  borderRadius: '14px',
-                  border: `1px solid ${colors.border.default || '#202B45'}`,
-                  background: 'rgba(255, 255, 255, 0.03)',
-                  textAlign: 'left',
-                  cursor: 'pointer',
-                  minHeight: '48px',
-                }}
-              >
-                <div style={{ padding: '8px', borderRadius: '10px', background: 'rgba(34, 197, 94, 0.12)', color: colors.accent.primary || '#22C55E', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <IconComponent size={22} />
-                </div>
-                <div>
-                  <div style={{ fontSize: '14px', fontWeight: 700, color: '#FFFFFF' }}>{act.label}</div>
-                  <div style={{ fontSize: '12px', color: colors.text.secondary || '#94A3B8' }}>{act.desc}</div>
-                </div>
-              </button>
-            );
-          })}
-        </div>
-      </BottomSheet>
+      {/* Quick Add Bottom Sheet (Owner Only) */}
+      {role !== 'admin' && role !== 'superadmin' && (
+        <BottomSheet
+          isOpen={showQuickAdd}
+          onClose={() => setShowQuickAdd(false)}
+          title="Quick Actions"
+          subtitle="Perform common owner tasks in 1-2 taps"
+        >
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {fabActions.map((act, index) => {
+              const IconComponent = act.icon;
+              return (
+                <button
+                  key={index}
+                  onClick={() => {
+                    setShowQuickAdd(false);
+                    navigate(act.href);
+                  }}
+                  style={{
+                    width: '100%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px',
+                    padding: '12px 14px',
+                    borderRadius: '14px',
+                    border: `1px solid ${colors.border.default || '#202B45'}`,
+                    background: 'rgba(255, 255, 255, 0.03)',
+                    textAlign: 'left',
+                    cursor: 'pointer',
+                    minHeight: '48px',
+                  }}
+                >
+                  <div style={{ padding: '8px', borderRadius: '10px', background: 'rgba(34, 197, 94, 0.12)', color: colors.accent.primary || '#22C55E', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <IconComponent size={22} />
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '14px', fontWeight: 700, color: '#FFFFFF' }}>{act.label}</div>
+                    <div style={{ fontSize: '12px', color: colors.text.secondary || '#94A3B8' }}>{act.desc}</div>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </BottomSheet>
+      )}
 
-      {/* Mobile 5-Tab Bottom Navigation */}
+      {/* Mobile Bottom Navigation */}
       <UnifiedMobileNav
+        role={role}
+        mobileItems={mobileNavItems}
         onQuickAddClick={() => setShowQuickAdd(true)}
         onMoreClick={() => setMobileDrawerOpen(true)}
       />

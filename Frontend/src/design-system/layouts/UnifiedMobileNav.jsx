@@ -1,31 +1,54 @@
 import { memo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useTheme } from '../ThemeProvider';
-import { Home, Users, Plus, Wallet, Menu } from 'lucide-react';
+import { Home, Users, Plus, Wallet, Menu, Building, CreditCard, HelpCircle, Settings, ShieldCheck } from 'lucide-react';
 
 /**
- * HostelMate Enterprise v5.1 — 5-Tab Mobile Navigation
- * 🏠 Home | 👥 Residents | ➕ FAB (56px) | 💰 Finance | ☰ More
+ * HostelMate Enterprise v5.1 — Role-Aware Mobile Bottom Navigation
  */
-export const UnifiedMobileNav = memo(function UnifiedMobileNav({ onQuickAddClick, onMoreClick }) {
+export const UnifiedMobileNav = memo(function UnifiedMobileNav({ role = 'owner', mobileItems, onQuickAddClick, onMoreClick }) {
   const { colors, typography } = useTheme();
   const location = useLocation();
   const navigate = useNavigate();
 
+  const isAdmin = role === 'admin' || role === 'superadmin' || location.pathname.startsWith('/admin');
+
   const isActive = (href) => {
-    if (href === 'fab' || href === 'more') return false;
+    if (!href || href === 'fab' || href === 'more') return false;
     if (href === location.pathname) return true;
     if (href.length > 1 && location.pathname.startsWith(href + '/')) return true;
     return false;
   };
 
-  const navItems = [
+  const defaultOwnerNav = [
     { key: 'home', label: 'Home', icon: Home, href: '/owner/dashboard' },
     { key: 'residents', label: 'Residents', icon: Users, href: '/residents' },
     { key: 'fab', label: '', icon: Plus, href: 'fab' },
     { key: 'finance', label: 'Finance', icon: Wallet, href: '/payments' },
     { key: 'more', label: 'More', icon: Menu, href: 'more' },
   ];
+
+  const iconMap = {
+    Home, Users, Plus, Wallet, Menu, Building, CreditCard, HelpCircle, Settings, ShieldCheck
+  };
+
+  let navItems = defaultOwnerNav;
+
+  if (isAdmin) {
+    const rawItems = mobileItems || [
+      { key: 'home', label: 'Home', icon: 'Home', href: '/admin/dashboard' },
+      { key: 'hostels', label: 'Hostels', icon: 'Building', href: '/admin/hostels' },
+      { key: 'plans', label: 'Plans', icon: 'CreditCard', href: '/admin/subscriptions' },
+      { key: 'support', label: 'Support', icon: 'HelpCircle', href: '/admin/support' },
+      { key: 'more', label: 'More', icon: 'Menu', href: 'more' },
+    ];
+    navItems = rawItems.map(item => ({
+      ...item,
+      icon: typeof item.icon === 'string' ? (iconMap[item.icon] || Home) : item.icon
+    }));
+  }
+
+  const columnsCount = navItems.length;
 
   return (
     <nav
@@ -49,7 +72,7 @@ export const UnifiedMobileNav = memo(function UnifiedMobileNav({ onQuickAddClick
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(5, 1fr)',
+          gridTemplateColumns: `repeat(${columnsCount}, 1fr)`,
           alignItems: 'center',
           width: '100%',
           maxWidth: '500px',
@@ -60,11 +83,11 @@ export const UnifiedMobileNav = memo(function UnifiedMobileNav({ onQuickAddClick
           const Icon = item.icon;
           const active = isActive(item.href);
           const isFab = item.key === 'fab';
-          const isMore = item.key === 'more';
+          const isMore = item.key === 'more' || item.href === 'more';
 
           return (
             <button
-              key={item.key}
+              key={item.key || item.href}
               onClick={() => {
                 if (isFab) {
                   if (onQuickAddClick) onQuickAddClick();
@@ -75,7 +98,7 @@ export const UnifiedMobileNav = memo(function UnifiedMobileNav({ onQuickAddClick
                 }
               }}
               aria-current={active ? 'page' : undefined}
-              aria-label={item.label || 'Quick add action'}
+              aria-label={item.label || 'Navigation link'}
               style={{
                 display: 'flex',
                 flexDirection: 'column',
@@ -94,7 +117,7 @@ export const UnifiedMobileNav = memo(function UnifiedMobileNav({ onQuickAddClick
                 padding: '4px 0',
               }}
             >
-              {isFab ? (
+              {isFab && !isAdmin ? (
                 <div
                   style={{
                     width: '56px',
