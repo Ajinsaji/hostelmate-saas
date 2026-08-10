@@ -17,6 +17,7 @@ import { UserPlus, BedDouble, Wallet, Receipt, AlertTriangle } from 'lucide-reac
 export function UnifiedLayout({
   role = 'owner',
   menuItems,
+  mobileItems,
   children,
   headerActions,
   breadcrumbs,
@@ -39,8 +40,8 @@ export function UnifiedLayout({
   const navigate = useNavigate();
 
   const config = getMenuConfig(role);
-  const sidebarItems = menuItems || config.sidebar;
-  const mobileNavItems = mobileItems || config.mobile;
+  const sidebarItems = menuItems || config?.sidebar || [];
+  const mobileNavItems = mobileItems || config?.mobile || [];
 
   const showPageHeader = !isMobile && Boolean(pageTitle || breadcrumbs?.length > 0);
 
