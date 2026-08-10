@@ -202,13 +202,21 @@ const finalizeHostelActivation = async (req, res) => {
     const bcryptjs = require("bcryptjs");
     const hashedPassword = await bcryptjs.hash(tempPassword, 10);
 
+    // Find related request early to obtain email if needed
+    const relatedRequest = await HostelRequest.findOne({
+      $or: [{ hostelId: String(hostel._id) }, { phone: hostel.phone }]
+    });
+
+    const ownerEmail = hostel.email || relatedRequest?.email || "";
+
     // Owner: create ONLY here (activation boundary)
-    console.log("Creating owner now...");
+    console.log("Creating owner now with email:", ownerEmail);
     // Derive owner fields from draft hostel (created in approveHostel)
     const ownerPayload = {
       hostelId: hostel._id,
       ownerName: hostel.ownerName,
       phone: hostel.phone,
+      email: ownerEmail,
       username: hostel.phone,
       password: hashedPassword,
       tempPassword,
@@ -269,9 +277,6 @@ const finalizeHostelActivation = async (req, res) => {
     await hostel.save();
 
     // Update hostel request status -> activated (ONLY here finalizes activation)
-    const relatedRequest = await HostelRequest.findOne({
-      $or: [{ hostelId: String(hostel._id) }, { phone: hostel.phone }]
-    });
     if (relatedRequest) {
       relatedRequest.status = "activated";
       if (!relatedRequest.timeline) relatedRequest.timeline = [];
@@ -400,7 +405,9 @@ const assignRequest = async (req, res) => {
     const assigneeName = teamName || adminId || "Operations Team";
     const updatePayload = {
       assignedTeam: assigneeName,
-      $push: { timeline: { action: `Assigned to ${assigneeName}`, by: req.user?.role || "SuperAdmin", date: new Date() } }
+      assignedAt: new Date(),
+      assignedBy: req.user?.fullName || req.user?.username || req.user?.role || "SuperAdmin",
+      $push: { timeline: { action: `Assigned to ${assigneeName}`, by: req.user?.fullName || req.user?.role || "SuperAdmin", date: new Date() } }
     };
 
     if (mongoose.Types.ObjectId.isValid(adminId)) {

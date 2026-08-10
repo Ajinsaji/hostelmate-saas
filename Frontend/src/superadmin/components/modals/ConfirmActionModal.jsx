@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { X, AlertTriangle, CheckCircle2, UserCheck, ShieldAlert, Loader2 } from "lucide-react";
+import { X, AlertTriangle, CheckCircle2, UserCheck, ShieldAlert, Loader2, Zap } from "lucide-react";
 import { api } from "../../../services/api";
 
 export const ConfirmActionModal = React.memo(({
@@ -12,6 +12,12 @@ export const ConfirmActionModal = React.memo(({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   
+  // Rejection & Assignment state
+  const [rejectReason, setRejectReason] = useState("");
+  const [loadingTeam, setLoadingTeam] = useState(false);
+  const [teamList, setTeamList] = useState([]);
+  const [selectedAssignee, setSelectedAssignee] = useState("");
+
   // Activation / Subscription state
   const [planType, setPlanType] = useState("Pro");
   const [amount, setAmount] = useState(2499);
@@ -186,11 +192,17 @@ export const ConfirmActionModal = React.memo(({
                 <UserCheck size={18} />
               </div>
             )}
+            {actionType === "activate" && (
+              <div className="w-9 h-9 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
+                <Zap size={18} />
+              </div>
+            )}
             <div>
               <h3 className="text-base font-bold text-white">
                 {actionType === "approve" && "Approve Registration"}
                 {actionType === "reject" && "Reject Registration"}
                 {actionType === "assign" && "Assign Registration"}
+                {actionType === "activate" && "Activate Hostel & Setup Subscription"}
               </h3>
               <p className="text-xs text-slate-400">{hostelName} • {ownerName}</p>
             </div>

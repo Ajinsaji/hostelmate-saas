@@ -158,19 +158,6 @@ export const CreateOwnerDesktop = ({
 
               <div className="space-y-2 md:col-span-2">
                 <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider">
-                  Company / Organization Name
-                </label>
-                <input
-                  name="company"
-                  value={formData.company}
-                  onChange={handleChange}
-                  placeholder="e.g. Kumar Hospitality Services Pvt Ltd"
-                  className="w-full bg-[#0B1220] border border-[#202B45] rounded-xl px-4 py-3.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition min-h-[48px]"
-                />
-              </div>
-
-              <div className="space-y-2 md:col-span-2">
-                <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider">
                   Owner Permanent Address
                 </label>
                 <input

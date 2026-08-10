@@ -7,10 +7,13 @@ const {
   checkRequestStatus,
   cancelRequest,
   deleteRequest,
+  lookupPincode,
 } = require("../controllers/requestController");
 
-
 const { uploadFields } = require("../middleware/cloudinaryUpload");
+
+// PINCODE AUTO-LOOKUP (PUBLIC)
+router.get("/pincode/:pincode", lookupPincode);
 
 // REGISTER
 router.post(
@@ -21,7 +24,15 @@ router.post(
       maxCount: 1,
     },
     {
+      name: "aadhaarBack",
+      maxCount: 1,
+    },
+    {
       name: "ownerPhoto",
+      maxCount: 1,
+    },
+    {
+      name: "selfie",
       maxCount: 1,
     },
     {

@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, User, Phone, Home, MapPin, Upload, Loader2, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, User, Phone, Home, MapPin, Upload, Loader2, CheckCircle2, Mail } from "lucide-react";
 import toast from "react-hot-toast";
 
 import Select from "react-select";
@@ -51,26 +51,10 @@ function RegisterPage() {
   const [step, setStep] = useState(1);
   const [showSuccess, setShowSuccess] = useState(false);
 
-  const deploymentTestMarker = (
-    <div
-      id="e2h0h7"
-      style={{
-        background: "red",
-        color: "white",
-        padding: "12px",
-        fontSize: "22px",
-        fontWeight: "bold",
-        textAlign: "center",
-      }}
-    >
-      NEW BUILD VERSION TEST 999
-    </div>
-  );
-
-
   const [formData, setFormData] = useState({
     ownerName: "",
     phone: "",
+    email: "",
     hostelName: "",
     ownerAddress: "",
     hostelAddress: "",
@@ -81,6 +65,9 @@ function RegisterPage() {
     pincode: "",
     hostelType: "",
   });
+
+  const [pincodeLoading, setPincodeLoading] = useState(false);
+  const [pincodeStatus, setPincodeStatus] = useState(null); // { type: 'success'|'error', text: '' }
 
   const [aadhaarFile, setAadhaarFile] = useState(null);
   const [ownerPhoto, setOwnerPhoto] = useState(null);
@@ -133,6 +120,40 @@ function RegisterPage() {
         district: "",
         city: "",
       }));
+    }
+  };
+
+  const handlePincodeLookup = async (pin) => {
+    const cleanPin = String(pin || "").trim();
+    if (!/^\d{6}$/.test(cleanPin)) {
+      setPincodeStatus(null);
+      return;
+    }
+
+    setPincodeLoading(true);
+    setPincodeStatus({ type: "info", text: "Finding location..." });
+
+    try {
+      const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/request/pincode/${cleanPin}`);
+      if (response.data?.success && response.data?.data) {
+        const { place, district, state } = response.data.data;
+        
+        // Auto-fill place/city, district, state if returned and state matched or set
+        setFormData((prev) => ({
+          ...prev,
+          city: prev.city || place || "",
+          district: prev.district || district || "",
+          state: prev.state || (stateOptions.find((s) => s.label.toLowerCase() === (state || "").toLowerCase())?.value || prev.state || ""),
+        }));
+
+        setPincodeStatus({ type: "success", text: `Location found: ${place ? place + ", " : ""}${district}, ${state}` });
+      } else {
+        setPincodeStatus({ type: "error", text: "Could not find this pincode. Enter location manually." });
+      }
+    } catch {
+      setPincodeStatus({ type: "error", text: "Could not find this pincode. Enter location manually." });
+    } finally {
+      setPincodeLoading(false);
     }
   };
 
@@ -192,6 +213,7 @@ function RegisterPage() {
       const data = new FormData();
       data.append("ownerName", formData.ownerName);
       data.append("phone", formData.phone);
+      data.append("email", formData.email || "");
       data.append("hostelName", formData.hostelName);
       data.append("ownerAddress", formData.ownerAddress);
       data.append("hostelAddress", formData.hostelAddress);
@@ -409,8 +431,40 @@ function RegisterPage() {
                 <>
                   <InputField icon={<User size={20} />} placeholder="Owner Full Name" name="ownerName" value={formData.ownerName} onChange={handleChange} error={errors.ownerName} />
                   <InputField icon={<Phone size={20} />} placeholder="Phone Number" name="phone" value={formData.phone} onChange={handleChange} error={errors.phone} />
+                  <InputField icon={<Mail size={20} />} placeholder="Email Address (Optional)" name="email" value={formData.email} onChange={handleChange} error={errors.email} />
                   <InputField icon={<Home size={20} />} placeholder="Hostel Name" name="hostelName" value={formData.hostelName} onChange={handleChange} error={errors.hostelName} />
                   <InputField icon={<MapPin size={20} />} placeholder="Owner Address" name="ownerAddress" value={formData.ownerAddress} onChange={handleChange} error={errors.ownerAddress} isTextArea />
+
+                  <InputField
+                    icon={<MapPin size={20} />}
+                    placeholder="Pincode (6 digits)"
+                    name="pincode"
+                    value={formData.pincode}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      if (/^[0-9]*$/.test(v) && v.length <= 6) {
+                        setFormData((prev) => ({ ...prev, pincode: v }));
+                        if (v.length === 6) {
+                          handlePincodeLookup(v);
+                        } else {
+                          setPincodeStatus(null);
+                        }
+                      }
+                    }}
+                    error={errors.pincode}
+                  />
+
+                  {pincodeLoading && (
+                    <div style={{ fontSize: 12, color: "#60a5fa", marginTop: -8, marginBottom: 12, display: "flex", alignItems: "center", gap: 6 }}>
+                      <Loader2 size={14} className="animate-spin" /> Finding location...
+                    </div>
+                  )}
+
+                  {pincodeStatus && !pincodeLoading && (
+                    <div style={{ fontSize: 12, color: pincodeStatus.type === "success" ? "#34d399" : "#f87171", marginTop: -8, marginBottom: 12 }}>
+                      {pincodeStatus.text}
+                    </div>
+                  )}
 
                   <div style={{ marginBottom: 16 }}>
                     <div style={{ color: "rgba(255,255,255,0.75)", fontSize: 12, marginBottom: 6 }}>State</div>
@@ -450,19 +504,6 @@ function RegisterPage() {
                     value={formData.city}
                     onChange={handleChange}
                     error={errors.city}
-                  />
-
-                  <InputField
-                    icon={<MapPin size={20} />}
-                    placeholder="Pincode (6 digits)"
-                    name="pincode"
-                    value={formData.pincode}
-                    onChange={(e) => {
-                      const v = e.target.value;
-                      if (/^[0-9]*$/.test(v)) setFormData((prev) => ({ ...prev, pincode: v }));
-                      else setFormData((prev) => ({ ...prev, pincode: prev.pincode }));
-                    }}
-                    error={errors.pincode}
                   />
 
                   <div style={{ marginBottom: 16 }}>

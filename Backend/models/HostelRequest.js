@@ -54,6 +54,9 @@ const hostelRequestSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "Admin"
     },
+    assignedTeam: { type: String, default: "" },
+    assignedAt: { type: Date, default: null },
+    assignedBy: { type: String, default: "" },
     rejectionReason: String,
     timeline: [{
       action: String,

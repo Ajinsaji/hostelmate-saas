@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 const http = require('http');
 require('dotenv').config();
 
+require('../server.js');
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/hostelmate';
 const BASE_URL = 'http://localhost:5000';
 

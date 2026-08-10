@@ -13,7 +13,6 @@ export function useOwnerCreation() {
     phone: "",
     altPhone: "",
     email: "",
-    company: "",
     ownerAddress: "",
 
     // Step 2: Identity & Photo
@@ -92,7 +91,6 @@ export function useOwnerCreation() {
         phone: formData.phone,
         altPhone: formData.altPhone,
         email: formData.email,
-        company: formData.company,
         ownerAddress: formData.ownerAddress || formData.hostelAddress,
         hostelName: formData.hostelName,
         hostelType: formData.hostelType,

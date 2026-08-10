@@ -146,8 +146,13 @@ export const RegistrationDetailsDrawer = React.memo(({
                   </div>
                 </div>
 
-                <div className="shrink-0 sm:text-right">
+                <div className="shrink-0 sm:text-right flex flex-col items-start sm:items-end gap-1.5">
                   {renderStatusBadge(requestData.status)}
+                  {(requestData.assignedTeam || requestData.assignedTo) && (
+                    <span className="inline-flex items-center gap-1 text-[10px] font-bold text-blue-300 bg-blue-500/10 border border-blue-500/20 px-2.5 py-0.5 rounded-full">
+                      <UserCheck size={10} /> Assigned to: {requestData.assignedTeam || requestData.assignedTo}
+                    </span>
+                  )}
                 </div>
               </div>
             </div>
@@ -177,10 +182,6 @@ export const RegistrationDetailsDrawer = React.memo(({
                     <Mail size={12} className="text-slate-400" />
                     {displayVal(requestData.email)}
                   </p>
-                </div>
-                <div>
-                  <span className="text-slate-400 font-medium block mb-1">Company / Group</span>
-                  <p className="text-white font-semibold">{displayVal(requestData.company)}</p>
                 </div>
                 <div className="sm:col-span-2">
                   <span className="text-slate-400 font-medium block mb-1">Owner Address</span>
@@ -274,7 +275,7 @@ export const RegistrationDetailsDrawer = React.memo(({
               </div>
             </div>
 
-            {/* SECTION 4 — Business & Licensing Information */}
+            {/* SECTION 4 — Business & License Info */}
             <div className="bg-[#131C2E] border border-[#202B45] rounded-2xl p-5 space-y-4">
               <div className="flex items-center gap-2 border-b border-[#202B45] pb-3">
                 <Award size={16} className="text-purple-400" />
@@ -299,6 +300,48 @@ export const RegistrationDetailsDrawer = React.memo(({
                 )}
               </div>
             </div>
+
+            {/* ASSIGNMENT SECTION */}
+            {(requestData.assignedTeam || requestData.assignedTo) && (
+              <div className="bg-[#131C2E] border border-[#202B45] rounded-2xl p-5 space-y-4">
+                <div className="flex items-center gap-2 border-b border-[#202B45] pb-3">
+                  <UserCheck size={16} className="text-blue-400" />
+                  <h4 className="text-xs font-bold text-white uppercase tracking-wider">Assignment Details</h4>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                  <div>
+                    <span className="text-slate-400 font-medium block mb-1">Assigned Team</span>
+                    <p className="text-white font-semibold flex items-center gap-1.5">
+                      <UserCheck size={12} className="text-blue-400" />
+                      {displayVal(requestData.assignedTeam, "Verification Team")}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 font-medium block mb-1">Assigned Admin</span>
+                    <p className="text-white font-semibold">
+                      {typeof requestData.assignedTo === 'object' && requestData.assignedTo !== null
+                        ? (requestData.assignedTo.fullName || requestData.assignedTo.name || requestData.assignedTo.email || "Internal Admin")
+                        : displayVal(requestData.assignedTo, "Internal Admin")}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 font-medium block mb-1">Assigned By</span>
+                    <p className="text-white font-semibold">{displayVal(requestData.assignedBy, "Super Admin")}</p>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 font-medium block mb-1">Assigned At</span>
+                    <p className="text-white font-semibold">
+                      {requestData.assignedAt
+                        ? new Date(requestData.assignedAt).toLocaleString('en-IN', {
+                            day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
+                          })
+                        : "N/A"}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* SECTION 5 — Uploaded Documents Gallery */}
             <div className="bg-[#131C2E] border border-[#202B45] rounded-2xl p-5 space-y-4">

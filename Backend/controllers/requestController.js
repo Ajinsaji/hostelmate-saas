@@ -241,11 +241,78 @@ const deleteRequest = async (req, res) => {
   }
 };
 
+const pincodeCache = new Map();
+
+const lookupPincode = async (req, res) => {
+  try {
+    const { pincode } = req.params;
+    const cleanPin = String(pincode || "").trim();
+
+    if (!/^\d{6}$/.test(cleanPin)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid pincode format. Must be 6 digits.",
+      });
+    }
+
+    if (pincodeCache.has(cleanPin)) {
+      return res.status(200).json({
+        success: true,
+        cached: true,
+        data: pincodeCache.get(cleanPin),
+      });
+    }
+
+    const axios = require("axios");
+    const response = await axios.get(`https://api.postalpincode.in/pincode/${cleanPin}`, {
+      timeout: 5000,
+    });
+
+    if (
+      Array.isArray(response.data) &&
+      response.data[0]?.Status === "Success" &&
+      Array.isArray(response.data[0]?.PostOffice) &&
+      response.data[0].PostOffice.length > 0
+    ) {
+      const postOffices = response.data[0].PostOffice;
+      const primary = postOffices[0];
+
+      const result = {
+        pincode: cleanPin,
+        place: primary.Name || "",
+        district: primary.District || "",
+        state: primary.State || "",
+        places: postOffices.map((po) => po.Name).filter(Boolean),
+      };
+
+      pincodeCache.set(cleanPin, result);
+
+      return res.status(200).json({
+        success: true,
+        data: result,
+      });
+    }
+
+    return res.status(444 || 404).json({
+      success: false,
+      message: "Could not find location details for this pincode.",
+    });
+  } catch (error) {
+    logger.error("PINCODE LOOKUP ERROR:", error?.message || error);
+    return res.status(500).json({
+      success: false,
+      message: "Pincode lookup service unavailable",
+    });
+  }
+};
+
 module.exports = {
   createRequest,
   checkRequestStatus,
   cancelRequest,
   deleteRequest,
+  lookupPincode,
 };
+
 
 

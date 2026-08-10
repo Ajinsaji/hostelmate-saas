@@ -429,9 +429,17 @@ const server = http.createServer(app);
 
 setSocketServer(server);
 
-server.listen(PORT, () => {
-  logger.info(`Server Running on Port ${PORT}`);
-  
-  // Start subscription scheduler after server starts
-  startSubscriptionScheduler(60 * 60 * 1000); // Run every hour
-});
+if (!server.listening) {
+  server.listen(PORT, () => {
+    logger.info(`Server Running on Port ${PORT}`);
+    
+    // Start subscription scheduler after server starts
+    startSubscriptionScheduler(60 * 60 * 1000); // Run every hour
+  }).on('error', (err) => {
+    if (err.code === 'EADDRINUSE') {
+      logger.info(`Server port ${PORT} is already in use.`);
+    } else {
+      console.error(err);
+    }
+  });
+}

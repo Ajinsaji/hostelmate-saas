@@ -24,6 +24,11 @@ const hostelSchema = new mongoose.Schema({
 
   phone: String,
 
+  email: {
+    type: String,
+    default: "",
+  },
+
   address: String,
 
   state: {
