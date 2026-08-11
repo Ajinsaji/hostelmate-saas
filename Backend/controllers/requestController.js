@@ -2,6 +2,38 @@ const { logger } = require("../utils/logger");
 const HostelRequest = require("../models/HostelRequest");
 
 
+// ─── Duplicate-key error helper ───────────────────────────────────────────────
+// Returns a { code, message } object if err is an E11000 for a known field,
+// or null if it is not a duplicate-key error we want to surface.
+function parseDuplicateKeyError(err) {
+  // MongoDB duplicate-key errors have code 11000
+  if (err.code !== 11000) return null;
+
+  const keyPattern = err.keyPattern || {};
+  const keyValue   = err.keyValue   || {};
+
+  if (keyPattern.phone || keyValue.phone) {
+    return {
+      code:    "PHONE_ALREADY_REGISTERED",
+      message: "This phone number is already registered. Please use another phone number.",
+    };
+  }
+
+  if (keyPattern.email || keyValue.email) {
+    return {
+      code:    "EMAIL_ALREADY_REGISTERED",
+      message: "This email address is already registered. Please use another email address.",
+    };
+  }
+
+  // Unknown unique-index collision — do not expose raw detail
+  return {
+    code:    "DUPLICATE_FIELD",
+    message: "A registration record with this information already exists.",
+  };
+}
+
+
 // CREATE REQUEST
 const createRequest = async (req, res) => {
   try {
@@ -26,7 +58,7 @@ const createRequest = async (req, res) => {
       });
     }
 
-    // CHECK EXISTING REQUEST (duplicate prevention)
+    // CHECK EXISTING REQUEST (duplicate prevention — fast pre-check before DB write)
     const existingRequest = await HostelRequest.findOne({
       phone,
       status: {
@@ -115,12 +147,28 @@ const createRequest = async (req, res) => {
       requestId: request?._id || request?.id,
     });
   } catch (error) {
+    // ── Intercept MongoDB duplicate-key errors (E11000) ──────────────────────
+    const dupKeyInfo = parseDuplicateKeyError(error);
+    if (dupKeyInfo) {
+      // Log at warn level only (no stack trace exposure to client)
+      logger.warn("Duplicate key on registration:", dupKeyInfo.code, {
+        code: dupKeyInfo.code,
+        keyPattern: error.keyPattern,
+      });
+
+      return res.status(409).json({
+        success: false,
+        code:    dupKeyInfo.code,
+        message: dupKeyInfo.message,
+      });
+    }
+
+    // All other unexpected errors
     logger.error("CREATE REQUEST ERROR:", error);
 
     res.status(500).json({
       success: false,
       message: "Server error while submitting application",
-      details: error?.message || String(error),
     });
   }
 };
@@ -179,7 +227,6 @@ const checkRequestStatus = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: "Server error while checking application status",
-      details: error?.message || String(error),
     });
   }
 };
@@ -313,6 +360,3 @@ module.exports = {
   deleteRequest,
   lookupPincode,
 };
-
-
-

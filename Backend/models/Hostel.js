@@ -162,6 +162,27 @@ const hostelSchema = new mongoose.Schema({
     default: true,
   },
 
+  // 60-Day Trash & Soft-Delete Support
+  isDeleted: {
+    type: Boolean,
+    default: false,
+    index: true,
+  },
+  deletedAt: {
+    type: Date,
+    default: null,
+    index: true,
+  },
+  deletedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Admin",
+    default: null,
+  },
+  deleteReason: {
+    type: String,
+    default: "",
+  },
+
   slug: String,
   publicLink: String,
   publicRegistrationLink: String,
@@ -172,5 +193,6 @@ const hostelSchema = new mongoose.Schema({
 hostelSchema.index({ slug: 1 });             // Public page lookup
 hostelSchema.index({ subscriptionStatus: 1 }); // Subscription scheduler queries
 hostelSchema.index({ workspaceId: 1 });       // Tenant query indexing
+hostelSchema.index({ isDeleted: 1, deletedAt: 1 }); // Trash recovery index
 
 module.exports = mongoose.model("Hostel", hostelSchema);

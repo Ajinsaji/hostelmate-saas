@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useRegisterSW } from "virtual:pwa-register/react";
 import { motion, AnimatePresence } from "framer-motion";
 import { DownloadCloud, X, CheckCircle2, AlertTriangle, Loader2 } from "lucide-react";
@@ -9,55 +9,68 @@ export default function PwaUpdateModal() {
     updateServiceWorker,
   } = useRegisterSW({
     onRegistered(r) {
-      console.log("SW Registered: ", r);
+      if (import.meta.env.DEV) {
+        console.log("[PWA] ServiceWorker registered:", r);
+      }
     },
     onRegisterError(error) {
-      console.log("SW registration error", error);
+      console.error("[PWA] ServiceWorker registration error:", error);
     },
   });
 
   const [isUpdating, setIsUpdating] = useState(false);
   const [updateSuccess, setUpdateSuccess] = useState(false);
   const [updateError, setUpdateError] = useState(false);
+  const isReloadingRef = useRef(false);
+
   const currentVersion = "1.0.0";
   const availableVersion = needRefresh ? "1.0.1" : "1.0.0";
 
   if (!needRefresh) return null;
 
+  const performReload = () => {
+    if (isReloadingRef.current) return;
+    isReloadingRef.current = true;
+    window.location.reload();
+  };
+
   const handleUpdate = async () => {
-    if (isUpdating) return;
+    // ── Double-click protection ──────────────────────────────────────────────
+    if (isUpdating || isReloadingRef.current) return;
+
     setIsUpdating(true);
     setUpdateError(false);
     setUpdateSuccess(false);
 
     try {
       if ("serviceWorker" in navigator) {
-        const handleControllerChange = () => {
-          setIsUpdating(false);
-          setUpdateSuccess(true);
-          setTimeout(() => {
-            window.location.reload();
-          }, 800);
-        };
-        navigator.serviceWorker.addEventListener("controllerchange", handleControllerChange, { once: true });
+        // ── Single-reload listener on controllerchange ────────────────────────
+        navigator.serviceWorker.addEventListener(
+          "controllerchange",
+          () => {
+            setIsUpdating(false);
+            setUpdateSuccess(true);
+            setTimeout(performReload, 600);
+          },
+          { once: true }
+        );
       }
 
-      await updateServiceWorker(false);
+      // Pass `true` to force reload / send SKIP_WAITING to waiting worker
+      await updateServiceWorker(true);
 
-      // Safety fallback: if controllerchange doesn't fire within 3s, finish update & reload
+      // Fallback: If controllerchange does not fire within 2.5s, complete update & reload once
       setTimeout(() => {
         setIsUpdating((prev) => {
-          if (prev) {
+          if (prev && !isReloadingRef.current) {
             setUpdateSuccess(true);
-            setTimeout(() => {
-              window.location.reload();
-            }, 600);
+            setTimeout(performReload, 500);
           }
           return false;
         });
-      }, 3000);
+      }, 2500);
     } catch (err) {
-      console.error("PWA update failed:", err);
+      console.error("[PWA] Update failed:", err);
       setIsUpdating(false);
       setUpdateError(true);
     }
@@ -107,7 +120,7 @@ export default function PwaUpdateModal() {
                     : updateError
                     ? "bg-rose-500/15 border-rose-500/30"
                     : isUpdating
-                    ? "bg-blue-500/15 border-blue-500/30"
+                    ? "bg-blue-500/15 border-blue-500/30 shadow-[0_0_12px_rgba(59,130,246,0.3)]"
                     : "bg-blue-500/10 border-blue-500/20"
                 }`}
               >
@@ -195,6 +208,7 @@ export default function PwaUpdateModal() {
                 <button
                   onClick={handleUpdate}
                   disabled={isUpdating || updateSuccess}
+                  aria-busy={isUpdating ? "true" : "false"}
                   className={`flex-1 min-h-[48px] py-3 px-4 rounded-xl text-sm font-semibold text-[#FFFFFF] transition flex items-center justify-center gap-2 ${
                     updateSuccess
                       ? "bg-[#22C55E] shadow-[0_0_16px_rgba(34,197,94,0.4)]"

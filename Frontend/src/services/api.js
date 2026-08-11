@@ -43,6 +43,25 @@ const isPublicPath = (pathname) => {
   return false;
 };
 
+// ─── Public API URL patterns ─────────────────────────────────────────────────
+// These API endpoints do not require authentication.
+// A 401 from these must NOT trigger auth redirect or log auth-redirect noise.
+const PUBLIC_API_PATTERNS = [
+  "/api/request/register",
+  "/api/request/pincode/",
+  "/api/request/status/",
+];
+
+/**
+ * Returns true if the request URL is a known public (no-auth) API endpoint.
+ * Used to suppress spurious "AUTH REDIRECT TRIGGERED" noise and prevent
+ * redirect-to-login when a public endpoint responds with 401.
+ */
+const isPublicApiUrl = (url) => {
+  if (!url) return false;
+  return PUBLIC_API_PATTERNS.some((pattern) => url.includes(pattern));
+};
+
 const redirectToLogin = (path) => {
   // If user is already on a public route, do not force any navigation.
   // Prevents redirect loops on app startup/back.
@@ -78,6 +97,13 @@ api.interceptors.request.use(
     }
 
     const requestUrl = config.url || "";
+
+    // Public API routes do not need or receive an auth token.
+    // Skip token injection entirely for these endpoints.
+    if (isPublicApiUrl(requestUrl)) {
+      return config;
+    }
+
     const isAdminRequest =
       requestUrl.includes("/api/admin") || isAdminContext();
 
@@ -150,6 +176,17 @@ api.interceptors.response.use(
         return Promise.reject(error);
       }
 
+      // ── Public API endpoints never require auth tokens ──────────────────────
+      // A 401 from a public registration or pincode endpoint must NOT trigger
+      // an auth redirect or flood the console with misleading auth-redirect logs.
+      if (isPublicApiUrl(requestUrl)) {
+        if (import.meta.env.DEV) {
+          console.warn("[API] 401 on public endpoint (no auth required):", requestUrl);
+        }
+        // Pass the error through so the caller can handle it normally.
+        return Promise.reject(error);
+      }
+
       // [API RESPONSE ERROR]
       if (import.meta.env.DEV) {
         console.log("[API RESPONSE ERROR]", {
@@ -167,6 +204,7 @@ api.interceptors.response.use(
         "(no message)";
 
       // ***** AUTH REDIRECT TRIGGERED *****
+      // Only logged for genuinely authenticated endpoints that returned 401.
       console.log("***** AUTH REDIRECT TRIGGERED *****", {
         Request: {
           Method: method,

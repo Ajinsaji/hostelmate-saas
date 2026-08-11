@@ -72,12 +72,12 @@ export const HostelDetailsLayout = React.memo(() => {
     }
 
     setIsDeleting(true);
-    const toastId = toast.loading("Deleting hostel and dependent graph...");
+    const toastId = toast.loading("Moving hostel to 60-day Trash...");
 
     try {
       const res = await api.delete(`/api/admin/hostels/${id}`);
       if (res.data.success) {
-        toast.success(res.data.message || "Hostel deleted successfully.", { id: toastId });
+        toast.success(res.data.message || "Hostel moved to Trash (retained for 60 days). Financial records preserved.", { id: toastId });
         setDeleteModalOpen(false);
         navigate("/admin/hostels");
       } else {
@@ -216,7 +216,7 @@ export const HostelDetailsLayout = React.memo(() => {
             </div>
 
             <p className="text-xs text-slate-300 leading-relaxed">
-              This action will permanently delete <strong className="text-white font-bold">{hostelName}</strong> and all associated data including residents, rooms, beds, payments, device tokens, and owner account records.
+              This action will move <strong className="text-white font-bold">{hostelName}</strong> to Trash for 60 days. All financial, payment, and subscription records will be safely preserved.
             </p>
 
             <div className="p-3.5 bg-black/40 border border-white/5 rounded-xl space-y-1 text-xs">

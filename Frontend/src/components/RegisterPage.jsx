@@ -74,6 +74,9 @@ function RegisterPage() {
   const [licensePhoto, setLicensePhoto] = useState(null);
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
+  // Inline registration-level error (e.g. duplicate phone / email from backend).
+  // Shown without clearing the form so the user can correct and retry.
+  const [registrationError, setRegistrationError] = useState(null);
 
   const stateOptions = useMemo(() => {
     // country-state-city: India states use countryCode = "IN".
@@ -95,15 +98,7 @@ function RegisterPage() {
     }));
   }, [formData.state]);
 
-  const cityOptions = useMemo(() => {
-    // For "city / place" we reuse the same dataset.
-    if (!formData.state) return [];
-    const cities = City.getCitiesOfState("IN", formData.state) || [];
-    return cities.map((c) => ({
-      value: c.name,
-      label: c.name,
-    }));
-  }, [formData.state]);
+
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -137,21 +132,39 @@ function RegisterPage() {
       const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/request/pincode/${cleanPin}`);
       if (response.data?.success && response.data?.data) {
         const { place, district, state } = response.data.data;
-        
-        // Auto-fill place/city, district, state if returned and state matched or set
+
+        // Match state name (e.g. "Kerala") to state option ISO code (e.g. "KL")
+        const matchedState = stateOptions.find(
+          (s) =>
+            s.label.toLowerCase() === (state || "").toLowerCase() ||
+            s.value.toLowerCase() === (state || "").toLowerCase()
+        );
+        const stateCode = matchedState?.value || formData.state || "";
+
+        // Compute available districts for the matched state
+        const availableCities = stateCode ? City.getCitiesOfState("IN", stateCode) || [] : [];
+        const matchedDistrict = availableCities.find(
+          (c) => c.name.toLowerCase() === (district || "").toLowerCase()
+        );
+        const districtName = matchedDistrict?.name || district || formData.district || "";
+
+        // Auto-fill state, district, and city simultaneously
         setFormData((prev) => ({
           ...prev,
-          city: prev.city || place || "",
-          district: prev.district || district || "",
-          state: prev.state || (stateOptions.find((s) => s.label.toLowerCase() === (state || "").toLowerCase())?.value || prev.state || ""),
+          state: stateCode || prev.state,
+          district: districtName || prev.district,
+          city: place || prev.city || "",
         }));
 
-        setPincodeStatus({ type: "success", text: `Location found: ${place ? place + ", " : ""}${district}, ${state}` });
+        setPincodeStatus({
+          type: "success",
+          text: `Location found: ${place ? place + ", " : ""}${district}, ${state}`,
+        });
       } else {
-        setPincodeStatus({ type: "error", text: "Could not find this pincode. Enter location manually." });
+        setPincodeStatus({ type: "error", text: "Location not found for this pincode. Enter details manually." });
       }
     } catch {
-      setPincodeStatus({ type: "error", text: "Could not find this pincode. Enter location manually." });
+      setPincodeStatus({ type: "error", text: "Unable to find location. Please enter manually." });
     } finally {
       setPincodeLoading(false);
     }
@@ -198,6 +211,9 @@ function RegisterPage() {
   };
 
   const handleSubmit = async () => {
+    // Clear any prior registration-level error before a fresh attempt
+    setRegistrationError(null);
+
     const newErrors = {};
     if (!formData.hostelAddress.trim()) newErrors.hostelAddress = "Hostel address is required";
     if (!licensePhoto) newErrors.licensePhoto = "Upload Hostel License";
@@ -244,22 +260,26 @@ function RegisterPage() {
       });
       console.log("FORM DATA:", [...data.entries()]);
 
-      const response = await axios.post(`${import.meta.env.VITE_API_URL}/api/request/register`, data);
+      // Use raw axios directly for this public multipart request.
+      // The shared `api` instance interceptor is used for response error mapping,
+      // but we post to the absolute URL so no auth header is injected.
+      const response = await axios.post(
+        `${import.meta.env.VITE_API_URL}/api/request/register`,
+        data
+      );
 
       if (response.data.success) {
         toast.success("Registration submitted");
 
         // Persist keys for request-status UI immediately after backend confirms.
-        localStorage.setItem("hostelRequestPhone", formData.phone);
         const requestId = response.data?.request?._id || response.data?.requestId;
         localStorage.setItem("hostelRequestPhone", formData.phone);
         localStorage.setItem("hostelRequestId", requestId);
 
-
         setFormData({
-
           ownerName: "",
           phone: "",
+          email: "",
           hostelName: "",
           ownerAddress: "",
           hostelAddress: "",
@@ -275,34 +295,50 @@ function RegisterPage() {
         setStep(1);
         setShowSuccess(true);
 
-        // Persist status-tracking keys required by /request-status
-        try {
-          localStorage.setItem("hostelRequestPhone", formData.phone);
-          localStorage.setItem(
-            "hostelRequestId",
-            response.data?.request?._id || response.data?.requestId
-          );
-        } catch {
-          // ignore storage failures
-        }
-
         // Navigate to request status page (do NOT redirect to login)
         navigate("/request-status");
       }
     } catch (error) {
-
       console.error("Registration submit error:", error);
+      console.error("Backend response:", error?.response?.data);
 
-      console.error(
-        "Backend response:",
-        error?.response?.data
-      );
+      const responseData = error?.response?.data;
+      const httpStatus   = error?.response?.status;
+      const code         = responseData?.code;
 
-      toast.error(
-        error?.response?.data?.message ||
+      // ── HTTP 409: Duplicate phone or email (clean backend error) ─────────────
+      // Do NOT clear the form. Do NOT redirect. Show inline error.
+      if (httpStatus === 409) {
+        const isDuplicatePhone = code === "PHONE_ALREADY_REGISTERED";
+        const isDuplicateEmail = code === "EMAIL_ALREADY_REGISTERED";
+
+        const friendlyMsg = isDuplicatePhone
+          ? "Phone number already registered. Please use a different phone number."
+          : isDuplicateEmail
+          ? "Email address already registered. Please use a different email address."
+          : (responseData?.message || "This information is already registered.");
+
+        // Show inline error banner — user stays on the form with all data intact
+        setRegistrationError(friendlyMsg);
+
+        // If it's a duplicate phone, navigate back to step 1 so the user
+        // can see the phone field and the error banner together.
+        if (isDuplicatePhone) {
+          setStep(1);
+        }
+
+        toast.error(friendlyMsg);
+        return;
+      }
+
+      // ── All other errors: show toast, keep form intact ────────────────────
+      const genericMsg =
+        responseData?.message ||
         error?.message ||
-        "Registration failed"
-      );
+        "Registration failed. Please try again.";
+
+      setRegistrationError(genericMsg);
+      toast.error(genericMsg);
       localStorage.removeItem("pendingRequestId");
       localStorage.removeItem("pendingApproval");
     } finally {
@@ -427,6 +463,29 @@ function RegisterPage() {
                 <div style={{ flex: 1, height: "6px", borderRadius: "10px", background: step >= 2 ? "var(--primary)" : "#e0e0e0" }} />
               </div>
 
+              {/* ── Inline registration error banner ──────────────────────── */}
+              {registrationError && (
+                <div
+                  style={{
+                    background: "rgba(239,68,68,0.12)",
+                    border: "1px solid rgba(239,68,68,0.4)",
+                    borderRadius: "12px",
+                    padding: "12px 16px",
+                    marginBottom: "16px",
+                    display: "flex",
+                    alignItems: "flex-start",
+                    gap: "10px",
+                  }}
+                  role="alert"
+                  id="registration-error-banner"
+                >
+                  <span style={{ fontSize: "18px", lineHeight: 1 }}>⚠️</span>
+                  <span style={{ color: "#fca5a5", fontSize: "14px", lineHeight: 1.5 }}>
+                    {registrationError}
+                  </span>
+                </div>
+              )}
+
               {step === 1 && (
                 <>
                   <InputField icon={<User size={20} />} placeholder="Owner Full Name" name="ownerName" value={formData.ownerName} onChange={handleChange} error={errors.ownerName} />
@@ -546,7 +605,12 @@ function RegisterPage() {
                   <InputField icon={<MapPin size={20} />} placeholder="Full Hostel Address" name="hostelAddress" value={formData.hostelAddress} onChange={handleChange} error={errors.hostelAddress} isTextArea />
                   <UploadBox label="Upload Hostel License" file={licensePhoto} setFile={setLicensePhoto} error={errors.licensePhoto} />
 
-                  <button className="btn-primary mt-6" onClick={handleSubmit} disabled={loading}>
+                  <button
+                    className="btn-primary mt-6"
+                    onClick={handleSubmit}
+                    disabled={loading}
+                    id="submit-application-btn"
+                  >
                     {loading ? (
                       <>
                         <Loader2 size={16} className="animate-spin" /> Sending Request...

@@ -100,6 +100,7 @@ const DashboardOverview = lazy(() => import("./superadmin/views/DashboardOvervie
 const FinanceDashboard = lazy(() => import("./superadmin/views/FinanceDashboard"));
 const OnboardingRequests = lazy(() => import("./superadmin/views/OnboardingRequests"));
 const HostelsList = lazy(() => import("./superadmin/views/HostelsList"));
+const HostelsTrash = lazy(() => import("./superadmin/views/HostelsTrash"));
 const HostelDetailsLayout = lazy(() => import("./superadmin/views/HostelDetailsLayout"));
 const CustomerOverview = lazy(() => import("./superadmin/views/customer-360/CustomerOverview"));
 const CustomerOwner = lazy(() => import("./superadmin/views/customer-360/CustomerOwner"));
@@ -1020,6 +1021,7 @@ function App() {
           <Route path="dashboard" element={<DashboardOverview />} />
           <Route path="requests" element={<OnboardingRequests />} />
           <Route path="hostels" element={<HostelsList />} />
+          <Route path="trash" element={<HostelsTrash />} />
           
           <Route path="hostels/:id" element={<HostelDetailsLayout />}>
             <Route index element={<Navigate to="overview" replace />} />

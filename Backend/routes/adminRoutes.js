@@ -14,6 +14,10 @@ const {
   getAllHostels,
   getPendingHostels,
   deleteHostel,
+  getTrashHostels,
+  getTrashHostelById,
+  restoreHostelFromTrash,
+  permanentDeleteHostelFromTrash,
   bulkHostelAction,
   updateSubscription,
   getSubscriptions,
@@ -172,19 +176,22 @@ router.post(
 );
 
 // ==========================
-// HOSTELS
+// HOSTELS & TRASH (60-DAY RETENTION)
 // ==========================
 
 router.get("/hostels", getAllHostels);
-
 router.get("/pending-hostels", getPendingHostels);
 
+router.get("/trash/hostels", getTrashHostels);
+router.get("/trash/hostels/:id", getTrashHostelById);
+router.post("/trash/hostels/:id/restore", restoreHostelFromTrash);
+router.delete("/trash/hostels/:id/permanent", permanentDeleteHostelFromTrash);
+
 router.delete("/hostels/:id", deleteHostel);
+router.delete("/hostels/delete/:id", deleteHostel);
 
 router.post("/hostels/bulk-action", bulkHostelAction);
-
 router.post("/hostels/:ownerId/resend-whatsapp", resendWhatsApp);
-
 router.put("/hostels/:ownerId/reset-password", resetOwnerTempPassword);
 
 // ==========================

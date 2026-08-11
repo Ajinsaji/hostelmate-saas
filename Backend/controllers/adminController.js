@@ -35,7 +35,7 @@ const getDashboardStats =
         await HostelRequest.countDocuments({ status: "pending" });
 
       const activeHostels =
-        await Hostel.countDocuments();
+        await Hostel.countDocuments({ isDeleted: { $ne: true } });
 
       const subscriptions =
         await Subscription.find();
@@ -629,6 +629,10 @@ const resetOwnerTempPassword = async (req, res) => {
 // DELETE HOSTEL
 // ==========================
 
+// ==========================
+// HOSTEL DELETION & TRASH SYSTEM (60-DAY RETENTION)
+// ==========================
+
 const deleteHostel = async (req, res) => {
   try {
     const hostelId = req.params.id;
@@ -637,46 +641,186 @@ const deleteHostel = async (req, res) => {
       return res.status(400).json({ success: false, message: "Invalid hostel ID format" });
     }
 
-    const hostel = await Hostel.findById(hostelId).lean();
+    const hostel = await Hostel.findById(hostelId);
     if (!hostel) {
       return res.status(404).json({ success: false, message: "Hostel not found" });
     }
 
-    // Delete dependent graph to fully remove hostel data.
-    // Order matters to avoid dangling refs.
-    await Bed.deleteMany({ hostelId });
-    await Resident.deleteMany({ hostelId });
-    await Room.deleteMany({ hostelId });
-    await Payment.deleteMany({ hostelId });
-    await PublicAdmission.deleteMany({ hostelId });
-    await DeviceToken.deleteMany({ hostelId });
-    await Notification.deleteMany({ hostelId });
-    await Subscription.deleteMany({ hostelId });
-
-    // Remove support tickets if SupportTicket model exists
-    try {
-      await SupportTicket.deleteMany({ hostel: hostelId });
-    } catch (e) {
-      // ignore if model not linked
+    if (hostel.isDeleted) {
+      return res.status(400).json({ success: false, message: "Hostel is already in Trash" });
     }
 
-    // Finally hostel + owner
-    const owner = await Owner.findOne({ hostelId });
-    if (owner?._id) {
-      await DeviceToken.deleteMany({ userId: owner._id });
-      await Owner.deleteOne({ _id: owner._id });
-    }
+    // Soft-delete hostel document.
+    // CRITICAL: Financial, payment, and subscription history MUST NEVER be deleted!
+    hostel.isDeleted = true;
+    hostel.deletedAt = new Date();
+    hostel.deletedBy = req.admin?._id || req.user?._id || null;
+    hostel.deleteReason = req.body?.reason || "Admin deletion";
+    await hostel.save();
 
-    await Hostel.findByIdAndDelete(hostelId);
-
-    if (hostel.phone) {
-      await HostelRequest.deleteMany({ phone: hostel.phone });
-    }
-
-    return res.status(200).json({ success: true, message: "Hostel deleted successfully" });
+    return res.status(200).json({
+      success: true,
+      message: "Hostel moved to Trash. Retained for 60 days. All financial & payment records preserved.",
+      hostelId: hostel._id,
+      retentionDays: 60,
+    });
   } catch (error) {
     console.error("deleteHostel error:", error);
     return res.status(500).json({ success: false, message: "Failed to delete hostel", error: error?.message || String(error) });
+  }
+};
+
+const getTrashHostels = async (req, res) => {
+  try {
+    const trashHostels = await Hostel.find({ isDeleted: true }).sort({ deletedAt: -1 }).lean();
+    const now = Date.now();
+
+    const formatted = await Promise.all(
+      trashHostels.map(async (h) => {
+        const deletedAtTime = h.deletedAt ? new Date(h.deletedAt).getTime() : now;
+        const elapsedMs = Math.max(0, now - deletedAtTime);
+        const daysElapsed = Math.floor(elapsedMs / (1000 * 60 * 60 * 24));
+        const daysRemaining = Math.max(0, 60 - daysElapsed);
+
+        // Fetch preserved owner & financial stats indicator
+        const owner = await Owner.findOne({ hostelId: h._id }).select("ownerName phone email").lean();
+        const paymentCount = await Payment.countDocuments({ hostelId: h._id });
+        const subscription = await Subscription.findOne({ hostelId: h._id }).select("planType status amount").lean();
+
+        return {
+          _id: h._id,
+          hostelName: h.hostelName || h.name || "Unnamed Hostel",
+          ownerName: owner?.ownerName || h.ownerName || "Not provided",
+          ownerPhone: owner?.phone || h.phone || "-",
+          ownerEmail: owner?.email || h.email || "-",
+          deletedAt: h.deletedAt,
+          deletedBy: h.deletedBy,
+          deleteReason: h.deleteReason || "Admin request",
+          daysRemaining,
+          retentionPeriodDays: 60,
+          financialRecordsPreserved: true,
+          paymentCount,
+          subscriptionStatus: subscription?.status || h.subscriptionStatus || "preserved",
+          planType: subscription?.planType || h.planType || "preserved",
+        };
+      })
+    );
+
+    return res.status(200).json({ success: true, hostels: formatted, count: formatted.length });
+  } catch (error) {
+    console.error("getTrashHostels error:", error);
+    return res.status(500).json({ success: false, message: "Failed to fetch trash hostels", error: error?.message });
+  }
+};
+
+const getTrashHostelById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ success: false, message: "Invalid hostel ID format" });
+    }
+
+    const hostel = await Hostel.findOne({ _id: id, isDeleted: true }).lean();
+    if (!hostel) {
+      return res.status(404).json({ success: false, message: "Hostel not found in Trash" });
+    }
+
+    const now = Date.now();
+    const deletedAtTime = hostel.deletedAt ? new Date(hostel.deletedAt).getTime() : now;
+    const daysElapsed = Math.floor(Math.max(0, now - deletedAtTime) / (1000 * 60 * 60 * 24));
+    const daysRemaining = Math.max(0, 60 - daysElapsed);
+
+    const owner = await Owner.findOne({ hostelId: id }).lean();
+    const payments = await Payment.find({ hostelId: id }).lean();
+
+    return res.status(200).json({
+      success: true,
+      hostel: {
+        ...hostel,
+        owner,
+        paymentsCount: payments.length,
+        daysRemaining,
+        retentionDays: 60,
+      },
+    });
+  } catch (error) {
+    console.error("getTrashHostelById error:", error);
+    return res.status(500).json({ success: false, message: "Failed to fetch trash hostel details" });
+  }
+};
+
+const restoreHostelFromTrash = async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ success: false, message: "Invalid hostel ID format" });
+    }
+
+    const hostel = await Hostel.findById(id);
+    if (!hostel) {
+      return res.status(404).json({ success: false, message: "Hostel not found" });
+    }
+
+    if (!hostel.isDeleted) {
+      return res.status(400).json({ success: false, message: "Hostel is not in trash" });
+    }
+
+    // Restore to active status
+    hostel.isDeleted = false;
+    hostel.deletedAt = null;
+    hostel.deletedBy = null;
+    hostel.deleteReason = "";
+    await hostel.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Hostel restored successfully to active registry",
+      hostel,
+    });
+  } catch (error) {
+    console.error("restoreHostelFromTrash error:", error);
+    return res.status(500).json({ success: false, message: "Failed to restore hostel", error: error?.message });
+  }
+};
+
+const permanentDeleteHostelFromTrash = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { confirmHostelName } = req.body || {};
+
+    if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ success: false, message: "Invalid hostel ID format" });
+    }
+
+    const hostel = await Hostel.findOne({ _id: id, isDeleted: true });
+    if (!hostel) {
+      return res.status(404).json({ success: false, message: "Hostel not found in Trash" });
+    }
+
+    const expectedName = (hostel.hostelName || hostel.name || "").trim();
+    if (!confirmHostelName || String(confirmHostelName).trim() !== expectedName) {
+      return res.status(400).json({
+        success: false,
+        message: `Confirmation failed. Please enter exact hostel name: "${expectedName}"`,
+      });
+    }
+
+    // Elevate authorization check: Admin role required
+    if (!req.admin || !["super_admin", "admin"].includes(req.admin.role)) {
+      return res.status(403).json({ success: false, message: "Elevated administrator authorization required for permanent purge" });
+    }
+
+    // DO NOT DELETE PAYMENT OR SUBSCRIPTION FINANCIAL RECORDS!
+    // Permanently remove the Hostel document only.
+    await Hostel.findByIdAndDelete(id);
+
+    return res.status(200).json({
+      success: true,
+      message: "Hostel document permanently purged from Trash. Payment & financial accounting records remain preserved.",
+    });
+  } catch (error) {
+    console.error("permanentDeleteHostelFromTrash error:", error);
+    return res.status(500).json({ success: false, message: "Failed to purge hostel", error: error?.message });
   }
 };
 
@@ -1355,8 +1499,11 @@ module.exports = {
   getDashboardRevenue: getDashboardRevenueHandler,
   getDashboardMonitoring: getDashboardMonitoringHandler,
 
-  // Admin subscriptions listing
-  getAdminSubscriptions,
+  // 60-Day Trash Management
+  getTrashHostels,
+  getTrashHostelById,
+  restoreHostelFromTrash,
+  permanentDeleteHostelFromTrash,
 
 // Phase 4.2A exports
   getHostels: hostelAdminController.getHostels,

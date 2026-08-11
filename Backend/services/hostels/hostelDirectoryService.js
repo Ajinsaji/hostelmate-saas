@@ -38,7 +38,7 @@ async function getHostelDirectory({
   const normalizedSearch = String(search || "").trim();
   const skip = (page - 1) * pageSize;
 
-  const queryConditions = [];
+  const queryConditions = [{ isDeleted: { $ne: true } }];
 
   // Default to non-pending activation unless explicitly filtering for pending/activation_pending status
   const requestedStatus = String(filters.status || filters.subscription || "").trim().toLowerCase();

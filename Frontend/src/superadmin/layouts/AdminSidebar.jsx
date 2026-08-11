@@ -4,6 +4,7 @@ import {
   Home, 
   CheckSquare, 
   Building, 
+  Trash2,
   UserCheck, 
   Users, 
   CreditCard, 
@@ -43,6 +44,7 @@ export const AdminSidebar = React.memo(() => {
   const customerItems = [
     { label: "Onboarding Requests", href: "/admin/requests", icon: CheckSquare },
     { label: "Hostels Directory", href: "/admin/hostels", icon: Building },
+    { label: "Hostels Trash", href: "/admin/trash", icon: Trash2 },
     { label: "Owners CRM", href: "/admin/owners", icon: UserCheck },
     { label: "Residents Roll", href: "/admin/residents", icon: Users },
     { label: "Business BI", href: "/admin/analytics", icon: BarChart3 },
