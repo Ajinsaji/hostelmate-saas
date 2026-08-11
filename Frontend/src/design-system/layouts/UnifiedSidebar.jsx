@@ -16,6 +16,7 @@ function getIcon(name) {
  * Used by UnifiedLayout for desktop navigation.
  */
 export default function UnifiedSidebar({
+  role,
   menuItems = [],
   collapsed = false,
   onToggleCollapse,
