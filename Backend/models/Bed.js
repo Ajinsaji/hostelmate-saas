@@ -75,14 +75,13 @@ const bedSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-bedSchema.pre("save", function (next) {
+bedSchema.pre("save", function () {
   if (!this.tenantId) {
     this.tenantId = this.hostelId;
   }
   if (!this.bedCode) {
     this.bedCode = `${this.roomId}_${this.bedNumber}`;
   }
-  next();
 });
 
 bedSchema.index({ roomId: 1, bedNumber: 1 });

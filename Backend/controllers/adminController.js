@@ -473,113 +473,64 @@ const getPendingHostels = async (req, res) => {
 
 const getAllHostels = async (req, res) => {
   try {
-    const hostels = await Hostel.find({ pendingActivation: false }).lean();
+    const { getHostelDirectory } = require("../services/hostels/hostelDirectoryService");
+    const {
+      page = 1,
+      pageSize = 25,
+      search = "",
+      sortField = "createdAt",
+      sortOrder = "desc",
+      status = "",
+      plan = "",
+      city = "",
+      district = "",
+      state = ""
+    } = req.query || {};
 
-    const safeHostels = (hostels || []).map((hostel) => ({
-      ...hostel,
-      uniqueCode: hostel.uniqueCode || "",
-      publicUrl: hostel.publicUrl || "",
-      qrCodeUrl: hostel.qrCodeUrl || "",
-      subscriptionStatus: hostel.subscriptionStatus || "trial",
-      planType: hostel.planType || "Basic",
-      isPublic: hostel.isPublic === undefined ? true : hostel.isPublic,
+    const directoryResult = await getHostelDirectory({
+      page: parseInt(page, 10) || 1,
+      pageSize: parseInt(pageSize, 10) || 25,
+      search: String(search || "").trim(),
+      sortField,
+      sortOrder,
+      filters: {
+        status: status || req.query.subscription,
+        plan,
+        city,
+        district,
+        state
+      }
+    });
+
+    // Ensure full compatibility with legacy expectations
+    const fullHostels = (directoryResult.data || []).map((h) => ({
+      ...h,
+      hostelId: h.id || h._id,
+      hostelName: h.name || h.hostelName,
+      ownerName: h.owner,
+      phone: h.phone,
+      email: h.email,
+      ownerPhoto: h.ownerPhoto,
+      subscriptionStatus: h.status,
+      planType: h.plan,
+      owner: {
+        name: h.owner,
+        email: h.email,
+        phone: h.phone,
+        profileImage: h.ownerPhoto
+      }
     }));
 
-    const result = [];
-
-    for (const hostel of safeHostels) {
-      // If activation is still pending, the Owner record does not exist yet.
-      // Attach HostelRequest applicant details for a better admin experience.
-      const owner = await Owner.findOne({ hostelId: hostel._id }).lean();
-
-      const hostelRequest = hostel.pendingActivation === true
-        ? await HostelRequest.findOne({ hostelId: hostel._id })
-            .lean()
-        : null;
-
-      const subscription = await Subscription.findOne({ hostelId: hostel._id }).lean();
-
-      const rooms = await Room.find({ hostelId: hostel._id }).lean();
-      let totalBeds = 0;
-      let occupiedBeds = 0;
-      rooms.forEach((r) => {
-        totalBeds += Number(r.totalBeds || 0);
-        occupiedBeds += Number(r.occupiedBeds || 0);
-      });
-
-      const bedRecords = await Bed.find({ hostelId: hostel._id }).lean();
-      const bedTotal = bedRecords.length;
-      const bedOccupied = bedRecords.filter((b) => String(b.status).toLowerCase() === "occupied").length;
-      if (!totalBeds && bedTotal) totalBeds = bedTotal;
-      if (!occupiedBeds && bedOccupied) occupiedBeds = bedOccupied;
-
-      const activeResidents = await Resident.countDocuments({ hostelId: hostel._id, status: "active" });
-      const totalRooms = rooms.length;
-      const vacantBeds = Math.max(0, totalBeds - occupiedBeds);
-
-      result.push({
-        ...hostel,
-        hostelId: hostel._id,
-        hostelRequest: hostel.pendingActivation === true
-          ? {
-              hostelName: hostelRequest?.hostelName || hostel.hostelName || "",
-              ownerName: hostelRequest?.ownerName || hostel.ownerName || "",
-              phone: hostelRequest?.phone || hostel.phone || "",
-              hostelType: hostelRequest?.hostelType || hostel.hostelType || hostel.type || hostel.category || "",
-              state: hostelRequest?.state || hostel.state || "",
-              district: hostelRequest?.district || hostel.district || "",
-              city: hostelRequest?.city || hostel.city || hostel.place || hostel.location || "",
-              pincode: hostelRequest?.pincode || hostel.pincode || "",
-            }
-          : undefined,
-        owner: {
-          name: owner?.ownerName || hostel.hostelName || hostel.ownerName || "N/A",
-          email: owner?.email || "",
-          phone: owner?.phone || hostel.phone || "",
-          username: owner?.username || owner?.phone || owner?.email || hostel.phone || "",
-          profileImage: owner?.profileImage || "",
-        },
-        ownerId: owner?._id || undefined,
-        phone: owner?.phone || hostel.phone || "",
-        tempPassword: owner?.tempPassword || "Temp@123",
-        hostelName: hostel.hostelName || "",
-        hostelType: hostel.hostelType || hostel.type || hostel.category || "",
-        address: hostel.address || "",
-        district: hostel.district || "",
-        city: hostel.city || hostel.place || hostel.location || "",
-        pincode: hostel.pincode || "",
-        description: hostel.description || "",
-        createdAt: hostel.createdAt || null,
-        approvalStatus: hostel.pendingActivation === true
-          ? "activation_pending"
-          : hostel.approvalStatus || hostel.status || "approved",
-        subscriptionStatus:
-          (subscription && subscription.subscriptionStatus) ||
-          hostel.subscriptionStatus ||
-          "trial",
-        isTrial:
-          subscription && subscription.isTrial !== undefined
-            ? subscription.isTrial
-            : (((subscription && subscription.subscriptionStatus) ||
-                hostel.subscriptionStatus ||
-                "trial") === "trial"),
-        qrCode: hostel.qrCodeUrl || "",
-        publicLink: hostel.publicUrl || "",
-        qrCodeUrl: hostel.qrCodeUrl || "",
-        publicUrl: hostel.publicUrl || "",
-        totalRooms,
-        totalBeds,
-        occupiedBeds,
-        vacantBeds,
-        activeResidents,
-        occupancy: { totalBeds, occupiedBeds, vacantBeds },
-      });
-    }
-
-    res.status(200).json({ success: true, hostels: result });
+    return res.status(200).json({
+      success: true,
+      hostels: fullHostels,
+      data: fullHostels,
+      pagination: directoryResult.pagination,
+      meta: directoryResult.meta
+    });
   } catch (error) {
     console.error("Error fetching hostels:", error);
-    res.status(500).json({ success: false, message: "Failed to fetch hostels" });
+    res.status(500).json({ success: false, message: "Failed to fetch hostels", error: error?.message });
   }
 };
 
@@ -682,56 +633,50 @@ const deleteHostel = async (req, res) => {
   try {
     const hostelId = req.params.id;
 
-    // Delete dependent graph to fully remove hostel data.
-    // NOTE: order matters to avoid dangling refs.
-    const [hostel] = await Hostel.find({ _id: hostelId }).limit(1).lean();
+    if (!hostelId || !mongoose.Types.ObjectId.isValid(hostelId)) {
+      return res.status(400).json({ success: false, message: "Invalid hostel ID format" });
+    }
+
+    const hostel = await Hostel.findById(hostelId).lean();
     if (!hostel) {
       return res.status(404).json({ success: false, message: "Hostel not found" });
     }
 
-    const roomIds = await Room.find({ hostelId }).distinct("_id");
-    const bedIds = await Bed.find({ hostelId }).distinct("_id");
-
-    // Beds -> set to vacant/clear refs (optional; then delete)
+    // Delete dependent graph to fully remove hostel data.
+    // Order matters to avoid dangling refs.
     await Bed.deleteMany({ hostelId });
-
-    // Residents
     await Resident.deleteMany({ hostelId });
-
-    // Rooms
     await Room.deleteMany({ hostelId });
-
-    // Payments
     await Payment.deleteMany({ hostelId });
-
-    // Public admission requests
     await PublicAdmission.deleteMany({ hostelId });
-
-    // Complaints (if you later add a model, keep deletion here)
-    // Notifications + device tokens
     await DeviceToken.deleteMany({ hostelId });
     await Notification.deleteMany({ hostelId });
-
-    // Subscription
     await Subscription.deleteMany({ hostelId });
 
-    // Staff (if model exists, add safely)
+    // Remove support tickets if SupportTicket model exists
+    try {
+      await SupportTicket.deleteMany({ hostel: hostelId });
+    } catch (e) {
+      // ignore if model not linked
+    }
 
     // Finally hostel + owner
     const owner = await Owner.findOne({ hostelId });
     if (owner?._id) {
+      await DeviceToken.deleteMany({ userId: owner._id });
       await Owner.deleteOne({ _id: owner._id });
     }
 
     await Hostel.findByIdAndDelete(hostelId);
 
-    // HostelRequest are global partner applications, delete only if you want.
-    await HostelRequest.deleteMany({ phone: hostel.phone });
+    if (hostel.phone) {
+      await HostelRequest.deleteMany({ phone: hostel.phone });
+    }
 
-    res.status(200).json({ success: true, message: "Hostel Deleted" });
+    return res.status(200).json({ success: true, message: "Hostel deleted successfully" });
   } catch (error) {
     console.error("deleteHostel error:", error);
-    res.status(500).json({ success: false, message: "Failed to delete hostel", error: error?.message || String(error) });
+    return res.status(500).json({ success: false, message: "Failed to delete hostel", error: error?.message || String(error) });
   }
 };
 

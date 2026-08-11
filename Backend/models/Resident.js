@@ -309,7 +309,7 @@ const residentSchema = new mongoose.Schema(
 );
 
 // Middleware to sync name & fullName before saving
-residentSchema.pre("save", function (next) {
+residentSchema.pre("save", function () {
   if (!this.tenantId) {
     this.tenantId = this.hostelId;
   }
@@ -328,7 +328,6 @@ residentSchema.pre("save", function (next) {
   if (!this.depositAmount && this.securityDeposit) {
     this.depositAmount = this.securityDeposit;
   }
-  next();
 });
 
 // Performance & Tenant indexes

@@ -5,6 +5,7 @@ const Room = require("../../models/Room");
 const Bed = require("../../models/Bed");
 const Resident = require("../../models/Resident");
 const Payment = require("../../models/Payment");
+const HostelRequest = require("../../models/HostelRequest");
 
 async function getHostelProfile(hostelId) {
   const hostel = await Hostel.findById(hostelId).lean();
@@ -12,11 +13,11 @@ async function getHostelProfile(hostelId) {
 
   const owner = await Owner.findOne({ hostelId: hostel._id }).lean();
   const subscription = await Subscription.findOne({ hostelId: hostel._id }).lean();
+  const hostelRequest = await HostelRequest.findOne({ phone: hostel.phone }).lean();
 
   const rooms = await Room.find({ hostelId: hostel._id }).lean();
   const beds = await Bed.find({ hostelId: hostel._id }).lean();
   const residents = await Resident.find({ hostelId: hostel._id }).lean();
-
   const payments = await Payment.find({ hostelId: hostel._id }).sort({ createdAt: -1 }).limit(20).lean();
 
   const occupancy = (() => {
@@ -26,36 +27,74 @@ async function getHostelProfile(hostelId) {
     return { totalBeds, occupiedBeds, vacantBeds };
   })();
 
+  const ownerName = owner?.ownerName || hostel.ownerName || hostelRequest?.ownerName || "Not provided";
+  const phone = owner?.phone || hostel.phone || hostelRequest?.phone || "Not provided";
+  const email = owner?.email || hostel.email || hostelRequest?.email || "Not provided";
+
+  // Photo resolution priority: Owner.profileImage -> Owner.photo -> Hostel.ownerPhoto -> HostelRequest.ownerPhoto
+  const ownerPhoto = owner?.profileImage || owner?.photo || hostel.ownerPhoto || hostelRequest?.ownerPhoto || "";
+
+  const ownerObj = {
+    _id: owner?._id || null,
+    id: owner?._id || null,
+    fullName: ownerName,
+    ownerName: ownerName,
+    name: ownerName,
+    phone: phone,
+    email: email,
+    photo: ownerPhoto,
+    profileImage: ownerPhoto,
+  };
+
+  const hostelName = hostel.hostelName || hostel.name || "Not provided";
+  const status = hostel.subscriptionStatus || subscription?.subscriptionStatus || "active";
+  const planType = subscription?.planType || hostel.planType || "Basic";
+
   return {
     id: hostel._id,
-    hostelName: hostel.hostelName,
-    ownerName: hostel.ownerName,
-    ownerPhoto: hostel.ownerPhoto,
-    phone: hostel.phone,
-    address: hostel.address,
-    state: hostel.state,
-    district: hostel.district,
-    city: hostel.city,
-    pincode: hostel.pincode,
-    hostelType: hostel.hostelType,
-    qrCodeUrl: hostel.qrCodeUrl,
-    uniqueCode: hostel.uniqueCode,
-    publicUrl: hostel.publicUrl,
+    _id: hostel._id,
+    name: hostelName,
+    hostelName: hostelName,
+    ownerName: ownerName,
+    ownerPhoto: ownerPhoto,
+    phone: phone,
+    email: email,
+    address: hostel.address || "Not provided",
+    state: hostel.state || "Not provided",
+    district: hostel.district || "Not provided",
+    city: hostel.city || "Not provided",
+    pincode: hostel.pincode || "Not provided",
+    hostelType: hostel.hostelType || "Not provided",
+    qrCodeUrl: hostel.qrCodeUrl || "",
+    uniqueCode: hostel.uniqueCode || "",
+    publicUrl: hostel.publicUrl || "",
 
     rooms: rooms.length,
     residents: residents.length,
     occupancy: `${occupancy.totalBeds > 0 ? Math.round((occupancy.occupiedBeds / occupancy.totalBeds) * 100) : 0}%`,
 
-    subscriptionStatus: subscription?.subscriptionStatus || hostel.subscriptionStatus,
-    planType: subscription?.planType || hostel.planType,
+    subscriptionStatus: status,
+    status: status,
+    planType: planType,
+    plan: planType,
 
-    // Provide sub-objects expected by the existing UI (Customer 360 Overview etc.)
+    // Canonical sub-objects for UI consumption
+    owner: ownerObj,
+    hostel: {
+      _id: hostel._id,
+      id: hostel._id,
+      name: hostelName,
+      status: status,
+      plan: planType,
+      owner: ownerObj,
+    },
+
     details: {
-      city: hostel.city,
-      district: hostel.district,
-      state: hostel.state,
-      address: hostel.address,
-      postalCode: hostel.pincode,
+      city: hostel.city || "Not provided",
+      district: hostel.district || "Not provided",
+      state: hostel.state || "Not provided",
+      address: hostel.address || "Not provided",
+      postalCode: hostel.pincode || "Not provided",
     },
 
     featureFlags: hostel.rulesConfig
@@ -73,7 +112,6 @@ async function getHostelProfile(hostelId) {
       customDomain: null,
     },
 
-    // Backfill arrays for customer widgets (read-only in this phase)
     roomsAllocation: rooms,
     beds,
     residents,

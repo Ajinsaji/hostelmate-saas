@@ -112,7 +112,7 @@ const roomSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-roomSchema.pre("save", function (next) {
+roomSchema.pre("save", function () {
   if (!this.tenantId) {
     this.tenantId = this.hostelId;
   }
@@ -126,7 +126,6 @@ roomSchema.pre("save", function (next) {
   if (!this.monthlyRent && this.rentPerBed) {
     this.monthlyRent = this.rentPerBed;
   }
-  next();
 });
 
 roomSchema.index({ hostelId: 1, roomNumber: 1 });

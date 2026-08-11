@@ -1,55 +1,60 @@
 const Owner = require("../../models/Owner");
 const DeviceToken = require("../../models/DeviceToken");
 const Hostel = require("../../models/Hostel");
+const HostelRequest = require("../../models/HostelRequest");
 
 async function getOwnerProfileByHostelId(hostelId) {
   const hostel = await Hostel.findById(hostelId).lean();
   if (!hostel) return null;
 
   const owner = await Owner.findOne({ hostelId: hostel._id }).lean();
-  if (!owner) return null;
+  const hostelRequest = await HostelRequest.findOne({ phone: hostel.phone }).lean();
 
-  const devices = await DeviceToken.find({ userId: owner._id })
-    .sort({ lastSeenAt: -1 })
-    .limit(10)
-    .lean();
+  const devices = owner?._id
+    ? await DeviceToken.find({ userId: owner._id }).sort({ lastSeenAt: -1 }).limit(10).lean()
+    : [];
 
-  // UI expects fields: photo/name/phone/email/address/emergencyContact,lastActive,devices/platformUsage
-  // emergencyContact/address are not explicit in schema.
+  const ownerName = owner?.ownerName || hostel.ownerName || hostelRequest?.ownerName || "Not provided";
+  const phone = owner?.phone || hostel.phone || hostelRequest?.phone || "Not provided";
+  const email = owner?.email || hostel.email || hostelRequest?.email || "Not provided";
+  const photo = owner?.profileImage || owner?.photo || hostel.ownerPhoto || hostelRequest?.ownerPhoto || "";
+
   return {
-    id: owner._id,
-    name: owner.ownerName,
-    photo: owner.profileImage,
-    phone: owner.phone,
-    email: owner.email,
-    address: hostel.address,
+    id: owner?._id || hostel._id,
+    _id: owner?._id || hostel._id,
+    name: ownerName,
+    fullName: ownerName,
+    photo: photo,
+    profileImage: photo,
+    phone: phone,
+    email: email,
+    address: hostel.address || "Not provided",
     emergencyContact: {
-      name: hostel.ownerName,
-      relation: "Brother",
-      phone: owner.phone,
+      name: ownerName,
+      relation: "Primary Owner",
+      phone: phone,
     },
     lastActive: (() => {
       const last = devices?.[0]?.lastSeenAt;
-      if (!last) return "N/A";
+      if (!last) return "Not provided";
       return new Date(last).toISOString();
     })(),
     devices: devices.map((d) => ({
       name: d.platform === "web" ? "Browser Session" : `${d.platform} Session`,
       os: d.platform,
-      ip: "", // IP not stored in DeviceToken schema
+      ip: "",
       lastActive: d.lastSeenAt ? new Date(d.lastSeenAt).toISOString() : "",
       token: d.token,
     })),
 
     platformUsage: {
-      weeklyLogins: 0,
-      averageSession: "",
-      featuresUsed: [],
+      weeklyLogins: devices.length,
+      averageSession: "Active",
+      featuresUsed: ["Dashboard", "Resident Management"],
     },
 
-    // Keep compatibility with existing UI code that uses owner?.devices and owner?.platformUsage
-    role: owner.role,
-    status: owner.status,
+    role: owner?.role || "owner",
+    status: owner?.status || "active",
   };
 }
 

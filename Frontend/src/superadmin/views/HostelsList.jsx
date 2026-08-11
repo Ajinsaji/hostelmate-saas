@@ -159,20 +159,33 @@ export const HostelsList = React.memo(() => {
       {/* Toolbar Controls */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 z-10 relative">
         <div className="flex flex-col sm:flex-row gap-4 flex-1">
-          <SearchBar placeholder="Search name, owner, city..." onChange={(v) => setSearch(v)} />
+          <SearchBar placeholder="Search name, owner, phone, city, pincode..." value={search} onChange={(v) => setSearch(v)} />
           <FilterBar 
             filters={[
               { 
                 key: "plan", 
-                label: "Plan", 
-                options: [{ label: "Basic", value: "Basic" }, { label: "Pro", value: "Pro" }, { label: "Trial", value: "Trial" }] 
+                label: "All Plans", 
+                options: [
+                  { label: "All Plans", value: "" },
+                  { label: "Basic", value: "Basic" },
+                  { label: "Pro", value: "Pro" },
+                  { label: "Trial", value: "Trial" }
+                ] 
               },
               { 
                 key: "status", 
-                label: "Status", 
-                options: [{ label: "Active", value: "active" }, { label: "Pending", value: "pending" }, { label: "Suspended", value: "suspended" }] 
+                label: "All Statuses", 
+                options: [
+                  { label: "All Statuses", value: "" },
+                  { label: "Active", value: "active" },
+                  { label: "Trial", value: "trial" },
+                  { label: "Suspended", value: "suspended" },
+                  { label: "Expired", value: "expired" },
+                  { label: "Pending", value: "pending" }
+                ] 
               }
             ]} 
+            selectedValues={filters}
             onFilterChange={(key, val) => {
               setFilters((prev) => ({ ...prev, [key]: val }));
             }}
@@ -230,8 +243,16 @@ export const HostelsList = React.memo(() => {
         {loading ? (
           <div className="p-12 text-center text-slate-400">Loading hostels directory...</div>
         ) : filteredHostels.length === 0 ? (
-          <div className="p-12 text-center text-slate-400 border border-white/5 bg-white/[0.02] rounded-2xl">
-            No hostels found matching your criteria.
+          <div className="p-12 text-center text-slate-400 border border-white/5 bg-white/[0.02] rounded-2xl flex flex-col items-center gap-3">
+            <p>No hostels found matching your criteria.</p>
+            {(search || filters.plan || filters.status) && (
+              <button 
+                onClick={() => { setSearch(""); setFilters({ status: "", plan: "" }); }}
+                className="px-4 py-2 text-xs font-bold text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 rounded-xl transition cursor-pointer"
+              >
+                Clear Search & Filters
+              </button>
+            )}
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
@@ -267,8 +288,17 @@ export const HostelsList = React.memo(() => {
                     
                     <div className="flex items-center gap-4 mb-4">
                       {visibleColumns.logo && (
-                        <div className="w-14 h-14 rounded-xl flex items-center justify-center font-bold text-xl border border-white/10" style={{ background: COLORS.surfaceLight, color: COLORS.primaryLight }}>
-                          {row.logo || (row.name ? row.name.charAt(0).toUpperCase() : 'H')}
+                        <div className="w-14 h-14 rounded-xl flex items-center justify-center font-bold text-xl border border-white/10 overflow-hidden shrink-0" style={{ background: COLORS.surfaceLight, color: COLORS.primaryLight }}>
+                          {row.ownerPhoto ? (
+                            <img 
+                              src={row.ownerPhoto} 
+                              alt={row.name} 
+                              className="w-full h-full object-cover" 
+                              onError={(e) => { e.target.onerror = null; e.target.style.display = 'none'; }} 
+                            />
+                          ) : (
+                            row.name ? row.name.charAt(0).toUpperCase() : 'H'
+                          )}
                         </div>
                       )}
                       <div className="pr-8">
@@ -279,7 +309,7 @@ export const HostelsList = React.memo(() => {
                           </>
                         )}
                         {visibleColumns.owner && (
-                          <p className="text-[10px] text-slate-300 mt-1 font-medium">{row.owner}</p>
+                          <p className="text-[10px] text-slate-300 mt-1 font-medium">Owner: {row.owner || "Not provided"}</p>
                         )}
                       </div>
                     </div>
