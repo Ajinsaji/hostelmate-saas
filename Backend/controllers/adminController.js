@@ -1499,6 +1499,9 @@ module.exports = {
   getDashboardRevenue: getDashboardRevenueHandler,
   getDashboardMonitoring: getDashboardMonitoringHandler,
 
+  // Admin subscriptions listing
+  getAdminSubscriptions,
+
   // 60-Day Trash Management
   getTrashHostels,
   getTrashHostelById,
