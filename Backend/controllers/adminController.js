@@ -196,9 +196,18 @@ const finalizeHostelActivation = async (req, res) => {
       return res.status(404).json({ success: false, message: "Hostel not found" });
     }
 
-    // Generate temp password and hash it
-    const tempPassword = `HM${Math.floor(1000 + Math.random() * 9000)}@`;
+    // Avoid accidental double-activation (idempotency best-effort)
+    if (hostel.pendingActivation === false) {
+      return res.status(400).json({ success: false, message: "Hostel already activated" });
+    }
 
+    const existingOwner = await Owner.findOne({ hostelId: hostel._id });
+    if (existingOwner) {
+      return res.status(400).json({ success: false, message: "Hostel already activated" });
+    }
+
+    // Generate temp password and hash it (NEVER store plaintext in DB)
+    const tempPassword = `HM${Math.floor(1000 + Math.random() * 9000)}@`;
     const bcryptjs = require("bcryptjs");
     const hashedPassword = await bcryptjs.hash(tempPassword, 10);
 
@@ -210,7 +219,6 @@ const finalizeHostelActivation = async (req, res) => {
     const ownerEmail = hostel.email || relatedRequest?.email || "";
 
     // Owner: create ONLY here (activation boundary)
-    console.log("Creating owner now with email:", ownerEmail);
     // Derive owner fields from draft hostel (created in approveHostel)
     const ownerPayload = {
       hostelId: hostel._id,
@@ -219,7 +227,6 @@ const finalizeHostelActivation = async (req, res) => {
       email: ownerEmail,
       username: hostel.phone,
       password: hashedPassword,
-      tempPassword,
       mustChangePassword: true,
       firstLogin: true,
       onboardingCompleted: false,
@@ -229,24 +236,13 @@ const finalizeHostelActivation = async (req, res) => {
       role: "owner",
       status: "active",
       profileImage: hostel.ownerPhoto || "",
+      credentialIssuedAt: new Date(),
+      credentialDeliveryStatus: "issued",
     };
 
-    // Avoid accidental double-activation (idempotency best-effort)
-    if (hostel.pendingActivation === false) {
-      return res.status(400).json({ success: false, message: "Hostel already activated" });
-    }
-
-    const existingOwner = await Owner.findOne({ hostelId: hostel._id });
-    if (existingOwner) {
-      return res.status(400).json({ success: false, message: "Hostel already activated" });
-    }
-
-
     const createdOwner = await Owner.create(ownerPayload);
-    console.log("Owner created:", createdOwner?.username || createdOwner?._id);
 
     // Subscription creation ONLY here (activation boundary)
-    // Map frontend labels to schema enum Basic/Pro
     const normalizedPlanType = planType === "Pro" || planType === "Monthly" || planType === "Yearly" ? "Pro" : "Basic";
 
     const subscriptionDoc = await Subscription.create({
@@ -282,29 +278,16 @@ const finalizeHostelActivation = async (req, res) => {
       if (!relatedRequest.timeline) relatedRequest.timeline = [];
       relatedRequest.timeline.push({ action: "Activated & Credentials Generated", by: "SuperAdmin" });
       await relatedRequest.save();
-      console.log("Hostel request activated:", relatedRequest._id);
     }
 
+    // Construct canonical Owner Login URL dynamically
+    const frontendBase = process.env.FRONTEND_URL || process.env.VITE_APP_URL || process.env.PUBLIC_URL || (req.headers && req.headers.origin ? req.headers.origin : "https://hostelmate-saas.vercel.app");
+    const loginUrl = `${String(frontendBase).replace(/\/$/, "")}/owner/login`;
 
-    // STEP 2: WhatsApp onboarding - provider-ready placeholder (must happen AFTER successful activation)
+    // Attempt WhatsApp onboarding delivery (non-blocking)
     try {
       const { sendOwnerOnboarding } = require("../utils/sendOwnerOnboarding");
-
-      const loginUrl = process.env.PUBLIC_URL || process.env.LOGIN_URL || "https://hostelmate-saas.vercel.app/login";
-      const apiVersion = process.env.WHATSAPP_API_VERSION || "v19.0";
-
-      console.log("STARTING WHATSAPP ONBOARDING");
-      console.log("owner phone:", hostel.phone);
-      console.log("normalized phone should be:", hostel.phone && hostel.phone.replace(/^0+/, "")?.length === 10 ? `91${hostel.phone.replace(/^0+/, "")}` : "unknown");
-      console.log("owner name:", hostel.ownerName);
-      console.log("hostel name:", hostel.hostelName);
-      console.log("WHATSAPP config present:", {
-        hasToken: !!process.env.WHATSAPP_TOKEN,
-        phoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID || "missing",
-        apiVersion,
-      });
-
-      await sendOwnerOnboarding({
+      const deliveryResult = await sendOwnerOnboarding({
         ownerName: hostel.ownerName,
         hostelName: hostel.hostelName,
         phone: hostel.phone,
@@ -312,13 +295,21 @@ const finalizeHostelActivation = async (req, res) => {
         tempPassword,
         planType: hostel.planType,
         expiryDate: hostel.subscriptionEndDate,
-        qrUrl: hostel.qrCodeUrl || hostel.qrCodeUrl,
+        qrUrl: hostel.qrCodeUrl,
         loginUrl,
       });
 
-      console.log("WHATSAPP SENT SUCCESS");
+      if (deliveryResult && deliveryResult.skipped) {
+        createdOwner.credentialDeliveryStatus = "unconfigured";
+        await createdOwner.save();
+      } else if (deliveryResult && deliveryResult.success) {
+        createdOwner.credentialDeliveryStatus = "sent";
+        await createdOwner.save();
+      }
     } catch (e) {
-      console.error("WHATSAPP SEND FAILED", e.response?.data || e.message);
+      console.error("WhatsApp delivery error during activation:", e?.message || e);
+      createdOwner.credentialDeliveryStatus = "failed";
+      await createdOwner.save();
     }
 
     return res.status(200).json({
@@ -328,9 +319,11 @@ const finalizeHostelActivation = async (req, res) => {
         username: hostel.phone,
         tempPassword,
       },
+      loginUrl,
+      credentialStatus: createdOwner.credentialDeliveryStatus,
     });
   } catch (error) {
-    console.error("finalizeHostelActivation error:", error);
+    console.error("finalizeHostelActivation error:", error?.message || error);
     return res.status(500).json({ success: false, message: "Failed to finalize activation", error: error?.message || String(error) });
   }
 };
@@ -535,92 +528,132 @@ const getAllHostels = async (req, res) => {
 };
 
 // ==========================
-// RESEND WHATSAPP (MOCK)
+// SEND CREDENTIALS & RESEND WHATSAPP
+// TRUTHFUL CREDENTIAL DELIVERY (NO FAKE SUCCESS)
 // ==========================
-const resendWhatsApp = async (req, res) => {
+const sendCredentials = async (req, res) => {
   try {
-    const { ownerId } = req.params;
+    const ownerId = req.params.ownerId || req.params.id;
 
     if (!ownerId) {
       return res.status(400).json({
         success: false,
-        message: "Owner ID is required",
+        message: "Owner ID or Hostel ID is required",
       });
     }
 
-    const owner = await Owner.findById(ownerId).populate("hostelId");
+    let owner = await Owner.findById(ownerId).populate("hostelId");
+    if (!owner && mongoose.Types.ObjectId.isValid(ownerId)) {
+      owner = await Owner.findOne({ hostelId: ownerId }).populate("hostelId");
+    }
+
     if (!owner) return res.status(404).json({ success: false, message: "Owner not found" });
 
     const hostel = owner.hostelId;
-    if (!hostel) return res.status(404).json({ success: false, message: "Hostel not found" });
 
-    // Safety: tempPassword is cleared after onboarding/password change.
-    // If missing/null/empty, do NOT send resend credentials (no Temp@123 fallback).
-    if (!owner.tempPassword || !String(owner.tempPassword).trim()) {
-      return res.status(400).json({
+    // Check if delivery infrastructure (Meta Cloud WhatsApp API) is configured
+    const hasToken = !!process.env.WHATSAPP_TOKEN;
+    const hasPhoneId = !!process.env.WHATSAPP_PHONE_NUMBER_ID;
+
+    if (!hasToken || !hasPhoneId) {
+      owner.credentialDeliveryStatus = "unconfigured";
+      await owner.save();
+      return res.status(200).json({
         success: false,
-        message:
-          "Owner has already configured a custom password. Use Reset Temporary Password to generate new credentials.",
+        unconfigured: true,
+        message: "Credential delivery service is not configured.",
       });
     }
 
-    const { generateResendWhatsAppURL } = require('../utils/messageService');
-    const whatsappURL = generateResendWhatsAppURL(
-      hostel.hostelName,
-      owner.username || owner.phone,
-      owner.tempPassword,
-      hostel.publicUrl,
-      owner.phone,
-      owner.ownerName
-    );
+    // Call real WhatsApp delivery
+    const frontendBase = process.env.FRONTEND_URL || process.env.VITE_APP_URL || process.env.PUBLIC_URL || (req.headers && req.headers.origin ? req.headers.origin : "https://hostelmate-saas.vercel.app");
+    const loginUrl = `${String(frontendBase).replace(/\/$/, "")}/owner/login`;
 
-    // Call the message service to log
-    const result = await sendApprovalMessages(
-      owner.phone,
-      owner.ownerName,
-      hostel.hostelName,
-      owner.username || owner.phone,
-      owner.tempPassword,
-      hostel.publicUrl
-    );
-
-    res.status(200).json({
-      success: true,
-      message: "WhatsApp link generated",
-      whatsappURL: whatsappURL,
-      phone: owner.phone
+    const { sendOwnerOnboarding } = require("../utils/sendOwnerOnboarding");
+    const result = await sendOwnerOnboarding({
+      ownerName: owner.ownerName,
+      hostelName: hostel ? hostel.hostelName : "",
+      phone: owner.phone,
+      username: owner.username || owner.phone,
+      tempPassword: "[Issued Credentials]",
+      planType: hostel ? hostel.planType : "Pro",
+      expiryDate: hostel ? hostel.subscriptionEndDate : null,
+      qrUrl: hostel ? hostel.qrCodeUrl : "",
+      loginUrl,
     });
 
+    if (result && result.skipped) {
+      owner.credentialDeliveryStatus = "unconfigured";
+      await owner.save();
+      return res.status(200).json({
+        success: false,
+        unconfigured: true,
+        message: "Credential delivery service is not configured.",
+      });
+    }
+
+    owner.credentialDeliveryStatus = "sent";
+    await owner.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Credentials sent successfully",
+      phone: owner.phone,
+    });
   } catch (error) {
-    console.error("ResendWhatsApp Error:", error);
-    res.status(500).json({ success: false, error: error.message });
+    console.error("sendCredentials error:", error?.message || error);
+    return res.status(500).json({
+      success: false,
+      message: "Unable to send credentials. Please try again.",
+      error: error?.message,
+    });
   }
 };
 
+const resendWhatsApp = sendCredentials;
+
 // ==========================
 // RESET OWNER TEMP PASSWORD
+// (GENERATES NEW TEMP PASSWORD, HASHES IT, RETURNS ONCE TO ADMIN)
 // ==========================
 const resetOwnerTempPassword = async (req, res) => {
   try {
-    const { ownerId } = req.params;
-    const owner = await Owner.findById(ownerId).populate("hostelId");
+    const ownerId = req.params.ownerId || req.params.id;
+    let owner = await Owner.findById(ownerId).populate("hostelId");
+    if (!owner && mongoose.Types.ObjectId.isValid(ownerId)) {
+      owner = await Owner.findOne({ hostelId: ownerId }).populate("hostelId");
+    }
     if (!owner) return res.status(404).json({ success: false, message: "Owner not found" });
 
     const newTempPassword = "Temp@" + Math.floor(1000 + Math.random() * 9000);
 
-    // Store bcrypt hash in `password` (temporary password remains plaintext in `tempPassword`).
-    // TODO(migration): remove plaintext login fallback after legacy owners are migrated.
     const bcryptjs = require("bcryptjs");
     const hashedPassword = await bcryptjs.hash(newTempPassword, 10);
 
     owner.password = hashedPassword;
-    owner.tempPassword = newTempPassword;
+    owner.mustChangePassword = true;
+    owner.firstLogin = true;
+    owner.passwordChanged = false;
+    owner.credentialIssuedAt = new Date();
+    owner.credentialDeliveryStatus = "issued";
     await owner.save();
 
+    const frontendBase = process.env.FRONTEND_URL || process.env.VITE_APP_URL || process.env.PUBLIC_URL || (req.headers && req.headers.origin ? req.headers.origin : "https://hostelmate-saas.vercel.app");
+    const loginUrl = `${String(frontendBase).replace(/\/$/, "")}/owner/login`;
 
-    res.status(200).json({ success: true, message: "Password reset successfully", tempPassword: newTempPassword });
+    return res.status(200).json({
+      success: true,
+      message: "Temporary password reset successfully",
+      credentials: {
+        username: owner.phone,
+        tempPassword: newTempPassword,
+      },
+      loginUrl,
+      credentialStatus: "issued",
+    });
   } catch (error) {
-    res.status(500).json({ success: false, message: "Failed to reset password", error: error?.message || String(error) });
+    console.error("resetOwnerTempPassword error:", error?.message || error);
+    return res.status(500).json({ success: false, message: "Failed to reset password", error: error?.message || String(error) });
   }
 };
 
@@ -682,6 +715,13 @@ const getTrashHostels = async (req, res) => {
         const daysElapsed = Math.floor(elapsedMs / (1000 * 60 * 60 * 24));
         const daysRemaining = Math.max(0, 60 - daysElapsed);
 
+        let deletedByName = "SuperAdmin";
+        if (h.deletedBy && mongoose.Types.ObjectId.isValid(h.deletedBy)) {
+          const Admin = require("../models/Admin");
+          const adminUser = await Admin.findById(h.deletedBy).select("fullName username role").lean();
+          if (adminUser) deletedByName = adminUser.fullName || adminUser.username || "SuperAdmin";
+        }
+
         // Fetch preserved owner & financial stats indicator
         const owner = await Owner.findOne({ hostelId: h._id }).select("ownerName phone email").lean();
         const paymentCount = await Payment.countDocuments({ hostelId: h._id });
@@ -694,7 +734,7 @@ const getTrashHostels = async (req, res) => {
           ownerPhone: owner?.phone || h.phone || "-",
           ownerEmail: owner?.email || h.email || "-",
           deletedAt: h.deletedAt,
-          deletedBy: h.deletedBy,
+          deletedBy: deletedByName,
           deleteReason: h.deleteReason || "Admin request",
           daysRemaining,
           retentionPeriodDays: 60,

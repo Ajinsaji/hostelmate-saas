@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { api } from "../../services/api";
+import { useAdminAutoRefresh } from "./useAdminAutoRefresh";
 
 export function useDashboardStats() {
   const [data, setData] = useState(null);
@@ -8,7 +9,6 @@ export function useDashboardStats() {
   const [empty, setEmpty] = useState(false);
 
   const fetchData = useCallback(async () => {
-    setLoading(true);
     setError(null);
     setEmpty(false);
 
@@ -23,7 +23,6 @@ export function useDashboardStats() {
       }
 
       // Backward-compatible mapping for DashboardOverview StatCard props.
-      // UI expects: { value, trend, direction } per KPI.
       const toKpi = (value, trend = "", direction = "neutral") => ({
         value: value ?? 0,
         trend,
@@ -38,7 +37,6 @@ export function useDashboardStats() {
         "direction" in obj;
 
       setData({
-        // KPIs consumed by DashboardOverview.jsx -> platformKpiCards -> <StatCard value={...} />
         activeHostels: isKpi(payload?.activeHostels)
           ? payload.activeHostels
           : toKpi(payload?.activeHostels),
@@ -62,17 +60,30 @@ export function useDashboardStats() {
           : toKpi(payload?.totalResidents),
 
         dailyActiveOwners: toKpi(0),
-
         platformHealthScore: toKpi(0),
 
-        // new exact API fields (optional for other pages)
+        // new exact API fields
         totalHostels: payload?.totalHostels ?? 0,
+        activeHostelsVal: payload?.activeHostels ?? 0,
         paidHostels: payload?.paidHostels ?? 0,
+        trialHostelsVal: payload?.trialHostels ?? 0,
+        deletedHostels: payload?.deletedHostels ?? 0,
+        pendingHostels: payload?.pendingHostels ?? 0,
+        newHostelsToday: payload?.newHostelsToday ?? 0,
+        newHostelsThisWeek: payload?.newHostelsThisWeek ?? 0,
+        totalOwnersVal: payload?.totalOwners ?? 0,
+        newOwnersToday: payload?.newOwnersToday ?? 0,
+        newOwnersThisWeek: payload?.newOwnersThisWeek ?? 0,
+        totalResidentsVal: payload?.totalResidents ?? 0,
+        newResidentsToday: payload?.newResidentsToday ?? 0,
+        newResidentsThisWeek: payload?.newResidentsThisWeek ?? 0,
         totalRooms: payload?.totalRooms ?? 0,
         occupiedRooms: payload?.occupiedRooms ?? 0,
         occupancyRate: payload?.occupancyRate ?? 0,
         monthlyRevenue: payload?.monthlyRevenue ?? 0,
+        todayRevenue: payload?.todayRevenue ?? 0,
         pendingPayments: payload?.pendingPayments ?? 0,
+        pendingApprovals: payload?.pendingApprovals ?? 0,
         expiredSubscriptions: payload?.expiredSubscriptions ?? 0,
         newSignupsThisMonth: payload?.newSignupsThisMonth ?? 0,
       });
@@ -93,6 +104,9 @@ export function useDashboardStats() {
       mounted = false;
     };
   }, [fetchData]);
+
+  // Automatic 30-second visibility-aware refetching
+  useAdminAutoRefresh(fetchData, 30000);
 
   return {
     data,

@@ -5,6 +5,7 @@ import toast from "react-hot-toast";
 
 import { api } from "../services/api";
 import { setOwnerAuth, setStoredOwner } from "../utils/authToken";
+import ForgotPasswordModal from "./ForgotPasswordModal";
 
 function LoginPage() {
   const navigate = useNavigate();
@@ -12,6 +13,7 @@ function LoginPage() {
   const [password, setPassword] = useState("");
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [forgotModalOpen, setForgotModalOpen] = useState(false);
 
   const [trackModalOpen, setTrackModalOpen] = useState(false);
   const [trackPhone, setTrackPhone] = useState("");
@@ -173,10 +175,19 @@ function LoginPage() {
         </div>
 
         {/* Password Field */}
-        <div className="mb-8">
-          <label className="block text-white text-sm font-medium mb-2">
-            Password
-          </label>
+        <div className="mb-6">
+          <div className="flex items-center justify-between mb-2">
+            <label className="block text-white text-sm font-medium">
+              Password
+            </label>
+            <button
+              type="button"
+              onClick={() => setForgotModalOpen(true)}
+              className="text-xs font-semibold text-[#16A34A] hover:underline transition-colors cursor-pointer"
+            >
+              Forgot Password?
+            </button>
+          </div>
           <div className="relative">
             <Lock size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-[#94A3B8]" />
             <input
@@ -328,6 +339,11 @@ function LoginPage() {
         </div>
       ) : null}
 
+      {/* Forgot Password Modal */}
+      <ForgotPasswordModal
+        isOpen={forgotModalOpen}
+        onClose={() => setForgotModalOpen(false)}
+      />
     </div>
   );
 }

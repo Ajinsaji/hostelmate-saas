@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { 
   Home, 
@@ -26,6 +26,24 @@ import { COLORS } from "../constants/theme";
 export const AdminSidebar = React.memo(() => {
   const navigate = useNavigate();
   const location = useLocation();
+  const [trashCount, setTrashCount] = useState(0);
+
+  useEffect(() => {
+    let mounted = true;
+    const fetchCount = async () => {
+      try {
+        const { api } = await import("../../services/api");
+        const res = await api.get("/api/admin/trash/hostels");
+        if (mounted && res.data?.success) {
+          setTrashCount(res.data.count ?? res.data.hostels?.length ?? 0);
+        }
+      } catch {
+        // Silently handle fallback
+      }
+    };
+    fetchCount();
+    return () => { mounted = false; };
+  }, [location.pathname]);
 
   const handleLogout = () => {
     localStorage.removeItem("adminToken");
@@ -89,7 +107,12 @@ export const AdminSidebar = React.memo(() => {
                 className="shrink-0 transition-transform duration-200 group-hover:scale-105"
                 style={{ color: isActive ? COLORS.textMain : COLORS.textMuted }} 
               />
-              <span>{item.label}</span>
+              <span className="flex-1 text-left">{item.label}</span>
+              {item.href === "/admin/trash" && (
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-rose-500/20 text-rose-400 border border-rose-500/30">
+                  {trashCount}
+                </span>
+              )}
             </button>
           );
         })}

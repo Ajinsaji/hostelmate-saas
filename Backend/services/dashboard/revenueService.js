@@ -238,8 +238,22 @@ async function getRevenueMetrics() {
     direction: growthPct >= 0 ? "up" : "down",
   };
 
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const todayRevenueAgg = await Payment.aggregate([
+    {
+      $match: {
+        status: { $in: ["success", "Paid", "paid"] },
+        createdAt: { $gte: startOfToday },
+      },
+    },
+    {
+      $group: { _id: null, todayTotal: { $sum: "$paidAmount" } },
+    },
+  ]);
+  const realTodayRevenue = safeNumber(todayRevenueAgg?.[0]?.todayTotal, 0);
+
   const todayRevenue = {
-    value: formatINR(safeNumber(monthlyRevenue / 30, 0)),
+    value: formatINR(realTodayRevenue),
     trend: "",
     direction: "neutral",
   };

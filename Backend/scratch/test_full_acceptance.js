@@ -1,10 +1,13 @@
-require('dotenv').config();
+const path = require("path");
+require("dotenv").config({ path: path.join(__dirname, "../.env") });
+try { require("../server"); } catch (e) {}
 const jwt = require('jsonwebtoken');
 const mongoose = require('mongoose');
 const http = require('http');
 
 async function runFullAcceptanceTest() {
-  await mongoose.connect(process.env.MONGO_URI);
+  const MONGO_URI = process.env.MONGO_URI || "mongodb://127.0.0.1:27017/hostelmate";
+  await mongoose.connect(MONGO_URI);
   const Admin = require('../models/Admin');
   const HostelRequest = require('../models/HostelRequest');
   const Hostel = require('../models/Hostel');

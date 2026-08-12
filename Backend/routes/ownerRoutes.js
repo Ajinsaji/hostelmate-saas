@@ -19,13 +19,17 @@ const {
   saveOnboardingRules,
   completeOnboardingRooms,
   completeOnboarding,
+  forgotPassword,
+  resetPasswordWithToken,
 } = require("../controllers/ownerController");
 
 const ownerAuth = require("../middleware/ownerAuth");
 const { uploadSingle } = require("../middleware/cloudinaryUpload");
 
-// Owner login
+// Owner login & self-service password recovery
 router.post("/login", loginOwner);
+router.post("/forgot-password", forgotPassword);
+router.post("/reset-password", resetPasswordWithToken);
 
 // Owner Dashboard
 router.get("/dashboard", ownerAuth, getDashboardStats);

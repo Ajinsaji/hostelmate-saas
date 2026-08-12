@@ -77,10 +77,10 @@ export const CustomerSuccess = React.memo(() => {
       ) : (
         <div className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <MetricCard title="Conversion Rate" value={`${defaultMetrics.conversionRate}%`} icon={TrendingUp} trend={+5.2} colorClass="bg-indigo-500/10 text-indigo-400" />
-            <MetricCard title="Retention Rate" value={`${defaultMetrics.retentionRate}%`} icon={HeartPulse} trend={+2.1} colorClass="bg-emerald-500/10 text-emerald-400" />
-            <MetricCard title="Churn Rate" value={`${defaultMetrics.churnRate}%`} icon={Activity} trend={-1.5} colorClass="bg-red-500/10 text-red-400" />
-            <MetricCard title="Active Hostels" value={defaultMetrics.activeHostels} icon={Users} trend={+12} colorClass="bg-blue-500/10 text-blue-400" />
+            <MetricCard title="Conversion Rate" value={`${defaultMetrics.conversionRate}%`} icon={TrendingUp} trend={data?.conversionTrend} colorClass="bg-indigo-500/10 text-indigo-400" />
+            <MetricCard title="Retention Rate" value={`${defaultMetrics.retentionRate}%`} icon={HeartPulse} trend={data?.retentionTrend} colorClass="bg-emerald-500/10 text-emerald-400" />
+            <MetricCard title="Churn Rate" value={`${defaultMetrics.churnRate}%`} icon={Activity} trend={data?.churnTrend} colorClass="bg-red-500/10 text-red-400" />
+            <MetricCard title="Active Hostels" value={defaultMetrics.activeHostels} icon={Users} trend={data?.activeHostelsTrend} colorClass="bg-blue-500/10 text-blue-400" />
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

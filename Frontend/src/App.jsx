@@ -45,6 +45,7 @@ import SubscriptionExpired from "./pages/SubscriptionExpired";
 import SubscriptionBilling from "./owner/SubscriptionBilling";
 import OwnerBillingDashboard from "./owner/OwnerBillingDashboard";
 import RequestStatus from "./pages/RequestStatus";
+import ResetPasswordPage from "./pages/ResetPasswordPage";
 
 
 import StaffManagement from "./owner/StaffManagement";
@@ -285,10 +286,11 @@ function App() {
           <>
             <Route path="/" element={<LandingPage />} />
             <Route path="/login" element={<LoginPage />} />
-          <Route path="/register" element={<RegisterPage />} />
-            <Route path="/login" element={<LoginPage />} />
-          <Route path="/request-status" element={<RequestStatus />} />
-          <Route path="/back" element={<Navigate to="/login" replace />} />
+            <Route path="/owner/login" element={<LoginPage />} />
+            <Route path="/owner/reset-password" element={<ResetPasswordPage />} />
+            <Route path="/register" element={<RegisterPage />} />
+            <Route path="/request-status" element={<RequestStatus />} />
+            <Route path="/back" element={<Navigate to="/owner/login" replace />} />
           </>
         )}
 

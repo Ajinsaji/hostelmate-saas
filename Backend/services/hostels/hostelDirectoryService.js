@@ -88,15 +88,33 @@ async function getHostelDirectory({
   if (requestedPlan && requestedPlan.toLowerCase() !== "all" && requestedPlan.toLowerCase() !== "all plans") {
     const normPlan = normalizePlanType(requestedPlan);
     if (normPlan === "Trial") {
-      queryConditions.push({
+      const matchingSubscriptions = await Subscription.find({
         $or: [
           { planType: { $regex: "^trial$", $options: "i" } },
           { isTrial: true },
           { subscriptionStatus: "trial" }
         ]
+      }).select("hostelId").lean();
+      const matchingHostelIds = matchingSubscriptions.map(s => s.hostelId).filter(Boolean);
+
+      queryConditions.push({
+        $or: [
+          { planType: { $regex: "^trial$", $options: "i" } },
+          { isTrial: true },
+          { subscriptionStatus: "trial" },
+          { _id: { $in: matchingHostelIds } }
+        ]
       });
     } else if (normPlan) {
-      queryConditions.push({ planType: { $regex: `^${normPlan}$`, $options: "i" } });
+      const matchingSubscriptions = await Subscription.find({ planType: { $regex: `^${normPlan}$`, $options: "i" } }).select("hostelId").lean();
+      const matchingHostelIds = matchingSubscriptions.map(s => s.hostelId).filter(Boolean);
+
+      queryConditions.push({
+        $or: [
+          { planType: { $regex: `^${normPlan}$`, $options: "i" } },
+          { _id: { $in: matchingHostelIds } }
+        ]
+      });
     }
   }
 
@@ -127,6 +145,8 @@ async function getHostelDirectory({
       { district: searchRegex },
       { state: searchRegex },
       { pincode: searchRegex },
+      { address: searchRegex },
+      { hostelAddress: searchRegex },
       { uniqueCode: searchRegex },
       { slug: searchRegex }
     ];

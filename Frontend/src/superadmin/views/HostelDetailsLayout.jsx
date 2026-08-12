@@ -166,7 +166,7 @@ export const HostelDetailsLayout = React.memo(() => {
               onClick={handleImpersonation}
             />
             <QuickActionButton 
-              label="Delete Hostel" 
+              label="Remove Hostel" 
               icon={<Trash2 size={14} />} 
               variant="danger" 
               onClick={() => {
@@ -202,13 +202,13 @@ export const HostelDetailsLayout = React.memo(() => {
                   <AlertTriangle size={20} />
                 </div>
                 <div>
-                  <h3 className="text-base font-extrabold text-white">Delete this hostel?</h3>
-                  <p className="text-xs text-rose-400 mt-0.5">This action cannot be undone.</p>
+                  <h3 className="text-base font-extrabold text-white">Remove Hostel</h3>
+                  <p className="text-xs text-amber-400 mt-0.5">Move to 60-day Trash</p>
                 </div>
               </div>
               <button 
                 onClick={() => !isDeleting && setDeleteModalOpen(false)}
-                className="text-slate-400 hover:text-white p-1 rounded-lg transition"
+                className="text-slate-400 hover:text-white p-1 rounded-lg transition cursor-pointer"
                 disabled={isDeleting}
               >
                 <X size={18} />
@@ -216,7 +216,7 @@ export const HostelDetailsLayout = React.memo(() => {
             </div>
 
             <p className="text-xs text-slate-300 leading-relaxed">
-              This action will move <strong className="text-white font-bold">{hostelName}</strong> to Trash for 60 days. All financial, payment, and subscription records will be safely preserved.
+              This hostel will be moved to Trash and retained for 60 days. Payment and subscription history will remain preserved.
             </p>
 
             <div className="p-3.5 bg-black/40 border border-white/5 rounded-xl space-y-1 text-xs">
@@ -240,7 +240,7 @@ export const HostelDetailsLayout = React.memo(() => {
 
             <div className="space-y-2">
               <label className="text-xs font-bold text-slate-300 block">
-                Type <span className="text-rose-400 select-all font-extrabold">{hostelName}</span> to confirm deletion:
+                Type <span className="text-rose-400 select-all font-extrabold">{hostelName}</span> to confirm removal:
               </label>
               <input 
                 type="text" 
@@ -270,12 +270,12 @@ export const HostelDetailsLayout = React.memo(() => {
                 {isDeleting ? (
                   <>
                     <Loader2 size={14} className="animate-spin" />
-                    Deleting...
+                    Moving to Trash...
                   </>
                 ) : (
                   <>
                     <Trash2 size={14} />
-                    Delete Hostel
+                    Move to Trash
                   </>
                 )}
               </button>

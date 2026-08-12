@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import PageContainer from "../layouts/PageContainer";
 import SectionHeader from "../layouts/SectionHeader";
@@ -10,21 +10,35 @@ import QuickActionButton from "../components/widgets/QuickActionButton";
 import Drawer from "../components/drawers/Drawer";
 import useHostels from "../hooks/useHostels";
 import { COLORS } from "../constants/theme";
-import { Download, Eye, ChevronDown, Link, QrCode } from "lucide-react";
+import { Download, Eye, ChevronDown, Link, QrCode, Trash2, AlertTriangle, X, Loader2 } from "lucide-react";
 import toast from "react-hot-toast";
 import { api } from "../../services/api";
-
 
 export const HostelsList = React.memo(() => {
   const navigate = useNavigate();
   // State management
-  const [search, setSearch] = useState("");
+  const [rawSearch, setRawSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [selectedIds, setSelectedIds] = useState([]);
   const [sortField, setSortField] = useState("name");
   const [sortOrder, setSortOrder] = useState("asc");
   const [page, setPage] = useState(1);
 
-  // Advanced filters (implemented incrementally)
+  // Soft delete modal state
+  const [removeModalHostel, setRemoveModalHostel] = useState(null);
+  const [confirmNameInput, setConfirmNameInput] = useState("");
+  const [isRemoving, setIsRemoving] = useState(false);
+
+  // Search input debouncing
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearch(rawSearch);
+      setPage(1);
+    }, 300);
+    return () => clearTimeout(handler);
+  }, [rawSearch]);
+
+  // Advanced filters
   const [filters, setFilters] = useState({
     status: "",
     plan: "",
@@ -39,10 +53,10 @@ export const HostelsList = React.memo(() => {
     lastLogin: "",
   });
 
-  const { data: hostels, loading, pagination } = useHostels({
+  const { data: hostels, loading, pagination, refetch } = useHostels({
     page,
     pageSize: 25,
-    search,
+    search: debouncedSearch,
     sortField,
     sortOrder,
     filters
@@ -67,11 +81,6 @@ export const HostelsList = React.memo(() => {
   const [showColDropdown, setShowColDropdown] = useState(false);
   const [bulkDrawerOpen, setBulkDrawerOpen] = useState(false);
 
-
-
-  // Selection helpers
-
-
   const handleSelectRow = (e, id) => {
     e.stopPropagation();
     if (e.target.checked) {
@@ -81,9 +90,34 @@ export const HostelsList = React.memo(() => {
     }
   };
 
-  // Advanced Filtering & Search is now handled by the backend
   const filteredHostels = hostels || [];
 
+  const handleRemoveHostel = async () => {
+    if (!removeModalHostel) return;
+    const expectedName = (removeModalHostel.name || removeModalHostel.hostelName || "").trim();
+    if (confirmNameInput.trim() !== expectedName) {
+      return toast.error("Hostel name does not match exact confirmation string");
+    }
+
+    setIsRemoving(true);
+    const toastId = toast.loading(`Moving ${expectedName} to 60-day Trash...`);
+
+    try {
+      const res = await api.delete(`/api/admin/hostels/${removeModalHostel.id || removeModalHostel._id}`);
+      if (res.data?.success) {
+        toast.success(res.data.message || "Hostel moved to Trash. Retained for 60 days.", { id: toastId });
+        setRemoveModalHostel(null);
+        setConfirmNameInput("");
+        refetch();
+      } else {
+        toast.error(res.data?.message || "Failed to remove hostel", { id: toastId });
+      }
+    } catch (err) {
+      toast.error(err?.response?.data?.message || "Failed to remove hostel", { id: toastId });
+    } finally {
+      setIsRemoving(false);
+    }
+  };
 
   const handleBulkAction = async (action) => {
     if (selectedIds.length === 0) {
@@ -100,13 +134,13 @@ export const HostelsList = React.memo(() => {
         setPage(1);
         setSelectedIds([]);
         setBulkDrawerOpen(false);
+        refetch();
       }
     } catch (error) {
       toast.error(error?.response?.data?.message || "Failed to execute bulk action", { id: toastId });
     }
   };
 
-  // Export handlers
   const handleExport = async (type) => {
     const toastId = toast.loading(`Generating ${type.toUpperCase()} export...`);
     try {
@@ -125,24 +159,6 @@ export const HostelsList = React.memo(() => {
     }
   };
 
-  const tableHeaders = useMemo(() => {
-    const cols = [];
-    if (visibleColumns.logo) cols.push({ key: "logo", label: "Logo", align: "center" });
-    if (visibleColumns.name) cols.push({ key: "name", label: "Name & Location" });
-    if (visibleColumns.owner) cols.push({ key: "owner", label: "Owner" });
-    if (visibleColumns.plan) cols.push({ key: "plan", label: "Subscription" });
-    if (visibleColumns.status) cols.push({ key: "status", label: "Status" });
-    if (visibleColumns.residents) cols.push({ key: "residents", label: "Residents", align: "center" });
-    if (visibleColumns.occupancy) cols.push({ key: "occupancy", label: "Occupancy", align: "center" });
-    if (visibleColumns.revenue) cols.push({ key: "revenue", label: "Revenue", align: "right" });
-    if (visibleColumns.storage) cols.push({ key: "storage", label: "Storage", align: "center" });
-    if (visibleColumns.healthScore) cols.push({ key: "healthScore", label: "Health Score", align: "center" });
-    if (visibleColumns.lastLogin) cols.push({ key: "lastLogin", label: "Last Login" });
-    if (visibleColumns.createdDate) cols.push({ key: "createdDate", label: "Created Date" });
-    if (visibleColumns.actions) cols.push({ key: "actions", label: "Actions", align: "center" });
-    return cols;
-  }, [visibleColumns]);
-
   return (
     <PageContainer>
       <SectionHeader 
@@ -159,7 +175,7 @@ export const HostelsList = React.memo(() => {
       {/* Toolbar Controls */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 z-10 relative">
         <div className="flex flex-col sm:flex-row gap-4 flex-1">
-          <SearchBar placeholder="Search name, owner, phone, city, pincode..." value={search} onChange={(v) => setSearch(v)} />
+          <SearchBar placeholder="Search name, owner, phone, city, address, pincode..." value={rawSearch} onChange={(v) => setRawSearch(v)} />
           <FilterBar 
             filters={[
               { 
@@ -187,9 +203,9 @@ export const HostelsList = React.memo(() => {
             ]} 
             selectedValues={filters}
             onFilterChange={(key, val) => {
+              setPage(1);
               setFilters((prev) => ({ ...prev, [key]: val }));
             }}
-
           />
         </div>
 
@@ -197,7 +213,7 @@ export const HostelsList = React.memo(() => {
         <div className="relative">
           <button 
             onClick={() => setShowColDropdown(!showColDropdown)}
-            className="px-4 py-2.5 rounded-xl text-xs font-bold text-slate-300 border border-white/10 hover:text-white transition flex items-center gap-2 select-none"
+            className="px-4 py-2.5 rounded-xl text-xs font-bold text-slate-300 border border-white/10 hover:text-white transition flex items-center gap-2 select-none cursor-pointer"
             style={{ background: COLORS.surfaceLight }}
           >
             Columns
@@ -231,7 +247,7 @@ export const HostelsList = React.memo(() => {
           <span className="text-xs font-bold text-emerald-400">{selectedIds.length} Hostels Selected</span>
           <button 
             onClick={() => setBulkDrawerOpen(true)}
-            className="px-3.5 py-1.5 rounded-lg text-[10px] font-bold text-white uppercase tracking-wider bg-emerald-600 hover:bg-emerald-500 transition"
+            className="px-3.5 py-1.5 rounded-lg text-[10px] font-bold text-white uppercase tracking-wider bg-emerald-600 hover:bg-emerald-500 transition cursor-pointer"
           >
             Bulk Actions
           </button>
@@ -241,13 +257,16 @@ export const HostelsList = React.memo(() => {
       {/* Grid Cards */}
       <ContentContainer>
         {loading ? (
-          <div className="p-12 text-center text-slate-400">Loading hostels directory...</div>
+          <div className="p-12 text-center text-slate-400 flex items-center justify-center gap-2">
+            <Loader2 size={18} className="animate-spin text-emerald-400" />
+            <span>Loading hostels directory...</span>
+          </div>
         ) : filteredHostels.length === 0 ? (
           <div className="p-12 text-center text-slate-400 border border-white/5 bg-white/[0.02] rounded-2xl flex flex-col items-center gap-3">
-            <p>No hostels found matching your criteria.</p>
-            {(search || filters.plan || filters.status) && (
+            <p className="text-sm font-semibold">No hostels found matching your criteria.</p>
+            {(rawSearch || filters.plan || filters.status) && (
               <button 
-                onClick={() => { setSearch(""); setFilters({ status: "", plan: "" }); }}
+                onClick={() => { setRawSearch(""); setFilters({ status: "", plan: "" }); setPage(1); }}
                 className="px-4 py-2 text-xs font-bold text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 rounded-xl transition cursor-pointer"
               >
                 Clear Search & Filters
@@ -317,11 +336,6 @@ export const HostelsList = React.memo(() => {
                     <div className="flex flex-wrap gap-2 mb-4">
                       {visibleColumns.status && <StatusBadge status={row.status} />}
                       {visibleColumns.plan && <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20">{row.plan}</span>}
-                      {visibleColumns.healthScore && (
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded border" style={{ color: row.healthScore > 80 ? COLORS.success : COLORS.warning, borderColor: row.healthScore > 80 ? "rgba(16, 185, 129, 0.2)" : "rgba(245, 158, 11, 0.2)" }}>
-                          Health: {row.healthScore}/100
-                        </span>
-                      )}
                     </div>
 
                     <div className="grid grid-cols-2 gap-2 mb-4">
@@ -355,14 +369,22 @@ export const HostelsList = React.memo(() => {
                   {/* Actions Footer */}
                   {visibleColumns.actions && (
                     <div className="p-3 bg-black/20 border-t border-white/5 flex gap-2" onClick={(e) => e.stopPropagation()}>
-                      <button onClick={() => navigate(`/admin/hostels/${row.id}`)} className="flex-1 py-1.5 rounded-lg flex items-center justify-center gap-1.5 text-[10px] font-bold text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 transition">
+                      <button onClick={() => navigate(`/admin/hostels/${row.id}`)} className="flex-1 py-1.5 rounded-lg flex items-center justify-center gap-1.5 text-[10px] font-bold text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 transition cursor-pointer">
                         <Eye size={12} /> View Details
                       </button>
-                      <button onClick={(e) => { e.stopPropagation(); toast.success('Public link copied to clipboard!'); }} className="flex-1 py-1.5 rounded-lg flex items-center justify-center gap-1.5 text-[10px] font-bold text-blue-400 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/20 transition">
+                      <button onClick={(e) => { e.stopPropagation(); toast.success('Public link copied to clipboard!'); }} className="flex-1 py-1.5 rounded-lg flex items-center justify-center gap-1.5 text-[10px] font-bold text-blue-400 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/20 transition cursor-pointer">
                         <Link size={12} /> Share Link
                       </button>
-                      <button onClick={(e) => { e.stopPropagation(); toast.success('QR Code sent to your email.'); }} className="py-1.5 px-3 rounded-lg flex items-center justify-center text-[10px] font-bold text-purple-400 bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/20 transition">
-                        <QrCode size={12} />
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setConfirmNameInput("");
+                          setRemoveModalHostel(row);
+                        }} 
+                        className="py-1.5 px-3 rounded-lg flex items-center justify-center gap-1 text-[10px] font-bold text-rose-400 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 transition cursor-pointer"
+                        title="Remove Hostel to Trash"
+                      >
+                        <Trash2 size={12} /> Remove
                       </button>
                     </div>
                   )}
@@ -382,14 +404,14 @@ export const HostelsList = React.memo(() => {
               <button 
                 onClick={() => setPage(p => Math.max(1, p - 1))}
                 disabled={pagination.page <= 1}
-                className="px-3 py-1.5 rounded-lg border border-white/5 text-xs font-semibold text-slate-300 bg-slate-900/50 hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-3 py-1.5 rounded-lg border border-white/5 text-xs font-semibold text-slate-300 bg-slate-900/50 hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
               >
                 Previous
               </button>
               <button 
                 onClick={() => setPage(p => p + 1)}
                 disabled={pagination.page >= (pagination.totalPages || Math.ceil(pagination.total / pagination.pageSize))}
-                className="px-3 py-1.5 rounded-lg border border-white/5 text-xs font-semibold text-slate-300 bg-slate-900/50 hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-3 py-1.5 rounded-lg border border-white/5 text-xs font-semibold text-slate-300 bg-slate-900/50 hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
               >
                 Next
               </button>
@@ -397,6 +419,94 @@ export const HostelsList = React.memo(() => {
           </div>
         )}
       </ContentContainer>
+
+      {/* Remove Hostel Modal */}
+      {removeModalHostel && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
+          <div className="relative w-full max-w-lg bg-slate-900 border border-rose-500/30 rounded-2xl p-6 shadow-2xl space-y-5">
+            <div className="flex items-start justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 flex items-center justify-center shrink-0">
+                  <AlertTriangle size={20} />
+                </div>
+                <div>
+                  <h3 className="text-base font-extrabold text-white">Remove Hostel</h3>
+                  <p className="text-xs text-amber-400 mt-0.5">Move to 60-day Trash</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => !isRemoving && setRemoveModalHostel(null)}
+                className="text-slate-400 hover:text-white p-1 rounded-lg transition cursor-pointer"
+                disabled={isRemoving}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-300 leading-relaxed">
+              This hostel will be moved to Trash and retained for 60 days. Payment and subscription history will remain preserved.
+            </p>
+
+            <div className="p-3.5 bg-black/40 border border-white/5 rounded-xl space-y-1 text-xs">
+              <div className="flex justify-between text-slate-400">
+                <span>Hostel Name:</span>
+                <span className="font-bold text-white">{removeModalHostel.name || removeModalHostel.hostelName}</span>
+              </div>
+              <div className="flex justify-between text-slate-400">
+                <span>Owner Name:</span>
+                <span className="font-bold text-white">{removeModalHostel.owner || "Not provided"}</span>
+              </div>
+              <div className="flex justify-between text-slate-400">
+                <span>Plan:</span>
+                <span className="font-bold text-blue-400">{removeModalHostel.plan || "Basic"}</span>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-slate-300 block">
+                Type <span className="text-rose-400 select-all font-extrabold">{removeModalHostel.name || removeModalHostel.hostelName}</span> to confirm removal:
+              </label>
+              <input 
+                type="text" 
+                value={confirmNameInput}
+                onChange={(e) => setConfirmNameInput(e.target.value)}
+                placeholder={`Type "${removeModalHostel.name || removeModalHostel.hostelName}" here`}
+                disabled={isRemoving}
+                className="w-full text-xs font-semibold px-4 py-3 bg-slate-950 border border-white/10 rounded-xl text-white outline-none focus:border-rose-500 transition min-h-[48px]"
+              />
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <button 
+                type="button"
+                onClick={() => setRemoveModalHostel(null)}
+                disabled={isRemoving}
+                className="px-4 py-3 rounded-xl text-xs font-bold text-slate-300 border border-white/10 hover:bg-white/5 transition min-h-[48px] cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button 
+                type="button"
+                onClick={handleRemoveHostel}
+                disabled={confirmNameInput.trim() !== (removeModalHostel.name || removeModalHostel.hostelName || "").trim() || isRemoving}
+                className="px-5 py-3 rounded-xl text-xs font-bold text-white bg-rose-600 hover:bg-rose-500 disabled:opacity-40 disabled:cursor-not-allowed transition flex items-center gap-2 min-h-[48px] cursor-pointer shadow-lg shadow-rose-900/30"
+              >
+                {isRemoving ? (
+                  <>
+                    <Loader2 size={14} className="animate-spin" />
+                    Moving to Trash...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 size={14} />
+                    Move to Trash
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Bulk actions drawer details */}
       <Drawer 

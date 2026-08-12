@@ -879,10 +879,17 @@ const updateOwnerPassword = async (req, res) => {
     owner.updatedAt = new Date();
     await owner.save();
 
-    logger.info("OWNER AFTER PASSWORD:", owner.onboardingStep);
+    // Revoke previous active sessions upon password change for security
+    try {
+      await OwnerSession.updateMany(
+        { ownerId: owner._id, isRevoked: false },
+        { $set: { isRevoked: true } }
+      );
+    } catch (sessErr) {
+      logger.error("Error revoking sessions on password update:", sessErr);
+    }
 
     return res.status(200).json({ success: true, message: "Password updated", data: {
-
       firstLogin: owner.firstLogin,
       passwordChanged: owner.passwordChanged,
       mustChangePassword: owner.mustChangePassword,
@@ -1106,6 +1113,149 @@ const completeOnboarding = async (req, res) => {
   }
 };
 
+// ==========================
+// FORGOT PASSWORD (OWNER SELF-SERVICE)
+// ENUMERATION-SAFE NEUTRAL RESPONSE
+// ==========================
+const forgotPassword = async (req, res) => {
+  try {
+    const { email, phone, identifier } = req.body || {};
+    const inputTerm = String(email || phone || identifier || "").trim();
+
+    if (!inputTerm) {
+      return res.status(400).json({
+        success: false,
+        message: "Please enter your registered email or phone number.",
+      });
+    }
+
+    // Standard neutral response message to prevent account enumeration
+    const neutralMessage = "If an account exists, password reset instructions have been sent.";
+
+    const query = {
+      status: { $ne: "disabled" },
+      $or: [
+        { email: inputTerm.toLowerCase() },
+        { phone: inputTerm },
+        { username: inputTerm }
+      ]
+    };
+
+    const owner = await Owner.findOne(query);
+
+    // If owner exists, generate SHA-256 hashed token with 1-hour expiry
+    if (owner) {
+      const rawToken = crypto.randomBytes(32).toString("hex");
+      const hashedToken = crypto.createHash("sha256").update(rawToken).digest("hex");
+
+      owner.resetPasswordToken = hashedToken;
+      owner.resetPasswordExpires = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+      await owner.save();
+
+      // Non-blocking optional notification delivery
+      try {
+        const frontendBase = process.env.FRONTEND_URL || process.env.VITE_APP_URL || process.env.PUBLIC_URL || (req.headers && req.headers.origin ? req.headers.origin : "https://hostelmate-saas.vercel.app");
+        const resetUrl = `${String(frontendBase).replace(/\/$/, "")}/owner/reset-password?token=${rawToken}`;
+        logger.info(`Password reset requested for owner ID: ${owner._id}`);
+      } catch (err) {
+        logger.error("Failed to prepare reset notification:", err);
+      }
+    }
+
+    // ALWAYS return identical neutral response
+    return res.status(200).json({
+      success: true,
+      message: neutralMessage,
+    });
+  } catch (error) {
+    logger.error("forgotPassword error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Server error processing password reset request",
+    });
+  }
+};
+
+// ==========================
+// RESET PASSWORD WITH TOKEN (OWNER SELF-SERVICE)
+// ==========================
+const resetPasswordWithToken = async (req, res) => {
+  try {
+    const { token, newPassword, confirmPassword } = req.body || {};
+
+    if (!token || !newPassword || !confirmPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "Reset token, new password, and confirmation password are required.",
+      });
+    }
+
+    if (newPassword !== confirmPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "New password and confirm password do not match.",
+      });
+    }
+
+    // Enforce password strength (min 8 chars, uppercase, lowercase, digit)
+    if (newPassword.length < 8 || !/[A-Z]/.test(newPassword) || !/[a-z]/.test(newPassword) || !/[0-9]/.test(newPassword)) {
+      return res.status(400).json({
+        success: false,
+        message: "Password must be at least 8 characters long and contain at least one uppercase letter, one lowercase letter, and one number.",
+      });
+    }
+
+    const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
+
+    const owner = await Owner.findOne({
+      resetPasswordToken: hashedToken,
+      resetPasswordExpires: { $gt: new Date() },
+    });
+
+    if (!owner) {
+      return res.status(400).json({
+        success: false,
+        message: "Password reset token is invalid or has expired.",
+      });
+    }
+
+    // Hash new password using bcrypt
+    const salt = await bcrypt.genSalt(10);
+    owner.password = await bcrypt.hash(newPassword, salt);
+
+    // Clear reset token state and temp password flags
+    owner.resetPasswordToken = null;
+    owner.resetPasswordExpires = null;
+    owner.mustChangePassword = false;
+    owner.firstLogin = false;
+    owner.passwordChanged = true;
+    owner.updatedAt = new Date();
+
+    await owner.save();
+
+    // Revoke all existing sessions upon password reset
+    try {
+      await OwnerSession.updateMany(
+        { ownerId: owner._id, isRevoked: false },
+        { $set: { isRevoked: true } }
+      );
+    } catch (sessErr) {
+      logger.error("Error revoking sessions on resetPasswordWithToken:", sessErr);
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Password reset successfully. Please login with your new password.",
+    });
+  } catch (error) {
+    logger.error("resetPasswordWithToken error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Server error resetting password",
+    });
+  }
+};
+
 module.exports = {
   loginOwner,
   resetOwnerPassword,
@@ -1123,6 +1273,8 @@ module.exports = {
   saveOnboardingRules,
   completeOnboardingRooms,
   completeOnboarding,
+  forgotPassword,
+  resetPasswordWithToken,
 };
 
 

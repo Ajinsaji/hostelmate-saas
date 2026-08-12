@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from "react";
-import { X, AlertTriangle, CheckCircle2, UserCheck, ShieldAlert, Loader2, Zap } from "lucide-react";
+import { X, AlertTriangle, CheckCircle2, UserCheck, ShieldAlert, Loader2, Zap, Copy, ExternalLink, Send, Key, Check } from "lucide-react";
+import toast from "react-hot-toast";
 import { api } from "../../../services/api";
 
 export const ConfirmActionModal = React.memo(({
   isOpen,
   onClose,
-  actionType, // "approve" | "reject" | "assign"
+  actionType, // "approve" | "reject" | "assign" | "activate"
   requestData,
   onSuccess
 }) => {
@@ -25,6 +26,13 @@ export const ConfirmActionModal = React.memo(({
   const [isFreeAccess, setIsFreeAccess] = useState(false);
   const [activationNotes, setActivationNotes] = useState("");
 
+  // Activation result state (One-time display)
+  const [activationResult, setActivationResult] = useState(null);
+  const [sendingCredentials, setSendingCredentials] = useState(false);
+  const [deliveryStatus, setDeliveryStatus] = useState("issued");
+  const [copiedLink, setCopiedLink] = useState(false);
+  const [copiedCreds, setCopiedCreds] = useState(false);
+
   useEffect(() => {
     if (isOpen) {
       setError(null);
@@ -35,12 +43,23 @@ export const ConfirmActionModal = React.memo(({
       setIsTrial(false);
       setIsFreeAccess(false);
       setActivationNotes("");
+      setActivationResult(null);
+      setSendingCredentials(false);
+      setDeliveryStatus("issued");
+      setCopiedLink(false);
+      setCopiedCreds(false);
       
       if (actionType === "assign") {
         fetchTeam();
       }
     }
   }, [isOpen, actionType]);
+
+  const handleCloseModal = () => {
+    // Wipe sensitive plaintext credentials from state on close
+    setActivationResult(null);
+    onClose();
+  };
 
   const fetchTeam = async () => {
     try {
@@ -78,12 +97,37 @@ export const ConfirmActionModal = React.memo(({
   const hostelName = requestData.hostelName || requestData.subtitle || "Hostel";
   const ownerName = requestData.ownerName || requestData.owner || "Owner";
 
+  const handleSendCredentials = async (ownerId) => {
+    if (sendingCredentials) return;
+    setSendingCredentials(true);
+    const toastId = toast.loading("Sending credentials...");
+
+    try {
+      const res = await api.post(`/api/admin/owners/${ownerId}/send-credentials`).catch(() =>
+        api.post(`/api/admin/hostels/${targetHostelId}/send-credentials`)
+      );
+
+      if (res.data?.success) {
+        toast.success("Credentials sent successfully!", { id: toastId });
+        setDeliveryStatus("sent");
+      } else if (res.data?.unconfigured) {
+        toast.error("Credential delivery service is not configured.", { id: toastId });
+        setDeliveryStatus("unconfigured");
+      } else {
+        toast.error(res.data?.message || "Unable to send credentials. Please try again.", { id: toastId });
+      }
+    } catch (err) {
+      toast.error(err?.response?.data?.message || "Unable to send credentials. Please try again.", { id: toastId });
+    } finally {
+      setSendingCredentials(false);
+    }
+  };
+
   const handleExecute = async () => {
     setLoading(true);
     setError(null);
     try {
       if (actionType === "approve") {
-        // Call backend approve API (Creates Hostel draft with pendingActivation = true)
         const endpoint = `/api/admin/approve/${requestId}`;
         const res = await api.put(endpoint, requestData).catch(() => 
           api.post(`/api/auth/approve/${requestId}`, requestData)
@@ -91,12 +135,11 @@ export const ConfirmActionModal = React.memo(({
         
         if (res.data?.success !== false) {
           onSuccess && onSuccess("activation_pending", res.data?.message || "Registration approved! Draft created and pending activation.");
-          onClose();
+          handleCloseModal();
         } else {
           setError(res.data?.message || "Unable to approve this request.");
         }
       } else if (actionType === "activate") {
-        // Call canonical finalizeHostelActivation API
         const endpoint = `/api/admin/hostels/${targetHostelId}/finalize-activation`;
         const res = await api.post(endpoint, {
           planType,
@@ -107,11 +150,17 @@ export const ConfirmActionModal = React.memo(({
         });
 
         if (res.data?.success) {
-          onSuccess && onSuccess(
-            "activated", 
-            `Hostel activated successfully! Temp Password: ${res.data.credentials?.tempPassword || "Sent via WhatsApp"}`
-          );
-          onClose();
+          const ownerPhone = requestData.phone || res.data?.credentials?.username;
+          const resultObj = {
+            username: ownerPhone,
+            tempPassword: res.data?.credentials?.tempPassword || "",
+            loginUrl: res.data?.loginUrl || `${window.location.origin}/owner/login`,
+            ownerId: res.data?.ownerId || requestData.ownerId,
+            credentialStatus: res.data?.credentialStatus || "issued",
+          };
+          setActivationResult(resultObj);
+          setDeliveryStatus(resultObj.credentialStatus);
+          onSuccess && onSuccess("activated", "Hostel activated successfully!");
         } else {
           setError(res.data?.message || "Failed to finalize hostel activation.");
         }
@@ -128,7 +177,7 @@ export const ConfirmActionModal = React.memo(({
 
         if (res.data?.success !== false) {
           onSuccess && onSuccess("rejected", "Registration rejected");
-          onClose();
+          handleCloseModal();
         } else {
           setError(res.data?.message || "Unable to reject this request.");
         }
@@ -146,7 +195,7 @@ export const ConfirmActionModal = React.memo(({
 
         if (res.data?.success !== false) {
           onSuccess && onSuccess("assigned", `Request assigned to ${selectedAssignee}`);
-          onClose();
+          handleCloseModal();
         } else {
           setError(res.data?.message || "Unable to assign this request.");
         }
@@ -225,213 +274,318 @@ export const ConfirmActionModal = React.memo(({
             </div>
           )}
 
-          {actionType === "approve" && (
-            <p className="text-sm text-slate-300 leading-relaxed">
-              Are you sure you want to approve <strong className="text-white">{hostelName}</strong> submitted by <strong className="text-white">{ownerName}</strong>? This will activate the hostel account and notify the owner.
-            </p>
-          )}
-
-          {actionType === "reject" && (
-            <div className="space-y-2">
-              <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider">
-                Reason for rejection <span className="text-[#EF4444]">*</span>
-              </label>
-              <textarea
-                value={rejectReason}
-                onChange={(e) => setRejectReason(e.target.value)}
-                placeholder="Enter detailed reason for rejection (e.g. Invalid Aadhaar document provided)..."
-                rows={3}
-                className="w-full bg-[#0B1220] border border-[#202B45] rounded-xl p-3 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-[#EF4444] transition resize-none min-h-[80px]"
-              />
-            </div>
-          )}
-
-          {actionType === "assign" && (
-            <div className="space-y-3">
-              <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider">
-                Select Team / Admin
-              </label>
-
-              {loadingTeam ? (
-                <div className="py-4 flex items-center justify-center text-xs text-slate-400 gap-2">
-                  <Loader2 size={16} className="animate-spin text-blue-400" />
-                  Loading team members...
+          {activationResult ? (
+            <div className="space-y-4 py-2">
+              <div className="flex items-center gap-3 p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-emerald-400">
+                <CheckCircle2 size={20} className="shrink-0" />
+                <div>
+                  <h4 className="text-sm font-bold text-white">Hostel Activated Successfully!</h4>
+                  <p className="text-xs text-slate-300">Owner account created and subscription activated.</p>
                 </div>
-              ) : (
-                <div className="space-y-2 max-h-48 overflow-y-auto custom-scrollbar pr-1">
-                  {teamList.map((item) => {
-                    const itemName = item.name || item.fullName || item.id;
-                    const isSelected = selectedAssignee === itemName || selectedAssignee === item.id;
-                    return (
-                      <label
-                        key={item.id || itemName}
-                        onClick={() => setSelectedAssignee(itemName)}
-                        className={`flex items-center justify-between p-3.5 rounded-xl border transition cursor-pointer min-h-[48px] ${
-                          isSelected
-                            ? "bg-blue-500/10 border-blue-500/40 text-white"
-                            : "bg-[#0B1220]/60 border-[#202B45] text-slate-300 hover:bg-white/5"
-                        }`}
-                      >
-                        <div className="flex items-center gap-3">
-                          <input
-                            type="radio"
-                            name="assignee"
-                            checked={isSelected}
-                            onChange={() => setSelectedAssignee(itemName)}
-                            className="accent-blue-500 w-4 h-4"
-                          />
-                          <div>
-                            <p className="text-xs font-bold text-white">{itemName}</p>
-                            <p className="text-[10px] text-slate-400">{item.role || item.email || "Admin"}</p>
-                          </div>
-                        </div>
-                      </label>
-                    );
-                  })}
+              </div>
+
+              {/* Login Link Card */}
+              <div className="p-3.5 bg-[#0B1220] border border-[#202B45] rounded-xl space-y-2">
+                <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">Owner Login URL</label>
+                <div className="flex items-center justify-between gap-2 bg-[#131C2E] p-2.5 rounded-lg border border-[#202B45]">
+                  <span className="text-xs font-mono text-emerald-300 truncate select-all">{activationResult.loginUrl}</span>
+                  <div className="flex items-center gap-1 shrink-0">
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(activationResult.loginUrl);
+                        setCopiedLink(true);
+                        toast.success("Login URL copied!");
+                        setTimeout(() => setCopiedLink(false), 2000);
+                      }}
+                      className="p-1.5 bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white rounded-md text-xs font-semibold flex items-center gap-1 transition cursor-pointer"
+                    >
+                      {copiedLink ? <Check size={14} className="text-emerald-400" /> : <Copy size={14} />}
+                      {copiedLink ? "Copied" : "Copy Link"}
+                    </button>
+                    <a
+                      href={activationResult.loginUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="p-1.5 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 rounded-md text-xs font-semibold flex items-center gap-1 transition"
+                    >
+                      <ExternalLink size={14} />
+                      Open
+                    </a>
+                  </div>
+                </div>
+              </div>
+
+              {/* One-Time Temporary Password Display */}
+              <div className="p-3.5 bg-[#0B1220] border border-amber-500/30 rounded-xl space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="block text-[11px] font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1">
+                    <Key size={12} /> Temporary Password (One-Time Display)
+                  </label>
+                  <span className="text-[10px] bg-amber-500/10 text-amber-400 px-2 py-0.5 rounded-md font-mono">
+                    Issued — password no longer viewable on reload
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-between bg-[#131C2E] p-2.5 rounded-lg border border-[#202B45]">
+                  <div className="text-xs font-mono text-white tracking-widest font-bold">
+                    {activationResult.tempPassword || "••••••••"}
+                  </div>
+                  <button
+                    onClick={() => {
+                      const textToCopy = `Username: ${activationResult.username}\nTemporary Password: ${activationResult.tempPassword}\nLogin URL: ${activationResult.loginUrl}`;
+                      navigator.clipboard.writeText(textToCopy);
+                      setCopiedCreds(true);
+                      toast.success("Credentials copied to clipboard!");
+                      setTimeout(() => setCopiedCreds(false), 2000);
+                    }}
+                    className="p-1.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-md text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer"
+                  >
+                    {copiedCreds ? <Check size={14} /> : <Copy size={14} />}
+                    {copiedCreds ? "Copied!" : "Copy Credentials"}
+                  </button>
+                </div>
+                <p className="text-[11px] text-slate-400 italic">
+                  Store or share these credentials with the owner now. Plaintext temporary password is not stored in DB and will not be viewable after closing this dialog.
+                </p>
+              </div>
+
+              {/* Send Credentials Button & Delivery Status */}
+              <div className="pt-2 flex items-center justify-between gap-3">
+                <div className="text-xs text-slate-400">
+                  Status: <strong className="text-white capitalize">{deliveryStatus}</strong>
+                </div>
+                <button
+                  onClick={() => handleSendCredentials(activationResult.ownerId)}
+                  disabled={sendingCredentials}
+                  className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-md transition disabled:opacity-50 cursor-pointer"
+                >
+                  {sendingCredentials ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
+                  {sendingCredentials ? "Sending..." : "Send Credentials"}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <>
+              {actionType === "approve" && (
+                <p className="text-sm text-slate-300 leading-relaxed">
+                  Are you sure you want to approve <strong className="text-white">{hostelName}</strong> submitted by <strong className="text-white">{ownerName}</strong>? This will activate the hostel account and notify the owner.
+                </p>
+              )}
+
+              {actionType === "reject" && (
+                <div className="space-y-2">
+                  <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider">
+                    Reason for rejection <span className="text-[#EF4444]">*</span>
+                  </label>
+                  <textarea
+                    value={rejectReason}
+                    onChange={(e) => setRejectReason(e.target.value)}
+                    placeholder="Enter detailed reason for rejection (e.g. Invalid Aadhaar document provided)..."
+                    rows={3}
+                    className="w-full bg-[#0B1220] border border-[#202B45] rounded-xl p-3 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-[#EF4444] transition resize-none min-h-[80px]"
+                  />
                 </div>
               )}
-            </div>
-          )}
 
-          {actionType === "activate" && (
-            <div className="space-y-4">
-              <p className="text-xs text-slate-300">
-                Configure subscription options to finalize activation for <strong className="text-white">{hostelName}</strong>. This will create the Owner account, issue login credentials, and send WhatsApp notifications.
-              </p>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Plan Type</label>
-                  <select 
-                    value={planType} 
-                    onChange={(e) => setPlanType(e.target.value)}
-                    className="w-full bg-[#0B1220] border border-[#202B45] rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500"
-                  >
-                    <option value="Pro">Pro Plan (₹2499/mo)</option>
-                    <option value="Basic">Basic Plan (₹1499/mo)</option>
-                  </select>
+              {actionType === "assign" && (
+                <div className="space-y-3">
+                  <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider">
+                    Select Team / Admin
+                  </label>
+
+                  {loadingTeam ? (
+                    <div className="py-4 flex items-center justify-center text-xs text-slate-400 gap-2">
+                      <Loader2 size={16} className="animate-spin text-blue-400" />
+                      Loading team members...
+                    </div>
+                  ) : (
+                    <div className="space-y-2 max-h-48 overflow-y-auto custom-scrollbar pr-1">
+                      {teamList.map((item) => {
+                        const itemName = item.name || item.fullName || item.id;
+                        const isSelected = selectedAssignee === itemName || selectedAssignee === item.id;
+                        return (
+                          <label
+                            key={item.id || itemName}
+                            onClick={() => setSelectedAssignee(itemName)}
+                            className={`flex items-center justify-between p-3.5 rounded-xl border transition cursor-pointer min-h-[48px] ${
+                              isSelected
+                                ? "bg-blue-500/10 border-blue-500/40 text-white"
+                                : "bg-[#0B1220]/60 border-[#202B45] text-slate-300 hover:bg-white/5"
+                            }`}
+                          >
+                            <div className="flex items-center gap-3">
+                              <input
+                                type="radio"
+                                name="assignee"
+                                checked={isSelected}
+                                onChange={() => setSelectedAssignee(itemName)}
+                                className="accent-blue-500 w-4 h-4"
+                              />
+                              <div>
+                                <p className="text-xs font-bold text-white">{itemName}</p>
+                                <p className="text-[10px] text-slate-400">{item.role || item.email || "Admin"}</p>
+                              </div>
+                            </div>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Amount (₹)</label>
-                  <input 
-                    type="number" 
-                    value={amount} 
-                    onChange={(e) => setAmount(e.target.value)}
-                    className="w-full bg-[#0B1220] border border-[#202B45] rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500"
-                  />
+              )}
+
+              {actionType === "activate" && (
+                <div className="space-y-4">
+                  <p className="text-xs text-slate-300">
+                    Configure subscription options to finalize activation for <strong className="text-white">{hostelName}</strong>. This will create the Owner account, issue login credentials, and send WhatsApp notifications.
+                  </p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Plan Type</label>
+                      <select 
+                        value={planType} 
+                        onChange={(e) => setPlanType(e.target.value)}
+                        className="w-full bg-[#0B1220] border border-[#202B45] rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500"
+                      >
+                        <option value="Pro">Pro Plan (₹2499/mo)</option>
+                        <option value="Basic">Basic Plan (₹1499/mo)</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Amount (₹)</label>
+                      <input 
+                        type="number" 
+                        value={amount} 
+                        onChange={(e) => setAmount(e.target.value)}
+                        className="w-full bg-[#0B1220] border border-[#202B45] rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-4 py-1">
+                    <label className="flex items-center gap-2 text-xs text-slate-300 cursor-pointer select-none">
+                      <input 
+                        type="checkbox" 
+                        checked={isTrial} 
+                        onChange={(e) => setIsTrial(e.target.checked)} 
+                        className="rounded border-[#202B45] text-emerald-500 focus:ring-0 bg-transparent"
+                      />
+                      <span>14-Day Free Trial</span>
+                    </label>
+                    <label className="flex items-center gap-2 text-xs text-slate-300 cursor-pointer select-none">
+                      <input 
+                        type="checkbox" 
+                        checked={isFreeAccess} 
+                        onChange={(e) => setIsFreeAccess(e.target.checked)} 
+                        className="rounded border-[#202B45] text-emerald-500 focus:ring-0 bg-transparent"
+                      />
+                      <span>Comp Access (Free)</span>
+                    </label>
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Notes / Internal Terms</label>
+                    <input 
+                      type="text" 
+                      value={activationNotes} 
+                      onChange={(e) => setActivationNotes(e.target.value)}
+                      placeholder="Optional billing notes..."
+                      className="w-full bg-[#0B1220] border border-[#202B45] rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+                    />
+                  </div>
                 </div>
-              </div>
-
-              <div className="flex items-center gap-4 py-1">
-                <label className="flex items-center gap-2 text-xs text-slate-300 cursor-pointer select-none">
-                  <input 
-                    type="checkbox" 
-                    checked={isTrial} 
-                    onChange={(e) => setIsTrial(e.target.checked)} 
-                    className="rounded border-[#202B45] text-emerald-500 focus:ring-0 bg-transparent"
-                  />
-                  <span>14-Day Free Trial</span>
-                </label>
-                <label className="flex items-center gap-2 text-xs text-slate-300 cursor-pointer select-none">
-                  <input 
-                    type="checkbox" 
-                    checked={isFreeAccess} 
-                    onChange={(e) => setIsFreeAccess(e.target.checked)} 
-                    className="rounded border-[#202B45] text-emerald-500 focus:ring-0 bg-transparent"
-                  />
-                  <span>Comp Access (Free)</span>
-                </label>
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Notes / Internal Terms</label>
-                <input 
-                  type="text" 
-                  value={activationNotes} 
-                  onChange={(e) => setActivationNotes(e.target.value)}
-                  placeholder="Optional billing notes..."
-                  className="w-full bg-[#0B1220] border border-[#202B45] rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
-                />
-              </div>
-            </div>
+              )}
+            </>
           )}
         </div>
 
         {/* Footer Actions */}
         <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-[#202B45] bg-[#0B1220]/40">
-          <button
-            onClick={onClose}
-            disabled={loading}
-            className="px-5 py-3 rounded-xl text-xs font-bold text-slate-400 hover:text-white hover:bg-white/5 border border-transparent transition disabled:opacity-50 min-h-[48px]"
-          >
-            Cancel
-          </button>
-
-          {actionType === "approve" && (
+          {activationResult ? (
             <button
-              onClick={handleExecute}
-              disabled={loading}
-              className="flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-xs font-bold text-white bg-emerald-500 hover:bg-emerald-600 shadow-lg shadow-emerald-500/20 transition disabled:opacity-50 min-h-[48px]"
+              onClick={handleCloseModal}
+              className="w-full py-3 rounded-xl text-xs font-bold text-white bg-emerald-500 hover:bg-emerald-600 shadow-lg shadow-emerald-500/20 transition cursor-pointer min-h-[48px]"
             >
-              {loading ? (
-                <>
-                  <Loader2 size={14} className="animate-spin" />
-                  Approving...
-                </>
-              ) : (
-                "Approve Draft"
-              )}
+              Done / Close Activation Result
             </button>
-          )}
+          ) : (
+            <>
+              <button
+                onClick={handleCloseModal}
+                disabled={loading}
+                className="px-5 py-3 rounded-xl text-xs font-bold text-slate-400 hover:text-white hover:bg-white/5 border border-transparent transition disabled:opacity-50 min-h-[48px]"
+              >
+                Cancel
+              </button>
 
-          {actionType === "activate" && (
-            <button
-              onClick={handleExecute}
-              disabled={loading}
-              className="flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-xs font-bold text-white bg-emerald-500 hover:bg-emerald-600 shadow-lg shadow-emerald-500/20 transition disabled:opacity-50 min-h-[48px]"
-            >
-              {loading ? (
-                <>
-                  <Loader2 size={14} className="animate-spin" />
-                  Activating & Creating Owner...
-                </>
-              ) : (
-                "Finalize Activation"
+              {actionType === "approve" && (
+                <button
+                  onClick={handleExecute}
+                  disabled={loading}
+                  className="flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-xs font-bold text-white bg-emerald-500 hover:bg-emerald-600 shadow-lg shadow-emerald-500/20 transition disabled:opacity-50 min-h-[48px]"
+                >
+                  {loading ? (
+                    <>
+                      <Loader2 size={14} className="animate-spin" />
+                      Approving...
+                    </>
+                  ) : (
+                    "Approve Draft"
+                  )}
+                </button>
               )}
-            </button>
-          )}
 
-          {actionType === "reject" && (
-            <button
-              onClick={handleExecute}
-              disabled={loading}
-              className="flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-xs font-bold text-white bg-[#EF4444] hover:bg-red-600 shadow-lg shadow-red-500/20 transition disabled:opacity-50 min-h-[48px]"
-            >
-              {loading ? (
-                <>
-                  <Loader2 size={14} className="animate-spin" />
-                  Rejecting...
-                </>
-              ) : (
-                "Reject Request"
+              {actionType === "activate" && (
+                <button
+                  onClick={handleExecute}
+                  disabled={loading}
+                  className="flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-xs font-bold text-white bg-emerald-500 hover:bg-emerald-600 shadow-lg shadow-emerald-500/20 transition disabled:opacity-50 min-h-[48px]"
+                >
+                  {loading ? (
+                    <>
+                      <Loader2 size={14} className="animate-spin" />
+                      Activating & Creating Owner...
+                    </>
+                  ) : (
+                    "Finalize Activation"
+                  )}
+                </button>
               )}
-            </button>
-          )}
 
-          {actionType === "assign" && (
-            <button
-              onClick={handleExecute}
-              disabled={loading}
-              className="flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-xs font-bold text-white bg-blue-500 hover:bg-blue-600 shadow-lg shadow-blue-500/20 transition disabled:opacity-50 min-h-[48px]"
-            >
-              {loading ? (
-                <>
-                  <Loader2 size={14} className="animate-spin" />
-                  Assigning...
-                </>
-              ) : (
-                "Assign"
+              {actionType === "reject" && (
+                <button
+                  onClick={handleExecute}
+                  disabled={loading}
+                  className="flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-xs font-bold text-white bg-[#EF4444] hover:bg-red-600 shadow-lg shadow-red-500/20 transition disabled:opacity-50 min-h-[48px]"
+                >
+                  {loading ? (
+                    <>
+                      <Loader2 size={14} className="animate-spin" />
+                      Rejecting...
+                    </>
+                  ) : (
+                    "Reject Request"
+                  )}
+                </button>
               )}
-            </button>
+
+              {actionType === "assign" && (
+                <button
+                  onClick={handleExecute}
+                  disabled={loading}
+                  className="flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-xs font-bold text-white bg-blue-500 hover:bg-blue-600 shadow-lg shadow-blue-500/20 transition disabled:opacity-50 min-h-[48px]"
+                >
+                  {loading ? (
+                    <>
+                      <Loader2 size={14} className="animate-spin" />
+                      Assigning...
+                    </>
+                  ) : (
+                    "Assign"
+                  )}
+                </button>
+              )}
+            </>
           )}
         </div>
       </div>

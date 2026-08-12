@@ -192,7 +192,10 @@ router.delete("/hostels/delete/:id", deleteHostel);
 
 router.post("/hostels/bulk-action", bulkHostelAction);
 router.post("/hostels/:ownerId/resend-whatsapp", resendWhatsApp);
+router.post("/hostels/:ownerId/send-credentials", resendWhatsApp);
+router.post("/owners/:ownerId/send-credentials", resendWhatsApp);
 router.put("/hostels/:ownerId/reset-password", resetOwnerTempPassword);
+router.post("/owners/:ownerId/reset-temp-password", resetOwnerTempPassword);
 
 // ==========================
 // SUBSCRIPTIONS

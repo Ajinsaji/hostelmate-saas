@@ -3,6 +3,7 @@ import PageContainer from "../layouts/PageContainer";
 import BackupManagerModal from "../components/modals/BackupManagerModal";
 import { useDrawer } from "../contexts/DrawerContext";
 import { useNavigate } from "react-router-dom";
+import toast from "react-hot-toast";
 
 // Hooks
 import useExecutiveSummary from "../hooks/useExecutiveSummary";
@@ -17,7 +18,7 @@ import useOwners from "../hooks/useOwners";
 import { 
   CheckSquare, Zap, ArrowRight, ShieldCheck, Database, Server,
   AlertTriangle, CheckCircle, FileText, User, Building,
-  PlusCircle, ShieldAlert, DollarSign, Users
+  PlusCircle, ShieldAlert, DollarSign, Users, RefreshCw, RotateCw
 } from "lucide-react";
 import LoadingState from "../components/feedback/LoadingState";
 import ConfirmActionModal from "../components/modals/ConfirmActionModal";
@@ -30,13 +31,14 @@ export const DashboardOverview = React.memo(() => {
   const { data: ownersData } = useOwners();
   const [isBackupModalOpen, setIsBackupModalOpen] = useState(false);
   const [actionModal, setActionModal] = useState(null); // { actionType, item }
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Data hooks
-  const { data: summaryData, loading: summaryLoading } = useExecutiveSummary();
-  const { data: statsData, loading: statsLoading } = useDashboardStats();
-  const { data: revenueData, loading: revenueLoading } = useRevenueMetrics();
+  const { data: summaryData, loading: summaryLoading, refetch: refetchSummary } = useExecutiveSummary();
+  const { data: statsData, loading: statsLoading, refetch: refetchStats } = useDashboardStats();
+  const { data: revenueData, loading: revenueLoading, refetch: refetchRevenue } = useRevenueMetrics();
   const { loading: telemetryLoading } = usePlatformMonitoring();
-  const { workQueue, improvements, recentActivity, loading: queueLoading, refetch } = useActionQueue();
+  const { workQueue, improvements, recentActivity, loading: queueLoading, refetch: refetchQueue } = useActionQueue();
 
   const isLoading = summaryLoading || statsLoading || revenueLoading || telemetryLoading || queueLoading;
 
@@ -44,12 +46,66 @@ export const DashboardOverview = React.memo(() => {
     return <LoadingState message="Initializing Executive Command Center..." />;
   }
 
+  const handleManualRefresh = async () => {
+    setIsRefreshing(true);
+    const toastId = toast.loading("Refetching dashboard metrics...");
+    try {
+      await Promise.all([
+        refetchSummary ? refetchSummary() : Promise.resolve(),
+        refetchStats ? refetchStats() : Promise.resolve(),
+        refetchRevenue ? refetchRevenue() : Promise.resolve(),
+        refetchQueue ? refetchQueue() : Promise.resolve(),
+      ]);
+      toast.success("Dashboard refreshed", { id: toastId });
+    } catch {
+      toast.error("Failed to refresh dashboard", { id: toastId });
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
+  const handleHardReload = () => {
+    window.location.reload();
+  };
+
   // Helper to safely format numbers
-  const formatNum = (num) => (num !== undefined && num !== null ? num.toLocaleString('en-IN') : '--');
+  const formatNum = (num) => (num !== undefined && num !== null && !isNaN(num) ? num.toLocaleString('en-IN') : '--');
   const safeRender = (val) => typeof val === 'object' && val !== null ? (val.name || val.title || 'Unknown') : val;
+
+  const activeHostelsCount = statsData?.activeHostelsVal ?? statsData?.activeHostels?.value ?? 0;
+  const activeOwnersCount = statsData?.totalOwnersVal ?? statsData?.activeOwners?.value ?? 0;
+  const totalResidentsCount = statsData?.totalResidentsVal ?? statsData?.totalResidents?.value ?? 0;
+  const pendingApprovalsCount = workQueue.filter(q => q.queueCategory === "Needs Approval").length;
+  const todayRevVal = statsData?.todayRevenue ?? (typeof revenueData?.todayRevenue?.value === 'number' ? revenueData.todayRevenue.value : 0);
 
   return (
     <PageContainer>
+      {/* Dashboard Top Header Bar with Refresh Controls */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+        <div>
+          <h1 className="text-xl font-extrabold text-white">SaaS Command Center</h1>
+          <p className="text-xs text-slate-400 font-medium">Real-time platform operations & aggregated analytics</p>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <button 
+            onClick={handleManualRefresh}
+            disabled={isRefreshing}
+            className="px-3.5 py-2 rounded-xl border border-white/10 text-xs font-bold text-slate-200 hover:text-white bg-slate-900/80 hover:bg-slate-800 transition flex items-center gap-2 cursor-pointer disabled:opacity-50 shadow-sm"
+          >
+            <RefreshCw size={14} className={isRefreshing ? "animate-spin text-emerald-400" : "text-emerald-400"} />
+            <span>{isRefreshing ? "Refreshing..." : "Refresh Data"}</span>
+          </button>
+          <button 
+            onClick={handleHardReload}
+            className="px-3.5 py-2 rounded-xl border border-white/10 text-xs font-bold text-slate-400 hover:text-white bg-slate-900/80 hover:bg-slate-800 transition flex items-center gap-2 cursor-pointer shadow-sm"
+            title="Reload web application (preserves login session)"
+          >
+            <RotateCw size={14} className="text-blue-400" />
+            <span>Reload App</span>
+          </button>
+        </div>
+      </div>
+
       {/* 1. EXECUTIVE AI SUMMARY HERO */}
       <section className="mb-8">
         <div 
@@ -69,10 +125,10 @@ export const DashboardOverview = React.memo(() => {
                 <Zap size={20} className="animate-pulse" />
               </div>
               <div>
-                <h2 className="text-xl font-bold text-white">Platform Health: 98%</h2>
+                <h2 className="text-xl font-bold text-white">Platform Operational Status</h2>
                 <div className="flex items-center gap-2 text-xs font-semibold text-emerald-400 mt-1">
                   <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                  All Systems Operational
+                  All Core API Services Active
                 </div>
               </div>
             </div>
@@ -80,24 +136,24 @@ export const DashboardOverview = React.memo(() => {
             <div className="bg-black/20 border border-white/5 rounded-xl p-4">
               <h3 className="text-[10px] uppercase font-bold text-white/40 tracking-wider mb-2">AI Executive Summary</h3>
               <p className="text-sm text-slate-300 font-medium leading-relaxed mb-4">
-                {summaryData?.summary || "Platform is operating optimally. Traffic is normal and database latency is stable."}
+                {summaryData?.summary || "Platform is operating normally. Core APIs, authentication, and database connections are healthy."}
               </p>
               
               <div className="grid grid-cols-2 gap-2 text-xs text-slate-400 font-medium mb-4">
-                <div className="flex items-center gap-2">• {statsData?.activeHostels?.value || 0} active hostels</div>
-                <div className="flex items-center gap-2">• {workQueue.filter(q => q.queueCategory === "Needs Approval").length} approvals pending</div>
-                <div className="flex items-center gap-2">• Revenue today: ₹{formatNum(revenueData?.todayRevenue?.value)}</div>
+                <div className="flex items-center gap-2">• {activeHostelsCount} active hostels</div>
+                <div className="flex items-center gap-2">• {pendingApprovalsCount} approvals pending</div>
+                <div className="flex items-center gap-2">• Revenue today: ₹{formatNum(todayRevVal)}</div>
                 <div className="flex items-center gap-2">• Database healthy</div>
               </div>
 
               <div className="flex items-center gap-3 p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
                 <ShieldCheck size={16} className="text-emerald-400 shrink-0" />
                 <p className="text-xs font-semibold text-emerald-100 flex-1">
-                  Recommended Action: Review {workQueue.filter(q => q.queueCategory === "Needs Approval").length} pending registrations.
+                  Recommended Action: Review {pendingApprovalsCount} pending onboarding requests.
                 </p>
                 <button 
                   onClick={() => openDrawer("request", { title: "Review Queue" })}
-                  className="px-3 py-1.5 rounded-md bg-emerald-500 text-white text-[10px] font-bold tracking-wider hover:bg-emerald-600 transition"
+                  className="px-3 py-1.5 rounded-md bg-emerald-500 text-white text-[10px] font-bold tracking-wider hover:bg-emerald-600 transition cursor-pointer"
                 >
                   START REVIEW
                 </button>
@@ -110,7 +166,7 @@ export const DashboardOverview = React.memo(() => {
             <h3 className="text-[10px] uppercase font-bold text-white/40 tracking-wider mb-1">Quick Console</h3>
             <button 
               onClick={() => navigate("/admin/hostels")}
-              className="w-full flex items-center justify-between p-3 rounded-xl border border-white/5 bg-white/5 hover:bg-white/10 transition group"
+              className="w-full flex items-center justify-between p-3 rounded-xl border border-white/5 bg-white/5 hover:bg-white/10 transition group cursor-pointer"
             >
               <div className="flex items-center gap-3 text-sm font-semibold text-white">
                 <Building size={16} className="text-blue-400" /> Open Directory
@@ -119,7 +175,7 @@ export const DashboardOverview = React.memo(() => {
             </button>
             <button 
               onClick={() => openDrawer("owner", { title: "New Owner" })}
-              className="w-full flex items-center justify-between p-3 rounded-xl border border-white/5 bg-white/5 hover:bg-white/10 transition group"
+              className="w-full flex items-center justify-between p-3 rounded-xl border border-white/5 bg-white/5 hover:bg-white/10 transition group cursor-pointer"
             >
               <div className="flex items-center gap-3 text-sm font-semibold text-white">
                 <PlusCircle size={16} className="text-emerald-400" /> Create Owner
@@ -128,7 +184,7 @@ export const DashboardOverview = React.memo(() => {
             </button>
             <button 
               onClick={() => setIsBackupModalOpen(true)}
-              className="w-full flex items-center justify-between p-3 rounded-xl border border-white/5 bg-white/5 hover:bg-white/10 transition group"
+              className="w-full flex items-center justify-between p-3 rounded-xl border border-white/5 bg-white/5 hover:bg-white/10 transition group cursor-pointer"
             >
               <div className="flex items-center gap-3 text-sm font-semibold text-white">
                 <Database size={16} className="text-purple-400" /> Run Backup
@@ -137,7 +193,7 @@ export const DashboardOverview = React.memo(() => {
             </button>
             <button 
               onClick={() => navigate("/admin/reports")}
-              className="w-full flex items-center justify-between p-3 rounded-xl border border-white/5 bg-white/5 hover:bg-white/10 transition group"
+              className="w-full flex items-center justify-between p-3 rounded-xl border border-white/5 bg-white/5 hover:bg-white/10 transition group cursor-pointer"
             >
               <div className="flex items-center gap-3 text-sm font-semibold text-white">
                 <FileText size={16} className="text-amber-400" /> View Reports
@@ -152,9 +208,9 @@ export const DashboardOverview = React.memo(() => {
       <section className="mb-8">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <KpiCard 
-            title="Total Hostels" 
+            title="Total Active Hostels" 
             value={formatNum(statsData?.totalHostels)} 
-            trend="+3 today" 
+            trend={statsData?.newHostelsToday ? `+${statsData.newHostelsToday} today` : "—"} 
             icon={<Building size={18} className="text-blue-400" />}
             actions={[
               { label: "Directory", onClick: () => navigate("/admin/hostels") },
@@ -163,18 +219,18 @@ export const DashboardOverview = React.memo(() => {
           />
           <KpiCard 
             title="Active Owners" 
-            value={formatNum(statsData?.activeOwners?.value)} 
-            trend="+1 today" 
+            value={formatNum(activeOwnersCount)} 
+            trend={statsData?.newOwnersToday ? `+${statsData.newOwnersToday} today` : "—"} 
             icon={<User size={18} className="text-emerald-400" />}
             actions={[
               { label: "CRM", onClick: () => navigate("/admin/owners") },
-              { label: "Export", onClick: () => {} }
+              { label: "View All", onClick: () => navigate("/admin/owners") }
             ]}
           />
           <KpiCard 
             title="Total Residents" 
-            value={formatNum(statsData?.totalResidents?.value)} 
-            trend="+12 this week" 
+            value={formatNum(totalResidentsCount)} 
+            trend={statsData?.newResidentsThisWeek ? `+${statsData.newResidentsThisWeek} this week` : "—"} 
             icon={<Users size={18} className="text-purple-400" />}
             actions={[
               { label: "View Roll", onClick: () => navigate("/admin/residents") }
@@ -183,7 +239,7 @@ export const DashboardOverview = React.memo(() => {
           <KpiCard 
             title="Monthly Revenue" 
             value={`₹${formatNum(statsData?.monthlyRevenue)}`} 
-            trend="+5.2% vs last" 
+            trend={revenueData?.mrr?.trend || "—"} 
             icon={<DollarSign size={18} className="text-amber-400" />}
             actions={[
               { label: "Analytics", onClick: () => navigate("/admin/revenue") }
@@ -315,39 +371,39 @@ export const DashboardOverview = React.memo(() => {
           </div>
           
           <div className="grid grid-cols-1 gap-4">
-            {/* CPU */}
-            <div className="bg-slate-900/50 border border-white/5 rounded-2xl p-5 hover:bg-white/[0.02] transition cursor-pointer" onClick={() => openDrawer("ticket", { title: "Server CPU Details" })}>
+            {/* CPU / Server Status */}
+            <div className="bg-slate-900/50 border border-white/5 rounded-2xl p-5 hover:bg-white/[0.02] transition cursor-pointer" onClick={() => openDrawer("ticket", { title: "Server Status Details" })}>
               <div className="flex justify-between items-start mb-3">
                 <div className="flex items-center gap-2">
                   <Server size={16} className="text-blue-400" />
-                  <span className="text-xs font-bold text-slate-300">CPU Usage</span>
+                  <span className="text-xs font-bold text-slate-300">Server Nodes</span>
                 </div>
-                <div className="text-xs font-bold text-emerald-400 flex items-center gap-1">▼ Normal</div>
+                <div className="text-xs font-bold text-emerald-400 flex items-center gap-1">▼ Healthy</div>
               </div>
               <div className="flex items-end gap-3 mb-4">
-                <span className="text-3xl font-black text-white">42%</span>
+                <span className="text-lg font-bold text-white">All API Cluster Nodes Online</span>
               </div>
               <div className="flex gap-2">
-                <button className="flex-1 py-1.5 bg-white/5 hover:bg-white/10 rounded-lg text-[10px] font-bold text-slate-300 transition">View Logs</button>
-                <button className="flex-1 py-1.5 bg-white/5 hover:bg-white/10 rounded-lg text-[10px] font-bold text-slate-300 transition">Restart</button>
+                <button className="flex-1 py-1.5 bg-white/5 hover:bg-white/10 rounded-lg text-[10px] font-bold text-slate-300 transition cursor-pointer">View Logs</button>
+                <button className="flex-1 py-1.5 bg-white/5 hover:bg-white/10 rounded-lg text-[10px] font-bold text-slate-300 transition cursor-pointer">System Status</button>
               </div>
             </div>
 
-            {/* RAM */}
-            <div className="bg-slate-900/50 border border-white/5 rounded-2xl p-5 hover:bg-white/[0.02] transition cursor-pointer" onClick={() => openDrawer("ticket", { title: "Server RAM Details" })}>
+            {/* Database Status */}
+            <div className="bg-slate-900/50 border border-white/5 rounded-2xl p-5 hover:bg-white/[0.02] transition cursor-pointer" onClick={() => openDrawer("ticket", { title: "Database Connection Details" })}>
               <div className="flex justify-between items-start mb-3">
                 <div className="flex items-center gap-2">
                   <Database size={16} className="text-purple-400" />
-                  <span className="text-xs font-bold text-slate-300">Memory</span>
+                  <span className="text-xs font-bold text-slate-300">MongoDB Connection</span>
                 </div>
-                <div className="text-xs font-bold text-amber-400 flex items-center gap-1">▲ 72%</div>
+                <div className="text-xs font-bold text-emerald-400 flex items-center gap-1">▲ Connected</div>
               </div>
-              <div className="h-2 w-full bg-black/40 rounded-full overflow-hidden mb-4 border border-white/5">
-                <div className="h-full bg-amber-400 rounded-full" style={{ width: "72%" }} />
+              <div className="flex items-end gap-3 mb-4">
+                <span className="text-lg font-bold text-white">Primary Replica Pool Active</span>
               </div>
               <div className="flex gap-2">
-                <button className="flex-1 py-1.5 bg-white/5 hover:bg-white/10 rounded-lg text-[10px] font-bold text-slate-300 transition">Clear Cache</button>
-                <button className="flex-1 py-1.5 bg-white/5 hover:bg-white/10 rounded-lg text-[10px] font-bold text-slate-300 transition">Details</button>
+                <button className="flex-1 py-1.5 bg-white/5 hover:bg-white/10 rounded-lg text-[10px] font-bold text-slate-300 transition cursor-pointer">Health Check</button>
+                <button className="flex-1 py-1.5 bg-white/5 hover:bg-white/10 rounded-lg text-[10px] font-bold text-slate-300 transition cursor-pointer">Details</button>
               </div>
             </div>
           </div>
@@ -359,14 +415,14 @@ export const DashboardOverview = React.memo(() => {
         <section>
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-sm font-bold text-white tracking-wide">Verified Business Metrics</h3>
-            <button onClick={() => navigate("/admin/analytics")} className="text-xs font-bold text-emerald-400 hover:text-emerald-300">Full BI</button>
+            <button onClick={() => navigate("/admin/analytics")} className="text-xs font-bold text-emerald-400 hover:text-emerald-300 cursor-pointer">Full BI</button>
           </div>
           <div className="bg-slate-900/50 border border-white/5 rounded-2xl p-6 h-[240px] flex flex-col justify-center">
             <div className="grid grid-cols-2 gap-x-6 gap-y-6">
-              <BiMetric label="MRR" value={`₹${formatNum(revenueData?.mrr?.value)}`} trend={revenueData?.mrr?.trend} direction={revenueData?.mrr?.direction} />
-              <BiMetric label="ARR" value={`₹${formatNum(revenueData?.arr?.value)}`} trend={revenueData?.arr?.trend} direction={revenueData?.arr?.direction} />
-              <BiMetric label="Active Subscriptions" value={formatNum(statsData?.activeHostels?.value)} />
-              <BiMetric label="Trial Conversion" value="64%" trend="+2%" direction="up" />
+              <BiMetric label="MRR" value={`₹${formatNum(statsData?.monthlyRevenue ?? revenueData?.mrr?.value)}`} trend={revenueData?.mrr?.trend} direction={revenueData?.mrr?.direction} />
+              <BiMetric label="ARR" value={`₹${formatNum((statsData?.monthlyRevenue ?? 0) * 12)}`} trend={revenueData?.arr?.trend} direction={revenueData?.arr?.direction} />
+              <BiMetric label="Active Subscriptions" value={formatNum(activeHostelsCount)} />
+              <BiMetric label="Trial Hostels" value={formatNum(statsData?.trialHostelsVal ?? statsData?.trialHostels?.value)} />
             </div>
           </div>
         </section>
@@ -544,7 +600,10 @@ export const DashboardOverview = React.memo(() => {
         actionType={actionModal?.actionType}
         requestData={actionModal?.item}
         onSuccess={() => {
-          refetch();
+          refetchSummary?.();
+          refetchStats?.();
+          refetchRevenue?.();
+          refetchQueue?.();
           setActionModal(null);
         }}
       />

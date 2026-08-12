@@ -4,184 +4,123 @@ const Owner = require("../../models/Owner");
 const Room = require("../../models/Room");
 const Resident = require("../../models/Resident");
 const Payment = require("../../models/Payment");
+const HostelRequest = require("../../models/HostelRequest");
 
 const safeNumber = (v, fallback = 0) => {
   const n = Number(v);
   return Number.isFinite(n) ? n : fallback;
 };
 
-const monthWindow = () => {
-  const now = new Date();
-  return {
-    start: new Date(now.getFullYear(), now.getMonth(), 1),
-    end: new Date(now.getFullYear(), now.getMonth() + 1, 1),
-  };
-};
-
 /**
  * Super Admin Dashboard Overview (LIVE MongoDB aggregations only)
  */
 async function getDashboardOverview() {
-  const { start: monthStart, end: monthEnd } = monthWindow();
+  const now = new Date();
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+  const startOfWeek = new Date(now);
+  startOfWeek.setDate(now.getDate() - now.getDay());
+  startOfWeek.setHours(0, 0, 0, 0);
+
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+  const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
   const last30Start = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
 
-  // One $facet to minimize scans: compute all requested counts from their own collections.
-  // Note: $facet runs server-side and avoids JS loops for metric math.
-  const [facetResult] = await Subscription.aggregate([
-    {
-      $facet: {
-        hostelsBySubscription: [
-          {
-            $group: {
-              _id: null,
-              totalHostels: { $addToSet: "$hostelId" },
-              trialHostels: {
-                $addToSet: {
-                  $cond: [{ $eq: ["$subscriptionStatus", "trial"] }, "$hostelId", "$$REMOVE"],
-                },
-              },
-              paidHostels: {
-                $addToSet: {
-                  $cond: [{ $in: ["$subscriptionStatus", ["active"]] }, "$hostelId", "$$REMOVE"],
-                },
-              },
-              expiredSubscriptions: {
-                $sum: { $cond: [{ $eq: ["$subscriptionStatus", "expired"] }, 1, 0] },
-              },
-              activeHostels: {
-                $sum: { $cond: [{ $eq: ["$subscriptionStatus", "active"] }, 1, 0] },
-              },
-            },
+  const [
+    totalHostels,
+    activeHostels,
+    trialHostels,
+    paidHostels,
+    expiredSubscriptions,
+    deletedHostels,
+    pendingHostels,
+    newHostelsToday,
+    newHostelsThisWeek,
+    totalOwners,
+    newOwnersToday,
+    newOwnersThisWeek,
+    totalResidents,
+    newResidentsToday,
+    newResidentsThisWeek,
+    totalRooms,
+    occupiedRoomsAgg,
+    monthlyRevenueAgg,
+    todayRevenueAgg,
+    pendingPayments,
+    pendingApprovals,
+  ] = await Promise.all([
+    Hostel.countDocuments({ isDeleted: { $ne: true }, pendingActivation: { $ne: true } }),
+    Hostel.countDocuments({ isDeleted: { $ne: true }, pendingActivation: { $ne: true }, subscriptionStatus: { $in: ["active", "approved", undefined] } }),
+    Hostel.countDocuments({ isDeleted: { $ne: true }, pendingActivation: { $ne: true }, $or: [{ subscriptionStatus: "trial" }, { isTrial: true }] }),
+    Hostel.countDocuments({ isDeleted: { $ne: true }, pendingActivation: { $ne: true }, subscriptionStatus: "active" }),
+    Subscription.countDocuments({ subscriptionStatus: "expired" }),
+    Hostel.countDocuments({ isDeleted: true }),
+    Hostel.countDocuments({ isDeleted: { $ne: true }, pendingActivation: true }),
+    Hostel.countDocuments({ isDeleted: { $ne: true }, createdAt: { $gte: startOfToday } }),
+    Hostel.countDocuments({ isDeleted: { $ne: true }, createdAt: { $gte: startOfWeek } }),
+    Owner.countDocuments({ status: "active" }),
+    Owner.countDocuments({ status: "active", createdAt: { $gte: startOfToday } }),
+    Owner.countDocuments({ status: "active", createdAt: { $gte: startOfWeek } }),
+    Resident.countDocuments({ status: "active" }),
+    Resident.countDocuments({ status: "active", createdAt: { $gte: startOfToday } }),
+    Resident.countDocuments({ status: "active", createdAt: { $gte: startOfWeek } }),
+    Room.countDocuments(),
+    Room.aggregate([
+      {
+        $group: {
+          _id: null,
+          totalRooms: { $sum: 1 },
+          occupiedRooms: {
+            $sum: { $cond: [{ $gt: ["$occupiedBeds", 0] }, 1, 0] },
           },
-          {
-            $project: {
-              _id: 0,
-              totalHostels: { $size: "$totalHostels" },
-              trialHostels: { $size: "$trialHostels" },
-              paidHostels: { $size: "$paidHostels" },
-              expiredSubscriptions: 1,
-              activeHostels: 1,
-            },
-          },
-        ],
+        },
       },
-    },
+    ]),
+    Payment.aggregate([
+      { $match: { status: { $in: ["success", "Paid", "paid"] }, createdAt: { $gte: last30Start } } },
+      { $group: { _id: null, total: { $sum: "$paidAmount" } } },
+    ]),
+    Payment.aggregate([
+      { $match: { status: { $in: ["success", "Paid", "paid"] }, createdAt: { $gte: startOfToday } } },
+      { $group: { _id: null, total: { $sum: "$paidAmount" } } },
+    ]),
+    Payment.countDocuments({ status: "pending" }),
+    HostelRequest ? HostelRequest.countDocuments({ status: { $in: ["pending", "activation_pending"] } }) : 0,
   ]);
 
-  const hostelFacet = facetResult?.hostelsBySubscription?.[0] || {
-    totalHostels: 0,
-    trialHostels: 0,
-    paidHostels: 0,
-    expiredSubscriptions: 0,
-    activeHostels: 0,
-  };
+  const occupiedRooms = safeNumber(occupiedRoomsAgg?.[0]?.occupiedRooms, 0);
+  const occupancyRate = totalRooms > 0 ? occupiedRooms / totalRooms : 0;
+  const monthlyRevenue = safeNumber(monthlyRevenueAgg?.[0]?.total, 0);
+  const todayRevenue = safeNumber(todayRevenueAgg?.[0]?.total, 0);
 
-  // Independent aggregations for the remaining collections (still aggregation-only; parallelized).
-  const [ownersAgg, residentsAgg, roomsAgg, occupancyAgg, revenueAgg, pendingPaymentsAgg, newSignupsAgg] =
-    await Promise.all([
-      Owner.aggregate([
-        { $match: { status: "active" } },
-        { $group: { _id: null, totalOwners: { $sum: 1 } } },
-        { $project: { _id: 0, totalOwners: 1 } },
-      ]),
-      Resident.aggregate([
-        { $match: { status: "active" } },
-        { $group: { _id: null, totalResidents: { $sum: 1 } } },
-        { $project: { _id: 0, totalResidents: 1 } },
-      ]),
-      Room.aggregate([
-        { $group: { _id: null, totalRooms: { $sum: 1 } } },
-        { $project: { _id: 0, totalRooms: 1 } },
-      ]),
-      Room.aggregate([
-        {
-          $group: {
-            _id: null,
-            totalRooms: { $sum: 1 },
-            occupiedRooms: {
-              $sum: {
-                $cond: [{ $gt: ["$occupiedBeds", 0] }, 1, 0],
-              },
-            },
-          },
-        },
-        {
-          $project: {
-            _id: 0,
-            totalRooms: 1,
-            occupiedRooms: 1,
-            occupancyRate: {
-              $cond: [
-                { $eq: ["$totalRooms", 0] },
-                0,
-                { $divide: ["$occupiedRooms", "$totalRooms"] },
-              ],
-            },
-          },
-        },
-      ]),
-      Payment.aggregate([
-        {
-          $match: {
-            status: "success",
-            createdAt: { $gte: last30Start },
-          },
-        },
-        {
-          $group: { _id: null, monthlyRevenue: { $sum: "$paidAmount" } },
-        },
-        { $project: { _id: 0, monthlyRevenue: 1 } },
-      ]),
-      Payment.aggregate([
-        {
-          $match: {
-            status: "pending",
-          },
-        },
-        { $group: { _id: null, pendingPayments: { $sum: 1 } } },
-        { $project: { _id: 0, pendingPayments: 1 } },
-      ]),
-      Resident.aggregate([
-        {
-          $match: {
-            status: "active",
-            joinDate: { $gte: monthStart, $lt: monthEnd },
-          },
-        },
-        { $group: { _id: null, newSignupsThisMonth: { $sum: 1 } } },
-        { $project: { _id: 0, newSignupsThisMonth: 1 } },
-      ]),
-    ]);
-
-  const totalOwners = safeNumber(ownersAgg?.[0]?.totalOwners, 0);
-  const totalResidents = safeNumber(residentsAgg?.[0]?.totalResidents, 0);
-  const totalRooms = safeNumber(roomsAgg?.[0]?.totalRooms, 0);
-  const occupiedRooms = safeNumber(occupancyAgg?.[0]?.occupiedRooms, 0);
-  const occupancyRate = safeNumber(occupancyAgg?.[0]?.occupancyRate, 0);
-  const monthlyRevenue = safeNumber(revenueAgg?.[0]?.monthlyRevenue, 0);
-  const pendingPayments = safeNumber(pendingPaymentsAgg?.[0]?.pendingPayments, 0);
-  const newSignupsThisMonth = safeNumber(newSignupsAgg?.[0]?.newSignupsThisMonth, 0);
-
-  // required exact response fields
-  const response = {
-    totalHostels: safeNumber(hostelFacet.totalHostels, 0),
-    activeHostels: safeNumber(hostelFacet.activeHostels, 0),
-    trialHostels: safeNumber(hostelFacet.trialHostels, 0),
-    paidHostels: safeNumber(hostelFacet.paidHostels, 0),
-    totalOwners,
-    totalResidents,
-    totalRooms,
+  return {
+    totalHostels: safeNumber(totalHostels, 0),
+    activeHostels: safeNumber(activeHostels, 0),
+    trialHostels: safeNumber(trialHostels, 0),
+    paidHostels: safeNumber(paidHostels, 0),
+    expiredSubscriptions: safeNumber(expiredSubscriptions, 0),
+    deletedHostels: safeNumber(deletedHostels, 0),
+    pendingHostels: safeNumber(pendingHostels, 0),
+    newHostelsToday: safeNumber(newHostelsToday, 0),
+    newHostelsThisWeek: safeNumber(newHostelsThisWeek, 0),
+    totalOwners: safeNumber(totalOwners, 0),
+    newOwnersToday: safeNumber(newOwnersToday, 0),
+    newOwnersThisWeek: safeNumber(newOwnersThisWeek, 0),
+    totalResidents: safeNumber(totalResidents, 0),
+    newResidentsToday: safeNumber(newResidentsToday, 0),
+    newResidentsThisWeek: safeNumber(newResidentsThisWeek, 0),
+    totalRooms: safeNumber(totalRooms, 0),
     occupiedRooms,
     occupancyRate,
     monthlyRevenue,
-    pendingPayments,
-    expiredSubscriptions: safeNumber(hostelFacet.expiredSubscriptions, 0),
-    newSignupsThisMonth,
+    todayRevenue,
+    pendingPayments: safeNumber(pendingPayments, 0),
+    pendingApprovals: safeNumber(pendingApprovals, 0),
+    newSignupsThisMonth: safeNumber(newHostelsThisWeek, 0),
   };
-
-  return response;
 }
 
 module.exports = { getDashboardOverview };
+
 
 

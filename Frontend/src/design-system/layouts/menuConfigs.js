@@ -114,6 +114,7 @@ export const adminMenuItems = [
     { key: 'hostels', label: 'Hostels', icon: 'Building', href: '/admin/hostels' },
     { key: 'owners', label: 'Owners', icon: 'Users', href: '/admin/owners' },
     { key: 'residents', label: 'Residents', icon: 'Users', href: '/admin/residents' },
+    { key: 'trash', label: 'Trash', icon: 'Trash2', href: '/admin/trash' },
     { key: 'subscriptions', label: 'Subscriptions', icon: 'CreditCard', href: '/admin/subscriptions' },
     { key: 'revenue', label: 'Revenue', icon: 'IndianRupee', href: '/admin/revenue' },
     { key: 'finance', label: 'Finance', icon: 'Wallet', href: '/admin/finance' },
@@ -133,8 +134,8 @@ export const adminMenuItems = [
 export const adminMobileItems = [
   { key: 'home', label: 'Home', icon: 'Home', href: '/admin/dashboard' },
   { key: 'hostels', label: 'Hostels', icon: 'Building', href: '/admin/hostels' },
+  { key: 'trash', label: 'Trash', icon: 'Trash2', href: '/admin/trash' },
   { key: 'plans', label: 'Plans', icon: 'CreditCard', href: '/admin/subscriptions' },
-  { key: 'support', label: 'Support', icon: 'HelpCircle', href: '/admin/support' },
   { key: 'settings', label: 'Settings', icon: 'Settings', href: '/admin/settings' },
 ];
 

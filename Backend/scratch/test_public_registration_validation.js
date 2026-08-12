@@ -27,7 +27,7 @@ const https    = require("https");
 const fs       = require("fs");
 const path     = require("path");
 const mongoose = require("mongoose");
-require("dotenv").config();
+require("dotenv").config({ path: path.join(__dirname, "../.env") });
 
 const BASE_URL  = process.env.TEST_BASE_URL || "http://localhost:5000";
 const MONGO_URI = process.env.MONGO_URI || "mongodb://127.0.0.1:27017/hostelmate";
@@ -182,8 +182,10 @@ async function runTests() {
   console.log(`  Run stamp : ${ts}`);
   console.log("═══════════════════════════════════════════════════════════════\n");
 
-  // ── Connect to MongoDB for cleanup ──────────────────────────────────────────
+  // ── Connect to MongoDB & launch server ──────────────────────────────────────────
   await mongoose.connect(MONGO_URI, { serverSelectionTimeoutMS: 8000 });
+  require("../server");
+  await new Promise((r) => setTimeout(r, 1000));
   const HostelRequest = require("../models/HostelRequest");
 
   // Clean up any leftover test data from a previous failed run
@@ -208,7 +210,7 @@ async function runTests() {
     } else if (res.status === 201 && res.data?.success === true) {
       pass("POST /api/request/register accepted without auth token → HTTP 201");
     } else {
-      fail(`Unexpected HTTP ${res.status} from registration endpoint`, res.data);
+      fail(`Unexpected HTTP ${res.status} from registration endpoint`, { status: res.status, body: res.data });
     }
   }
 

@@ -106,6 +106,23 @@ const ownerSchema = new mongoose.Schema(
       type: Number,
       default: 1,
     },
+    resetPasswordToken: {
+      type: String,
+      default: null,
+    },
+    resetPasswordExpires: {
+      type: Date,
+      default: null,
+    },
+    credentialIssuedAt: {
+      type: Date,
+      default: null,
+    },
+    credentialDeliveryStatus: {
+      type: String,
+      enum: ["not_issued", "issued", "sent", "failed", "unconfigured"],
+      default: "not_issued",
+    },
   },
   { timestamps: true }
 );

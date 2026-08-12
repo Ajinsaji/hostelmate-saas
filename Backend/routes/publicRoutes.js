@@ -4,6 +4,8 @@ const { getPublicHostel, submitAdmission } = require("../controllers/publicContr
 const { uploadFields } = require("../middleware/cloudinaryUpload");
 
 
+const { forgotPassword, resetPasswordWithToken } = require("../controllers/ownerController");
+
 router.get("/hostel/:uniqueCode", getPublicHostel);
 
 router.post("/hostel/:uniqueCode/admission", uploadFields([
@@ -11,5 +13,9 @@ router.post("/hostel/:uniqueCode/admission", uploadFields([
   { name: "idProofFile" },
   { name: "signatureFile" }
 ]), submitAdmission);
+
+// Public owner self-service password reset
+router.post("/owner/forgot-password", forgotPassword);
+router.post("/owner/reset-password", resetPasswordWithToken);
 
 module.exports = router;

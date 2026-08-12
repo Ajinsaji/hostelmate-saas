@@ -17,7 +17,9 @@
 
 const http     = require("http");
 const mongoose = require("mongoose");
-require("dotenv").config();
+const path     = require("path");
+require("dotenv").config({ path: path.join(__dirname, "../.env") });
+try { require("../server"); } catch (e) {}
 
 const BASE_URL  = "http://localhost:5000";
 const MONGO_URI = process.env.MONGO_URI || "mongodb://127.0.0.1:27017/hostelmate";
