@@ -14,10 +14,15 @@ async function testCanonicalLifecycle() {
   const Owner = require('../models/Owner');
   const Subscription = require('../models/Subscription');
 
-  const superadmin = await Admin.findOne({ role: 'super_admin' });
+  let superadmin = await Admin.findOne({ role: 'super_admin' });
   if (!superadmin) {
-    console.error('Superadmin user not found in DB!');
-    process.exit(1);
+    superadmin = await Admin.create({
+      username: "superadmin_test",
+      password: "password123",
+      role: "super_admin",
+      name: "Test SuperAdmin",
+      email: "superadmin@test.com",
+    });
   }
   console.log('Superadmin user found:', superadmin.username, superadmin.role);
 

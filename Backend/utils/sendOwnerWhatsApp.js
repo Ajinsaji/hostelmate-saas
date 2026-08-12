@@ -76,8 +76,17 @@ const sendOwnerWhatsApp = async (payload) => {
   const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
   const apiVersion = process.env.WHATSAPP_API_VERSION || "v19.0";
 
+  const isConfigured =
+    token &&
+    !token.includes("your_") &&
+    !token.includes("dummy") &&
+    !token.startsWith("EAAG_DUMMY") &&
+    phoneNumberId &&
+    !phoneNumberId.includes("your_") &&
+    !phoneNumberId.includes("dummy");
+
   // Non-blocking: WhatsApp must never break activation.
-  if (!token || !phoneNumberId) {
+  if (!isConfigured) {
     // eslint-disable-next-line no-console
     console.warn("Meta WhatsApp not configured. Skipping real send.", {
       hasToken: !!token,
@@ -139,7 +148,7 @@ const sendOwnerWhatsApp = async (payload) => {
         Authorization: `Bearer ${token}`,
         "Content-Type": "application/json",
       },
-      timeout: 15000,
+      timeout: 3000,
     });
 
     // eslint-disable-next-line no-console

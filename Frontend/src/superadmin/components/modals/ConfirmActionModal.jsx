@@ -277,16 +277,23 @@ export const ConfirmActionModal = React.memo(({
           {activationResult ? (
             <div className="space-y-4 py-2">
               <div className="flex items-center gap-3 p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-emerald-400">
-                <CheckCircle2 size={20} className="shrink-0" />
+                <CheckCircle2 size={20} className="shrink-0 text-emerald-400" />
                 <div>
-                  <h4 className="text-sm font-bold text-white">Hostel Activated Successfully!</h4>
-                  <p className="text-xs text-slate-300">Owner account created and subscription activated.</p>
+                  <h4 className="text-sm font-extrabold text-white">Owner Account Activated</h4>
+                  <p className="text-xs text-slate-300">
+                    Owner: <strong className="text-white">{activationResult.fullName || ownerName}</strong> | Phone: <strong className="text-white">{activationResult.phone || requestData.phone || activationResult.username}</strong> | Email: <strong className="text-white">{activationResult.email || requestData.email || "Not provided"}</strong>
+                  </p>
                 </div>
               </div>
 
               {/* Login Link Card */}
               <div className="p-3.5 bg-[#0B1220] border border-[#202B45] rounded-xl space-y-2">
-                <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">Owner Login URL</label>
+                <div className="flex items-center justify-between">
+                  <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">Owner Login URL</label>
+                  <span className="text-[10px] bg-blue-500/10 text-blue-400 px-2 py-0.5 rounded font-mono">
+                    Credential Status: {deliveryStatus === "issued" ? "Issued — Awaiting First Login" : deliveryStatus}
+                  </span>
+                </div>
                 <div className="flex items-center justify-between gap-2 bg-[#131C2E] p-2.5 rounded-lg border border-[#202B45]">
                   <span className="text-xs font-mono text-emerald-300 truncate select-all">{activationResult.loginUrl}</span>
                   <div className="flex items-center gap-1 shrink-0">
@@ -294,13 +301,13 @@ export const ConfirmActionModal = React.memo(({
                       onClick={() => {
                         navigator.clipboard.writeText(activationResult.loginUrl);
                         setCopiedLink(true);
-                        toast.success("Login URL copied!");
+                        toast.success("Login Link copied!");
                         setTimeout(() => setCopiedLink(false), 2000);
                       }}
                       className="p-1.5 bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white rounded-md text-xs font-semibold flex items-center gap-1 transition cursor-pointer"
                     >
                       {copiedLink ? <Check size={14} className="text-emerald-400" /> : <Copy size={14} />}
-                      {copiedLink ? "Copied" : "Copy Link"}
+                      {copiedLink ? "Copied" : "Copy Login Link"}
                     </button>
                     <a
                       href={activationResult.loginUrl}
@@ -309,7 +316,7 @@ export const ConfirmActionModal = React.memo(({
                       className="p-1.5 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 rounded-md text-xs font-semibold flex items-center gap-1 transition"
                     >
                       <ExternalLink size={14} />
-                      Open
+                      Open Login
                     </a>
                   </div>
                 </div>
@@ -319,10 +326,10 @@ export const ConfirmActionModal = React.memo(({
               <div className="p-3.5 bg-[#0B1220] border border-amber-500/30 rounded-xl space-y-2">
                 <div className="flex items-center justify-between">
                   <label className="block text-[11px] font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1">
-                    <Key size={12} /> Temporary Password (One-Time Display)
+                    <Key size={12} /> Temporary Password
                   </label>
                   <span className="text-[10px] bg-amber-500/10 text-amber-400 px-2 py-0.5 rounded-md font-mono">
-                    Issued — password no longer viewable on reload
+                    Temporary password is displayed only once.
                   </span>
                 </div>
 
@@ -345,7 +352,7 @@ export const ConfirmActionModal = React.memo(({
                   </button>
                 </div>
                 <p className="text-[11px] text-slate-400 italic">
-                  Store or share these credentials with the owner now. Plaintext temporary password is not stored in DB and will not be viewable after closing this dialog.
+                  Plaintext temporary password is not stored in DB and will not be viewable after closing this dialog.
                 </p>
               </div>
 
@@ -357,10 +364,10 @@ export const ConfirmActionModal = React.memo(({
                 <button
                   onClick={() => handleSendCredentials(activationResult.ownerId)}
                   disabled={sendingCredentials}
-                  className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-md transition disabled:opacity-50 cursor-pointer"
+                  className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-bold text-xs shadow-md transition cursor-pointer"
                 >
                   {sendingCredentials ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
-                  {sendingCredentials ? "Sending..." : "Send Credentials"}
+                  {sendingCredentials ? "Sending..." : "Send Credentials via WhatsApp"}
                 </button>
               </div>
             </div>

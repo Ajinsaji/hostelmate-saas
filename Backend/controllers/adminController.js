@@ -184,7 +184,7 @@ const approveHostel = async (req, res) => {
 
 const finalizeHostelActivation = async (req, res) => {
   try {
-    const { hostelId } = req.params;
+    const hostelId = req.params.hostelId || req.params.id;
     const { planType, amount, startDate, endDate, isTrial, isFreeAccess, notes } = req.body || {};
 
     if (!hostelId) {
@@ -315,12 +315,25 @@ const finalizeHostelActivation = async (req, res) => {
     return res.status(200).json({
       success: true,
       message: "Hostel activated successfully",
+      owner: {
+        id: createdOwner._id,
+        fullName: createdOwner.ownerName,
+        phone: createdOwner.phone,
+        email: createdOwner.email,
+      },
       credentials: {
-        username: hostel.phone,
+        loginUrl,
         tempPassword,
+        temporaryPassword: tempPassword,
+        username: hostel.phone,
+        issuedAt: createdOwner.credentialIssuedAt,
+      },
+      credentialDelivery: {
+        status: createdOwner.credentialDeliveryStatus,
       },
       loginUrl,
       credentialStatus: createdOwner.credentialDeliveryStatus,
+      ownerId: createdOwner._id,
     });
   } catch (error) {
     console.error("finalizeHostelActivation error:", error?.message || error);
@@ -542,25 +555,35 @@ const sendCredentials = async (req, res) => {
       });
     }
 
-    let owner = await Owner.findById(ownerId).populate("hostelId");
+    let owner = await Owner.findById(ownerId);
     if (!owner && mongoose.Types.ObjectId.isValid(ownerId)) {
-      owner = await Owner.findOne({ hostelId: ownerId }).populate("hostelId");
+      owner = await Owner.findOne({ hostelId: ownerId });
     }
 
     if (!owner) return res.status(404).json({ success: false, message: "Owner not found" });
 
-    const hostel = owner.hostelId;
+    const hostel = owner.hostelId ? await Hostel.findById(owner.hostelId) : null;
 
     // Check if delivery infrastructure (Meta Cloud WhatsApp API) is configured
-    const hasToken = !!process.env.WHATSAPP_TOKEN;
-    const hasPhoneId = !!process.env.WHATSAPP_PHONE_NUMBER_ID;
+    const token = process.env.WHATSAPP_TOKEN;
+    const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
 
-    if (!hasToken || !hasPhoneId) {
+    const isConfigured =
+      token &&
+      !token.includes("your_") &&
+      !token.includes("dummy") &&
+      !token.startsWith("EAAG_DUMMY") &&
+      phoneNumberId &&
+      !phoneNumberId.includes("your_") &&
+      !phoneNumberId.includes("dummy");
+
+    if (!isConfigured) {
       owner.credentialDeliveryStatus = "unconfigured";
       await owner.save();
       return res.status(200).json({
         success: false,
         unconfigured: true,
+        deliveryStatus: "unconfigured",
         message: "Credential delivery service is not configured.",
       });
     }
@@ -588,6 +611,7 @@ const sendCredentials = async (req, res) => {
       return res.status(200).json({
         success: false,
         unconfigured: true,
+        deliveryStatus: "unconfigured",
         message: "Credential delivery service is not configured.",
       });
     }
@@ -597,6 +621,7 @@ const sendCredentials = async (req, res) => {
 
     return res.status(200).json({
       success: true,
+      deliveryStatus: "sent",
       message: "Credentials sent successfully",
       phone: owner.phone,
     });
@@ -604,7 +629,8 @@ const sendCredentials = async (req, res) => {
     console.error("sendCredentials error:", error?.message || error);
     return res.status(500).json({
       success: false,
-      message: "Unable to send credentials. Please try again.",
+      deliveryStatus: "failed",
+      message: "Credential delivery failed",
       error: error?.message,
     });
   }
@@ -619,9 +645,9 @@ const resendWhatsApp = sendCredentials;
 const resetOwnerTempPassword = async (req, res) => {
   try {
     const ownerId = req.params.ownerId || req.params.id;
-    let owner = await Owner.findById(ownerId).populate("hostelId");
+    let owner = await Owner.findById(ownerId);
     if (!owner && mongoose.Types.ObjectId.isValid(ownerId)) {
-      owner = await Owner.findOne({ hostelId: ownerId }).populate("hostelId");
+      owner = await Owner.findOne({ hostelId: ownerId });
     }
     if (!owner) return res.status(404).json({ success: false, message: "Owner not found" });
 
@@ -638,18 +664,38 @@ const resetOwnerTempPassword = async (req, res) => {
     owner.credentialDeliveryStatus = "issued";
     await owner.save();
 
+    // Invalidate all active sessions for this owner upon password reset
+    const OwnerSession = require("../models/OwnerSession");
+    await OwnerSession.updateMany(
+      { ownerId: owner._id, isRevoked: false },
+      { $set: { isRevoked: true } }
+    );
+
     const frontendBase = process.env.FRONTEND_URL || process.env.VITE_APP_URL || process.env.PUBLIC_URL || (req.headers && req.headers.origin ? req.headers.origin : "https://hostelmate-saas.vercel.app");
     const loginUrl = `${String(frontendBase).replace(/\/$/, "")}/owner/login`;
 
     return res.status(200).json({
       success: true,
       message: "Temporary password reset successfully",
+      owner: {
+        id: owner._id,
+        fullName: owner.ownerName,
+        phone: owner.phone,
+        email: owner.email,
+      },
       credentials: {
-        username: owner.phone,
+        loginUrl,
         tempPassword: newTempPassword,
+        temporaryPassword: newTempPassword,
+        username: owner.phone,
+        issuedAt: owner.credentialIssuedAt,
+      },
+      credentialDelivery: {
+        status: owner.credentialDeliveryStatus,
       },
       loginUrl,
       credentialStatus: "issued",
+      ownerId: owner._id,
     });
   } catch (error) {
     console.error("resetOwnerTempPassword error:", error?.message || error);
@@ -1527,6 +1573,7 @@ module.exports = {
   getSubscriptions,
   addHostel,
   editHostelLocation,
+  sendCredentials,
   resendWhatsApp,
   resetOwnerTempPassword,
   getAdminProfile,

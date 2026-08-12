@@ -19,9 +19,14 @@ async function getOwnerProfileByHostelId(hostelId) {
   const email = owner?.email || hostel.email || hostelRequest?.email || "Not provided";
   const photo = owner?.profileImage || owner?.photo || hostel.ownerPhoto || hostelRequest?.ownerPhoto || "";
 
+  const frontendBase = process.env.FRONTEND_URL || process.env.VITE_APP_URL || process.env.PUBLIC_URL || "https://hostelmate-saas.vercel.app";
+  const loginUrl = `${String(frontendBase).replace(/\/$/, "")}/owner/login`;
+
   return {
     id: owner?._id || hostel._id,
     _id: owner?._id || hostel._id,
+    ownerId: owner?._id || null,
+    hostelId: hostel._id,
     name: ownerName,
     fullName: ownerName,
     photo: photo,
@@ -29,6 +34,14 @@ async function getOwnerProfileByHostelId(hostelId) {
     phone: phone,
     email: email,
     address: hostel.address || "Not provided",
+    loginUrl,
+    credentialIssuedAt: owner?.credentialIssuedAt ? new Date(owner.credentialIssuedAt).toISOString() : null,
+    credentialDeliveryStatus: owner?.credentialDeliveryStatus || (owner ? "issued" : "not_issued"),
+    mustChangePassword: !!owner?.mustChangePassword,
+    firstLogin: !!owner?.firstLogin,
+    passwordChanged: !!owner?.passwordChanged,
+    hasResetToken: !!(owner?.resetPasswordToken && owner?.resetPasswordExpires && new Date(owner.resetPasswordExpires) > new Date()),
+    resetExpired: !!(owner?.resetPasswordToken && owner?.resetPasswordExpires && new Date() > new Date(owner.resetPasswordExpires)),
     emergencyContact: {
       name: ownerName,
       relation: "Primary Owner",
@@ -54,7 +67,7 @@ async function getOwnerProfileByHostelId(hostelId) {
     },
 
     role: owner?.role || "owner",
-    status: owner?.status || "active",
+    status: owner ? (owner.status || "active") : (hostel.pendingActivation ? "Not Activated" : "active"),
   };
 }
 
