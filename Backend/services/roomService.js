@@ -62,22 +62,43 @@ async function createRoom(data, userContext = {}) {
   // Check duplicate room number
   const existing = await Room.findOne({ hostelId, roomNumber: data.roomNumber, isDeleted: false });
   if (existing) {
-    throw new Error(`Room number ${data.roomNumber} already exists in this hostel`);
+    const dupErr = new Error("Room already exists.");
+    dupErr.code = 11000;
+    throw dupErr;
   }
 
-  const capacity = parseInt(data.capacity || data.totalBeds, 10) || 2;
-  const rent = parseFloat(data.monthlyRent || data.rentPerBed) || 0;
+  // Safely handle optional buildingId and floorId before Mongoose ObjectId casting
+  let buildingId = data.buildingId;
+  if (!buildingId || buildingId === "" || buildingId === "null" || buildingId === "undefined") {
+    buildingId = null;
+  }
+
+  let floorId = data.floorId;
+  if (!floorId || floorId === "" || floorId === "null" || floorId === "undefined") {
+    floorId = null;
+  }
+
+  // Safely normalize numeric fields
+  const capacity = Math.max(1, parseInt(data.capacity || data.totalBeds, 10) || 2);
+  const monthlyRent = Math.max(0, parseFloat(data.monthlyRent) || parseFloat(data.rentPerBed) || 0);
+  const securityDeposit = Math.max(0, parseFloat(data.securityDeposit) || 0);
+  const rentPerBed = data.rentPerBed !== undefined && data.rentPerBed !== null && data.rentPerBed !== ""
+    ? Math.max(0, parseFloat(data.rentPerBed) || 0)
+    : monthlyRent;
 
   const room = await Room.create({
     ...data,
     tenantId: hostelId,
     hostelId,
+    buildingId,
+    floorId,
     capacity,
     totalBeds: capacity,
     occupiedBeds: 0,
     vacantBeds: capacity,
-    monthlyRent: rent,
-    rentPerBed: rent,
+    monthlyRent,
+    rentPerBed,
+    securityDeposit,
     status: data.status || "Vacant",
     createdBy: userContext.userId,
   });
@@ -127,7 +148,7 @@ async function updateRoom(roomId, updateData, userContext = {}) {
   if (!room) throw new Error("Room not found");
 
   updateData.updatedBy = userContext.userId;
-  const updatedRoom = await Room.findByIdAndUpdate(roomId, updateData, { new: true });
+  const updatedRoom = await Room.findByIdAndUpdate(roomId, updateData, { returnDocument: "after" });
 
   await recalculateRoomStatus(roomId);
 

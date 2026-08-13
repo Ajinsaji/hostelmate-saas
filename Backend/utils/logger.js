@@ -13,11 +13,44 @@ const transport = !isProduction
     }
   : undefined;
 
+const redactOptions = {
+  paths: [
+    'req.headers.authorization',
+    'req.headers.Authorization',
+    'req.headers.cookie',
+    'req.headers.Cookie',
+    'req.headers["x-api-key"]',
+    'req.headers["x-auth-token"]',
+    'req.headers["X-Api-Key"]',
+    'req.headers["X-Auth-Token"]',
+    'headers.authorization',
+    'headers.Authorization',
+    'headers.cookie',
+    'headers.Cookie',
+    'headers["x-api-key"]',
+    'headers["x-auth-token"]',
+    'headers["X-Api-Key"]',
+    'headers["X-Auth-Token"]',
+    '*.authorization',
+    '*.Authorization',
+    '*.cookie',
+    '*.Cookie',
+    '*.password',
+    '*.tempPassword',
+    '*.token',
+    '*.whatsappToken',
+    '*.access_token',
+  ],
+  censor: '[REDACTED]',
+};
+
 const logger = pino({
   level: process.env.LOG_LEVEL || 'info',
   transport,
+  redact: redactOptions,
 });
 
 const auditLogger = logger.child({ type: 'audit' });
 
-module.exports = { logger, auditLogger };
+module.exports = { logger, auditLogger, redactOptions };
+

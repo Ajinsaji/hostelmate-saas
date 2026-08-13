@@ -50,7 +50,7 @@ class VersionService {
     await UserReleaseStatus.findOneAndUpdate(
       { userId, version },
       { seen: true, seenAt: new Date(), workspaceId },
-      { upsert: true, new: true }
+      { upsert: true, returnDocument: "after" }
     );
     return { success: true, message: `Release ${version} marked as read` };
   }

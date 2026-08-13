@@ -114,7 +114,7 @@ async function updateResident(residentId, updateData, userContext = {}) {
 
   updateData.updatedBy = userContext.userId || null;
 
-  const updatedResident = await Resident.findByIdAndUpdate(residentId, updateData, { new: true });
+  const updatedResident = await Resident.findByIdAndUpdate(residentId, updateData, { returnDocument: "after" });
 
   await recordAuditLog({
     hostelId: resident.hostelId,

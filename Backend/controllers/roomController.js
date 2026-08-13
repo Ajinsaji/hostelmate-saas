@@ -8,7 +8,7 @@ function getUserContext(req) {
   return {
     hostelId: req.owner?.hostelId || req.user?.hostelId,
     userId: req.owner?._id || req.user?._id,
-    ip: req.ip || req.headers["x-forwarded-for"] || "",
+    ip: req.ip || req.headers?.["x-forwarded-for"] || "",
   };
 }
 
@@ -16,13 +16,64 @@ const createRoom = async (req, res) => {
   try {
     const userCtx = getUserContext(req);
     const { error, value } = createRoomSchema.validate(req.body, { allowUnknown: true });
-    if (error) return res.status(400).json({ success: false, message: error.details[0].message });
+    if (error) {
+      const fields = {};
+      if (error.details && Array.isArray(error.details)) {
+        error.details.forEach((d) => {
+          const key = d.path && d.path.length > 0 ? d.path[0] : "general";
+          fields[key] = d.message;
+        });
+      }
+      return res.status(400).json({
+        success: false,
+        message: "Room validation failed",
+        fields,
+      });
+    }
 
     const room = await roomService.createRoom(value, userCtx);
     return res.status(201).json({ success: true, message: "Room Created Successfully", room });
   } catch (err) {
-    logger.error("createRoom error:", err);
-    return res.status(400).json({ success: false, message: err.message || "Failed to create room" });
+    logger.error("createRoom error:", {
+      name: err?.name,
+      message: err?.message,
+      code: err?.code,
+      path: err?.path,
+    });
+
+    if (err.name === "ValidationError") {
+      const fields = {};
+      if (err.errors) {
+        Object.keys(err.errors).forEach((key) => {
+          fields[key] = err.errors[key].message;
+        });
+      }
+      return res.status(400).json({
+        success: false,
+        message: "Room validation failed",
+        fields,
+      });
+    }
+
+    if (err.code === 11000 || err.message === "Room already exists." || /already exists/i.test(err.message)) {
+      return res.status(400).json({
+        success: false,
+        message: "Room already exists.",
+      });
+    }
+
+    if (err.name === "CastError") {
+      return res.status(400).json({
+        success: false,
+        message: `Invalid format for field: ${err.path}`,
+      });
+    }
+
+    const status = err.statusCode || err.status || 400;
+    return res.status(status).json({
+      success: false,
+      message: err.message || "Failed to create room",
+    });
   }
 };
 

@@ -96,7 +96,7 @@ const registerDeviceToken = async (req, res) => {
         isActive: true,
         lastSeenAt: new Date(),
       },
-      { upsert: true, new: true }
+      { upsert: true, returnDocument: "after" }
     );
     return res.status(200).json({ success: true, message: "Device token registered successfully", deviceToken });
   } catch (err) {

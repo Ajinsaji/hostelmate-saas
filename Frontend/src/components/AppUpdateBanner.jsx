@@ -1,11 +1,14 @@
 import React, { useEffect, useRef, useState } from "react";
 import AppUpdateModal from "./AppUpdateModal";
+import UpdateProgressModal from "./feedback/UpdateProgressModal";
 
 const UPDATE_PROMPTED_SW_KEY = "pwa_update_prompted_sw";
 
 export default function AppUpdateBanner() {
   const [isOpen, setIsOpen] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
+  const [updateError, setUpdateError] = useState(false);
+  const [updateSuccess, setUpdateSuccess] = useState(false);
   const promptedScriptUrlRef = useRef(null);
 
   useEffect(() => {
@@ -96,32 +99,104 @@ export default function AppUpdateBanner() {
   };
 
   const doUpdateNow = async () => {
+    if (isUpdating) return;
     setIsUpdating(true);
+    setUpdateError(false);
+    setUpdateSuccess(false);
     markPrompted();
+
     try {
       const reg = await navigator.serviceWorker.getRegistration("/sw.js");
-      if (reg?.waiting) {
-        reg.waiting.postMessage({ type: "SKIP_WAITING" });
+
+      // Listen for the new service worker to take control, then reload.
+      let didReload = false;
+      const onControllerChange = () => {
+        if (didReload) return;
+        didReload = true;
+        setIsUpdating(false);
+        setUpdateSuccess(true);
+        try {
+          // show success briefly then reload
+          setTimeout(() => window.location.reload(), 600);
+        } catch {
+          window.location.reload();
+        }
+      };
+
+      if ("serviceWorker" in navigator) {
+        navigator.serviceWorker.addEventListener("controllerchange", onControllerChange, { once: true });
       }
+
+      if (reg?.waiting) {
+        // Tell waiting worker to skip waiting and activate.
+        reg.waiting.postMessage({ type: "SKIP_WAITING" });
+      } else if (reg?.installing) {
+        // If installing, wait for it to reach installed state then skipWaiting.
+        const installing = reg.installing;
+        installing.addEventListener("statechange", () => {
+          if (installing.state === "installed" && navigator.serviceWorker.controller) {
+            try {
+              installing.postMessage?.({ type: "SKIP_WAITING" });
+            } catch {
+              // ignore
+            }
+          }
+        });
+      } else if (reg) {
+        // Try to trigger an update which may create a waiting worker.
+        try {
+          await reg.update();
+          // if update created waiting, signal it after a short delay
+          const maybeWaiting = reg.waiting;
+          if (maybeWaiting) maybeWaiting.postMessage({ type: "SKIP_WAITING" });
+        } catch {
+          // ignore update errors here; fallback below
+        }
+      }
+
+      // Fallback: if controllerchange doesn't fire, show an error after a timeout
       setTimeout(() => {
-        window.location.reload();
-      }, 300);
+        if (isUpdating) {
+          setIsUpdating(false);
+          setUpdateError(true);
+        }
+      }, 3500);
     } catch (e) {
-      window.location.reload();
+      setIsUpdating(false);
+      setUpdateError(true);
     }
   };
 
   const onLater = () => {
     markPrompted();
     setIsOpen(false);
+    setUpdateError(false);
+    setUpdateSuccess(false);
   };
 
   return (
-    <AppUpdateModal
-      isOpen={isOpen && !isUpdating}
-      onUpdate={doUpdateNow}
-      onLater={onLater}
-    />
+    <>
+      <AppUpdateModal
+        isOpen={isOpen && !isUpdating && !updateError && !updateSuccess}
+        onUpdate={doUpdateNow}
+        onLater={onLater}
+      />
+      <UpdateProgressModal
+        isOpen={isUpdating || updateError || updateSuccess}
+        status={updateSuccess ? "success" : updateError ? "error" : "updating"}
+        onClose={() => {
+          // allow closing error/success states
+          setIsUpdating(false);
+          setUpdateError(false);
+          setUpdateSuccess(false);
+          setIsOpen(false);
+        }}
+        onRetry={() => {
+          setUpdateError(false);
+          doUpdateNow();
+        }}
+      />
+    </>
   );
 }
 

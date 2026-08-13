@@ -1,5 +1,5 @@
 require("dotenv").config();
-const { logger } = require("./utils/logger");
+const { logger, redactOptions } = require("./utils/logger");
 
 // Fail-fast for missing critical environment variables
 const criticalEnvs = ["MONGO_URI", "JWT_SECRET"];
@@ -112,7 +112,7 @@ const limiter = rateLimit({
 app.use(limiter);
 
 // Pino Request Logger
-app.use(pinoHttp({ logger }));
+app.use(pinoHttp({ logger, redact: redactOptions }));
 
 
 // ==========================

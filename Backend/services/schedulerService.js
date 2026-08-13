@@ -121,7 +121,7 @@ async function processNextJob(workerId = "worker-1") {
     const job = await Job.findOneAndUpdate(
       { _id: candidate._id, status: { $in: ["Pending", "Retrying"] } },
       { $set: { status: "Processing", startedAt: now, lockedBy: workerId, leaseExpiresAt } },
-      { new: true }
+      { returnDocument: "after" }
     );
 
     if (!job) continue;

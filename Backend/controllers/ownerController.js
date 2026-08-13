@@ -352,7 +352,7 @@ const setOwnerStatus = async (req, res) => {
     const updated = await Owner.findByIdAndUpdate(
       ownerId,
       { status },
-      { new: true }
+      { returnDocument: "after" }
     );
 
     if (!updated) {
@@ -759,7 +759,7 @@ const updateHostelSettings = async (req, res) => {
     // Keep only defined keys
     Object.keys(updates).forEach((k) => updates[k] === undefined && delete updates[k]);
 
-    const updated = await Hostel.findByIdAndUpdate(hostelId, updates, { new: true, runValidators: true });
+    const updated = await Hostel.findByIdAndUpdate(hostelId, updates, { returnDocument: "after", runValidators: true });
     if (!updated) {
       return res.status(404).json({ success: false, message: "Hostel not found" });
     }
@@ -810,7 +810,7 @@ const updateOwnerProfile = async (req, res) => {
         req.files.profileImage[0].filename;
     }
 
-    const updated = await Owner.findByIdAndUpdate(ownerId, updates, { new: true, runValidators: true });
+    const updated = await Owner.findByIdAndUpdate(ownerId, updates, { returnDocument: "after", runValidators: true });
     if (!updated) return res.status(404).json({ success: false, message: "Owner not found", data: null });
 
     return res.status(200).json({ success: true, message: "Profile updated", data: { owner: updated } });
@@ -951,11 +951,11 @@ const saveOnboardingRules = async (req, res) => {
     }
 
     const [updatedHostel, updatedOwner] = await Promise.all([
-      Hostel.findByIdAndUpdate(hostelId, updatedData, { new: true, runValidators: true }),
+      Hostel.findByIdAndUpdate(hostelId, updatedData, { returnDocument: "after", runValidators: true }),
       Owner.findByIdAndUpdate(
         ownerId,
         { rulesConfigured: true, onboardingStep: 4 },
-        { new: true }
+        { returnDocument: "after" }
       ),
     ]);
 
@@ -1055,7 +1055,7 @@ const completeOnboardingRooms = async (req, res) => {
         firstLogin: false,
         onboardingStep: 5,
       },
-      { new: true }
+      { returnDocument: "after" }
     );
 
     return res.status(200).json({
@@ -1092,7 +1092,7 @@ const completeOnboarding = async (req, res) => {
         mustChangePassword: false,
         onboardingStep: 5,
       },
-      { new: true }
+      { returnDocument: "after" }
     );
 
     if (!updatedOwner) {

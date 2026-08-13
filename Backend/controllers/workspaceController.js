@@ -44,7 +44,7 @@ const updateActiveContext = async (req, res) => {
     if (activeHostelId) updates.activeHostelId = activeHostelId;
     if (lastVisitedPage !== undefined) updates.lastVisitedPage = lastVisitedPage;
 
-    const owner = await Owner.findByIdAndUpdate(ownerId, updates, { new: true })
+    const owner = await Owner.findByIdAndUpdate(ownerId, updates, { returnDocument: "after" })
       .select("activeWorkspaceId activeHostelId lastVisitedPage")
       .lean();
 

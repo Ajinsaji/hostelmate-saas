@@ -60,7 +60,7 @@ async function updateFloor(floorId, updateData, userContext = {}) {
   if (!floor) throw new Error("Floor not found");
 
   updateData.updatedBy = userContext.userId;
-  const updatedFloor = await Floor.findByIdAndUpdate(floorId, updateData, { new: true });
+  const updatedFloor = await Floor.findByIdAndUpdate(floorId, updateData, { returnDocument: "after" });
 
   await recordAuditLog({
     hostelId: floor.hostelId,

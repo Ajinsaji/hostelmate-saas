@@ -58,7 +58,7 @@ async function seedDefaultNotificationTemplates() {
     await NotificationTemplate.findOneAndUpdate(
       { templateCode: tpl.templateCode },
       { $setOnInsert: tpl },
-      { upsert: true, new: true }
+      { upsert: true, returnDocument: "after" }
     );
   }
   logger.info("Checked/Seeded notification templates default library.");

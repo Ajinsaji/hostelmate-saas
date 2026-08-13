@@ -24,7 +24,7 @@ const createTemplate = async (req, res) => {
 
 const updateTemplate = async (req, res) => {
   try {
-    const template = await NotificationTemplate.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    const template = await NotificationTemplate.findByIdAndUpdate(req.params.id, req.body, { returnDocument: "after" });
     return res.status(200).json({ success: true, message: "Template Updated", template });
   } catch (err) {
     logger.error("updateTemplate error:", err);

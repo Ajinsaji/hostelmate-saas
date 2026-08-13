@@ -59,7 +59,7 @@ async function updateBuilding(buildingId, updateData, userContext = {}) {
   if (!building) throw new Error("Building not found");
 
   updateData.updatedBy = userContext.userId;
-  const updatedBuilding = await Building.findByIdAndUpdate(buildingId, updateData, { new: true });
+  const updatedBuilding = await Building.findByIdAndUpdate(buildingId, updateData, { returnDocument: "after" });
 
   await recordAuditLog({
     hostelId: building.hostelId,

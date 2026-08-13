@@ -166,7 +166,7 @@ const rejectOnboardingRequest = async (req, res) => {
       status: "rejected",
       rejectionReason: reason,
       $push: { timeline: { action: "Rejected", by: "SuperAdmin" } }
-    }, { new: true });
+    }, { returnDocument: "after" });
     
     // Notify Owner (Placeholder for email/sms since actual implementation might need twilio/smtp)
     logger.info(`[Notification] Sent rejection to ${request?.phone || 'unknown'}: ${reason}`);

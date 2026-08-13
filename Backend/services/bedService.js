@@ -62,7 +62,7 @@ async function updateBed(bedId, updateData, userContext = {}) {
   if (!bed) throw new Error("Bed not found");
 
   updateData.updatedBy = userContext.userId;
-  const updatedBed = await Bed.findByIdAndUpdate(bedId, updateData, { new: true });
+  const updatedBed = await Bed.findByIdAndUpdate(bedId, updateData, { returnDocument: "after" });
 
   await recalculateRoomStatus(bed.roomId);
 

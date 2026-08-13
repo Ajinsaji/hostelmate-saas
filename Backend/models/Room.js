@@ -38,7 +38,7 @@ const roomSchema = new mongoose.Schema(
     },
     gender: {
       type: String,
-      enum: ["Male", "Female", "Mixed"],
+      enum: ["Male", "Female", "Mixed", "Co-Living"],
       default: "Male",
     },
     capacity: {

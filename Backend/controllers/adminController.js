@@ -356,7 +356,7 @@ const rejectRequest = async (req, res) => {
         rejectionReason: reason || "Rejected by Superadmin",
         $push: { timeline: { action: `Rejected: ${reason || 'No reason provided'}`, by: req.user?.role || "SuperAdmin", date: new Date() } }
       },
-      { new: true }
+      { returnDocument: "after" }
     );
 
     if (!updated) {
@@ -423,7 +423,7 @@ const assignRequest = async (req, res) => {
     const request = await HostelRequest.findByIdAndUpdate(
       id,
       updatePayload,
-      { new: true }
+      { returnDocument: "after" }
     );
 
     if (!request) {
@@ -955,7 +955,7 @@ const updateSubscription =
             subscriptionEndDate,
           },
 
-          { new: true }
+          { returnDocument: "after" }
         );
 
       res.status(200).json({
@@ -1315,7 +1315,7 @@ const updateAdminProfile = async (req, res) => {
     const admin = await Admin.findByIdAndUpdate(
       adminId,
       updateData,
-      { new: true, runValidators: true }
+      { returnDocument: "after", runValidators: true }
     ).select("-password");
 
     res.status(200).json({
@@ -1376,7 +1376,7 @@ const editHostelLocation = async (req, res) => {
       ...(hostelType !== undefined ? { hostelType } : {}),
     };
 
-    const updated = await Hostel.findByIdAndUpdate(hostelId, updateData, { new: true, runValidators: true }).lean();
+    const updated = await Hostel.findByIdAndUpdate(hostelId, updateData, { returnDocument: "after", runValidators: true }).lean();
 
     if (!updated) {
       return res.status(404).json({ success: false, message: "Hostel not found" });

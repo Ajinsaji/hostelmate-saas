@@ -22,7 +22,7 @@ const createRoomSchema = Joi.object({
   roomNumber: Joi.string().trim().required(),
   roomName: Joi.string().allow("", null),
   roomType: Joi.string().valid("Single", "Double", "Triple", "Dormitory", "Custom").default("Double"),
-  gender: Joi.string().valid("Male", "Female", "Mixed").default("Male"),
+  gender: Joi.string().valid("Male", "Female", "Mixed", "Co-Living").default("Male"),
   capacity: Joi.number().min(1).default(2),
   totalBeds: Joi.number().min(1),
   monthlyRent: Joi.number().min(0).default(0),

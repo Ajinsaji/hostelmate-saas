@@ -14,7 +14,7 @@ async function createRentPlan(data, userContext = {}) {
 }
 
 async function updateRentPlan(planId, updateData) {
-  return await RentPlan.findByIdAndUpdate(planId, updateData, { new: true });
+  return await RentPlan.findByIdAndUpdate(planId, updateData, { returnDocument: "after" });
 }
 
 async function getRentPlans(hostelId) {

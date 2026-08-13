@@ -47,7 +47,7 @@ const createRelease = async (req, res) => {
 
 const updateRelease = async (req, res) => {
   try {
-    const release = await ReleaseNote.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    const release = await ReleaseNote.findByIdAndUpdate(req.params.id, req.body, { returnDocument: "after" });
     res.status(200).json({ success: true, release });
   } catch (error) {
     console.error("updateRelease error:", error);

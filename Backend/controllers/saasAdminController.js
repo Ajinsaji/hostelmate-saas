@@ -105,7 +105,7 @@ const updatePlan = async (req, res) => {
       return res.status(400).json({ success: false, message: error.details[0].message });
     }
 
-    const plan = await SubscriptionPlan.findByIdAndUpdate(id, value, { new: true }).populate("features");
+    const plan = await SubscriptionPlan.findByIdAndUpdate(id, value, { returnDocument: "after" }).populate("features");
     if (!plan) {
       return res.status(404).json({ success: false, message: "Plan not found" });
     }
@@ -147,7 +147,7 @@ const updateSettings = async (req, res) => {
       settings = await BillingSettings.findByIdAndUpdate(
         settings._id,
         { ...value, updatedBy: req.admin?._id },
-        { new: true }
+        { returnDocument: "after" }
       );
     }
 
