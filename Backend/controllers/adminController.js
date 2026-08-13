@@ -565,26 +565,18 @@ const sendCredentials = async (req, res) => {
     const hostel = owner.hostelId ? await Hostel.findById(owner.hostelId) : null;
 
     // Check if delivery infrastructure (Meta Cloud WhatsApp API) is configured
-    const token = process.env.WHATSAPP_TOKEN;
-    const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
+    const { validateWhatsAppConfig } = require("../utils/sendOwnerWhatsApp");
+    const config = validateWhatsAppConfig();
 
-    const isConfigured =
-      token &&
-      !token.includes("your_") &&
-      !token.includes("dummy") &&
-      !token.startsWith("EAAG_DUMMY") &&
-      phoneNumberId &&
-      !phoneNumberId.includes("your_") &&
-      !phoneNumberId.includes("dummy");
-
-    if (!isConfigured) {
+    if (!config.isConfigured) {
       owner.credentialDeliveryStatus = "unconfigured";
+      owner.lastDeliveryError = config.reason || "WhatsApp credential delivery service is not configured.";
       await owner.save();
       return res.status(200).json({
         success: false,
         unconfigured: true,
         deliveryStatus: "unconfigured",
-        message: "Credential delivery service is not configured.",
+        message: "WhatsApp credential delivery service is not configured.",
       });
     }
 
@@ -605,18 +597,20 @@ const sendCredentials = async (req, res) => {
       loginUrl,
     });
 
-    if (result && result.skipped) {
+    if (result && (result.skipped || result.unconfigured)) {
       owner.credentialDeliveryStatus = "unconfigured";
+      owner.lastDeliveryError = result.message || "WhatsApp credential delivery service is not configured.";
       await owner.save();
       return res.status(200).json({
         success: false,
         unconfigured: true,
         deliveryStatus: "unconfigured",
-        message: "Credential delivery service is not configured.",
+        message: "WhatsApp credential delivery service is not configured.",
       });
     }
 
     owner.credentialDeliveryStatus = "sent";
+    owner.lastDeliveryError = null;
     await owner.save();
 
     return res.status(200).json({
@@ -626,12 +620,31 @@ const sendCredentials = async (req, res) => {
       phone: owner.phone,
     });
   } catch (error) {
-    console.error("sendCredentials error:", error?.message || error);
-    return res.status(500).json({
+    const safeMsg = error?.safeMessage || error?.message || "WhatsApp delivery failed";
+    const errorType = error?.errorType || "META_DELIVERY_FAILED";
+    const appStatus = error?.statusCode || 502;
+
+    try {
+      const ownerId = req.params.ownerId || req.params.id;
+      let owner = await Owner.findById(ownerId);
+      if (!owner && mongoose.Types.ObjectId.isValid(ownerId)) {
+        owner = await Owner.findOne({ hostelId: ownerId });
+      }
+      if (owner) {
+        owner.credentialDeliveryStatus = "failed";
+        owner.lastDeliveryError = safeMsg;
+        await owner.save();
+      }
+    } catch (saveErr) {
+      console.error("Failed to update owner delivery error status:", saveErr?.message || saveErr);
+    }
+
+    return res.status(appStatus).json({
       success: false,
       deliveryStatus: "failed",
-      message: "Credential delivery failed",
-      error: error?.message,
+      errorType,
+      message: safeMsg,
+      error: safeMsg,
     });
   }
 };
@@ -1558,6 +1571,53 @@ const getDashboardMonitoringHandler = async (req, res) => {
   }
 };
 
+// ==========================
+// WHATSAPP DIAGNOSTICS & TESTING
+// ==========================
+const getWhatsAppDiagnostics = async (req, res) => {
+  try {
+    const { validateWhatsAppConfig } = require("../utils/sendOwnerWhatsApp");
+    const config = validateWhatsAppConfig();
+
+    return res.status(200).json({
+      success: true,
+      configured: config.isConfigured,
+      phoneNumberIdConfigured: config.hasPhoneNumberId,
+      tokenConfigured: config.hasToken,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: "Failed to retrieve WhatsApp diagnostics",
+    });
+  }
+};
+
+const testWhatsAppConfig = async (req, res) => {
+  try {
+    const { verifyMetaWhatsAppConfig } = require("../utils/sendOwnerWhatsApp");
+    const result = await verifyMetaWhatsAppConfig();
+    const statusCode = result.success ? 200 : 502;
+
+    return res.status(statusCode).json({
+      success: result.success,
+      verified: result.verified,
+      configured: result.configured,
+      status: result.status,
+      phoneNumberIdConfigured: result.phoneNumberIdConfigured,
+      tokenConfigured: result.tokenConfigured,
+      message: result.message,
+    });
+  } catch (error) {
+    return res.status(502).json({
+      success: false,
+      verified: false,
+      status: "Verification Failed",
+      message: error?.message || "WhatsApp configuration test failed",
+    });
+  }
+};
+
 // Hostels CRM (Phase 4.2A)
 const hostelAdminController = require("./hostelAdminController");
 
@@ -1576,6 +1636,8 @@ module.exports = {
   sendCredentials,
   resendWhatsApp,
   resetOwnerTempPassword,
+  getWhatsAppDiagnostics,
+  testWhatsAppConfig,
   getAdminProfile,
   updateAdminProfile,
   finalizeHostelActivation,

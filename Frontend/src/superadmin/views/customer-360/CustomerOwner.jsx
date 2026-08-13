@@ -149,6 +149,8 @@ export default function CustomerOwner() {
     }
   };
 
+  const lastDeliveryError = ownerData?.lastDeliveryError;
+
   const handleSendCredentials = async () => {
     if (!ownerId) {
       return toast.error("Owner ID not found for WhatsApp delivery");
@@ -167,14 +169,16 @@ export default function CustomerOwner() {
         toast.success("Credentials sent via WhatsApp successfully!", { id: toastId });
         fetchOwnerDetails();
       } else if (res.data?.unconfigured || res.data?.deliveryStatus === "unconfigured") {
-        toast.error("Credential delivery service is not configured.", { id: toastId });
+        toast.error(res.data?.message || "WhatsApp credential delivery service is not configured.", { id: toastId });
         fetchOwnerDetails();
       } else {
-        toast.error(res.data?.message || "Credential delivery failed.", { id: toastId });
+        toast.error(`WhatsApp delivery failed: ${res.data?.message || "Delivery failed"}`, { id: toastId });
         fetchOwnerDetails();
       }
     } catch (err) {
-      toast.error(err?.response?.data?.message || "Credential delivery failed.", { id: toastId });
+      const errorMsg = err?.response?.data?.message || err?.response?.data?.error || "WhatsApp delivery failed";
+      toast.error(`WhatsApp delivery failed: ${errorMsg}`, { id: toastId });
+      fetchOwnerDetails();
     } finally {
       setSendingWhatsapp(false);
     }
@@ -299,7 +303,15 @@ export default function CustomerOwner() {
           {/* Credential Delivery Status */}
           <div className="p-4 bg-slate-950/50 border border-white/5 rounded-xl space-y-1.5">
             <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">WhatsApp Delivery Status</span>
-            {renderDeliveryBadge(deliveryStatus)}
+            <div className="space-y-1">
+              {renderDeliveryBadge(deliveryStatus)}
+              {lastDeliveryError && (deliveryStatus === "failed" || deliveryStatus === "unconfigured") && (
+                <p className="text-[11px] text-rose-400 font-medium leading-tight mt-1 flex items-start gap-1">
+                  <AlertCircle size={12} className="shrink-0 mt-0.5" />
+                  <span>Last Error: {lastDeliveryError}</span>
+                </p>
+              )}
+            </div>
           </div>
 
           {/* Password Status */}

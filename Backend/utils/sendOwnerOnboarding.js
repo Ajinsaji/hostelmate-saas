@@ -38,8 +38,12 @@ const sendOwnerOnboarding = async ({
     loginUrl,
   };
 
-  // eslint-disable-next-line no-console
-  logger.info("Owner onboarding payload prepared:", payload);
+  logger.info("Owner onboarding payload prepared", {
+    hasPhone: Boolean(phone),
+    hasOwnerName: Boolean(ownerName),
+    hostelName: hostelName || null,
+    planType: planType || null,
+  });
 
   return sendOwnerWhatsApp(payload);
 };

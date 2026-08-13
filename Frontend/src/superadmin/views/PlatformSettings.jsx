@@ -3,7 +3,7 @@ import PageContainer from "../layouts/PageContainer";
 import SectionHeader from "../layouts/SectionHeader";
 import ContentContainer from "../layouts/ContentContainer";
 import { api } from "../../services/api";
-import { Settings, Mail, Database, Wrench, Save, AlertCircle, Eye, EyeOff, Activity, DownloadCloud, FileText } from "lucide-react";
+import { Settings, Mail, Database, Wrench, Save, AlertCircle, Eye, EyeOff, Activity, DownloadCloud, FileText, Send, MessageSquare } from "lucide-react";
 import { toast } from "react-hot-toast";
 
 export const PlatformSettings = React.memo(() => {
@@ -33,6 +33,30 @@ export const PlatformSettings = React.memo(() => {
   const [backupRunning, setBackupRunning] = useState(false);
   const [backupHistory, setBackupHistory] = useState([]);
 
+  // WhatsApp Diagnostics State
+  const [whatsappStatus, setWhatsappStatus] = useState({
+    configured: false,
+    phoneNumberIdConfigured: false,
+    tokenConfigured: false,
+  });
+  const [testingWhatsapp, setTestingWhatsapp] = useState(false);
+  const [testResult, setTestResult] = useState(null);
+
+  const fetchWhatsAppStatus = async () => {
+    try {
+      const res = await api.get("/api/admin/whatsapp/status");
+      if (res.data?.success) {
+        setWhatsappStatus({
+          configured: res.data.configured,
+          phoneNumberIdConfigured: res.data.phoneNumberIdConfigured,
+          tokenConfigured: res.data.tokenConfigured,
+        });
+      }
+    } catch (err) {
+      console.warn("Could not fetch WhatsApp diagnostics:", err);
+    }
+  };
+
   useEffect(() => {
     const fetchSettings = async () => {
       try {
@@ -48,7 +72,32 @@ export const PlatformSettings = React.memo(() => {
       }
     };
     fetchSettings();
+    fetchWhatsAppStatus();
   }, []);
+
+  const handleTestWhatsApp = async () => {
+    setTestingWhatsapp(true);
+    setTestResult(null);
+    try {
+      const res = await api.post("/api/admin/whatsapp/test");
+      setTestResult(res.data);
+      if (res.data?.verified || res.data?.success) {
+        toast.success("✓ WhatsApp configuration verified");
+      } else {
+        toast.error(`✗ ${res.data?.message || "WhatsApp authentication failed"}`);
+      }
+    } catch (err) {
+      const msg = err?.response?.data?.message || "WhatsApp authentication failed";
+      setTestResult({
+        verified: false,
+        status: "Authentication Failed",
+        message: msg,
+      });
+      toast.error(`✗ ${msg}`);
+    } finally {
+      setTestingWhatsapp(false);
+    }
+  };
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -94,6 +143,7 @@ export const PlatformSettings = React.memo(() => {
 
   const tabs = [
     { id: "platform", label: "Platform", icon: Settings },
+    { id: "whatsapp", label: "WhatsApp", icon: MessageSquare },
     { id: "email", label: "Email", icon: Mail },
     { id: "storage", label: "Storage", icon: Database },
     { id: "maintenance", label: "Maintenance", icon: Wrench },
@@ -201,6 +251,75 @@ export const PlatformSettings = React.memo(() => {
                         <label className="text-sm font-medium text-slate-400">Firebase Server Key</label>
                         <input type="text" name="firebaseKey" value={data.firebaseKey || ""} onChange={handleChange} className="w-full bg-slate-800 border border-slate-700 text-slate-200 rounded-lg px-4 py-2 focus:outline-none focus:border-indigo-500 text-sm font-mono" />
                       </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {activeTab === "whatsapp" && (
+                <div className="space-y-6 animate-in fade-in">
+                  <div>
+                    <h3 className="text-lg font-medium text-slate-200 mb-2">WhatsApp Service Diagnostics</h3>
+                    <p className="text-xs text-slate-400 mb-6">Verify Meta WhatsApp Cloud API credentials, Phone Number ID, and connection status without sending credentials.</p>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                      <div className="p-4 bg-slate-950/50 border border-slate-800 rounded-xl space-y-1">
+                        <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">WhatsApp Service</span>
+                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold ${
+                          testResult?.status === "Connected" || (whatsappStatus.configured && !testResult)
+                            ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+                            : testResult?.status === "Authentication Failed"
+                            ? "bg-rose-500/10 text-rose-400 border border-rose-500/20"
+                            : testResult?.status === "Permission Failed"
+                            ? "bg-rose-500/10 text-rose-400 border border-rose-500/20"
+                            : "bg-amber-500/10 text-amber-400 border border-amber-500/20"
+                        }`}>
+                          {testResult?.status || (whatsappStatus.configured ? "Connected / Configured" : "Not Configured")}
+                        </span>
+                      </div>
+
+                      <div className="p-4 bg-slate-950/50 border border-slate-800 rounded-xl space-y-1">
+                        <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Phone Number ID</span>
+                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold ${
+                          whatsappStatus.phoneNumberIdConfigured ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" : "bg-rose-500/10 text-rose-400 border border-rose-500/20"
+                        }`}>
+                          {whatsappStatus.phoneNumberIdConfigured ? "Configured" : "Missing"}
+                        </span>
+                      </div>
+
+                      <div className="p-4 bg-slate-950/50 border border-slate-800 rounded-xl space-y-1">
+                        <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Access Token Status</span>
+                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold ${
+                          whatsappStatus.tokenConfigured ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" : "bg-rose-500/10 text-rose-400 border border-rose-500/20"
+                        }`}>
+                          {whatsappStatus.tokenConfigured ? "Configured" : "Missing"}
+                        </span>
+                      </div>
+                    </div>
+
+                    {testResult && (
+                      <div className={`p-4 rounded-xl border mb-6 text-xs ${
+                        testResult.verified
+                          ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-300"
+                          : "bg-rose-500/10 border-rose-500/30 text-rose-300"
+                      }`}>
+                        <div className="font-bold mb-1">
+                          {testResult.verified ? "✓ WhatsApp Configuration Verified" : "✗ WhatsApp Authentication Failed"}
+                        </div>
+                        <div>{testResult.message}</div>
+                      </div>
+                    )}
+
+                    <div className="pt-2">
+                      <button
+                        type="button"
+                        onClick={handleTestWhatsApp}
+                        disabled={testingWhatsapp}
+                        className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-2.5 rounded-lg text-sm font-semibold transition cursor-pointer disabled:opacity-50 min-h-[42px]"
+                      >
+                        {testingWhatsapp ? <Activity className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                        {testingWhatsapp ? "Testing Configuration..." : "Test WhatsApp Configuration"}
+                      </button>
                     </div>
                   </div>
                 </div>

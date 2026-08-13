@@ -25,6 +25,8 @@ const {
   editHostelLocation,
   resendWhatsApp,
   resetOwnerTempPassword,
+  getWhatsAppDiagnostics,
+  testWhatsAppConfig,
   getAdminProfile,
   updateAdminProfile,
   finalizeHostelActivation,
@@ -196,6 +198,11 @@ router.post("/hostels/:ownerId/send-credentials", resendWhatsApp);
 router.post("/owners/:ownerId/send-credentials", resendWhatsApp);
 router.put("/hostels/:ownerId/reset-password", resetOwnerTempPassword);
 router.post("/owners/:ownerId/reset-temp-password", resetOwnerTempPassword);
+
+// WhatsApp Diagnostics & Testing
+router.get("/whatsapp/status", getWhatsAppDiagnostics);
+router.get("/whatsapp/diagnostics", getWhatsAppDiagnostics);
+router.post("/whatsapp/test", testWhatsAppConfig);
 
 // ==========================
 // SUBSCRIPTIONS

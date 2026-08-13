@@ -123,6 +123,10 @@ const ownerSchema = new mongoose.Schema(
       enum: ["not_issued", "issued", "sent", "failed", "unconfigured"],
       default: "not_issued",
     },
+    lastDeliveryError: {
+      type: String,
+      default: null,
+    },
   },
   { timestamps: true }
 );
