@@ -40,10 +40,11 @@ export const HostelDetailsLayout = React.memo(() => {
 
   // Data normalization
   const hostelName = hostelData?.hostelName || hostelData?.name || hostelData?.hostel?.name || "Hostel Name";
-  const ownerName = hostelData?.owner?.fullName || hostelData?.ownerName || hostelData?.owner?.name || hostelData?.hostel?.owner?.fullName || "Not provided";
+  const ownerName = hostelData?.owner?.fullName || hostelData?.owner?.ownerName || hostelData?.ownerName || hostelData?.owner?.name || hostelData?.hostel?.owner?.fullName || "Not provided";
   const ownerPhone = hostelData?.owner?.phone || hostelData?.phone || hostelData?.hostel?.owner?.phone || "Not provided";
-  const ownerEmail = hostelData?.owner?.email || hostelData?.email || hostelData?.hostel?.owner?.email || "Not provided";
+  const ownerEmail = hostelData?.owner?.email || hostelData?.email || hostelData?.hostel?.owner?.email || "";
   const ownerPhoto = hostelData?.owner?.photo || hostelData?.owner?.profileImage || hostelData?.ownerPhoto || hostelData?.hostel?.owner?.photo || "";
+  const hostelAddress = hostelData?.address || hostelData?.details?.address || hostelData?.city || "Not provided";
   const status = hostelData?.status || hostelData?.subscriptionStatus || hostelData?.hostel?.status || "active";
   const plan = hostelData?.plan || hostelData?.planType || hostelData?.hostel?.plan || "Basic";
 
@@ -150,10 +151,23 @@ export const HostelDetailsLayout = React.memo(() => {
               <StatusBadge status={status} />
               <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20">{plan}</span>
             </div>
-            <p className="text-xs text-slate-300 mt-1 font-medium">
-              Owner: <span className="text-white font-semibold">{ownerName}</span> | 
-              Phone: <span className="text-white font-semibold">{ownerPhone}</span>
-            </p>
+            <div className="text-xs text-slate-300 mt-1 font-medium flex flex-wrap items-center gap-x-2 gap-y-1">
+              <span>Owner: <strong className="text-white font-semibold">{ownerName}</strong></span>
+              <span className="text-slate-600">•</span>
+              <span>Phone: <strong className="text-white font-semibold">{ownerPhone}</strong></span>
+              {ownerEmail && (
+                <>
+                  <span className="text-slate-600">•</span>
+                  <span>Email: <strong className="text-slate-300 font-semibold">{ownerEmail}</strong></span>
+                </>
+              )}
+              {hostelAddress && hostelAddress !== "Not provided" && (
+                <>
+                  <span className="text-slate-600">•</span>
+                  <span>Address: <strong className="text-slate-400">{hostelAddress}</strong></span>
+                </>
+              )}
+            </div>
           </div>
         </div>
 

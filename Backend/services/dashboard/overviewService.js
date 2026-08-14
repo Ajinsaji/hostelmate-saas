@@ -50,7 +50,11 @@ async function getDashboardOverview() {
     pendingApprovals,
   ] = await Promise.all([
     Hostel.countDocuments({ isDeleted: { $ne: true }, pendingActivation: { $ne: true } }),
-    Hostel.countDocuments({ isDeleted: { $ne: true }, pendingActivation: { $ne: true }, subscriptionStatus: { $in: ["active", "approved", undefined] } }),
+    Hostel.countDocuments({
+      isDeleted: { $ne: true },
+      pendingActivation: { $ne: true },
+      subscriptionStatus: { $nin: ["suspended", "expired", "inactive"] },
+    }),
     Hostel.countDocuments({ isDeleted: { $ne: true }, pendingActivation: { $ne: true }, $or: [{ subscriptionStatus: "trial" }, { isTrial: true }] }),
     Hostel.countDocuments({ isDeleted: { $ne: true }, pendingActivation: { $ne: true }, subscriptionStatus: "active" }),
     Subscription.countDocuments({ subscriptionStatus: "expired" }),

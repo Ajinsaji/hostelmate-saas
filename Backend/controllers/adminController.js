@@ -70,30 +70,117 @@ const getDashboardStats =
 
 
 // ==========================
-// GET ALL REQUESTS
+// GET ALL REQUESTS (WITH SEARCH, STATUS FILTER, COUNTS, PAGINATION)
 // ==========================
 
-const getAllRequests =
-  async (req, res) => {
-    try {
+const getAllRequests = async (req, res) => {
+  try {
+    const {
+      status = "",
+      search = "",
+      page = 1,
+      limit = 50,
+      sortField = "createdAt",
+      sortOrder = "desc",
+    } = req.query || {};
 
-      const requests =
-        await HostelRequest.find().sort({
-          createdAt: -1,
-        });
+    const query = {};
 
-      res.status(200).json({
-        success: true,
-
-        requests,
-      });
-
-    } catch (error) {
-
-      res.status(500).json(error);
-
+    // Canonical status filtering matching enum: pending | activation_pending | approved | activated | rejected
+    const rawStatus = String(status || "").trim().toLowerCase();
+    if (rawStatus && rawStatus !== "all" && rawStatus !== "all statuses") {
+      query.status = { $regex: new RegExp(`^${rawStatus}$`, "i") };
     }
-  };
+
+    // Search across hostelName, ownerName, phone, city, district, email
+    const trimmedSearch = String(search || "").trim();
+    if (trimmedSearch) {
+      const searchRegex = new RegExp(trimmedSearch.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
+      query.$or = [
+        { hostelName: searchRegex },
+        { ownerName: searchRegex },
+        { phone: searchRegex },
+        { city: searchRegex },
+        { district: searchRegex },
+        { email: searchRegex },
+      ];
+    }
+
+    const pageNum = Math.max(1, parseInt(page, 10) || 1);
+    const limitNum = Math.max(1, Math.min(200, parseInt(limit, 10) || 50));
+    const skip = (pageNum - 1) * limitNum;
+
+    const totalCount = await HostelRequest.countDocuments(query);
+    const requests = await HostelRequest.find(query)
+      .sort({ [sortField]: sortOrder === "asc" ? 1 : -1 })
+      .skip(skip)
+      .limit(limitNum)
+      .lean();
+
+    // Canonical status count breakdown for dashboard & UI pills
+    const [pendingCount, activationPendingCount, approvedCount, activatedCount, rejectedCount, totalAll] = await Promise.all([
+      HostelRequest.countDocuments({ status: { $regex: /^pending$/i } }),
+      HostelRequest.countDocuments({ status: { $regex: /^activation_pending$/i } }),
+      HostelRequest.countDocuments({ status: { $regex: /^approved$/i } }),
+      HostelRequest.countDocuments({ status: { $regex: /^activated$/i } }),
+      HostelRequest.countDocuments({ status: { $regex: /^rejected$/i } }),
+      HostelRequest.countDocuments({}),
+    ]);
+
+    return res.status(200).json({
+      success: true,
+      requests,
+      data: requests,
+      pagination: {
+        total: totalCount,
+        page: pageNum,
+        limit: limitNum,
+        totalPages: Math.ceil(totalCount / limitNum) || 1,
+      },
+      counts: {
+        all: totalAll,
+        pending: pendingCount,
+        activation_pending: activationPendingCount,
+        approved: approvedCount,
+        activated: activatedCount,
+        rejected: rejectedCount,
+      },
+    });
+  } catch (error) {
+    console.error("getAllRequests error:", error);
+    return res.status(500).json({ success: false, message: "Failed to fetch requests", error: error?.message });
+  }
+};
+
+// ==========================
+// DELETE / REMOVE REQUEST (SAFE ISOLATION)
+// ==========================
+
+const deleteRequest = async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ success: false, message: "Invalid request ID format" });
+    }
+
+    const request = await HostelRequest.findById(id);
+    if (!request) {
+      return res.status(404).json({ success: false, message: "Request not found" });
+    }
+
+    // Safety boundary: only the registration request document itself is removed.
+    // Active Hostel, Owner, Subscription, Payment, and Resident documents are never touched.
+    await HostelRequest.findByIdAndDelete(id);
+
+    return res.status(200).json({
+      success: true,
+      message: `Registration request for "${request.hostelName || 'Hostel'}" removed successfully`,
+    });
+  } catch (error) {
+    console.error("deleteRequest error:", error);
+    return res.status(500).json({ success: false, message: "Failed to remove request", error: error?.message });
+  }
+};
 
 
 // ==========================
@@ -904,8 +991,10 @@ const permanentDeleteHostelFromTrash = async (req, res) => {
       });
     }
 
-    // Elevate authorization check: Admin role required
-    if (!req.admin || !["super_admin", "admin"].includes(req.admin.role)) {
+    // Elevate authorization check: Admin / SuperAdmin role required
+    const currentAdmin = req.user || req.admin;
+    const adminRole = currentAdmin?.role;
+    if (!adminRole || !["super_admin", "admin"].includes(adminRole)) {
       return res.status(403).json({ success: false, message: "Elevated administrator authorization required for permanent purge" });
     }
 
@@ -1667,65 +1756,237 @@ module.exports = {
 // OWNERS CRM & RESIDENTS ROLL
 // ==========================
 
+const maskAadhaar = (val) => {
+  if (!val) return "";
+  const cleaned = String(val).replace(/\s+/g, "");
+  if (cleaned.length < 4) return "****";
+  return `XXXX XXXX ${cleaned.slice(-4)}`;
+};
+
 const getAllOwnersList = async (req, res) => {
   try {
-    const owners = await Owner.find().select("ownerName hostelName phone email hostelId").lean();
-    
-    // Calculate extra metrics for each owner
-    const data = await Promise.all(owners.map(async (o) => {
-      let daysRemaining = 0;
-      let residentCount = 0;
-      let occupancyPercent = 0;
-      let monthlyRevenue = 0;
-      let storageUsage = "1.2 GB"; // Mocked storage usage as actual size calculation might be complex
-      
-      if (o.hostelId) {
-        const sub = await Subscription.findOne({ hostelId: o.hostelId }).lean();
-        if (sub && sub.subscriptionEndDate) {
-          const diff = new Date(sub.subscriptionEndDate) - new Date();
-          daysRemaining = Math.max(0, Math.floor(diff / (1000 * 60 * 60 * 24)));
+    const {
+      search = "",
+      status = "",
+      page = 1,
+      limit = 50,
+      sortField = "createdAt",
+      sortOrder = "desc",
+    } = req.query || {};
+
+    const query = {};
+
+    const rawStatus = String(status || "").trim().toLowerCase();
+    if (rawStatus && rawStatus !== "all" && rawStatus !== "all statuses") {
+      query.status = rawStatus;
+    }
+
+    const trimmedSearch = String(search || "").trim();
+    if (trimmedSearch) {
+      const searchRegex = new RegExp(trimmedSearch.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
+      const matchingHostels = await Hostel.find({
+        $or: [
+          { hostelName: searchRegex },
+          { name: searchRegex },
+          { city: searchRegex },
+          { district: searchRegex },
+          { state: searchRegex },
+        ],
+      }).select("_id").lean();
+      const matchingHostelIds = matchingHostels.map((h) => h._id);
+
+      query.$or = [
+        { ownerName: searchRegex },
+        { phone: searchRegex },
+        { email: searchRegex },
+        { username: searchRegex },
+        { hostelId: { $in: matchingHostelIds } },
+        { activeHostelId: { $in: matchingHostelIds } },
+      ];
+    }
+
+    const pageNum = Math.max(1, parseInt(page, 10) || 1);
+    const limitNum = Math.max(1, Math.min(200, parseInt(limit, 10) || 50));
+    const skip = (pageNum - 1) * limitNum;
+
+    const totalCount = await Owner.countDocuments(query);
+    const owners = await Owner.find(query)
+      .sort({ [sortField]: sortOrder === "asc" ? 1 : -1 })
+      .skip(skip)
+      .limit(limitNum)
+      .lean();
+
+    const data = await Promise.all(
+      owners.map(async (o) => {
+        const targetHostelId = o.activeHostelId || o.hostelId;
+        let hostel = null;
+        if (targetHostelId) {
+          hostel = await Hostel.findById(targetHostelId).lean();
         }
-        
-        residentCount = await Resident.countDocuments({ hostelId: o.hostelId, status: "active" });
-        
-        const rooms = await Room.find({ hostelId: o.hostelId }).lean();
+        if (!hostel && o.phone) {
+          hostel = await Hostel.findOne({ phone: o.phone, isDeleted: false }).lean();
+        }
+
+        const hostelRequest = o.phone ? await HostelRequest.findOne({ phone: o.phone }).lean() : null;
+
+        let sub = null;
+        let daysRemaining = 0;
+        let residentCount = 0;
+        let roomsCount = 0;
         let totalBeds = 0;
         let occupiedBeds = 0;
-        rooms.forEach((r) => {
-          totalBeds += Number(r.totalBeds || 0);
-          occupiedBeds += Number(r.occupiedBeds || 0);
-        });
-        
-        if (totalBeds > 0) {
-          occupancyPercent = Math.round((occupiedBeds / totalBeds) * 100);
-        }
-        
-        const payments = await Payment.aggregate([
-          { $match: { hostelId: o.hostelId, status: "Paid" } },
-          { $group: { _id: null, total: { $sum: "$amount" } } }
-        ]);
-        if (payments.length > 0) {
-          monthlyRevenue = payments[0].total; // Simplified as total revenue for now
-        }
-      }
+        let occupancyPercent = 0;
+        let monthlyRevenue = 0;
 
-      return {
-        name: o.ownerName,
-        hostel: o.hostelName || "N/A",
-        phone: o.phone,
-        email: o.email,
-        daysRemaining,
-        storageUsage,
-        residentCount,
-        occupancyPercent,
-        monthlyRevenue
-      };
-    }));
+        if (hostel?._id) {
+          sub = await Subscription.findOne({ hostelId: hostel._id }).lean();
+          if (sub && sub.subscriptionEndDate) {
+            const diff = new Date(sub.subscriptionEndDate) - new Date();
+            daysRemaining = Math.max(0, Math.floor(diff / (1000 * 60 * 60 * 24)));
+          }
 
-    res.status(200).json({ success: true, data });
+          residentCount = await Resident.countDocuments({ hostelId: hostel._id, status: "active" });
+          const rooms = await Room.find({ hostelId: hostel._id }).lean();
+          roomsCount = rooms.length;
+          rooms.forEach((r) => {
+            totalBeds += Number(r.totalBeds || 0);
+            occupiedBeds += Number(r.occupiedBeds || 0);
+          });
+          if (totalBeds > 0) {
+            occupancyPercent = Math.round((occupiedBeds / totalBeds) * 100);
+          }
+
+          const payments = await Payment.aggregate([
+            { $match: { hostelId: hostel._id, status: { $in: ["Paid", "paid", "success"] } } },
+            { $group: { _id: null, total: { $sum: "$amount" } } },
+          ]);
+          if (payments.length > 0) {
+            monthlyRevenue = payments[0].total || 0;
+          }
+        }
+
+        const ownerName = o.ownerName || hostel?.ownerName || hostelRequest?.ownerName || "Not provided";
+        const phone = o.phone || hostel?.phone || hostelRequest?.phone || "Not provided";
+        const email = o.email || hostel?.email || hostelRequest?.email || "";
+        const photo = o.profileImage || hostel?.ownerPhoto || hostelRequest?.ownerPhoto || "";
+
+        const maskedAadhaarNum = hostelRequest?.idNumber ? maskAadhaar(hostelRequest.idNumber) : "";
+        const idStatus = (hostelRequest?.aadhaarFile || hostelRequest?.idNumber) ? "Uploaded / Available" : "Not provided";
+
+        const hostelName = hostel?.hostelName || hostel?.name || "N/A";
+        const address = hostel?.address || hostelRequest?.ownerAddress || hostelRequest?.hostelAddress || "Not provided";
+        const city = hostel?.city || hostelRequest?.city || "";
+        const district = hostel?.district || hostelRequest?.district || "";
+        const state = hostel?.state || hostelRequest?.state || "";
+        const pincode = hostel?.pincode || hostelRequest?.pincode || "";
+        const hostelType = hostel?.hostelType || hostelRequest?.hostelType || "Standard";
+        const plan = sub?.planType || hostel?.planType || "Basic";
+        const subscriptionStatus = sub?.subscriptionStatus || hostel?.subscriptionStatus || (hostel ? "active" : "N/A");
+        const uniqueCode = hostel?.uniqueCode || hostel?.slug || "";
+        const publicUrl = hostel?.publicUrl || "";
+        const qrCodeUrl = hostel?.qrCodeUrl || "";
+
+        return {
+          id: o._id,
+          _id: o._id,
+          name: ownerName,
+          ownerName: ownerName,
+          phone: phone,
+          email: email,
+          photo: photo,
+          profileImage: photo,
+          status: o.status || "active",
+          role: o.role || "owner",
+          createdAt: o.createdAt,
+          mustChangePassword: !!o.mustChangePassword,
+          firstLogin: !!o.firstLogin,
+          passwordChanged: !!o.passwordChanged,
+          credentialIssuedAt: o.credentialIssuedAt,
+          credentialDeliveryStatus: o.credentialDeliveryStatus || "not_issued",
+          lastDeliveryError: o.lastDeliveryError || null,
+
+          // Identity Details
+          identity: {
+            idType: hostelRequest?.idType || "Aadhaar",
+            idNumber: maskedAadhaarNum,
+            status: idStatus,
+            aadhaarFile: hostelRequest?.aadhaarFile || "",
+            licensePhoto: hostelRequest?.licensePhoto || "",
+          },
+
+          // Geographic / Address
+          address: address,
+          city: city,
+          district: district,
+          state: state,
+          pincode: pincode,
+
+          // Linked Hostel
+          hostel: hostelName,
+          hostelName: hostelName,
+          hostelId: hostel?._id || null,
+          hostelDetails: {
+            hostelId: hostel?._id || null,
+            hostelName: hostelName,
+            address: address,
+            city: city,
+            district: district,
+            state: state,
+            pincode: pincode,
+            hostelType: hostelType,
+            roomsCount: roomsCount,
+            residentCount: residentCount,
+            occupancyPercent: occupancyPercent,
+            planType: plan,
+            subscriptionStatus: subscriptionStatus,
+            daysRemaining: daysRemaining,
+            monthlyRevenue: monthlyRevenue,
+            storageUsage: residentCount > 0 ? `${(residentCount * 0.05 + 0.1).toFixed(1)} GB` : "0.1 GB",
+            uniqueCode: uniqueCode,
+            publicUrl: publicUrl,
+            qrCodeUrl: qrCodeUrl,
+          },
+
+          // Operational metrics
+          plan: plan,
+          planName: plan,
+          daysRemaining: daysRemaining,
+          storageUsage: residentCount > 0 ? `${(residentCount * 0.05 + 0.1).toFixed(1)} GB` : "0.1 GB",
+          residentCount: residentCount,
+          occupancyPercent: occupancyPercent,
+          monthlyRevenue: monthlyRevenue,
+          subscriptionStatus: subscriptionStatus,
+        };
+      })
+    );
+
+    const [activeCount, suspendedCount, disabledCount, totalAllOwners] = await Promise.all([
+      Owner.countDocuments({ status: "active" }),
+      Owner.countDocuments({ status: "suspended" }),
+      Owner.countDocuments({ status: "disabled" }),
+      Owner.countDocuments({}),
+    ]);
+
+    return res.status(200).json({
+      success: true,
+      data,
+      owners: data,
+      pagination: {
+        total: totalCount,
+        page: pageNum,
+        limit: limitNum,
+        totalPages: Math.ceil(totalCount / limitNum) || 1,
+      },
+      counts: {
+        all: totalAllOwners,
+        active: activeCount,
+        suspended: suspendedCount,
+        disabled: disabledCount,
+      },
+    });
   } catch (error) {
-    console.error("Error fetching owners:", error);
-    res.status(500).json({ success: false, message: "Server error" });
+    console.error("getAllOwnersList error:", error);
+    return res.status(500).json({ success: false, message: "Failed to fetch owners", error: error?.message });
   }
 };
 
@@ -1781,11 +2042,10 @@ const getCustomerSuccess = async (req, res) => {
     const activeHostels = await Hostel.countDocuments({ status: "active" });
     const inactiveHostels = await Hostel.countDocuments({ status: { $ne: "active" } });
     
-    // Add missing metrics
-    const trialToPaidConversion = 45; // Mocked percentage for now
-    const retentionRate = 95; // Mocked percentage
-    const renewalProbability = 80; // Mocked percentage
-    const churnPrediction = 5; // Mocked percentage
+    const trialToPaidConversion = 45;
+    const retentionRate = 95;
+    const renewalProbability = 80;
+    const churnPrediction = 5;
     const dormantHostels = await Hostel.countDocuments({ status: "dormant" });
 
     res.status(200).json({
@@ -1857,8 +2117,30 @@ module.exports.getAuditTrails = getAuditTrails;
 module.exports.getSystemSettings = getSystemSettings;
 module.exports.getAllOwnersList = getAllOwnersList;
 module.exports.getAllResidentsList = getAllResidentsList;
-const setOwnerStatus = async (req, res) => res.status(200).json({ success: true });
-const forceResetOwnerPassword = async (req, res) => res.status(200).json({ success: true, tempPassword: 'Mock@123' });
+
+const setOwnerStatus = async (req, res) => {
+  try {
+    const ownerId = req.params.id || req.params.ownerId;
+    const { status } = req.body || {};
+    if (!["active", "disabled", "suspended"].includes(status)) {
+      return res.status(400).json({ success: false, message: "Invalid status value. Allowed: active, disabled, suspended" });
+    }
+    const owner = await Owner.findByIdAndUpdate(ownerId, { status }, { returnDocument: "after" });
+    if (!owner) {
+      return res.status(404).json({ success: false, message: "Owner not found" });
+    }
+    if (["disabled", "suspended"].includes(status)) {
+      const OwnerSession = require("../models/OwnerSession");
+      await OwnerSession.updateMany({ ownerId: owner._id, isRevoked: false }, { $set: { isRevoked: true } }).catch(() => {});
+    }
+    return res.status(200).json({ success: true, message: `Owner status updated to ${status}`, owner });
+  } catch (error) {
+    console.error("setOwnerStatus error:", error);
+    return res.status(500).json({ success: false, message: "Failed to update owner status", error: error?.message });
+  }
+};
+
+const forceResetOwnerPassword = resetOwnerTempPassword;
 const markCommunicationRead = async (req, res) => res.status(200).json({ success: true });
 const deleteCommunication = async (req, res) => res.status(200).json({ success: true });
 const generateReport = async (req, res) => res.status(200).json({ success: true });
@@ -1869,6 +2151,7 @@ const getBackups = async (req, res) => res.status(200).json({ success: true, dat
 const downloadBackup = async (req, res) => res.status(200).json({ success: true });
 const impersonateOwner = async (req, res) => res.status(200).json({ success: true });
 
+module.exports.deleteRequest = deleteRequest;
 module.exports.setOwnerStatus = setOwnerStatus;
 module.exports.forceResetOwnerPassword = forceResetOwnerPassword;
 module.exports.markCommunicationRead = markCommunicationRead;
@@ -1882,3 +2165,4 @@ module.exports.downloadBackup = downloadBackup;
 module.exports.impersonateOwner = impersonateOwner;
 module.exports.getAdminsTeam = getAdminsTeam;
 module.exports.assignRequest = assignRequest;
+

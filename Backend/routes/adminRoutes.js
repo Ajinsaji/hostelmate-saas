@@ -9,6 +9,7 @@ router.use(requireRole(["super_admin", "admin"]));
 const {
   getDashboardStats,
   getAllRequests,
+  deleteRequest,
   approveHostel,
   rejectRequest,
   getAllHostels,
@@ -156,6 +157,7 @@ router.get("/health-score", resolvedHealthScoreHandler);
 // ==========================
 
 router.get("/requests", getAllRequests);
+router.delete("/requests/:id", deleteRequest);
 
 router.get("/team", getAdminsTeam);
 
