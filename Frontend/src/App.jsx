@@ -130,6 +130,9 @@ const PlatformMonitoring = lazy(() => import("./superadmin/views/PlatformMonitor
 const PlatformSettings = lazy(() => import("./superadmin/views/PlatformSettings"));
 const AdminProfile = lazy(() => import("./superadmin/views/AdminProfile"));
 const LoadingState = lazy(() => import("./superadmin/components/feedback/LoadingState"));
+const WhatsAppConsole = lazy(() => import("./owner/WhatsAppConsole"));
+const AdminWhatsAppConsole = lazy(() => import("./admin/AdminWhatsAppConsole"));
+const AdminTasksPage = lazy(() => import("./superadmin/views/AdminTasksPage"));
 
 function NotificationBellHost() {
   return null;
@@ -471,6 +474,21 @@ function App() {
                 backTo={"/owner/dashboard"}
               >
                 <HostelSettings />
+              </DesktopShell>
+            </OwnerProtectedRoute>
+          }
+        />
+        <Route
+          path="/owner/whatsapp"
+          element={
+            <OwnerProtectedRoute>
+              <DesktopShell
+                variant="owner"
+                title="WhatsApp Console"
+                breadcrumbs={[{ label: "WhatsApp Console" }]}
+                backTo={"/owner/dashboard"}
+              >
+                <WhatsAppConsole />
               </DesktopShell>
             </OwnerProtectedRoute>
           }
@@ -1051,6 +1069,8 @@ function App() {
           <Route path="analytics" element={<AnalyticsDashboard />} />
           <Route path="customer-success" element={<CustomerSuccess />} />
           <Route path="communication" element={<CommunicationConsole />} />
+          <Route path="communications/whatsapp" element={<AdminWhatsAppConsole />} />
+          <Route path="tasks" element={<AdminTasksPage />} />
           <Route path="reports" element={<PlatformReports />} />
           <Route path="support" element={<SupportDesk />} />
           <Route path="audit" element={<SystemAuditLogs />} />

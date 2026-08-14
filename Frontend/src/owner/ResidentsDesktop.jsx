@@ -38,10 +38,6 @@ export const ResidentsDesktop = memo(function ResidentsDesktop({
   setShowAddModal,
   editingResident,
   setEditingResident,
-  showProfileDrawer,
-  setShowProfileDrawer,
-  profileData,
-  setProfileData,
   formStep,
   setFormStep,
   form,
@@ -51,6 +47,7 @@ export const ResidentsDesktop = memo(function ResidentsDesktop({
   handleRoomSelect,
   handleFormSubmit,
   handleDelete,
+  handleViewProfile,
   renderStatusBadge,
 }) {
   const { colors, typography } = useTheme();
@@ -162,7 +159,7 @@ export const ResidentsDesktop = memo(function ResidentsDesktop({
       ) : (
         <Table headers={["Resident Name", "Contact", "Room Info", "Status", "Actions"]}>
           {residents.map((res) => (
-            <TableRow key={res._id} onClick={() => { setProfileData(res); setShowProfileDrawer(true); }}>
+            <TableRow key={res._id} onClick={() => handleViewProfile(res._id)}>
               <TableCell>
                 <div className="flex items-center gap-3">
                   <Avatar name={res.name || `${res.firstName} ${res.lastName}`} size="sm" />
@@ -185,7 +182,7 @@ export const ResidentsDesktop = memo(function ResidentsDesktop({
               <TableCell>
                 <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                   <button 
-                    onClick={() => { setProfileData(res); setShowProfileDrawer(true); }}
+                    onClick={() => handleViewProfile(res._id)}
                     className="p-2 rounded-lg bg-white/5 text-slate-300 hover:text-white"
                     title="View Profile"
                   >

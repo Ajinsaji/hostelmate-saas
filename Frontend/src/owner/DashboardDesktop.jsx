@@ -25,6 +25,7 @@ import {
 } from "../design-system/components";
 import WorkspaceActivity from "./WorkspaceActivity";
 import WorkspaceInsights from "./WorkspaceInsights";
+import TodayTasksWidget from "../components/TodayTasksWidget";
 
 export const DashboardDesktop = memo(function DashboardDesktop({
   stats,
@@ -155,6 +156,11 @@ export const DashboardDesktop = memo(function DashboardDesktop({
 
           </div>
         </DashboardCard>
+
+        {/* TODAY'S OPERATIONAL ACTION TASKS WIDGET */}
+        <div className="mt-4">
+          <TodayTasksWidget />
+        </div>
       </div>
 
       {/* QUESTION 3: What should I do next? */}

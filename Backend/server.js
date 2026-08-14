@@ -257,12 +257,16 @@ app.use("/api/expense-reports", expenseReportRoutes);
 const financialPeriodRoutes = require("./routes/financialPeriodRoutes");
 app.use("/api/financial-periods", financialPeriodRoutes);
 
-// SHARED NOTIFICATION CENTER INFRASTRUCTURE
+// SHARED NOTIFICATION CENTER & WHATSAPP COMMUNICATION ENGINE
 const notificationRoutes = require("./routes/notificationRoutes");
 app.use("/api/notifications", notificationRoutes);
 
 const notificationTemplateRoutes = require("./routes/notificationTemplateRoutes");
 app.use("/api/notification-templates", notificationTemplateRoutes);
+
+const communicationRoutes = require("./routes/communicationRoutes");
+app.use("/api/communication", communicationRoutes);
+app.use("/api/admin/communications", communicationRoutes);
 
 // BACKGROUND JOB & SCHEDULER ENGINE
 const jobRoutes = require("./routes/jobRoutes");

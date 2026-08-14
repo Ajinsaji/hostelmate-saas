@@ -97,6 +97,28 @@ const hostelSchema = new mongoose.Schema({
 
   // Hostel Details
   whatsapp: String,
+  whatsappConfig: {
+    automationEnabled: {
+      type: Boolean,
+      default: false,
+    },
+    rentRemindersEnabled: {
+      type: Boolean,
+      default: true,
+    },
+    paymentReceiptsEnabled: {
+      type: Boolean,
+      default: true,
+    },
+    admissionMessagesEnabled: {
+      type: Boolean,
+      default: true,
+    },
+    announcementsEnabled: {
+      type: Boolean,
+      default: true,
+    },
+  },
   description: String,
   amenities: [String], // Array of amenities
 

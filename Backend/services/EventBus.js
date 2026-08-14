@@ -62,8 +62,8 @@ class EventBus extends EventEmitter {
       this.triggerAuditLog("WARNING", "StorageUsage", data);
     });
 
-    // 2. Notification Pipeline Listener hook
-    this.on("RESIDENT_CREATED", (data) => {
+    // 2. Notification Pipeline & WhatsApp Communication Engine Listener hooks
+    this.on("RESIDENT_CREATED", async (data) => {
       const NotificationPipelineService = require("./NotificationPipelineService");
       NotificationPipelineService.routeNotification({
         workspaceId: data.workspaceId,
@@ -72,9 +72,32 @@ class EventBus extends EventEmitter {
         title: "New Admission Approved",
         body: `Resident ${data.name || "New Resident"} has been admitted to Room ${data.roomNumber || ""}.`,
       });
+
+      if (data.phone) {
+        try {
+          const { dispatchWhatsAppMessage } = require("./whatsappService");
+          await dispatchWhatsAppMessage({
+            hostelId: data.hostelId,
+            residentId: data.residentId || data._id,
+            recipientPhone: data.phone,
+            recipientName: data.name || data.firstName || "Resident",
+            templateCode: "ADMISSION_APPROVED",
+            variables: {
+              residentName: data.name || data.firstName || "Resident",
+              hostelName: data.hostelName || "HostelMate",
+              roomNumber: data.roomNumber || "—",
+              bedNumber: data.bedNumber || "—",
+            },
+            businessEvent: "ADMISSION_APPROVED",
+            referenceId: String(data.residentId || data._id),
+          });
+        } catch (err) {
+          logger.error({ err }, "[EventBus] WhatsApp trigger for RESIDENT_CREATED failed");
+        }
+      }
     });
 
-    this.on("PAYMENT_RECEIVED", (data) => {
+    this.on("PAYMENT_RECEIVED", async (data) => {
       const NotificationPipelineService = require("./NotificationPipelineService");
       NotificationPipelineService.routeNotification({
         workspaceId: data.workspaceId,
@@ -83,6 +106,163 @@ class EventBus extends EventEmitter {
         title: "Payment Received",
         body: `Payment of ₹${data.amount} received from Resident ID: ${data.residentId}.`,
       });
+
+      if (data.phone || data.residentPhone) {
+        try {
+          const { dispatchWhatsAppMessage } = require("./whatsappService");
+          await dispatchWhatsAppMessage({
+            hostelId: data.hostelId,
+            residentId: data.residentId,
+            recipientPhone: data.phone || data.residentPhone,
+            recipientName: data.residentName || "Resident",
+            templateCode: "PAYMENT_RECEIVED",
+            variables: {
+              residentName: data.residentName || "Resident",
+              amount: data.amount || "0",
+              month: data.month || "Current Month",
+              balance: data.balance || "0",
+              hostelName: data.hostelName || "HostelMate",
+              receiptNo: data.receiptNo || "REC-001",
+            },
+            businessEvent: "PAYMENT_RECEIVED",
+            referenceId: String(data.paymentId || data._id),
+          });
+        } catch (err) {
+          logger.error({ err }, "[EventBus] WhatsApp trigger for PAYMENT_RECEIVED failed");
+        }
+      }
+    });
+
+    this.on("RESIDENT_CHECKED_OUT", async (data) => {
+      if (data.phone) {
+        try {
+          const { dispatchWhatsAppMessage } = require("./whatsappService");
+          await dispatchWhatsAppMessage({
+            hostelId: data.hostelId,
+            residentId: data.residentId,
+            recipientPhone: data.phone,
+            recipientName: data.residentName || "Resident",
+            templateCode: "CHECKOUT_CLEARANCE",
+            variables: {
+              residentName: data.residentName || "Resident",
+              hostelName: data.hostelName || "HostelMate",
+              roomNumber: data.roomNumber || "—",
+              checkoutDate: data.actualCheckoutDate ? new Date(data.actualCheckoutDate).toLocaleDateString() : new Date().toLocaleDateString(),
+            },
+            businessEvent: "CHECKOUT_CLEARANCE",
+            referenceId: String(data.residentId || data._id),
+          });
+        } catch (err) {
+          logger.error({ err }, "[EventBus] WhatsApp trigger for RESIDENT_CHECKED_OUT failed");
+        }
+      }
+    });
+
+    this.on("ROOM_ASSIGNED", async (data) => {
+      if (data.phone) {
+        try {
+          const { dispatchWhatsAppMessage } = require("./whatsappService");
+          await dispatchWhatsAppMessage({
+            hostelId: data.hostelId,
+            residentId: data.residentId,
+            recipientPhone: data.phone,
+            recipientName: data.residentName || "Resident",
+            templateCode: "ROOM_ASSIGNED",
+            variables: {
+              residentName: data.residentName || "Resident",
+              hostelName: data.hostelName || "HostelMate",
+              roomNumber: data.roomNumber || "—",
+              bedNumber: data.bedNumber || "—",
+            },
+            businessEvent: "ROOM_ASSIGNED",
+            referenceId: `ROOM_${data.residentId}_${data.roomNumber}`,
+          });
+        } catch (err) {
+          logger.error({ err }, "[EventBus] WhatsApp trigger for ROOM_ASSIGNED failed");
+        }
+      }
+    });
+
+    this.on("OWNER_ACCOUNT_ACTIVATED", async (data) => {
+      if (data.phone) {
+        try {
+          const { dispatchWhatsAppMessage } = require("./whatsappService");
+          await dispatchWhatsAppMessage({
+            hostelId: data.hostelId,
+            ownerId: data.ownerId,
+            recipientPhone: data.phone,
+            recipientName: data.ownerName || "Hostel Owner",
+            recipientType: "Owner",
+            templateCode: "OWNER_ACCOUNT_ACTIVATED",
+            variables: {
+              ownerName: data.ownerName || "Hostel Owner",
+              hostelName: data.hostelName || "HostelMate",
+              username: data.username || data.phone,
+              tempPassword: "[Controlled Activation Credential]",
+              planType: data.planType || "Pro",
+              loginUrl: data.loginUrl || "https://hostelmate-saas.vercel.app/owner/login",
+            },
+            businessEvent: "OWNER_ACCOUNT_ACTIVATED",
+            referenceId: `OWNER_ACT_${data.ownerId}`,
+          });
+        } catch (err) {
+          logger.error({ err }, "[EventBus] WhatsApp trigger for OWNER_ACCOUNT_ACTIVATED failed");
+        }
+      }
+    });
+
+    this.on("RENT_DUE", async (data) => {
+      if (data.phone) {
+        try {
+          const { dispatchWhatsAppMessage } = require("./whatsappService");
+          await dispatchWhatsAppMessage({
+            hostelId: data.hostelId,
+            residentId: data.residentId,
+            recipientPhone: data.phone,
+            recipientName: data.residentName || "Resident",
+            templateCode: "RENT_REMINDER",
+            variables: {
+              residentName: data.residentName || "Resident",
+              amount: String(data.amount || "0"),
+              month: data.month || "Current Month",
+              dueDate: data.dueDate ? new Date(data.dueDate).toLocaleDateString() : "Due Today",
+              hostelName: data.hostelName || "HostelMate",
+              roomNumber: data.roomNumber || "—",
+            },
+            businessEvent: "RENT_REMINDER",
+            referenceId: data.referenceId || `RENT_DUE_${data.residentId}_${data.month}`,
+          });
+        } catch (err) {
+          logger.error({ err }, "[EventBus] WhatsApp trigger for RENT_DUE failed");
+        }
+      }
+    });
+
+    this.on("RENT_OVERDUE", async (data) => {
+      if (data.phone) {
+        try {
+          const { dispatchWhatsAppMessage } = require("./whatsappService");
+          await dispatchWhatsAppMessage({
+            hostelId: data.hostelId,
+            residentId: data.residentId,
+            recipientPhone: data.phone,
+            recipientName: data.residentName || "Resident",
+            templateCode: "RENT_REMINDER",
+            variables: {
+              residentName: data.residentName || "Resident",
+              amount: String(data.amount || "0"),
+              month: data.month || "Current Month",
+              dueDate: data.dueDate ? new Date(data.dueDate).toLocaleDateString() : "Overdue",
+              hostelName: data.hostelName || "HostelMate",
+              roomNumber: data.roomNumber || "—",
+            },
+            businessEvent: "RENT_REMINDER",
+            referenceId: data.referenceId || `RENT_OVERDUE_${data.residentId}_${data.month}`,
+          });
+        } catch (err) {
+          logger.error({ err }, "[EventBus] WhatsApp trigger for RENT_OVERDUE failed");
+        }
+      }
     });
 
     this.on("EXPENSE_CREATED", (data) => {

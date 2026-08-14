@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import LoadingState from "../components/feedback/LoadingState";
 import ConfirmActionModal from "../components/modals/ConfirmActionModal";
+import AdminTodayTasksWidget from "../components/AdminTodayTasksWidget";
 
 export const DashboardOverview = React.memo(() => {
   const { openDrawer } = useDrawer();
@@ -32,6 +33,7 @@ export const DashboardOverview = React.memo(() => {
   const [isBackupModalOpen, setIsBackupModalOpen] = useState(false);
   const [actionModal, setActionModal] = useState(null); // { actionType, item }
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [tasksRefreshTrigger, setTasksRefreshTrigger] = useState(0);
 
   // Data hooks
   const { data: summaryData, loading: summaryLoading, refetch: refetchSummary } = useExecutiveSummary();
@@ -50,6 +52,7 @@ export const DashboardOverview = React.memo(() => {
     setIsRefreshing(true);
     const toastId = toast.loading("Refetching dashboard metrics...");
     try {
+      setTasksRefreshTrigger((prev) => prev + 1);
       await Promise.all([
         refetchSummary ? refetchSummary() : Promise.resolve(),
         refetchStats ? refetchStats() : Promise.resolve(),
@@ -246,6 +249,11 @@ export const DashboardOverview = React.memo(() => {
             ]}
           />
         </div>
+      </section>
+
+      {/* 2.5 ADMIN TODAY'S TASKS (OPERATIONAL COMMUNICATIONS & WORK QUEUE) */}
+      <section className="mb-8">
+        <AdminTodayTasksWidget onRefreshTrigger={tasksRefreshTrigger} />
       </section>
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-8 mb-8">

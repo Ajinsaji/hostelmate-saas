@@ -275,6 +275,21 @@ async function checkInResident({ residentId, roomId, bedId, checkInDate = new Da
     ipAddress: userContext.ip,
   });
 
+  const EventBus = require("./EventBus");
+  const Hostel = require("../models/Hostel");
+  const hostel = resident.hostelId ? await Hostel.findById(resident.hostelId).select("hostelName").lean() : null;
+
+  EventBus.emit("ROOM_ASSIGNED", {
+    workspaceId: userContext.workspaceId,
+    hostelId: resident.hostelId,
+    residentId: resident._id,
+    residentName: resident.fullName || `${resident.firstName || ""} ${resident.lastName || ""}`.trim(),
+    phone: resident.phone,
+    hostelName: hostel?.hostelName || "HostelMate",
+    roomNumber: room.roomNumber,
+    bedNumber: bed.bedNumber,
+  });
+
   return resident;
 }
 
@@ -324,6 +339,20 @@ async function checkOutResident({ residentId, actualCheckoutDate = new Date(), r
     targetId: resident._id,
     newValue: { status: "Checked Out", actualCheckoutDate, remarks },
     ipAddress: userContext.ip,
+  });
+
+  const EventBus = require("./EventBus");
+  const Hostel = require("../models/Hostel");
+  const hostel = resident.hostelId ? await Hostel.findById(resident.hostelId).select("hostelName").lean() : null;
+
+  EventBus.emit("RESIDENT_CHECKED_OUT", {
+    workspaceId: userContext.workspaceId,
+    hostelId: resident.hostelId,
+    residentId: resident._id,
+    residentName: resident.fullName || `${resident.firstName || ""} ${resident.lastName || ""}`.trim(),
+    phone: resident.phone,
+    hostelName: hostel?.hostelName || "HostelMate",
+    actualCheckoutDate,
   });
 
   return resident;

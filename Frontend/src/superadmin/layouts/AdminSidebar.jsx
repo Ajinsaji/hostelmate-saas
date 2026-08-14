@@ -53,6 +53,7 @@ export const AdminSidebar = React.memo(() => {
 
   const platformItems = [
     { label: "Dashboard", href: "/admin/dashboard", icon: Home },
+    { label: "Today's Tasks", href: "/admin/tasks", icon: CheckSquare },
     { label: "Subscriptions", href: "/admin/subscriptions", icon: CreditCard },
     { label: "Revenue Center", href: "/admin/revenue", icon: Wallet },
     { label: "Platform Finance", href: "/admin/finance", icon: Landmark },
@@ -67,6 +68,7 @@ export const AdminSidebar = React.memo(() => {
     { label: "Residents Roll", href: "/admin/residents", icon: Users },
     { label: "Business BI", href: "/admin/analytics", icon: BarChart3 },
     { label: "Customer Success", href: "/admin/customer-success", icon: LineChart },
+    { label: "WhatsApp Engine", href: "/admin/communications/whatsapp", icon: MessageCircle },
     { label: "Communication Desk", href: "/admin/communication", icon: MessageCircle },
     { label: "Support Desk", href: "/admin/support", icon: HelpCircle },
     { label: "Audit Trails", href: "/admin/audit", icon: ShieldAlert },

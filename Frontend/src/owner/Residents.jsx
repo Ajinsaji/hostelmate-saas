@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 
 import api from "../utils/apiClient";
@@ -13,6 +14,7 @@ export default function Residents() {
   const { hostel } = useCurrentHostel();
   const activeHostelId = hostel?.id || hostel?._id;
   const isMobile = useIsMobile();
+  const navigate = useNavigate();
 
   // State hooks
   const [residents, setResidents] = useState([]);
@@ -28,8 +30,6 @@ export default function Residents() {
 
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingResident, setEditingResident] = useState(null);
-  const [showProfileDrawer, setShowProfileDrawer] = useState(false);
-  const [profileData, setProfileData] = useState(null);
   const [formStep, setFormStep] = useState(0);
 
   const [form, setForm] = useState({
@@ -59,7 +59,7 @@ export default function Residents() {
     try {
       const params = new URLSearchParams({
         page,
-        limit: 10,
+        limit: 50,
         ...(search && { search }),
         ...(filterStatus && { status: filterStatus }),
         ...(filterGender && { gender: filterGender }),
@@ -97,7 +97,7 @@ export default function Residents() {
     setForm((prev) => ({ ...prev, roomId, bedId: "" }));
     const selectedRoom = rooms.find((r) => r._id === roomId);
     if (selectedRoom) {
-      const vacantBeds = (selectedRoom.beds || []).filter((b) => b.status === "Vacant");
+      const vacantBeds = (selectedRoom.beds || []).filter((b) => b.status === "Vacant" || b.status === "vacant");
       setAvailableBeds(vacantBeds);
     } else {
       setAvailableBeds([]);
@@ -138,6 +138,10 @@ export default function Residents() {
     }
   };
 
+  const handleViewProfile = (id) => {
+    navigate(`/residents/${id}`);
+  };
+
   const renderStatusBadge = (status) => {
     const s = String(status || "").toLowerCase();
     switch (s) {
@@ -148,8 +152,11 @@ export default function Residents() {
       case "pending admission":
         return <Badge variant="warning">Pending</Badge>;
       case "checkedout":
+      case "checked out":
       case "inactive":
         return <Badge variant="neutral">Checked Out</Badge>;
+      case "blocked":
+        return <Badge variant="danger">Blocked</Badge>;
       default:
         return <Badge variant="neutral">{status || "Unknown"}</Badge>;
     }
@@ -176,8 +183,7 @@ export default function Residents() {
         handleFormSubmit={handleFormSubmit}
         handleDelete={handleDelete}
         setEditingResident={setEditingResident}
-        setProfileData={setProfileData}
-        setShowProfileDrawer={setShowProfileDrawer}
+        handleViewProfile={handleViewProfile}
       />
     );
   }
@@ -197,10 +203,6 @@ export default function Residents() {
       setShowAddModal={setShowAddModal}
       editingResident={editingResident}
       setEditingResident={setEditingResident}
-      showProfileDrawer={showProfileDrawer}
-      setShowProfileDrawer={setShowProfileDrawer}
-      profileData={profileData}
-      setProfileData={setProfileData}
       formStep={formStep}
       setFormStep={setFormStep}
       form={form}
@@ -210,7 +212,9 @@ export default function Residents() {
       handleRoomSelect={handleRoomSelect}
       handleFormSubmit={handleFormSubmit}
       handleDelete={handleDelete}
+      handleViewProfile={handleViewProfile}
       renderStatusBadge={renderStatusBadge}
     />
   );
 }
+

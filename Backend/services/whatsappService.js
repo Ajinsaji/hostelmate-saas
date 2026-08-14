@@ -1,0 +1,355 @@
+"use strict";
+
+const axios = require("axios");
+const mongoose = require("mongoose");
+const Communication = require("../models/Communication");
+const SystemSetting = require("../models/SystemSetting");
+const Hostel = require("../models/Hostel");
+const { logger } = require("../utils/logger");
+const { sendOwnerWhatsApp, validateWhatsAppConfig } = require("../utils/sendOwnerWhatsApp");
+
+// Normalize phone to E.164-like with country code for India (no leading +)
+const normalizePhoneNumber = (phone) => {
+  if (!phone) return null;
+  const digits = String(phone).replace(/\D/g, "");
+  if (!digits) return null;
+
+  let normalized = digits.replace(/^0+/, "");
+  if (normalized.startsWith("91")) {
+    if (normalized.length !== 12) return null;
+    return normalized;
+  }
+  if (normalized.length === 10) {
+    return `91${normalized}`;
+  }
+  return null;
+};
+
+// Build encoded wa.me URL
+const buildWaMeUrl = (phone, messageText) => {
+  const normalized = normalizePhoneNumber(phone);
+  if (!normalized) return null;
+  const encodedText = encodeURIComponent(messageText || "");
+  return `https://wa.me/${normalized}?text=${encodedText}`;
+};
+
+// Default Templates Library
+const TEMPLATES = {
+  RENT_REMINDER: {
+    templateCode: "RENT_REMINDER",
+    name: "Rent Due Reminder",
+    category: "rent",
+    defaultText:
+      "Hi {{residentName}},\n\nYour hostel rent of INR {{amount}} for {{month}} is due on {{dueDate}}.\n\nHostel: {{hostelName}}\nRoom: {{roomNumber}}\n\nThank you.",
+    variables: ["residentName", "amount", "month", "dueDate", "hostelName", "roomNumber"],
+  },
+  PAYMENT_RECEIVED: {
+    templateCode: "PAYMENT_RECEIVED",
+    name: "Payment Receipt Confirmation",
+    category: "rent",
+    defaultText:
+      "Hi {{residentName}},\n\nWe have received your rent payment of INR {{amount}} for {{month}}.\nRemaining Balance: INR {{balance}}.\n\nHostel: {{hostelName}}\nReceipt #: {{receiptNo}}.\n\nThank you!",
+    variables: ["residentName", "amount", "month", "balance", "hostelName", "receiptNo"],
+  },
+  ADMISSION_APPROVED: {
+    templateCode: "ADMISSION_APPROVED",
+    name: "Admission Approval & Welcome",
+    category: "admission",
+    defaultText:
+      "Dear {{residentName}},\n\nYour admission request for {{hostelName}} has been APPROVED! 🎉\n\nRoom Allocated: {{roomNumber}}\nBed: {{bedNumber}}\n\nWelcome to {{hostelName}}!",
+    variables: ["residentName", "hostelName", "roomNumber", "bedNumber"],
+  },
+  ROOM_ASSIGNED: {
+    templateCode: "ROOM_ASSIGNED",
+    name: "Room & Bed Allocation",
+    category: "admission",
+    defaultText:
+      "Hello {{residentName}},\n\nYou have been assigned Room {{roomNumber}}, Bed {{bedNumber}} at {{hostelName}}.\n\nMonthly Rent: INR {{monthlyRent}}.",
+    variables: ["residentName", "roomNumber", "bedNumber", "hostelName", "monthlyRent"],
+  },
+  CHECKOUT_CLEARANCE: {
+    templateCode: "CHECKOUT_CLEARANCE",
+    name: "Check-Out Clearance Notice",
+    category: "resident",
+    defaultText:
+      "Hello {{residentName}},\n\nYour check-out from {{hostelName}} has been processed. Actual Checkout Date: {{actualCheckoutDate}}.\n\nThank you for staying with us!",
+    variables: ["residentName", "hostelName", "actualCheckoutDate"],
+  },
+  OWNER_ACCOUNT_ACTIVATED: {
+    templateCode: "OWNER_ACCOUNT_ACTIVATED",
+    name: "Owner Account Activation & Credentials",
+    category: "announcement",
+    defaultText:
+      "✨ Welcome to HostelMate\n\nHello {{ownerName}},\n\nYour hostel \"{{hostelName}}\" has been successfully activated.\n\n🔐 Login Details\nUsername: {{username}}\nTemporary Password: {{tempPassword}}\n\n📦 Subscription Plan: {{planType}}\n📅 Expiry Date: {{expiryDate}}\n\n🌐 Login:\n{{loginUrl}}\n\n⚠️ Please change your password immediately after login.\n\nThank you for choosing HostelMate ❤️",
+    variables: ["ownerName", "hostelName", "username", "tempPassword", "planType", "expiryDate", "loginUrl"],
+  },
+  GENERAL_ANNOUNCEMENT: {
+    templateCode: "GENERAL_ANNOUNCEMENT",
+    name: "General Announcement",
+    category: "announcement",
+    defaultText: "Notice from {{hostelName}} Management:\n\n{{customMessage}}",
+    variables: ["hostelName", "customMessage"],
+  },
+};
+
+// Compile Handlebars-style template variables
+const compileTemplate = (templateCode, variablesDict = {}, customText = null) => {
+  let text = customText;
+  if (!text) {
+    const tpl = TEMPLATES[templateCode] || TEMPLATES.GENERAL_ANNOUNCEMENT;
+    text = tpl.defaultText;
+  }
+
+  let compiled = text;
+  Object.keys(variablesDict).forEach((key) => {
+    const regex = new RegExp(`{{\\s*${key}\\s*}}`, "g");
+    compiled = compiled.replace(regex, variablesDict[key] !== undefined && variablesDict[key] !== null ? String(variablesDict[key]) : "");
+  });
+  return compiled;
+};
+
+/**
+ * Precedence Engine:
+ * Global OFF -> Manual Mode
+ * Global ON + Hostel OFF -> Manual Mode
+ * Global ON + Hostel ON + Message Type OFF -> Manual Mode
+ * Global ON + Hostel ON + Message Type ON -> Automatic Mode
+ */
+const resolveAutomationMode = async (hostelId = null, category = "rent") => {
+  try {
+    const systemSettings = await SystemSetting.findOne().lean();
+    const globalEnabled = Boolean(systemSettings?.whatsappAutomationEnabled);
+
+    if (!globalEnabled) {
+      return { mode: "manual_wame", isAutomatic: false, reason: "Global WhatsApp Automation is OFF" };
+    }
+
+    if (!hostelId) {
+      return { mode: "manual_wame", isAutomatic: false, reason: "No Hostel context provided" };
+    }
+
+    const hostel = await Hostel.findById(hostelId).lean();
+    if (!hostel) {
+      return { mode: "manual_wame", isAutomatic: false, reason: "Hostel not found" };
+    }
+
+    const cfg = hostel.whatsappConfig || {};
+    const hostelEnabled = Boolean(cfg.automationEnabled);
+
+    if (!hostelEnabled) {
+      return { mode: "manual_wame", isAutomatic: false, reason: "Hostel WhatsApp Automation is OFF" };
+    }
+
+    const cat = (category || "").toLowerCase();
+    let typeEnabled = true;
+
+    if (cat.includes("rent")) typeEnabled = cfg.rentRemindersEnabled !== false;
+    else if (cat.includes("pay")) typeEnabled = cfg.paymentReceiptsEnabled !== false;
+    else if (cat.includes("admis") || cat.includes("room")) typeEnabled = cfg.admissionMessagesEnabled !== false;
+    else if (cat.includes("announc") || cat.includes("owner") || cat.includes("checkout")) typeEnabled = cfg.announcementsEnabled !== false;
+
+    if (!typeEnabled) {
+      return { mode: "manual_wame", isAutomatic: false, reason: `Message category '${category}' is disabled for this hostel` };
+    }
+
+    return { mode: "meta_api", isAutomatic: true, reason: "Automation Enabled (Global ON + Hostel ON)" };
+  } catch (err) {
+    logger.error({ err }, "Error resolving automation mode precedence. Defaulting to manual_wame.");
+    return { mode: "manual_wame", isAutomatic: false, reason: "Precedence resolution error" };
+  }
+};
+
+// Idempotency Check: Prevents duplicate dispatches for same event reference
+const checkIdempotency = async (hostelId, templateCode, referenceId) => {
+  if (!referenceId) return false;
+  const existing = await Communication.findOne({
+    hostelId,
+    templateCode,
+    referenceId,
+    status: { $in: ["pending_manual", "manual_opened", "queued", "sending", "sent", "delivered"] },
+  }).lean();
+
+  return Boolean(existing);
+};
+
+/**
+ * Central WhatsApp Dispatcher
+ */
+const dispatchWhatsAppMessage = async ({
+  hostelId = null,
+  ownerId = null,
+  residentId = null,
+  recipientPhone,
+  recipientName = "",
+  recipientType = "Resident",
+  templateCode = "GENERAL_ANNOUNCEMENT",
+  variables = {},
+  customMessage = null,
+  businessEvent = "GENERAL",
+  referenceId = null,
+  createdBy = null,
+}) => {
+  const normalizedPhone = normalizePhoneNumber(recipientPhone);
+  if (!normalizedPhone) {
+    throw new Error("Recipient phone number is invalid for WhatsApp delivery");
+  }
+
+  const tplCategory = (TEMPLATES[templateCode] || TEMPLATES.GENERAL_ANNOUNCEMENT).category;
+  const messageText = compileTemplate(templateCode, variables, customMessage);
+
+  // 1. Resolve Automation Mode via Precedence Engine
+  const { mode, isAutomatic, reason } = await resolveAutomationMode(hostelId, tplCategory);
+
+  // 2. Check Idempotency for all dispatches with a referenceId
+  if (referenceId) {
+    const isDuplicate = await checkIdempotency(hostelId, templateCode, referenceId);
+    if (isDuplicate) {
+      logger.info("Skipped duplicate WhatsApp message", { hostelId, templateCode, referenceId });
+      return {
+        success: true,
+        skipped: true,
+        isDuplicate: true,
+        message: "Duplicate message skipped via idempotency check",
+      };
+    }
+  }
+
+  // 3. MANUAL MODE HANDLING
+  if (!isAutomatic) {
+    const waMeUrl = buildWaMeUrl(normalizedPhone, messageText);
+    const commRecord = await Communication.create({
+      hostelId,
+      ownerId,
+      residentId,
+      type: "whatsapp",
+      recipient: normalizedPhone,
+      recipientName,
+      recipientType,
+      templateCode,
+      subject: (TEMPLATES[templateCode] || {}).name || "WhatsApp Message",
+      message: messageText,
+      mode: "manual_wame",
+      status: "pending_manual",
+      businessEvent,
+      referenceId,
+      waMeUrl,
+      metadata: { precedenceReason: reason, variables },
+      createdBy,
+    });
+
+    return {
+      success: true,
+      mode: "manual_wame",
+      status: "pending_manual",
+      waMeUrl,
+      messageText,
+      communicationId: commRecord._id,
+      reason,
+    };
+  }
+
+  // 4. AUTOMATIC MODE HANDLING (Meta API)
+  const metaConfig = validateWhatsAppConfig();
+
+  // Create initial queued record
+  const commRecord = await Communication.create({
+    hostelId,
+    ownerId,
+    residentId,
+    type: "whatsapp",
+    recipient: normalizedPhone,
+    recipientName,
+    recipientType,
+    templateCode,
+    subject: (TEMPLATES[templateCode] || {}).name || "WhatsApp Message",
+    message: messageText,
+    mode: "meta_api",
+    status: metaConfig.isConfigured ? "queued" : "unconfigured",
+    businessEvent,
+    referenceId,
+    attemptCount: 1,
+    failureReason: metaConfig.isConfigured ? "" : metaConfig.reason,
+    metadata: { precedenceReason: reason, variables },
+    createdBy,
+  });
+
+  if (!metaConfig.isConfigured) {
+    return {
+      success: false,
+      mode: "meta_api",
+      status: "unconfigured",
+      messageText,
+      communicationId: commRecord._id,
+      error: metaConfig.reason,
+    };
+  }
+
+  // Update status to 'sending' before calling Meta API
+  commRecord.status = "sending";
+  await commRecord.save();
+
+  try {
+    const result = await sendOwnerWhatsApp({
+      phone: normalizedPhone,
+      ownerName: recipientName,
+      hostelName: variables.hostelName || "",
+      username: variables.username || "",
+      tempPassword: variables.tempPassword || "",
+      planType: variables.planType || "",
+      expiryDate: variables.expiryDate || "",
+      loginUrl: variables.loginUrl || "",
+    });
+
+    if (result?.success) {
+      commRecord.status = "sent";
+      commRecord.sentAt = new Date();
+      commRecord.providerMessageId = result.messageId || "accepted";
+      await commRecord.save();
+
+      return {
+        success: true,
+        mode: "meta_api",
+        status: "sent",
+        messageText,
+        communicationId: commRecord._id,
+        messageId: commRecord.providerMessageId,
+      };
+    } else {
+      commRecord.status = "failed";
+      commRecord.failureReason = result?.message || "Meta API send failed";
+      await commRecord.save();
+
+      return {
+        success: false,
+        mode: "meta_api",
+        status: "failed",
+        messageText,
+        communicationId: commRecord._id,
+        error: commRecord.failureReason,
+      };
+    }
+  } catch (err) {
+    commRecord.status = "failed";
+    commRecord.failureReason = err.safeMessage || err.message || "Meta delivery failed";
+    await commRecord.save();
+
+    return {
+      success: false,
+      mode: "meta_api",
+      status: "failed",
+      messageText,
+      communicationId: commRecord._id,
+      error: commRecord.failureReason,
+    };
+  }
+};
+
+module.exports = {
+  normalizePhoneNumber,
+  buildWaMeUrl,
+  compileTemplate,
+  resolveAutomationMode,
+  checkIdempotency,
+  dispatchWhatsAppMessage,
+  TEMPLATES,
+};

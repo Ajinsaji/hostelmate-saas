@@ -27,8 +27,7 @@ export const ResidentsMobile = memo(function ResidentsMobile({
   handleFormSubmit,
   handleDelete,
   setEditingResident,
-  setProfileData,
-  setShowProfileDrawer,
+  handleViewProfile,
 }) {
   const { colors } = useTheme();
   const [activeMenuId, setActiveMenuId] = useState(null);
@@ -271,10 +270,7 @@ export const ResidentsMobile = memo(function ResidentsMobile({
 
                 {/* Primary Action Button */}
                 <button
-                  onClick={() => {
-                    setProfileData(r);
-                    setShowProfileDrawer(true);
-                  }}
+                  onClick={() => handleViewProfile(r._id)}
                   style={{
                     width: "100%",
                     padding: "10px",

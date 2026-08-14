@@ -17,6 +17,7 @@ const SystemSettingSchema = new mongoose.Schema({
   maintenanceMode: { type: Boolean, default: false },
   billingRate: { type: Number, default: 0 },
   securityLevel: { type: String, default: "Standard" },
+  whatsappAutomationEnabled: { type: Boolean, default: false },
 }, { timestamps: true });
 
 module.exports = mongoose.model("SystemSetting", SystemSettingSchema);
