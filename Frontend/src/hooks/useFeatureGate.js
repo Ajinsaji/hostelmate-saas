@@ -1,36 +1,35 @@
 import { useState, useEffect, useCallback } from "react";
 import { api } from "../services/api";
 
+const UNIFIED_GATES = {
+  hostels: { allowed: true, limit: "Unlimited", used: 1, remaining: "Unlimited", message: null },
+  residents: { allowed: true, limit: "Unlimited", used: 0, remaining: "Unlimited", message: null },
+  payroll: { allowed: true, limit: "Unlimited", used: 0, remaining: "Unlimited", message: null },
+  ai: { allowed: true, limit: "Unlimited", used: 0, remaining: "Unlimited", message: null },
+  reports: { allowed: true, limit: "Unlimited", used: 0, remaining: "Unlimited", message: null },
+  analytics: { allowed: true, limit: "Unlimited", used: 0, remaining: "Unlimited", message: null },
+  storage: { allowed: true, limit: "Unlimited", used: 0, remaining: "Unlimited", message: null },
+  staff: { allowed: true, limit: "Unlimited", used: 0, remaining: "Unlimited", message: null },
+  marketplace: { allowed: true, limit: "Unlimited", used: 0, remaining: "Unlimited", message: null },
+};
+
 export function useFeatureGate() {
-  const [gates, setGates] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [gates, setGates] = useState(UNIFIED_GATES);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
   const fetchGates = useCallback(async () => {
     try {
       setLoading(true);
       const response = await api.get("/api/v2/workspaces/feature-gate");
-      if (response.data && response.data.success) {
+      if (response.data && response.data.success && response.data.gates) {
         setGates(response.data.gates);
       } else {
-        throw new Error("Failed to load feature gates");
+        setGates(UNIFIED_GATES);
       }
       setError(null);
     } catch (err) {
-      console.error("Error fetching feature gates:", err);
-      setError(err.message || "Failed to fetch feature gate limits");
-      // Fallback defaults for safety
-      setGates({
-        hostels: { allowed: true, limit: 1, used: 1, remaining: 0, message: null },
-        residents: { allowed: true, limit: 100, used: 0, remaining: 100, message: null },
-        payroll: { allowed: false, limit: 0, used: 0, remaining: 0, message: "Upgrade to Pro" },
-        ai: { allowed: false, limit: 0, used: 0, remaining: 0, message: "Upgrade to Pro" },
-        reports: { allowed: false, limit: 0, used: 0, remaining: 0, message: "Upgrade to Pro" },
-        analytics: { allowed: false, limit: 0, used: 0, remaining: 0, message: "Upgrade to Pro" },
-        storage: { allowed: true, limit: 5368709120, used: 0, remaining: 5368709120, message: null },
-        staff: { allowed: true, limit: 5, used: 0, remaining: 5, message: null },
-        marketplace: { allowed: false, limit: 0, used: 0, remaining: 0, message: "Upgrade to Pro" },
-      });
+      setGates(UNIFIED_GATES);
     } finally {
       setLoading(false);
     }
@@ -47,17 +46,17 @@ export function useFeatureGate() {
   }, [fetchGates]);
 
   return {
-    gates,
+    gates: gates || UNIFIED_GATES,
     loading,
     error,
     refresh: fetchGates,
-    canAddHostel: () => gates?.hostels || { allowed: false, limit: 0, used: 0, remaining: 0 },
-    canAddResident: () => gates?.residents || { allowed: false, limit: 0, used: 0, remaining: 0 },
-    canInviteStaff: () => gates?.staff || { allowed: false, limit: 0, used: 0, remaining: 0 },
-    canUseAI: () => gates?.ai?.allowed || false,
-    canUsePayroll: () => gates?.payroll?.allowed || false,
-    canAccessAnalytics: () => gates?.analytics?.allowed || false,
-    canExportReports: () => gates?.reports?.allowed || false,
-    canAccessMarketplace: () => gates?.marketplace?.allowed || false,
+    canAddHostel: () => gates?.hostels || { allowed: true, limit: "Unlimited", used: 0, remaining: "Unlimited" },
+    canAddResident: () => gates?.residents || { allowed: true, limit: "Unlimited", used: 0, remaining: "Unlimited" },
+    canInviteStaff: () => gates?.staff || { allowed: true, limit: "Unlimited", used: 0, remaining: "Unlimited" },
+    canUseAI: () => true,
+    canUsePayroll: () => true,
+    canAccessAnalytics: () => true,
+    canExportReports: () => true,
+    canAccessMarketplace: () => true,
   };
 }

@@ -21,6 +21,7 @@ export const Dashboard = memo(function Dashboard() {
 
   const [pendingCount, setPendingCount] = useState(0);
   const [workspaceData, setWorkspaceData] = useState(null);
+  const [subscriptionData, setSubscriptionData] = useState(null);
   const [ownerName, setOwnerName] = useState("Hostel Owner");
   const [aiSuggestionsOpen, setAiSuggestionsOpen] = useState(false);
 
@@ -39,6 +40,17 @@ export const Dashboard = memo(function Dashboard() {
       }
     } catch (error) {
       console.warn("Unable to load dashboard stats.", error);
+    }
+  }, []);
+
+  const fetchSubscription = useCallback(async () => {
+    try {
+      const response = await api.get("/api/owner/subscription/dashboard");
+      if (response.data?.success) {
+        setSubscriptionData(response.data);
+      }
+    } catch (err) {
+      console.warn("Unable to load subscription status.", err);
     }
   }, []);
 
@@ -66,9 +78,10 @@ export const Dashboard = memo(function Dashboard() {
 
   useEffect(() => {
     fetchStats();
+    fetchSubscription();
     fetchWorkspaceOverview();
     fetchPendingAdmissionsCount();
-  }, [activeHostelId, fetchStats, fetchWorkspaceOverview, fetchPendingAdmissionsCount]);
+  }, [activeHostelId, fetchStats, fetchSubscription, fetchWorkspaceOverview, fetchPendingAdmissionsCount]);
 
   const vacantRoomsCount = Math.max(0, (stats.rooms || 0) - Math.ceil(((stats.occupancyRate || 0) / 100) * (stats.rooms || 1)));
 
@@ -78,6 +91,7 @@ export const Dashboard = memo(function Dashboard() {
         stats={stats}
         pendingCount={pendingCount}
         workspaceData={workspaceData}
+        subscriptionData={subscriptionData}
         activeHostelId={activeHostelId}
         switchHostel={switchHostel}
         vacantRoomsCount={vacantRoomsCount}
@@ -90,6 +104,7 @@ export const Dashboard = memo(function Dashboard() {
       stats={stats}
       pendingCount={pendingCount}
       workspaceData={workspaceData}
+      subscriptionData={subscriptionData}
       activeHostelId={activeHostelId}
       switchHostel={switchHostel}
       vacantRoomsCount={vacantRoomsCount}

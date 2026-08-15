@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 
 import { useTheme } from "../design-system/ThemeProvider";
+import SubscriptionBanner from "../components/SubscriptionBanner";
 import WorkspaceActivity from "./WorkspaceActivity";
 import WorkspaceInsights from "./WorkspaceInsights";
 
@@ -25,6 +26,7 @@ export const DashboardMobile = memo(function DashboardMobile({
   stats,
   pendingCount,
   workspaceData,
+  subscriptionData,
   activeHostelId,
   switchHostel,
   vacantRoomsCount,
@@ -55,6 +57,17 @@ export const DashboardMobile = memo(function DashboardMobile({
         maxWidth: "100%",
       }}
     >
+      {/* Dynamic Subscription Banner */}
+      {subscriptionData && (
+        <SubscriptionBanner
+          status={subscriptionData.status}
+          daysLeft={subscriptionData.daysRemaining}
+          trialEndDate={subscriptionData.trialEndDate}
+          expiryDate={subscriptionData.endDate}
+          warningLevel={subscriptionData.warningLevel}
+          isTrial={subscriptionData.isTrial}
+        />
+      )}
       {/* ========================================================================= */}
       {/* 5-SECOND ANSWER — ABOVE THE FOLD                                          */}
       {/* ========================================================================= */}

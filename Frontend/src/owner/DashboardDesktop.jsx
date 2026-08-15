@@ -23,6 +23,7 @@ import {
   ProgressBar,
   SectionHeader,
 } from "../design-system/components";
+import SubscriptionBanner from "../components/SubscriptionBanner";
 import WorkspaceActivity from "./WorkspaceActivity";
 import WorkspaceInsights from "./WorkspaceInsights";
 import TodayTasksWidget from "../components/TodayTasksWidget";
@@ -31,6 +32,7 @@ export const DashboardDesktop = memo(function DashboardDesktop({
   stats,
   pendingCount,
   workspaceData,
+  subscriptionData,
   activeHostelId,
   switchHostel,
   vacantRoomsCount,
@@ -44,6 +46,17 @@ export const DashboardDesktop = memo(function DashboardDesktop({
 
   return (
     <div className="space-y-6">
+      {/* Dynamic Subscription / Free Trial / Expiry Banner */}
+      {subscriptionData && (
+        <SubscriptionBanner
+          status={subscriptionData.status}
+          daysLeft={subscriptionData.daysRemaining}
+          trialEndDate={subscriptionData.trialEndDate}
+          expiryDate={subscriptionData.endDate}
+          warningLevel={subscriptionData.warningLevel}
+          isTrial={subscriptionData.isTrial}
+        />
+      )}
       
       {/* 1. Page Header & Compact Summary */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 rounded-2xl border p-4" style={{ background: "rgba(19, 28, 46, 0.8)", borderColor: colors.border.default || "#202B45" }}>

@@ -8,45 +8,67 @@ const subscriptionSchema = new mongoose.Schema(
       ref: "Workspace",
       required: false,
     },
-    // Keep hostelId optional for backward compatibility
     hostelId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Hostel",
       required: false,
+      index: true,
+    },
+    ownerId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Owner",
+      required: false,
+      index: true,
     },
 
-    // PLAN TYPE (Legacy & New)
+    // PLAN TYPE (Unified / Canonical)
     planType: {
       type: String,
-      enum: ["Basic", "Pro", "base", "pro", "enterprise", "trial", "lifetime"],
-      default: "base",
+      default: "Unified",
     },
     plan: {
       type: String,
-      enum: ["base", "pro", "enterprise", "trial", "lifetime"],
-      default: "base",
+      default: "Unified",
     },
 
-    // SUBSCRIPTION STATUS (Legacy & New)
+    // SUBSCRIPTION STATUS (Canonical Lifecycle)
     subscriptionStatus: {
       type: String,
       default: "trial",
+      index: true,
     },
     status: {
       type: String,
       enum: [
         "Trial",
         "Active",
+        "Expiring",
         "Renewal Pending",
         "Grace Period",
         "Expired",
+        "Continuation Requested",
+        "Suspended",
         "Cancelled",
         "Lifetime",
+        "trial",
+        "active",
+        "expiring",
+        "expired",
+        "continuation_requested",
+        "suspended",
       ],
       default: "Trial",
+      index: true,
     },
 
     // Dates
+    startDate: {
+      type: Date,
+      default: Date.now,
+    },
+    endDate: {
+      type: Date,
+    },
     startedAt: {
       type: Date,
       default: Date.now,
@@ -61,32 +83,14 @@ const subscriptionSchema = new mongoose.Schema(
       type: Date,
     },
 
-    // Plan Limits
-    storageLimit: {
-      type: Number, // in bytes
-      default: 5368709120, // 5GB in bytes
-    },
-    residentLimit: {
-      type: Number,
-      default: 100,
-    },
-    staffLimit: {
-      type: Number,
-      default: 5,
-    },
-    hostelLimit: {
-      type: Number,
-      default: 1,
-    },
-    features: {
-      type: [String],
-      default: [],
-    },
-
-    // Legacy Dates
+    // Trial
     isTrial: {
       type: Boolean,
       default: true,
+    },
+    trialDays: {
+      type: Number,
+      default: 30,
     },
     trialStartDate: {
       type: Date,
@@ -95,25 +99,44 @@ const subscriptionSchema = new mongoose.Schema(
     trialEndDate: {
       type: Date,
     },
+
+    // Active / Paid cycle dates
     subscriptionStartDate: {
       type: Date,
     },
     subscriptionEndDate: {
       type: Date,
     },
+    extensionDays: {
+      type: Number,
+      default: 0,
+    },
 
-    // Legacy Fields
-    isFreeAccess: {
-      type: Boolean,
-      default: false,
+    // Pricing & Payments
+    monthlyRatePerResident: {
+      type: Number,
+      default: 10,
     },
     amount: {
       type: Number,
       default: 0,
     },
+    paidAmount: {
+      type: Number,
+      default: 0,
+    },
+    paid: {
+      type: Boolean,
+      default: false,
+    },
+    paymentStatus: {
+      type: String,
+      enum: ["Paid", "Pending", "Partial", "Overdue", "Failed", "paid", "pending", "partial"],
+      default: "Pending",
+    },
     paymentMethod: {
       type: String,
-      enum: ["upi", "cash", "bank", "manual"],
+      enum: ["upi", "cash", "bank", "manual", "razorpay", "Razorpay", "Manual", "Cash", "UPI"],
     },
     transactionId: {
       type: String,
@@ -121,13 +144,52 @@ const subscriptionSchema = new mongoose.Schema(
     paymentScreenshot: {
       type: String,
     },
+
+    // Limits & Features
+    storageLimit: {
+      type: Number,
+      default: 107374182400, // 100GB
+    },
+    residentLimit: {
+      type: Number,
+      default: 999999, // Unified Plan has no arbitrary limits
+    },
+    staffLimit: {
+      type: Number,
+      default: 999999,
+    },
+    hostelLimit: {
+      type: Number,
+      default: 999999,
+    },
+    features: {
+      type: [String],
+      default: [
+        "canUseStaff",
+        "canUseFood",
+        "canUseVisitors",
+        "canUseExpenses",
+        "canSendWhatsApp",
+        "canUseAI",
+        "payroll",
+        "analytics",
+        "reports",
+        "marketplace",
+      ],
+    },
+
+    // Legacy & Tracking Fields
+    isFreeAccess: {
+      type: Boolean,
+      default: false,
+    },
     currentResidentCount: {
       type: Number,
       default: 0,
     },
     multiHostelEnabled: {
       type: Boolean,
-      default: false,
+      default: true,
     },
     approvedBy: {
       type: mongoose.Schema.Types.ObjectId,
@@ -135,6 +197,7 @@ const subscriptionSchema = new mongoose.Schema(
     },
     notes: {
       type: String,
+      default: "",
     },
     lastReminderSentAt: {
       type: Date,
@@ -143,5 +206,15 @@ const subscriptionSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+subscriptionSchema.pre("save", function () {
+  if (!this.startDate && this.startedAt) this.startDate = this.startedAt;
+  if (!this.endDate && this.expiresAt) this.endDate = this.expiresAt;
+  if (!this.subscriptionStartDate && this.startDate) this.subscriptionStartDate = this.startDate;
+  if (!this.subscriptionEndDate && this.endDate) this.subscriptionEndDate = this.endDate;
+  if (this.trialEndDate && !this.trialEnds) this.trialEnds = this.trialEndDate;
+});
+
+subscriptionSchema.index({ hostelId: 1, status: 1 });
 
 module.exports = mongoose.model("Subscription", subscriptionSchema);

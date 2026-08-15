@@ -15,6 +15,8 @@ const DeviceToken = require("../models/DeviceToken");
 const PublicAdmission = require("../models/PublicAdmission");
 const SupportTicket = require("../models/SupportTicket");
 const AuditLog = require("../models/AuditLog");
+const SubscriptionHistory = require("../models/SubscriptionHistory");
+const HostelSubscription = require("../models/HostelSubscription");
 
 const { generateQRCode } = require('../utils/qrCodeService');
 const { sendApprovalMessages } = require('../utils/messageService');
@@ -357,34 +359,56 @@ const finalizeHostelActivation = async (req, res) => {
     }
 
     // 5. Subscription Preparation (Idempotent reuse or creation)
-    const normalizedPlanType = planType === "Pro" || planType === "Monthly" || planType === "Yearly" ? "Pro" : (planType || "Basic");
+    const isTrialMode = isTrial !== undefined ? !!isTrial : true;
+    const normalizedPlanType = planType === "Pro" || planType === "Monthly" || planType === "Yearly" ? "Pro" : (planType || "Unified");
     const finalStartDate = startDate ? new Date(startDate) : new Date();
-    const finalEndDate = endDate ? new Date(endDate) : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+    const finalEndDate = endDate ? new Date(endDate) : new Date(finalStartDate.getTime() + 30 * 24 * 60 * 60 * 1000);
+    const subStatus = isTrialMode ? "trial" : "active";
 
     let subscriptionDoc = await Subscription.findOne({ hostelId: hostel._id });
     if (subscriptionDoc) {
       subscriptionDoc.planType = normalizedPlanType;
-      subscriptionDoc.subscriptionStatus = isTrial ? "trial" : "active";
-      subscriptionDoc.isTrial = !!isTrial;
+      subscriptionDoc.plan = normalizedPlanType;
+      subscriptionDoc.status = subStatus;
+      subscriptionDoc.subscriptionStatus = subStatus;
+      subscriptionDoc.isTrial = isTrialMode;
+      subscriptionDoc.startDate = finalStartDate;
+      subscriptionDoc.endDate = finalEndDate;
+      subscriptionDoc.trialStartDate = finalStartDate;
+      subscriptionDoc.trialEndDate = finalEndDate;
       subscriptionDoc.subscriptionStartDate = finalStartDate;
       subscriptionDoc.subscriptionEndDate = finalEndDate;
+      subscriptionDoc.trialDays = 30;
       subscriptionDoc.isFreeAccess = !!isFreeAccess;
       subscriptionDoc.amount = Number(amount ?? subscriptionDoc.amount ?? 0);
+      subscriptionDoc.paidAmount = isTrialMode ? 0 : Number(amount ?? subscriptionDoc.amount ?? 0);
+      subscriptionDoc.paid = !isTrialMode && Number(subscriptionDoc.paidAmount) > 0;
+      subscriptionDoc.paymentStatus = isTrialMode ? "Pending" : (subscriptionDoc.paid ? "Paid" : "Pending");
+      subscriptionDoc.monthlyRatePerResident = 10;
       subscriptionDoc.notes = notes || subscriptionDoc.notes || "";
       await subscriptionDoc.save();
     } else {
       subscriptionDoc = await Subscription.create({
         hostelId: hostel._id,
         planType: normalizedPlanType,
-        subscriptionStatus: isTrial ? "trial" : "active",
-        isTrial: !!isTrial,
+        plan: normalizedPlanType,
+        status: subStatus,
+        subscriptionStatus: subStatus,
+        isTrial: isTrialMode,
+        startDate: finalStartDate,
+        endDate: finalEndDate,
         trialStartDate: finalStartDate,
         trialEndDate: finalEndDate,
         subscriptionStartDate: finalStartDate,
         subscriptionEndDate: finalEndDate,
-        residentLimit: 60,
+        trialDays: 30,
+        residentLimit: 999999,
         isFreeAccess: !!isFreeAccess,
         amount: Number(amount ?? 0),
+        paidAmount: isTrialMode ? 0 : Number(amount ?? 0),
+        paid: !isTrialMode && Number(amount ?? 0) > 0,
+        paymentStatus: isTrialMode ? "Pending" : (Number(amount ?? 0) > 0 ? "Paid" : "Pending"),
+        monthlyRatePerResident: 10,
         notes: notes || "",
       });
     }
@@ -424,6 +448,49 @@ const finalizeHostelActivation = async (req, res) => {
     };
 
     const createdOwner = await Owner.create(ownerPayload);
+
+    // Link owner to subscription
+    subscriptionDoc.ownerId = createdOwner._id;
+    await subscriptionDoc.save();
+
+    // Sync HostelSubscription
+    try {
+      await HostelSubscription.findOneAndUpdate(
+        { hostelId: hostel._id },
+        {
+          hostelId: hostel._id,
+          status: isTrialMode ? "Trial" : "Active",
+          trialStartDate: finalStartDate,
+          trialEndDate: finalEndDate,
+          subscriptionStartDate: finalStartDate,
+          currentCycleStart: finalStartDate,
+          currentCycleEnd: finalEndDate,
+          nextBillingDate: finalEndDate,
+          paymentStatus: isTrialMode ? "Pending" : "Paid",
+          totalAmount: subscriptionDoc.amount,
+        },
+        { upsert: true, new: true }
+      );
+    } catch (hsErr) {
+      console.warn("HostelSubscription sync warning:", hsErr?.message);
+    }
+
+    // Log Subscription History
+    try {
+      await SubscriptionHistory.create({
+        hostelId: hostel._id,
+        ownerId: createdOwner._id,
+        subscriptionId: subscriptionDoc._id,
+        action: isTrialMode ? "TRIAL_STARTED" : "CONTINUATION_APPROVED",
+        newStartDate: finalStartDate,
+        newEndDate: finalEndDate,
+        newAmount: subscriptionDoc.amount,
+        changedBy: req.user?.name || req.user?.role || "SuperAdmin",
+        reason: isTrialMode ? "30-day Free Trial Started on Activation" : "Active Subscription on Activation",
+      });
+    } catch (histErr) {
+      console.warn("SubscriptionHistory log warning:", histErr?.message);
+    }
 
     // 7. Update Hostel & Mark Activated
     hostel.ownerId = createdOwner._id;

@@ -1,12 +1,12 @@
+const Subscription = require("../models/Subscription");
 const HostelSubscription = require("../models/HostelSubscription");
-const SubscriptionPlan = require("../models/SubscriptionPlan");
-const { getBillingSettings } = require("../services/subscriptionService");
+const getSubscriptionStatus = require("../utils/getSubscriptionStatus");
 const { logger } = require("../utils/logger");
 
 /**
  * Access Control Gating Middleware for Hostel Owners
- * Enforces dynamic lock when subscription reaches 'Expired' or 'Suspended'
- * Allows Grace Period with warning flag.
+ * Enforces lock when subscription reaches 'Expired' or 'Suspended' (daysRemaining < 0)
+ * Preserves data and allows access to subscription pages, continuation requests, support, profile, and logout.
  */
 const checkSubscription = async (req, res, next) => {
   try {
@@ -14,52 +14,40 @@ const checkSubscription = async (req, res, next) => {
     if (!ownerCtx?.hostelId) return next();
 
     const hostelId = ownerCtx.hostelId;
-    let sub = await HostelSubscription.findOne({ hostelId }).populate({
-      path: "currentPlan",
-      populate: { path: "features" },
-    });
+    let sub = await Subscription.findOne({ hostelId });
+    if (!sub) {
+      sub = await HostelSubscription.findOne({ hostelId });
+    }
 
     if (!sub) {
-      // Fail-open if subscription record is missing during migration
+      // Fail-open if subscription record is missing
       return next();
     }
 
-    const settings = await getBillingSettings();
-    const now = new Date();
-    const targetExpiry = sub.nextBillingDate || sub.trialEndDate || sub.currentCycleEnd;
+    const lifecycle = getSubscriptionStatus(sub);
 
-    let daysRemaining = 0;
-    if (targetExpiry) {
-      const diffMs = new Date(targetExpiry).getTime() - now.getTime();
-      daysRemaining = Math.ceil(diffMs / (24 * 60 * 60 * 1000));
+    // Update status in DB if expired
+    if (lifecycle.expired && sub.status !== "Expired" && sub.status !== "expired" && sub.status !== "Suspended") {
+      sub.status = "Expired";
+      sub.subscriptionStatus = "expired";
+      await sub.save().catch(() => {});
     }
 
-    // Dynamic Grace Period & Expiry Evaluation
-    if (daysRemaining < 0) {
-      const pastDays = Math.abs(daysRemaining);
-      if (pastDays <= (settings.gracePeriodDays || 3)) {
-        if (sub.status !== "Grace Period" && sub.status !== "Suspended" && sub.status !== "Cancelled") {
-          sub.status = "Grace Period";
-          await sub.save();
-        }
-      } else {
-        if (sub.status !== "Expired" && sub.status !== "Suspended" && sub.status !== "Cancelled") {
-          sub.status = "Expired";
-          await sub.save();
-        }
-      }
-    }
-
-    // Exemption Routes for Expired / Suspended hostels
+    // Allowed Exemption Routes for Expired / Suspended hostels
     const allowedPathPrefixes = [
       "/api/owner/subscription",
+      "/api/owner/subscription-status",
       "/api/support",
       "/api/auth/logout",
+      "/api/owner/logout",
+      "/api/owner/profile",
+      "/api/owner/update-password",
+      "/api/owner/security",
     ];
 
     const isAllowedPath = allowedPathPrefixes.some((prefix) => req.originalUrl?.startsWith(prefix));
 
-    if (sub.status === "Expired" || sub.status === "Suspended" || sub.status === "Cancelled") {
+    if (lifecycle.expired || sub.status === "Expired" || sub.status === "expired" || sub.status === "Suspended") {
       if (isAllowedPath) {
         return next();
       }
@@ -67,47 +55,45 @@ const checkSubscription = async (req, res, next) => {
       return res.status(403).json({
         success: false,
         subscriptionExpired: true,
-        status: sub.status,
-        message: "Your subscription has expired. Please renew your subscription to restore full access.",
+        isExpired: true,
+        status: lifecycle.status,
+        daysLeft: lifecycle.daysLeft,
+        message: "Your HostelMate trial/subscription has expired. Please request subscription continuation to restore access.",
       });
     }
 
-    if (sub.status === "Grace Period") {
+    if (lifecycle.status === "Grace Period") {
       req.subscriptionGracePeriod = true;
     }
 
-    // Attach permissions list for downstream handlers
-    const features = sub.currentPlan?.features || [];
-    req.subscriptionPermissions = features.map((f) => f.code || f);
+    // Unified plan: attach all feature codes
+    req.subscriptionPermissions = [
+      "canUseStaff",
+      "canUseFood",
+      "canUseVisitors",
+      "canUseExpenses",
+      "canSendWhatsApp",
+      "canUseAI",
+      "payroll",
+      "analytics",
+      "reports",
+      "marketplace",
+    ];
 
     return next();
   } catch (err) {
     logger.error("checkSubscription middleware error:", err);
-    return next(); // Fail-open to prevent breaking system during transient DB error
+    return next(); // Fail-open on transient error
   }
 };
 
 /**
- * Permission-based Feature Gating Middleware
- * Usage: router.get('/ai-insights', checkFeaturePermission('canUseAI'), controller)
+ * Feature Permission Middleware:
+ * On Unified Plan, all features are enabled for active/trial owners.
  */
 const checkFeaturePermission = (featureCode) => {
   return async (req, res, next) => {
-    try {
-      const permissions = req.subscriptionPermissions || [];
-      if (permissions.includes(featureCode)) {
-        return next();
-      }
-
-      return res.status(403).json({
-        success: false,
-        featureLocked: true,
-        featureCode,
-        message: `Your current subscription plan does not include the feature '${featureCode}'. Please upgrade your plan.`,
-      });
-    } catch (err) {
-      return next();
-    }
+    return next();
   };
 };
 

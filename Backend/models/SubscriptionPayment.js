@@ -6,12 +6,25 @@ const subscriptionPaymentSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "Hostel",
       required: true,
+      index: true,
+    },
+
+    ownerId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Owner",
+      index: true,
+    },
+
+    subscriptionId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Subscription",
+      index: true,
     },
 
     invoiceId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Invoice",
-      required: true,
+      required: false,
     },
 
     attemptNumber: {
@@ -24,15 +37,23 @@ const subscriptionPaymentSchema = new mongoose.Schema(
       required: true,
     },
 
+    periodStart: {
+      type: Date,
+    },
+
+    periodEnd: {
+      type: Date,
+    },
+
     paymentMethod: {
       type: String,
-      enum: ["UPI", "Card", "NetBanking", "Razorpay", "Manual", "Cash"],
-      default: "Razorpay",
+      enum: ["UPI", "Card", "NetBanking", "Razorpay", "Manual", "Cash", "upi", "cash", "bank", "manual"],
+      default: "Manual",
     },
 
     paymentGateway: {
       type: String,
-      default: "Razorpay",
+      default: "System",
     },
 
     transactionId: {
@@ -42,8 +63,22 @@ const subscriptionPaymentSchema = new mongoose.Schema(
 
     paymentStatus: {
       type: String,
-      enum: ["Success", "Pending", "Failed"],
+      enum: ["Success", "Pending", "Failed", "Paid", "paid", "pending", "failed"],
       default: "Success",
+    },
+
+    billingCalculationId: {
+      type: String,
+    },
+
+    recordedBy: {
+      type: String,
+      default: "Admin",
+    },
+
+    notes: {
+      type: String,
+      default: "",
     },
 
     errorMessage: {
@@ -59,8 +94,6 @@ const subscriptionPaymentSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-subscriptionPaymentSchema.index({ hostelId: 1 });
-subscriptionPaymentSchema.index({ invoiceId: 1, createdAt: -1 });
 subscriptionPaymentSchema.index({ transactionId: 1 });
 
 module.exports = mongoose.model("SubscriptionPayment", subscriptionPaymentSchema);

@@ -12,12 +12,25 @@ const hostelSubscriptionSchema = new mongoose.Schema(
     currentPlan: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "SubscriptionPlan",
-      required: true,
+      required: false,
     },
 
     status: {
       type: String,
-      enum: ["Trial", "Active", "Grace Period", "Expired", "Suspended", "Cancelled"],
+      enum: [
+        "Trial",
+        "Active",
+        "Grace Period",
+        "Expired",
+        "Continuation Requested",
+        "Suspended",
+        "Cancelled",
+        "trial",
+        "active",
+        "expired",
+        "continuation_requested",
+        "suspended",
+      ],
       default: "Trial",
     },
 
@@ -72,7 +85,7 @@ const hostelSubscriptionSchema = new mongoose.Schema(
 
     paymentStatus: {
       type: String,
-      enum: ["Paid", "Pending", "Overdue", "Failed"],
+      enum: ["Paid", "Pending", "Partial", "Overdue", "Failed", "paid", "pending", "partial"],
       default: "Paid",
     },
 

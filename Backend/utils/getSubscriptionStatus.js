@@ -1,7 +1,7 @@
 /**
  * Centralized Subscription Lifecycle Engine
- * Input: hostel (optionally merged with subscription fields)
- * Output: full lifecycle object
+ * Input: hostel or subscription object
+ * Output: full dynamic lifecycle object calculated from real dates
  */
 
 function normalizeDate(input) {
@@ -13,7 +13,6 @@ function normalizeDate(input) {
 
 function calcDaysLeft(expiryDate) {
   if (!expiryDate) return null;
-  // Whole-day precision. If expiry is today, daysLeft should be 0.
   const now = new Date();
   const start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const end = new Date(
@@ -26,46 +25,48 @@ function calcDaysLeft(expiryDate) {
 }
 
 /**
- * @param {object} hostel
+ * @param {object} entity (hostel or subscription)
  * @returns {{
  *  status: string,
  *  expired: boolean,
  *  expiringSoon: boolean,
  *  trial: boolean,
+ *  isTrial: boolean,
  *  freeAccess: boolean,
  *  daysLeft: number|null,
  *  expiryDate: Date|null,
+ *  trialEndDate: Date|null,
  *  warningLevel: 'none'|'medium'|'critical',
  *  showBanner: boolean,
  *  renewalRequired: boolean
  * }}
  */
-function getSubscriptionStatus(hostel = {}) {
-  // IMPORTANT lifecycle priority order:
-  // isFreeAccess -> isTrial -> expired -> expiringSoon -> active
+function getSubscriptionStatus(entity = {}) {
+  const isFreeAccess = entity?.isFreeAccess === true;
+  const isTrial = entity?.isTrial === true || entity?.status?.toLowerCase() === "trial" || entity?.subscriptionStatus?.toLowerCase() === "trial";
 
-  const isFreeAccess = hostel?.isFreeAccess === true;
-  const trialModifier = hostel?.isTrial === true;
+  const rawTrialEndDate = normalizeDate(entity?.trialEndDate) || normalizeDate(entity?.trialEnds);
+  const rawSubEndDate =
+    normalizeDate(entity?.subscriptionEndDate) ||
+    normalizeDate(entity?.endDate) ||
+    normalizeDate(entity?.expiresAt) ||
+    normalizeDate(entity?.expiryDate) ||
+    normalizeDate(entity?.nextBillingDate) ||
+    normalizeDate(entity?.subscriptionEnd);
 
-  // Resolve expiry date with required priority:
-  // hostel.subscriptionEndDate
-  // hostel.expiryDate
-  // hostel.subscriptionEnd
-  const expiryDate =
-    normalizeDate(hostel?.subscriptionEndDate) ||
-    normalizeDate(hostel?.expiryDate) ||
-    normalizeDate(hostel?.subscriptionEnd);
-
+  const expiryDate = isTrial ? (rawTrialEndDate || rawSubEndDate) : (rawSubEndDate || rawTrialEndDate);
   const daysLeft = expiryDate ? calcDaysLeft(expiryDate) : null;
 
   const result = {
     status: "inactive",
     expired: false,
     expiringSoon: false,
-    trial: false,
+    trial: isTrial,
+    isTrial,
     freeAccess: false,
     daysLeft,
     expiryDate,
+    trialEndDate: rawTrialEndDate,
     warningLevel: "none",
     showBanner: false,
     renewalRequired: false,
@@ -80,73 +81,60 @@ function getSubscriptionStatus(hostel = {}) {
     return result;
   }
 
-  // TRIAL
-  if (trialModifier) {
-    result.status = "trial";
-    result.trial = true;
-    result.expired = false;
-    result.renewalRequired = false;
-    // Keep banner/warning off during trial unless you want otherwise.
-    return result;
-  }
-
-  // If we can't determine expiry, fall back to subscriptionStatus if available.
-  const subscriptionStatus = hostel?.subscriptionStatus;
-
+  // If no dates available, fallback to stored status
   if (typeof daysLeft !== "number") {
-    if (subscriptionStatus === "active") {
+    const rawStatus = (entity?.status || entity?.subscriptionStatus || "").toLowerCase();
+    if (rawStatus === "active") {
       result.status = "active";
       return result;
     }
-    // Keep default inactive
+    if (rawStatus === "trial") {
+      result.status = "trial";
+      result.trial = true;
+      return result;
+    }
+    if (rawStatus === "continuation_requested" || rawStatus === "continuation requested") {
+      result.status = "continuation_requested";
+      return result;
+    }
     result.status = "inactive";
     return result;
   }
 
-  // EXPIRED
+  // EXPIRED (daysLeft < 0) - applies to both Trial and Active!
   if (daysLeft < 0) {
     result.status = "expired";
     result.expired = true;
+    result.trial = isTrial;
     result.renewalRequired = true;
     result.showBanner = true;
     result.warningLevel = "critical";
     return result;
   }
 
-  // CRITICAL WARNING: daysLeft <= 2 && daysLeft >= 0
-  if (daysLeft <= 2 && daysLeft >= 0) {
-    result.status = "expiringSoon";
+  // EXPIRING SOON: 0 to 2 days left
+  if (daysLeft <= 2) {
+    result.status = isTrial ? "trial" : "expiringSoon";
     result.expiringSoon = true;
     result.warningLevel = "critical";
     result.showBanner = true;
     return result;
   }
 
-  // EXPIRING SOON: daysLeft <= 7 && daysLeft > 2
-  if (daysLeft <= 7 && daysLeft > 2) {
-    result.status = "expiringSoon";
+  // EXPIRING SOON: 3 to 7 days left
+  if (daysLeft <= 7) {
+    result.status = isTrial ? "trial" : "expiringSoon";
     result.expiringSoon = true;
     result.warningLevel = "medium";
     result.showBanner = true;
     return result;
   }
 
-  // ACTIVE: daysLeft > 7
-  if (daysLeft > 7) {
-    result.status = "active";
-    result.warningLevel = "none";
-    result.showBanner = false;
-    return result;
-  }
-
-  // Safety fallback
-  if (subscriptionStatus === "active") {
-    result.status = "active";
-    return result;
-  }
-
+  // ACTIVE / IN TRIAL: > 7 days left
+  result.status = isTrial ? "trial" : "active";
+  result.warningLevel = "none";
+  result.showBanner = false;
   return result;
 }
 
 module.exports = getSubscriptionStatus;
-
