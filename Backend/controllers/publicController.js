@@ -7,13 +7,41 @@ const PublicAdmission = require("../models/PublicAdmission");
 const getPublicHostel = async (req, res) => {
   try {
     const { uniqueCode } = req.params;
-    const hostel = await Hostel.findOne({
-      $or: [{ uniqueCode: uniqueCode }, { slug: uniqueCode }],
-      isPublic: true 
+    if (!uniqueCode) {
+      return res.status(404).json({ success: false, message: "Hostel not found" });
+    }
+
+    // 1. Prioritize canonical publicCode lookup
+    let hostel = await Hostel.findOne({
+      publicCode: uniqueCode,
+      isPublic: true,
     });
+
+    // 2. Fallback to legacy uniqueCode or slug if not resolved by publicCode
+    if (!hostel) {
+      hostel = await Hostel.findOne({
+        $or: [{ uniqueCode: uniqueCode }, { slug: uniqueCode }],
+        isPublic: true,
+      });
+    }
 
     if (!hostel) {
       return res.status(404).json({ success: false, message: "Hostel not found" });
+    }
+
+    // Gating check: Trashed or Pending Activation hostels are unavailable for public admission
+    if (hostel.isDeleted) {
+      return res.status(404).json({
+        success: false,
+        message: "Hostel admission is currently unavailable.",
+      });
+    }
+
+    if (hostel.pendingActivation) {
+      return res.status(404).json({
+        success: false,
+        message: "Hostel admission is currently unavailable.",
+      });
     }
 
     // Fetch rooms to show availability
@@ -25,6 +53,7 @@ const getPublicHostel = async (req, res) => {
       hostelName: hostel.hostelName,
       address: hostel.address,
       phone: hostel.phone,
+      publicCode: hostel.publicCode || hostel.uniqueCode || "",
       qrCodeUrl: hostel.qrCodeUrl,
       description: hostel.description || "",
       amenities: hostel.amenities || [],
@@ -44,12 +73,13 @@ const getPublicHostel = async (req, res) => {
     };
 
     logger.info("Public hostel response:", {
+      publicCode: publicData.publicCode,
       rulesText: publicData.rulesText,
       currentRulesVersion: publicData.currentRulesVersion,
       rulesVersionNumber: publicData.rulesVersionNumber,
     });
 
-    res.status(200).json({ success: true, hostel: publicData });
+    res.status(200).json({ success: true, hostel: publicData, data: publicData });
   } catch (error) {
     logger.info(error);
     res.status(500).json({ success: false, message: "Server error" });
@@ -60,13 +90,34 @@ const getPublicHostel = async (req, res) => {
 const submitAdmission = async (req, res) => {
   try {
     const { uniqueCode } = req.params;
-    const hostel = await Hostel.findOne({
-      $or: [{ uniqueCode: uniqueCode }, { slug: uniqueCode }],
-      isPublic: true 
+    if (!uniqueCode) {
+      return res.status(404).json({ success: false, message: "Hostel not found" });
+    }
+
+    // 1. Prioritize canonical publicCode lookup
+    let hostel = await Hostel.findOne({
+      publicCode: uniqueCode,
+      isPublic: true,
     });
+
+    // 2. Fallback to legacy uniqueCode or slug
+    if (!hostel) {
+      hostel = await Hostel.findOne({
+        $or: [{ uniqueCode: uniqueCode }, { slug: uniqueCode }],
+        isPublic: true,
+      });
+    }
 
     if (!hostel) {
       return res.status(404).json({ success: false, message: "Hostel not found" });
+    }
+
+    // Gating check: Trashed or Pending Activation hostels cannot receive admissions
+    if (hostel.isDeleted || hostel.pendingActivation) {
+      return res.status(404).json({
+        success: false,
+        message: "Hostel admission is currently unavailable.",
+      });
     }
 
     const {
@@ -139,7 +190,7 @@ const submitAdmission = async (req, res) => {
 
     const admission = await PublicAdmission.create({
       hostelId: hostel._id,
-      hostelCode: uniqueCode,
+      hostelCode: hostel.publicCode || uniqueCode,
       residentName,
       phone,
       email,

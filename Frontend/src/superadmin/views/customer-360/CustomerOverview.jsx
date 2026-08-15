@@ -70,12 +70,13 @@ export const CustomerOverview = React.memo(() => {
 
   // Resolve Canonical Public Admission URL & QR
   const frontendBase = window.location.origin || "https://hostelmate-saas.vercel.app";
-  const hostelCode = hostel?.uniqueCode || hostel?.slug || hostel?.hostel?.uniqueCode || hostel?.hostel?.slug || "";
+  const publicCode = hostel?.publicCode || hostel?.uniqueCode || hostel?.hostel?.publicCode || hostel?.hostel?.uniqueCode || "";
+  const isDeleted = hostel?.isDeleted === true || hostel?.hostel?.isDeleted === true;
   const isPendingActivation = hostel?.pendingActivation === true || hostel?.hostel?.pendingActivation === true;
-  const isPublicLinkAvailable = Boolean(hostelCode) && !isPendingActivation;
+  const isPublicLinkAvailable = Boolean(publicCode) && !isPendingActivation && !isDeleted;
   
   const publicAdmissionUrl = isPublicLinkAvailable
-    ? (hostel?.publicUrl || `${frontendBase}/h/${hostelCode}`)
+    ? (hostel?.publicUrl || `${frontendBase}/h/${publicCode}`)
     : "";
 
   const qrImageSrc = isPublicLinkAvailable
@@ -194,12 +195,12 @@ export const CustomerOverview = React.memo(() => {
 
               <div className="grid grid-cols-2 gap-3 text-xs">
                 <div className="p-3 bg-white/[0.02] border border-white/5 rounded-xl">
-                  <span className="text-[10px] text-slate-500 block font-semibold">Hostel Code / Slug</span>
-                  <span className="text-white font-mono font-bold mt-0.5 block">{hostelCode}</span>
+                  <span className="text-[10px] text-slate-500 block font-semibold">Canonical Public Code</span>
+                  <span className="text-white font-mono font-bold mt-0.5 block">{publicCode}</span>
                 </div>
                 <div className="p-3 bg-white/[0.02] border border-white/5 rounded-xl">
                   <span className="text-[10px] text-slate-500 block font-semibold">Admission Route</span>
-                  <span className="text-slate-300 font-mono text-[11px] mt-0.5 block">/h/{hostelCode}</span>
+                  <span className="text-slate-300 font-mono text-[11px] mt-0.5 block">/h/{publicCode}</span>
                 </div>
               </div>
             </div>
@@ -207,9 +208,13 @@ export const CustomerOverview = React.memo(() => {
         ) : (
           <div className="p-6 text-center bg-amber-500/5 border border-amber-500/20 rounded-xl space-y-2">
             <AlertCircle size={24} className="mx-auto text-amber-400" />
-            <h4 className="text-sm font-bold text-white">Public admission link is not available yet.</h4>
+            <h4 className="text-sm font-bold text-white">
+              {isDeleted ? "Hostel is currently in 60-day Trash." : "Public admission link is not available yet."}
+            </h4>
             <p className="text-xs text-slate-400 max-w-md mx-auto">
-              This hostel has not completed registration activation or is currently pending setup. The public URL and scannable QR code will be generated once activation is complete.
+              {isDeleted
+                ? "Public admission is disabled while this hostel is in Trash. Restore the hostel to reactivate this admission link."
+                : "This hostel has not completed registration activation or is currently pending setup. The public URL and scannable QR code will be generated once activation is complete."}
             </p>
           </div>
         )}

@@ -52,7 +52,18 @@ async function runAudit() {
     });
     const trashHostelsDB = await Hostel.countDocuments({ isDeleted: true });
     const pendingHostelsDB = await Hostel.countDocuments({ isDeleted: { $ne: true }, pendingActivation: true });
-    const activeOwnersDB = await Owner.countDocuments({ status: "active" });
+
+    const activeHostelsList = await Hostel.find({ isDeleted: { $ne: true }, pendingActivation: { $ne: true } }).select("_id phone").lean();
+    const activeHostelIds = activeHostelsList.map((h) => h._id);
+    const activeHostelPhones = activeHostelsList.map((h) => h.phone).filter(Boolean);
+    const activeOwnersDB = await Owner.countDocuments({
+      status: "active",
+      $or: [
+        { hostelId: { $in: activeHostelIds } },
+        { activeHostelId: { $in: activeHostelIds } },
+        { phone: { $in: activeHostelPhones } },
+      ],
+    });
     const totalOwnersDB = await Owner.countDocuments({});
 
     // 2. Fetch Dashboard Overview Aggregation

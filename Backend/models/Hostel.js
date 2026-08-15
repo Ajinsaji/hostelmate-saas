@@ -82,6 +82,12 @@ const hostelSchema = new mongoose.Schema({
     default: false,
   },
 
+  publicCode: {
+    type: String,
+    unique: true,
+    sparse: true,
+  },
+
   uniqueCode: {
     type: String,
     unique: true,

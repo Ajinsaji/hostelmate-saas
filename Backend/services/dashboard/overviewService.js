@@ -26,6 +26,23 @@ async function getDashboardOverview() {
   const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
   const last30Start = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
 
+  // Active hostels for owner link consistency
+  const activeHostelsList = await Hostel.find({
+    isDeleted: { $ne: true },
+    pendingActivation: { $ne: true },
+  }).select("_id phone").lean();
+  const activeHostelIds = activeHostelsList.map((h) => h._id);
+  const activeHostelPhones = activeHostelsList.map((h) => h.phone).filter(Boolean);
+
+  const activeOwnerCondition = {
+    status: "active",
+    $or: [
+      { hostelId: { $in: activeHostelIds } },
+      { activeHostelId: { $in: activeHostelIds } },
+      { phone: { $in: activeHostelPhones } },
+    ],
+  };
+
   const [
     totalHostels,
     activeHostels,
@@ -62,9 +79,9 @@ async function getDashboardOverview() {
     Hostel.countDocuments({ isDeleted: { $ne: true }, pendingActivation: true }),
     Hostel.countDocuments({ isDeleted: { $ne: true }, createdAt: { $gte: startOfToday } }),
     Hostel.countDocuments({ isDeleted: { $ne: true }, createdAt: { $gte: startOfWeek } }),
-    Owner.countDocuments({ status: "active" }),
-    Owner.countDocuments({ status: "active", createdAt: { $gte: startOfToday } }),
-    Owner.countDocuments({ status: "active", createdAt: { $gte: startOfWeek } }),
+    Owner.countDocuments(activeOwnerCondition),
+    Owner.countDocuments({ ...activeOwnerCondition, createdAt: { $gte: startOfToday } }),
+    Owner.countDocuments({ ...activeOwnerCondition, createdAt: { $gte: startOfWeek } }),
     Resident.countDocuments({ status: "active" }),
     Resident.countDocuments({ status: "active", createdAt: { $gte: startOfToday } }),
     Resident.countDocuments({ status: "active", createdAt: { $gte: startOfWeek } }),

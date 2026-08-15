@@ -23,6 +23,23 @@ const formatINR = (n) => {
 };
 
 async function getExecutiveSummary() {
+  // Active hostels for owner link consistency
+  const activeHostelsList = await Hostel.find({
+    isDeleted: { $ne: true },
+    pendingActivation: { $ne: true },
+  }).select("_id phone").lean();
+  const activeHostelIds = activeHostelsList.map((h) => h._id);
+  const activeHostelPhones = activeHostelsList.map((h) => h.phone).filter(Boolean);
+
+  const activeOwnerCondition = {
+    status: "active",
+    $or: [
+      { hostelId: { $in: activeHostelIds } },
+      { activeHostelId: { $in: activeHostelIds } },
+      { phone: { $in: activeHostelPhones } },
+    ],
+  };
+
   // Hostels
   const [
     activeHostels,
@@ -31,9 +48,9 @@ async function getExecutiveSummary() {
     pendingRenewals,
     activeOwners,
   ] = await Promise.all([
-    Hostel.countDocuments({ pendingActivation: false }),
-    Hostel.countDocuments({ pendingActivation: false, subscriptionStatus: "trial" }),
-    Hostel.countDocuments({ pendingActivation: false, subscriptionStatus: "expired" }),
+    Hostel.countDocuments({ isDeleted: { $ne: true }, pendingActivation: false }),
+    Hostel.countDocuments({ isDeleted: { $ne: true }, pendingActivation: false, subscriptionStatus: "trial" }),
+    Hostel.countDocuments({ isDeleted: { $ne: true }, pendingActivation: false, subscriptionStatus: "expired" }),
 
     // Pending renewals: subscriptions ending in next 30 days.
     Subscription.countDocuments({
@@ -44,7 +61,7 @@ async function getExecutiveSummary() {
       subscriptionStatus: { $in: ["active", "expired"] },
     }),
 
-    Owner.countDocuments({ status: "active" }),
+    Owner.countDocuments(activeOwnerCondition),
   ]);
 
   // Revenue: approximate MRR from paid amounts for last 30d; ARR = MRR*12

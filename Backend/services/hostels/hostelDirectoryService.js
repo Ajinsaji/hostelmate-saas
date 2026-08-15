@@ -147,6 +147,7 @@ async function getHostelDirectory({
       { pincode: searchRegex },
       { address: searchRegex },
       { hostelAddress: searchRegex },
+      { publicCode: searchRegex },
       { uniqueCode: searchRegex },
       { slug: searchRegex }
     ];
@@ -211,7 +212,8 @@ async function getHostelDirectory({
       state: hostel.state || "Not provided",
       district: hostel.district || "Not provided",
       pincode: hostel.pincode || "Not provided",
-      hostelCode: hostel.uniqueCode || "",
+      publicCode: hostel.publicCode || hostel.uniqueCode || "",
+      hostelCode: hostel.publicCode || hostel.uniqueCode || "",
       plan: subscription?.planType || hostel.planType || "Basic",
       status: hostel.subscriptionStatus || subscription?.subscriptionStatus || "active",
       residents: activeResidents,

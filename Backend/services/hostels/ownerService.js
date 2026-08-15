@@ -22,6 +22,17 @@ async function getOwnerProfileByHostelId(hostelId) {
   const frontendBase = process.env.FRONTEND_URL || process.env.VITE_APP_URL || process.env.PUBLIC_URL || "https://hostelmate-saas.vercel.app";
   const loginUrl = `${String(frontendBase).replace(/\/$/, "")}/owner/login`;
 
+  const derivedStatus = (() => {
+    if (hostel.isDeleted) return "Hostel in Trash";
+    if (hostel.pendingActivation) return "Hostel Pending Activation";
+    if (!owner) return "No Owner Account";
+    return owner.status || "active";
+  })();
+
+  const daysRemaining = hostel.isDeleted
+    ? Math.max(0, 60 - Math.floor((Date.now() - new Date(hostel.deletedAt || Date.now()).getTime()) / (1000 * 60 * 60 * 24)))
+    : 0;
+
   return {
     id: owner?._id || hostel._id,
     _id: owner?._id || hostel._id,
@@ -67,9 +78,13 @@ async function getOwnerProfileByHostelId(hostelId) {
     },
 
     role: owner?.role || "owner",
-    status: owner ? (owner.status || "active") : (hostel.pendingActivation ? "Not Activated" : "active"),
+    status: derivedStatus,
+    effectiveStatus: derivedStatus,
+    rawStatus: owner?.status || "active",
+    isHostelInTrash: !!hostel.isDeleted,
+    hostelDeletedAt: hostel.deletedAt || null,
+    hostelDaysRemaining: daysRemaining,
   };
 }
 
 module.exports = { getOwnerProfileByHostelId };
-

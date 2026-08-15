@@ -26,6 +26,7 @@ function PublicHostelPage() {
   const { hostelCode } = useParams();
   const [hostel, setHostel] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState("");
 
   const [formData, setFormData] = useState({
     residentName: "",
@@ -52,28 +53,16 @@ function PublicHostelPage() {
   const [rulesVersionId, setRulesVersionId] = useState("");
   const [rulesVersionNumber, setRulesVersionNumber] = useState("");
 
-  // If backend does not expose active rules snapshot publicly yet,
-  // we still require the checkbox + signature to be provided.
-  // The immutable snapshot fields will be validated only when using the new signature flow.
-
-
   const [formStep, setFormStep] = useState(0); // 0 = view hostel, 1 = details, 2 = docs, 3 = success
   const [isSubmitting, setIsSubmitting] = useState(false);
-
 
   useEffect(() => {
     const fetchHostel = async () => {
       try {
         const response = await api.get(`/api/public/hostel/${hostelCode}`);
         const h = response.data?.hostel;
-        console.log("Public hostel response:", {
-          rulesText: h?.rulesText,
-          currentRulesVersion: h?.currentRulesVersion,
-          rulesVersionNumber: h?.rulesVersionNumber,
-        });
         setHostel(h);
 
-        // If backend starts exposing rules fields in public hostel payload, wire them here.
         const rvId = h?.currentRulesVersion || h?.rulesVersionId || h?.rulesVersionID || "";
         const rvNum = h?.rulesVersionNumber || h?.rulesVersionNo || "";
         const rulesText = h?.rulesText || h?.activeRulesText || h?.currentActiveRulesText || h?.rules || "";
@@ -82,7 +71,9 @@ function PublicHostelPage() {
         if (rvNum) setRulesVersionNumber(rvNum);
         if (rulesText) setAcceptedRulesTextSnapshot(rulesText);
       } catch (error) {
-        toast.error("Hostel not found");
+        const msg = error?.response?.data?.message || "Hostel not found or admission is unavailable.";
+        setErrorMessage(msg);
+        toast.error(msg);
       } finally {
         setLoading(false);
       }
@@ -189,8 +180,20 @@ function PublicHostelPage() {
     return hostel.rooms.filter((r) => Number(r.vacantBeds) > 0);
   }, [hostel]);
 
-  if (loading) return <div className="p-4 text-center">Loading hostel...</div>;
-  if (!hostel) return <div className="p-4 text-center">Hostel Not Found or Invalid Link.</div>;
+  if (loading) return <div className="p-16 text-center text-slate-300 font-semibold">Loading hostel details...</div>;
+  if (!hostel) {
+    return (
+      <div style={{ minHeight: "100vh", background: "var(--bg-2)", display: "flex", alignItems: "center", justifyContent: "center", padding: "20px" }}>
+        <div className="glass-card p-8 text-center max-w-md w-full" style={{ background: "rgba(11,23,57,0.75)" }}>
+          <AlertCircle size={44} className="mx-auto text-amber-400 mb-4" />
+          <h2 className="text-xl font-bold text-white mb-2">Admission Unavailable</h2>
+          <p className="text-sm text-slate-300 mb-6">
+            {errorMessage || "Hostel admission is currently unavailable."}
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={{ minHeight: "100vh", background: "var(--bg-2)", paddingBottom: "50px" }}>

@@ -50,9 +50,11 @@ async function getHostelProfile(hostelId) {
   const status = hostel.subscriptionStatus || subscription?.subscriptionStatus || "active";
   const planType = subscription?.planType || hostel.planType || "Basic";
 
-  const uniqueCode = hostel.uniqueCode || hostel.slug || "";
+  const publicCode = hostel.publicCode || hostel.uniqueCode || hostel.slug || "";
+  const uniqueCode = publicCode;
   const frontendBase = process.env.FRONTEND_URL || process.env.VITE_APP_URL || "https://hostelmate-saas.vercel.app";
-  const publicUrl = hostel.publicUrl || (uniqueCode ? `${String(frontendBase).replace(/\/$/, "")}/h/${uniqueCode}` : "");
+  const cleanFrontendBase = String(frontendBase).replace(/\/$/, "");
+  const publicUrl = hostel.publicUrl || (publicCode ? `${cleanFrontendBase}/h/${publicCode}` : "");
 
   return {
     id: hostel._id,
@@ -70,6 +72,7 @@ async function getHostelProfile(hostelId) {
     pincode: hostel.pincode || "Not provided",
     hostelType: hostel.hostelType || "Not provided",
     qrCodeUrl: hostel.qrCodeUrl || "",
+    publicCode: publicCode,
     uniqueCode: uniqueCode,
     slug: hostel.slug || uniqueCode,
     publicUrl: publicUrl,

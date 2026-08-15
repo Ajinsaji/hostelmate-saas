@@ -38,7 +38,7 @@ const approveHostelRegistration = async ({
   const sessionOption = session ? { session } : {};
 
   try {
-    // 1. Generate unique slug
+    // 1. Generate unique slug (for legacy fallback)
     let baseSlug = hostelName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)+/g, "");
     let slug = baseSlug || "hostel";
     let counter = 1;
@@ -52,23 +52,35 @@ const approveHostelRegistration = async ({
       slug = `${baseSlug}-${counter}`;
     }
 
-    // 2. Generate URLs
-    const publicLink = `${process.env.FRONTEND_URL || "https://hostelmate.in"}/hostel/${slug}`;
-    const publicRegistrationLink = `${process.env.FRONTEND_URL || "https://hostelmate.in"}/hostel/${slug}/apply`;
-    
-    // 3. Generate QR Code
-    const { generateQRCode } = require("../utils/qrCodeService");
-    const qrFilename = `${slug}-QR.png`;
-    const qrResult = await generateQRCode(publicRegistrationLink, qrFilename);
-    const qrCode = qrResult.success ? qrResult.url : `QR_CODE_FOR_${slug}`;
+    // 2. Generate canonical 10-digit numeric publicCode
+    const { generateUniquePublicCode } = require("../utils/publicCodeGenerator");
+    const publicCode = await generateUniquePublicCode(Hostel);
 
-    // 4. Create Hostel Draft (pendingActivation = true)
+    // 3. Generate Canonical URLs
+    const frontendBase = process.env.FRONTEND_URL || process.env.VITE_APP_URL || "https://hostelmate-saas.vercel.app";
+    const cleanFrontendBase = String(frontendBase).replace(/\/$/, "");
+    const canonicalPublicUrl = `${cleanFrontendBase}/h/${publicCode}`;
+    const publicLink = canonicalPublicUrl;
+    const publicRegistrationLink = canonicalPublicUrl;
+    
+    // 4. Generate QR Code with canonical publicCode URL
+    const { generateQRCode } = require("../utils/qrCodeService");
+    const qrFilename = `${publicCode}-QR.png`;
+    const qrResult = await generateQRCode(canonicalPublicUrl, qrFilename);
+    const qrCode = qrResult.success ? qrResult.url : `QR_CODE_FOR_${publicCode}`;
+    const qrCodeUrl = qrCode;
+
+    // 5. Create Hostel Draft (pendingActivation = true)
     const newHostel = new Hostel({
       name: hostelName,
       hostelName: hostelName,
       ownerName: ownerName || "",
       phone: phone || "",
       email: email || "",
+      publicCode,
+      uniqueCode: publicCode,
+      publicUrl: canonicalPublicUrl,
+      qrCodeUrl,
       slug,
       publicLink,
       publicRegistrationLink,
@@ -98,9 +110,12 @@ const approveHostelRegistration = async ({
     return {
       success: true,
       hostel: newHostel,
+      publicCode,
+      publicUrl: canonicalPublicUrl,
       publicLink,
       publicRegistrationLink,
-      qrCode
+      qrCode,
+      qrCodeUrl
     };
   } catch (error) {
     if (session) {

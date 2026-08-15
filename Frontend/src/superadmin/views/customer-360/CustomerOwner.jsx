@@ -221,8 +221,56 @@ export default function CustomerOwner() {
     }
   };
 
+  const isHostelInTrash = Boolean(hostelData?.isDeleted || ownerData?.isHostelInTrash);
+  const trashDaysRemaining = ownerData?.hostelDaysRemaining || 0;
+  const deletedAtStr = ownerData?.hostelDeletedAt ? new Date(ownerData.hostelDeletedAt).toLocaleDateString() : (hostelData?.deletedAt ? new Date(hostelData.deletedAt).toLocaleDateString() : "");
+
   return (
     <div className="p-6 space-y-6">
+      {/* HOSTEL IN TRASH PROMINENT BANNER */}
+      {isHostelInTrash && (
+        <div className="p-5 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-300 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-lg">
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center shrink-0 mt-0.5">
+              <AlertTriangle size={20} />
+            </div>
+            <div className="space-y-1">
+              <h4 className="text-sm font-extrabold text-white flex items-center gap-2">
+                <span>HOSTEL IN TRASH</span>
+                <span className="px-2 py-0.5 rounded text-[10px] bg-rose-500/20 text-rose-300 border border-rose-500/30 font-mono">
+                  {trashDaysRemaining > 0 ? `${trashDaysRemaining} Days Remaining` : "Retained in Trash"}
+                </span>
+              </h4>
+              <p className="text-xs text-slate-300">
+                This owner account is linked to <strong className="text-white">{hostelData?.hostelName || "Hostel"}</strong>, which was moved to the 60-day Trash{deletedAtStr ? ` on ${deletedAtStr}` : ""}. Owner login and operational dashboard access are blocked. Historical financial, subscription, and audit records remain 100% preserved.
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={async () => {
+              if (!window.confirm(`Restore "${hostelData?.hostelName || "this hostel"}" to active registry?`)) return;
+              try {
+                const toastId = toast.loading("Restoring hostel from Trash...");
+                const res = await api.post(`/api/admin/trash/hostels/${id}/restore`);
+                if (res.data?.success) {
+                  toast.success("Hostel restored successfully!", { id: toastId });
+                  refetch();
+                  fetchOwnerDetails();
+                } else {
+                  toast.error(res.data?.message || "Failed to restore hostel", { id: toastId });
+                }
+              } catch (err) {
+                toast.error("Failed to restore hostel");
+              }
+            }}
+            className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-1.5 transition shrink-0 cursor-pointer shadow-md"
+          >
+            <RefreshCw size={14} />
+            <span>Restore Hostel</span>
+          </button>
+        </div>
+      )}
+
       {/* Basic Profile Header */}
       <div className="bg-slate-900/50 border border-white/5 p-6 rounded-2xl flex flex-col sm:flex-row gap-6 items-start sm:items-center">
         <div className="w-24 h-24 rounded-2xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center text-3xl font-bold border border-emerald-500/20 shrink-0 overflow-hidden">
@@ -274,7 +322,7 @@ export default function CustomerOwner() {
           <div className="flex flex-wrap items-center gap-2">
             <button
               onClick={handleSendCredentials}
-              disabled={sendingWhatsapp}
+              disabled={sendingWhatsapp || isHostelInTrash}
               className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-xs font-bold transition cursor-pointer shadow-md min-h-[42px]"
             >
               {sendingWhatsapp ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
@@ -295,9 +343,15 @@ export default function CustomerOwner() {
           {/* Account Status */}
           <div className="p-4 bg-slate-950/50 border border-white/5 rounded-xl space-y-1.5">
             <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Account Status</span>
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-xs font-bold capitalize">
-              <CheckCircle2 size={12} /> Active
-            </span>
+            {isHostelInTrash ? (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-amber-500/15 text-amber-300 border border-amber-500/30 text-xs font-bold capitalize">
+                <AlertTriangle size={12} /> Hostel in Trash
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-xs font-bold capitalize">
+                <CheckCircle2 size={12} /> {ownerData?.status || "Active"}
+              </span>
+            )}
           </div>
 
           {/* Credential Delivery Status */}

@@ -1310,12 +1310,13 @@ const addHostel = async (req, res) => {
       success: true,
       message: "Hostel added successfully",
       hostel: result.hostel,
-      ownerId: result.owner._id,
+      ownerId: result.owner?._id,
       subscription: subscriptionDoc,
-      publicUrl: result.publicLink,
-      qrCodeUrl: result.qrCode,
-      qrCodeFullUrl: result.qrCode,
-      uniqueCode: result.hostel.slug,
+      publicCode: result.hostel.publicCode || result.publicCode,
+      publicUrl: result.publicUrl || result.publicLink,
+      qrCodeUrl: result.qrCodeUrl || result.qrCode,
+      qrCodeFullUrl: result.qrCodeUrl || result.qrCode,
+      uniqueCode: result.hostel.publicCode || result.publicCode || result.hostel.slug,
     });
   } catch (error) {
     console.log(error);
@@ -1774,11 +1775,55 @@ const getAllOwnersList = async (req, res) => {
       sortOrder = "desc",
     } = req.query || {};
 
-    const query = {};
+    // 1. Identify Trashed and Active Hostels for Server-Side Relationship Consistency
+    const trashedHostels = await Hostel.find({ isDeleted: true }).select("_id phone").lean();
+    const trashedHostelIds = trashedHostels.map((h) => h._id);
+
+    const activeHostels = await Hostel.find({
+      isDeleted: { $ne: true },
+      pendingActivation: { $ne: true },
+    }).select("_id phone").lean();
+    const activeHostelIds = activeHostels.map((h) => h._id);
+    const activeHostelPhones = activeHostels.map((h) => h.phone).filter(Boolean);
+
+    const trashedOwnerCondition = trashedHostelIds.length > 0 ? {
+      $or: [
+        { hostelId: { $in: trashedHostelIds } },
+        { activeHostelId: { $in: trashedHostelIds } },
+      ],
+    } : null;
+
+    const activeHostelOwnerCondition = {
+      $or: [
+        { hostelId: { $in: activeHostelIds } },
+        { activeHostelId: { $in: activeHostelIds } },
+        { phone: { $in: activeHostelPhones } },
+      ],
+    };
+
+    const queryConditions = [];
 
     const rawStatus = String(status || "").trim().toLowerCase();
-    if (rawStatus && rawStatus !== "all" && rawStatus !== "all statuses") {
-      query.status = rawStatus;
+    if (rawStatus === "active") {
+      queryConditions.push({ status: "active" });
+      queryConditions.push(activeHostelOwnerCondition);
+    } else if (rawStatus === "suspended") {
+      queryConditions.push({ status: "suspended" });
+      if (trashedOwnerCondition) queryConditions.push({ $nor: [trashedOwnerCondition] });
+    } else if (rawStatus === "disabled") {
+      queryConditions.push({ status: "disabled" });
+      if (trashedOwnerCondition) queryConditions.push({ $nor: [trashedOwnerCondition] });
+    } else if (rawStatus === "trash" || rawStatus === "trashed" || rawStatus === "archived") {
+      if (trashedOwnerCondition) {
+        queryConditions.push(trashedOwnerCondition);
+      } else {
+        queryConditions.push({ _id: null });
+      }
+    } else {
+      // Default / "all": exclude owners linked to trashed hostels from normal active CRM
+      if (trashedOwnerCondition) {
+        queryConditions.push({ $nor: [trashedOwnerCondition] });
+      }
     }
 
     const trimmedSearch = String(search || "").trim();
@@ -1791,26 +1836,32 @@ const getAllOwnersList = async (req, res) => {
           { city: searchRegex },
           { district: searchRegex },
           { state: searchRegex },
+          { publicCode: searchRegex },
+          { uniqueCode: searchRegex },
         ],
       }).select("_id").lean();
       const matchingHostelIds = matchingHostels.map((h) => h._id);
 
-      query.$or = [
-        { ownerName: searchRegex },
-        { phone: searchRegex },
-        { email: searchRegex },
-        { username: searchRegex },
-        { hostelId: { $in: matchingHostelIds } },
-        { activeHostelId: { $in: matchingHostelIds } },
-      ];
+      queryConditions.push({
+        $or: [
+          { ownerName: searchRegex },
+          { phone: searchRegex },
+          { email: searchRegex },
+          { username: searchRegex },
+          { hostelId: { $in: matchingHostelIds } },
+          { activeHostelId: { $in: matchingHostelIds } },
+        ],
+      });
     }
+
+    const finalQuery = queryConditions.length > 1 ? { $and: queryConditions } : (queryConditions[0] || {});
 
     const pageNum = Math.max(1, parseInt(page, 10) || 1);
     const limitNum = Math.max(1, Math.min(200, parseInt(limit, 10) || 50));
     const skip = (pageNum - 1) * limitNum;
 
-    const totalCount = await Owner.countDocuments(query);
-    const owners = await Owner.find(query)
+    const totalCount = await Owner.countDocuments(finalQuery);
+    const owners = await Owner.find(finalQuery)
       .sort({ [sortField]: sortOrder === "asc" ? 1 : -1 })
       .skip(skip)
       .limit(limitNum)
@@ -1882,9 +1933,25 @@ const getAllOwnersList = async (req, res) => {
         const hostelType = hostel?.hostelType || hostelRequest?.hostelType || "Standard";
         const plan = sub?.planType || hostel?.planType || "Basic";
         const subscriptionStatus = sub?.subscriptionStatus || hostel?.subscriptionStatus || (hostel ? "active" : "N/A");
-        const uniqueCode = hostel?.uniqueCode || hostel?.slug || "";
+        const publicCode = hostel?.publicCode || hostel?.uniqueCode || hostel?.slug || "";
+        const uniqueCode = publicCode;
         const publicUrl = hostel?.publicUrl || "";
         const qrCodeUrl = hostel?.qrCodeUrl || "";
+
+        // Status derivation taking linked hostel lifecycle into account
+        let effectiveStatus = o.status || "active";
+        let isHostelInTrash = false;
+        let trashDaysRemaining = 0;
+
+        if (hostel?.isDeleted) {
+          effectiveStatus = "Hostel in Trash";
+          isHostelInTrash = true;
+          trashDaysRemaining = Math.max(0, 60 - Math.floor((Date.now() - new Date(hostel.deletedAt || Date.now()).getTime()) / (1000 * 60 * 60 * 24)));
+        } else if (hostel?.pendingActivation) {
+          effectiveStatus = "Hostel Pending Activation";
+        } else if (!hostel) {
+          effectiveStatus = "No Hostel Linked";
+        }
 
         return {
           id: o._id,
@@ -1895,7 +1962,11 @@ const getAllOwnersList = async (req, res) => {
           email: email,
           photo: photo,
           profileImage: photo,
-          status: o.status || "active",
+          status: effectiveStatus,
+          effectiveStatus: effectiveStatus,
+          rawStatus: o.status || "active",
+          isHostelInTrash: isHostelInTrash,
+          trashDaysRemaining: trashDaysRemaining,
           role: o.role || "owner",
           createdAt: o.createdAt,
           mustChangePassword: !!o.mustChangePassword,
@@ -1942,9 +2013,12 @@ const getAllOwnersList = async (req, res) => {
             daysRemaining: daysRemaining,
             monthlyRevenue: monthlyRevenue,
             storageUsage: residentCount > 0 ? `${(residentCount * 0.05 + 0.1).toFixed(1)} GB` : "0.1 GB",
+            publicCode: publicCode,
             uniqueCode: uniqueCode,
             publicUrl: publicUrl,
             qrCodeUrl: qrCodeUrl,
+            isDeleted: !!hostel?.isDeleted,
+            deletedAt: hostel?.deletedAt || null,
           },
 
           // Operational metrics
@@ -1960,11 +2034,12 @@ const getAllOwnersList = async (req, res) => {
       })
     );
 
+    // Live counts agreeing across CRM and database
     const [activeCount, suspendedCount, disabledCount, totalAllOwners] = await Promise.all([
-      Owner.countDocuments({ status: "active" }),
-      Owner.countDocuments({ status: "suspended" }),
-      Owner.countDocuments({ status: "disabled" }),
-      Owner.countDocuments({}),
+      Owner.countDocuments({ status: "active", ...activeHostelOwnerCondition }),
+      Owner.countDocuments({ status: "suspended", ...(trashedOwnerCondition ? { $nor: [trashedOwnerCondition] } : {}) }),
+      Owner.countDocuments({ status: "disabled", ...(trashedOwnerCondition ? { $nor: [trashedOwnerCondition] } : {}) }),
+      Owner.countDocuments(trashedOwnerCondition ? { $nor: [trashedOwnerCondition] } : {}),
     ]);
 
     return res.status(200).json({

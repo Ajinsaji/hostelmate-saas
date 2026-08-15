@@ -27,6 +27,13 @@ export const StatusBadge = React.memo(({
       case "warning":
         return { text: COLORS.warning, bg: COLORS.warningBg, border: "rgba(217, 119, 6, 0.2)" };
       
+      case "hostel in trash":
+      case "hostel_in_trash":
+      case "trash":
+      case "trashed":
+      case "archived":
+        return { text: "#f59e0b", bg: "rgba(245, 158, 11, 0.15)", border: "rgba(245, 158, 11, 0.3)" };
+      
       case "expired":
       case "suspended":
       case "failed":

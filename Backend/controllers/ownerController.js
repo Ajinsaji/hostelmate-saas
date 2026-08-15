@@ -28,12 +28,20 @@ const looksLikeBcryptHash = (str) => {
 // ==========================
 const loginOwner = async (req, res) => {
   try {
-    const { email, phone, password, username } = req.body || {};
+    let { email, phone, password, username, identifier } = req.body || {};
     logger.info("LOGIN ATTEMPT");
-    logger.info("Username entered:", username, "Email entered:", email, "Phone entered:", phone);
+    logger.info("Username entered:", username, "Email entered:", email, "Phone entered:", phone, "Identifier entered:", identifier);
 
-
-    
+    if (identifier && !email && !phone && !username) {
+      const cleanId = String(identifier).trim();
+      if (cleanId.includes("@")) {
+        email = cleanId;
+      } else if (/^\+?\d{7,15}$/.test(cleanId.replace(/\s+/g, ""))) {
+        phone = cleanId;
+      } else {
+        username = cleanId;
+      }
+    }
 
     const safePasswordCompare = async (plain, stored) => {
       if (!stored) return false;
@@ -43,10 +51,6 @@ const loginOwner = async (req, res) => {
       logger.info("SECURITY WARNING: Non-bcrypt password blocked.");
       return false; // Strict bcrypt only, no plaintext fallback
     };
-
-
-
-
 
     if (!password) {
       return res.status(400).json({
@@ -146,6 +150,16 @@ const loginOwner = async (req, res) => {
           return res.status(400).json({ success: false, message: "Invalid credentials" });
         }
 
+        if (staff.hostelId) {
+          const staffHostel = await Hostel.findById(staff.hostelId);
+          if (staffHostel?.isDeleted) {
+            return res.status(403).json({
+              success: false,
+              message: "Hostel account is currently retained in Trash. Please contact administrator.",
+            });
+          }
+        }
+
         userRole = staff.role;
         userId = staff._id;
         hostelId = staff.hostelId;
@@ -168,6 +182,13 @@ const loginOwner = async (req, res) => {
         return res.status(400).json({
           success: false,
           message: "Hostel not found for this owner",
+        });
+      }
+
+      if (hostel?.isDeleted) {
+        return res.status(403).json({
+          success: false,
+          message: "Hostel account is currently retained in Trash. Please contact administrator.",
         });
       }
 
