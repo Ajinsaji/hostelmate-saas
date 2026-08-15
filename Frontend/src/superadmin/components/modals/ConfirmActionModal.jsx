@@ -202,12 +202,19 @@ export const ConfirmActionModal = React.memo(({
       }
     } catch (err) {
       console.error(`Error during ${actionType}:`, err);
-      const errMsg = err.response?.data?.message || err.message || `Failed to ${actionType} request`;
-      if (err.response?.status === 403) {
-        setError("403 Forbidden: You do not have permission to execute this administrative action.");
-      } else {
-        setError(errMsg);
+      let errMsg = err.response?.data?.message || err.response?.data?.error;
+      if (!errMsg) {
+        if (err.response?.status === 403) {
+          errMsg = "403 Forbidden: You do not have permission to execute this administrative action.";
+        } else if (err.response?.status === 409) {
+          errMsg = "Conflict: An account or subscription with these details already exists.";
+        } else if (err.response?.status === 404) {
+          errMsg = "Hostel or registration record not found.";
+        } else {
+          errMsg = `Unable to complete ${actionType} action. Please try again.`;
+        }
       }
+      setError(errMsg);
     } finally {
       setLoading(false);
     }

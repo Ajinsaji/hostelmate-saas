@@ -271,45 +271,141 @@ const approveHostel = async (req, res) => {
 
 const finalizeHostelActivation = async (req, res) => {
   try {
-    const hostelId = req.params.hostelId || req.params.id;
+    const rawTargetId = req.params.hostelId || req.params.id;
     const { planType, amount, startDate, endDate, isTrial, isFreeAccess, notes } = req.body || {};
 
-    if (!hostelId) {
-      return res.status(400).json({ success: false, message: "hostelId is required" });
+    if (!rawTargetId) {
+      return res.status(400).json({
+        success: false,
+        code: "TARGET_ID_REQUIRED",
+        message: "Hostel ID or Request ID is required for activation",
+      });
     }
 
-    const hostel = await Hostel.findById(hostelId);
+    // 1. Resolve Target Hostel (gracefully handle both Hostel._id and HostelRequest._id)
+    let hostel = await Hostel.findById(rawTargetId);
+    let relatedRequest = null;
+
     if (!hostel) {
-      return res.status(404).json({ success: false, message: "Hostel not found" });
+      relatedRequest = await HostelRequest.findById(rawTargetId);
+      if (relatedRequest?.hostelId) {
+        hostel = await Hostel.findById(relatedRequest.hostelId);
+      }
     }
 
-    // Avoid accidental double-activation (idempotency best-effort)
+    if (!hostel) {
+      return res.status(404).json({
+        success: false,
+        code: "HOSTEL_NOT_FOUND",
+        message: "Hostel document not found for activation.",
+      });
+    }
+
+    // 2. Validate Lifecycle + Trash Gating
+    if (hostel.isDeleted === true) {
+      return res.status(400).json({
+        success: false,
+        code: "HOSTEL_IN_TRASH",
+        message: "Hostel is currently in Trash and cannot be activated.",
+      });
+    }
+
+    // Strict Idempotency: Reject already activated hostels
     if (hostel.pendingActivation === false) {
-      return res.status(400).json({ success: false, message: "Hostel already activated" });
+      return res.status(400).json({
+        success: false,
+        code: "HOSTEL_ALREADY_ACTIVATED",
+        message: "Hostel already activated",
+      });
     }
 
-    const existingOwner = await Owner.findOne({ hostelId: hostel._id });
-    if (existingOwner) {
-      return res.status(400).json({ success: false, message: "Hostel already activated" });
+    // 3. Validate Owner Conflicts
+    const existingOwnerByHostel = await Owner.findOne({ hostelId: hostel._id });
+    if (existingOwnerByHostel) {
+      return res.status(400).json({
+        success: false,
+        code: "HOSTEL_ALREADY_ACTIVATED",
+        message: "Hostel already activated",
+      });
     }
 
-    // Generate temp password and hash it (NEVER store plaintext in DB)
+    const existingOwnerByPhone = await Owner.findOne({ phone: hostel.phone });
+    if (existingOwnerByPhone) {
+      if (String(existingOwnerByPhone.hostelId) === String(hostel._id)) {
+        return res.status(400).json({
+          success: false,
+          code: "HOSTEL_ALREADY_ACTIVATED",
+          message: "Hostel already activated",
+        });
+      }
+      return res.status(409).json({
+        success: false,
+        code: "OWNER_PHONE_CONFLICT",
+        message: `An owner account with phone number ${hostel.phone} already exists.`,
+      });
+    }
+
+    // 4. Ensure Public Code & Canonical URL are present and valid
+    const frontendBase = process.env.FRONTEND_URL || process.env.VITE_APP_URL || process.env.PUBLIC_URL || (req.headers && req.headers.origin ? req.headers.origin : "https://hostelmate-saas.vercel.app");
+    const cleanFrontendBase = String(frontendBase).replace(/\/$/, "");
+
+    if (!hostel.publicCode || !/^\d{10}$/.test(hostel.publicCode)) {
+      const { generateUniquePublicCode } = require("../utils/publicCodeGenerator");
+      hostel.publicCode = await generateUniquePublicCode(Hostel);
+      hostel.uniqueCode = hostel.publicCode;
+      hostel.publicUrl = `${cleanFrontendBase}/h/${hostel.publicCode}`;
+    }
+
+    // 5. Subscription Preparation (Idempotent reuse or creation)
+    const normalizedPlanType = planType === "Pro" || planType === "Monthly" || planType === "Yearly" ? "Pro" : (planType || "Basic");
+    const finalStartDate = startDate ? new Date(startDate) : new Date();
+    const finalEndDate = endDate ? new Date(endDate) : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+
+    let subscriptionDoc = await Subscription.findOne({ hostelId: hostel._id });
+    if (subscriptionDoc) {
+      subscriptionDoc.planType = normalizedPlanType;
+      subscriptionDoc.subscriptionStatus = isTrial ? "trial" : "active";
+      subscriptionDoc.isTrial = !!isTrial;
+      subscriptionDoc.subscriptionStartDate = finalStartDate;
+      subscriptionDoc.subscriptionEndDate = finalEndDate;
+      subscriptionDoc.isFreeAccess = !!isFreeAccess;
+      subscriptionDoc.amount = Number(amount ?? subscriptionDoc.amount ?? 0);
+      subscriptionDoc.notes = notes || subscriptionDoc.notes || "";
+      await subscriptionDoc.save();
+    } else {
+      subscriptionDoc = await Subscription.create({
+        hostelId: hostel._id,
+        planType: normalizedPlanType,
+        subscriptionStatus: isTrial ? "trial" : "active",
+        isTrial: !!isTrial,
+        trialStartDate: finalStartDate,
+        trialEndDate: finalEndDate,
+        subscriptionStartDate: finalStartDate,
+        subscriptionEndDate: finalEndDate,
+        residentLimit: 60,
+        isFreeAccess: !!isFreeAccess,
+        amount: Number(amount ?? 0),
+        notes: notes || "",
+      });
+    }
+
+    // 6. Generate Temporary Password and Create Owner
     const tempPassword = `HM${Math.floor(1000 + Math.random() * 9000)}@`;
     const bcryptjs = require("bcryptjs");
     const hashedPassword = await bcryptjs.hash(tempPassword, 10);
 
-    // Find related request early to obtain email if needed
-    const relatedRequest = await HostelRequest.findOne({
-      $or: [{ hostelId: String(hostel._id) }, { phone: hostel.phone }]
-    });
+    if (!relatedRequest) {
+      relatedRequest = await HostelRequest.findOne({
+        $or: [{ hostelId: String(hostel._id) }, { phone: hostel.phone }]
+      });
+    }
 
     const ownerEmail = hostel.email || relatedRequest?.email || "";
 
-    // Owner: create ONLY here (activation boundary)
-    // Derive owner fields from draft hostel (created in approveHostel)
     const ownerPayload = {
       hostelId: hostel._id,
-      ownerName: hostel.ownerName,
+      activeHostelId: hostel._id,
+      ownerName: hostel.ownerName || "Hostel Owner",
       phone: hostel.phone,
       email: ownerEmail,
       username: hostel.phone,
@@ -329,25 +425,8 @@ const finalizeHostelActivation = async (req, res) => {
 
     const createdOwner = await Owner.create(ownerPayload);
 
-    // Subscription creation ONLY here (activation boundary)
-    const normalizedPlanType = planType === "Pro" || planType === "Monthly" || planType === "Yearly" ? "Pro" : "Basic";
-
-    const subscriptionDoc = await Subscription.create({
-      hostelId: hostel._id,
-      planType: normalizedPlanType,
-      subscriptionStatus: isTrial ? "trial" : "active",
-      isTrial: !!isTrial,
-      trialStartDate: startDate ? new Date(startDate) : new Date(),
-      trialEndDate: endDate ? new Date(endDate) : undefined,
-      subscriptionStartDate: startDate ? new Date(startDate) : new Date(),
-      subscriptionEndDate: endDate ? new Date(endDate) : undefined,
-      residentLimit: 60,
-      isFreeAccess: !!isFreeAccess,
-      amount: Number(amount ?? 0),
-      notes: notes || "",
-    });
-
-    // Update hostel activation gating + store subscription canonical fields + link owner
+    // 7. Update Hostel & Mark Activated
+    hostel.ownerId = createdOwner._id;
     hostel.owner = createdOwner._id;
     hostel.pendingActivation = false;
     hostel.subscriptionStatus = subscriptionDoc.subscriptionStatus;
@@ -359,19 +438,18 @@ const finalizeHostelActivation = async (req, res) => {
 
     await hostel.save();
 
-    // Update hostel request status -> activated (ONLY here finalizes activation)
+    // 8. Update HostelRequest Status (activated)
     if (relatedRequest) {
       relatedRequest.status = "activated";
       if (!relatedRequest.timeline) relatedRequest.timeline = [];
-      relatedRequest.timeline.push({ action: "Activated & Credentials Generated", by: "SuperAdmin" });
+      relatedRequest.timeline.push({ action: "Activated & Credentials Generated", by: req.user?.role || "SuperAdmin" });
       await relatedRequest.save();
     }
 
-    // Construct canonical Owner Login URL dynamically
-    const frontendBase = process.env.FRONTEND_URL || process.env.VITE_APP_URL || process.env.PUBLIC_URL || (req.headers && req.headers.origin ? req.headers.origin : "https://hostelmate-saas.vercel.app");
-    const loginUrl = `${String(frontendBase).replace(/\/$/, "")}/owner/login`;
+    // 9. Construct canonical Owner Login URL
+    const loginUrl = `${cleanFrontendBase}/owner/login`;
 
-    // Attempt WhatsApp onboarding delivery (non-blocking)
+    // 10. WhatsApp Onboarding Delivery (Isolated & Non-blocking)
     try {
       const { sendOwnerOnboarding } = require("../utils/sendOwnerOnboarding");
       const deliveryResult = await sendOwnerOnboarding({
@@ -386,22 +464,43 @@ const finalizeHostelActivation = async (req, res) => {
         loginUrl,
       });
 
-      if (deliveryResult && deliveryResult.skipped) {
+      if (deliveryResult?.skipped || deliveryResult?.unconfigured) {
         createdOwner.credentialDeliveryStatus = "unconfigured";
         await createdOwner.save();
-      } else if (deliveryResult && deliveryResult.success) {
+      } else if (deliveryResult?.success) {
         createdOwner.credentialDeliveryStatus = "sent";
         await createdOwner.save();
       }
     } catch (e) {
-      console.error("WhatsApp delivery error during activation:", e?.message || e);
+      console.error("WhatsApp delivery error during activation (non-blocking):", e?.message || e);
       createdOwner.credentialDeliveryStatus = "failed";
-      await createdOwner.save();
+      await createdOwner.save().catch(() => {});
     }
 
+    // 11. EventBus Notification (Isolated & Non-blocking)
+    try {
+      const EventBus = require("../services/EventBus");
+      EventBus.emit("OWNER_ACCOUNT_ACTIVATED", {
+        hostelId: hostel._id,
+        ownerId: createdOwner._id,
+        phone: createdOwner.phone,
+        ownerName: createdOwner.ownerName,
+        hostelName: hostel.hostelName,
+        username: createdOwner.phone,
+        tempPassword,
+        planType: hostel.planType,
+        loginUrl,
+      });
+    } catch (eventErr) {
+      console.error("[EventBus] OWNER_ACCOUNT_ACTIVATED emission error (non-blocking):", eventErr?.message);
+    }
+
+    // 12. Return Controlled HTTP 200 Activation Response
     return res.status(200).json({
       success: true,
       message: "Hostel activated successfully",
+      hostelId: hostel._id,
+      ownerId: createdOwner._id,
       owner: {
         id: createdOwner._id,
         fullName: createdOwner.ownerName,
@@ -420,11 +519,34 @@ const finalizeHostelActivation = async (req, res) => {
       },
       loginUrl,
       credentialStatus: createdOwner.credentialDeliveryStatus,
-      ownerId: createdOwner._id,
     });
   } catch (error) {
     console.error("finalizeHostelActivation error:", error?.message || error);
-    return res.status(500).json({ success: false, message: "Failed to finalize activation", error: error?.message || String(error) });
+
+    // Handle Mongo E11000 duplicate key errors cleanly without exposing internals or returning 500
+    if (error?.code === 11000 || error?.name === "MongoServerError") {
+      const duplicateField = Object.keys(error.keyPattern || {})[0] || "field";
+      return res.status(409).json({
+        success: false,
+        code: "DUPLICATE_KEY_CONFLICT",
+        message: `An account or record already exists with this ${duplicateField}.`,
+        field: duplicateField,
+      });
+    }
+
+    if (error?.name === "ValidationError") {
+      return res.status(400).json({
+        success: false,
+        code: "VALIDATION_ERROR",
+        message: error.message || "Invalid activation parameters.",
+      });
+    }
+
+    return res.status(500).json({
+      success: false,
+      code: "ACTIVATION_FAILED",
+      message: "Unable to complete hostel activation. Please try again.",
+    });
   }
 };
 

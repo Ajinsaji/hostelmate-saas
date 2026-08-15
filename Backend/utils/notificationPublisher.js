@@ -68,14 +68,19 @@ async function publishNotification({
   const resolvedCategory = category || NOTIFICATION_CATEGORY_BY_TYPE[type] || "updates";
   const resolvedPriority = priority || NOTIFICATION_PRIORITY_BY_TYPE[type] || "normal";
 
+  const canonicalType = (type && String(type).replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())) || "System";
+  const canonicalPriority = (resolvedPriority && String(resolvedPriority).replace(/\b\w/g, (c) => c.toUpperCase())) || "Medium";
+  const validHostelId = hostelId || meta?.relatedId || meta?.hostelId || null;
+
   const notification = await Notification.create({
     userId,
-    hostelId: hostelId || null,
+    tenantId: validHostelId,
+    hostelId: validHostelId,
     title: title || message || "HostelMate",
     message,
-    type,
+    type: canonicalType,
     category: resolvedCategory,
-    priority: resolvedPriority,
+    priority: canonicalPriority,
     icon: icon || null,
     actionUrl: actionUrl || normalizedMeta.route || null,
     receiverRole: role || null,

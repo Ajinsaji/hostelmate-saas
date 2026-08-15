@@ -5,16 +5,15 @@ const notificationSchema = new mongoose.Schema(
     tenantId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Hostel",
-      required: true,
+      required: false,
     },
     hostelId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Hostel",
-      required: true,
+      required: false,
     },
     type: {
       type: String,
-      enum: ["Rent Reminder", "Budget Alert", "Maintenance Alert", "Announcement", "System"],
       default: "System",
     },
     title: {
@@ -29,7 +28,6 @@ const notificationSchema = new mongoose.Schema(
     },
     priority: {
       type: String,
-      enum: ["Low", "Medium", "High", "Critical"],
       default: "Medium",
     },
     channel: {
