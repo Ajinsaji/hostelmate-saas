@@ -20,15 +20,22 @@ export default function useSessionVerification() {
     if (
       path === "/" ||
       path === "/login" ||
+      path === "/owner/login" ||
       path === "/register" ||
       path === "/admin/login" ||
-      path === "/admin-login"
+      path === "/admin-login" ||
+      path === "/request-status" ||
+      path === "/request-tracking" ||
+      path === "/track-request" ||
+      path === "/application-status" ||
+      path === "/pending-approval"
     ) {
       return true;
     }
 
-    // Public hostel pages: /h/:hostelCode
-    if (path.startsWith("/h/")) return true;
+    // Public hostel pages: /h/:hostelCode and /hostel/:slug
+    if (path.startsWith("/h/") || path.startsWith("/hostel/")) return true;
+    if (path.startsWith("/request-status") || path.startsWith("/request-tracking") || path.startsWith("/track-request")) return true;
 
     return false;
   }, [location.pathname]);

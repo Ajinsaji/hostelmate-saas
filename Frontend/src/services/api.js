@@ -34,12 +34,28 @@ const isTokenExpired = (token) => {
   return Math.floor(Date.now() / 1000) >= payload.exp;
 };
 
-const PUBLIC_PATHS = new Set(["/", "/login", "/admin-login", "/register"]);
+const PUBLIC_PATHS = new Set([
+  "/",
+  "/login",
+  "/owner/login",
+  "/admin-login",
+  "/admin/login",
+  "/register",
+  "/request-status",
+  "/request-tracking",
+  "/track-request",
+  "/application-status",
+  "/pending-approval",
+]);
 
 const isPublicPath = (pathname) => {
   if (!pathname) return false;
   if (PUBLIC_PATHS.has(pathname)) return true;
   if (pathname.startsWith("/h/")) return true; // public hostel pages
+  if (pathname.startsWith("/hostel/")) return true; // public hostel pages
+  if (pathname.startsWith("/request-status")) return true;
+  if (pathname.startsWith("/request-tracking")) return true;
+  if (pathname.startsWith("/track-request")) return true;
   return false;
 };
 
@@ -50,6 +66,9 @@ const PUBLIC_API_PATTERNS = [
   "/api/request/register",
   "/api/request/pincode/",
   "/api/request/status/",
+  "/api/hostel-request/status/",
+  "/api/request/",
+  "/api/public/",
 ];
 
 /**

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import PageContainer from "../layouts/PageContainer";
 import {
   CheckSquare,
@@ -16,24 +17,41 @@ import {
   Smartphone,
   ChevronRight,
   ShieldAlert,
+  ShieldCheck,
+  Building,
+  Clock,
+  RotateCcw,
+  Sparkles,
 } from "lucide-react";
 import api from "../../utils/apiClient";
 import useAdminAutoRefresh from "../hooks/useAdminAutoRefresh";
 import MessageDetailDrawer from "../../components/MessageDetailDrawer";
 
 export default function AdminTasksPage() {
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
-  const [tasks, setTasks] = useState([]);
+  const [activeTab, setActiveTab] = useState("pending"); // "pending" | "completed"
+
+  const [pendingTasks, setPendingTasks] = useState([]);
+  const [completedTasksToday, setCompletedTasksToday] = useState([]);
+  const [pendingCount, setPendingCount] = useState(0);
+  const [completedCount, setCompletedCount] = useState(0);
   const [totalCount, setTotalCount] = useState(0);
+
   const [categories, setCategories] = useState({
     rentRemindersCount: 0,
     ownerActivationsCount: 0,
     paymentConfirmationsCount: 0,
     failedDeliveriesCount: 0,
+    pendingRegistrationsCount: 0,
+    pendingActivationsCount: 0,
+    pendingSubscriptionsCount: 0,
+    pendingPaymentsCount: 0,
+    completedTodayCount: 0,
   });
+
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [typeFilter, setTypeFilter] = useState("all");
+  const [categoryFilter, setCategoryFilter] = useState("all");
   const [selectedComm, setSelectedComm] = useState(null);
   const [retryingIds, setRetryingIds] = useState({});
 
@@ -42,16 +60,18 @@ export default function AdminTasksPage() {
       setLoading(true);
       const res = await api.get("/api/communication/tasks/pending");
       if (res.data?.success) {
-        setTasks(res.data.tasks || []);
-        setTotalCount(res.data.totalCount || res.data.count || 0);
-        setCategories(
-          res.data.categories || {
-            rentRemindersCount: 0,
-            ownerActivationsCount: 0,
-            paymentConfirmationsCount: 0,
-            failedDeliveriesCount: 0,
-          }
-        );
+        const pTasks = res.data.pendingTasks || res.data.tasks || [];
+        const cTasks = res.data.completedTasksToday || [];
+
+        setPendingTasks(pTasks);
+        setCompletedTasksToday(cTasks);
+        setPendingCount(res.data.pendingCount ?? pTasks.length);
+        setCompletedCount(res.data.completedCount ?? cTasks.length);
+        setTotalCount(res.data.totalCount ?? (pTasks.length + cTasks.length));
+
+        if (res.data.categories) {
+          setCategories(res.data.categories);
+        }
       }
     } catch (err) {
       console.warn("Could not load tasks:", err);
@@ -67,20 +87,28 @@ export default function AdminTasksPage() {
   }, [fetchTasks]);
 
   const handleOpenWaMe = async (task) => {
-    if (task.waMeUrl) {
-      window.open(task.waMeUrl, "_blank", "noopener,noreferrer");
-    } else if (task.recipient) {
-      const cleanPhone = String(task.recipient).replace(/\D/g, "");
+    const raw = task.raw || task;
+    const waUrl = task.waMeUrl || raw.waMeUrl;
+    const phone = task.phone || task.recipient || raw.recipient;
+    const message = task.message || raw.message || raw.customMessage || "";
+
+    if (waUrl) {
+      window.open(waUrl, "_blank", "noopener,noreferrer");
+    } else if (phone) {
+      const cleanPhone = String(phone).replace(/\D/g, "");
       const formatted = cleanPhone.length === 10 ? `91${cleanPhone}` : cleanPhone;
       window.open(
-        `https://wa.me/${formatted}?text=${encodeURIComponent(task.message || task.customMessage || "")}`,
+        `https://wa.me/${formatted}?text=${encodeURIComponent(message)}`,
         "_blank",
         "noopener,noreferrer"
       );
     }
 
     try {
-      await api.post(`/api/communication/whatsapp/log-manual/${task._id}`, { communicationId: task._id });
+      const dbId = task.dbId || task.id || raw._id;
+      if (dbId) {
+        await api.post(`/api/communication/whatsapp/log-manual/${dbId}`, { communicationId: dbId });
+      }
       fetchTasks();
     } catch (err) {
       console.warn("Manual click log error:", err);
@@ -105,160 +133,167 @@ export default function AdminTasksPage() {
     }
   };
 
-  const filteredTasks = tasks.filter((t) => {
-    const matchesSearch =
-      !searchTerm ||
-      (t.recipientName && t.recipientName.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (t.recipient && t.recipient.includes(searchTerm)) ||
-      (t.hostelId?.hostelName && t.hostelId.hostelName.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (t.templateCode && t.templateCode.toLowerCase().includes(searchTerm.toLowerCase()));
+  const currentList = activeTab === "pending" ? pendingTasks : completedTasksToday;
 
-    const matchesStatus = statusFilter === "all" ? true : t.status === statusFilter;
+  const filteredTasks = currentList.filter((item) => {
+    // Search match
+    if (searchTerm) {
+      const q = searchTerm.toLowerCase();
+      const match =
+        item.title?.toLowerCase().includes(q) ||
+        item.subtitle?.toLowerCase().includes(q) ||
+        item.hostelName?.toLowerCase().includes(q) ||
+        item.recipientName?.toLowerCase().includes(q) ||
+        item.phone?.includes(q) ||
+        item.details?.toLowerCase().includes(q);
 
-    let matchesType = true;
-    if (typeFilter === "rent") matchesType = t.templateCode === "RENT_REMINDER" || t.businessEvent === "RENT_REMINDER";
-    else if (typeFilter === "owner") matchesType = t.templateCode === "OWNER_ACCOUNT_ACTIVATED" || t.recipientType === "Owner" || t.businessEvent === "OWNER_ACCOUNT_ACTIVATED";
-    else if (typeFilter === "payment") matchesType = t.templateCode === "PAYMENT_RECEIVED" || t.businessEvent === "PAYMENT_RECEIVED";
-    else if (typeFilter === "failed") matchesType = t.status === "failed";
+      if (!match) return false;
+    }
 
-    return matchesSearch && matchesStatus && matchesType;
+    // Category filter
+    if (categoryFilter === "all") return true;
+    if (categoryFilter === "whatsapp") return item.category === "whatsapp";
+    if (categoryFilter === "registration") return item.category === "registration" || item.category === "activation";
+    if (categoryFilter === "subscription") return item.category === "subscription" || item.category === "payment";
+    if (categoryFilter === "failed") return item.status === "failed" || item.type === "whatsapp_failed";
+
+    return true;
   });
 
   return (
-    <PageContainer>
+    <PageContainer
+      title="Today's Operational Tasks"
+      description="Today's operational activity — pending work and completed Admin actions"
+    >
       <div className="space-y-6">
-        {/* Page Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-3">
-              <h1 className="text-xl font-extrabold text-white">Admin Operational Tasks Queue</h1>
-              <span className="px-2.5 py-0.5 rounded-full bg-amber-500/20 border border-amber-500/30 text-amber-300 font-extrabold text-xs">
-                {totalCount} Total
-              </span>
+        {/* Top Metric Cards */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <div className="p-4 rounded-2xl bg-slate-900/60 border border-[#202B45] shadow-lg">
+            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
+              Pending Actions
+            </span>
+            <div className="flex items-center justify-between mt-2">
+              <span className="text-2xl font-black text-amber-400">{pendingCount}</span>
+              <div className="w-8 h-8 rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center">
+                <Clock size={18} />
+              </div>
             </div>
-            <p className="text-xs text-slate-400 font-medium mt-1">
-              Centralized queue for all pending manual WhatsApp dispatches, activation credentials, and failed delivery retries
-            </p>
           </div>
 
-          <button
-            onClick={fetchTasks}
-            className="px-3.5 py-2 rounded-xl border border-white/10 text-xs font-bold text-slate-200 hover:text-white bg-slate-900/80 hover:bg-slate-800 transition flex items-center gap-2 cursor-pointer self-start sm:self-auto shadow-sm"
-          >
-            <RefreshCw size={14} className={loading ? "animate-spin text-emerald-400" : "text-emerald-400"} />
-            <span>Refresh Queue</span>
-          </button>
-        </div>
-
-        {/* Filter Pills */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
-          <button
-            onClick={() => setTypeFilter(typeFilter === "rent" ? "all" : "rent")}
-            className={`p-3.5 rounded-xl border text-left transition flex flex-col justify-between cursor-pointer ${
-              typeFilter === "rent"
-                ? "bg-rose-500/20 border-rose-500/50 text-white"
-                : "bg-slate-900/60 border-slate-800 text-rose-300 hover:bg-white/[0.02]"
-            }`}
-          >
-            <div className="flex items-center justify-between">
-              <span className="font-bold flex items-center gap-1.5">
-                <Calendar size={14} className="text-rose-400" /> Rent Reminders
-              </span>
-              <span className="px-2 py-0.5 rounded-full bg-rose-500/20 font-extrabold text-xs">
-                {categories.rentRemindersCount}
-              </span>
+          <div className="p-4 rounded-2xl bg-slate-900/60 border border-[#202B45] shadow-lg">
+            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
+              Completed Today
+            </span>
+            <div className="flex items-center justify-between mt-2">
+              <span className="text-2xl font-black text-emerald-400">{completedCount}</span>
+              <div className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center">
+                <CheckCircle2 size={18} />
+              </div>
             </div>
-            <span className="text-[11px] text-slate-400 mt-2 font-medium">Pending WhatsApp link dispatches</span>
-          </button>
-
-          <button
-            onClick={() => setTypeFilter(typeFilter === "owner" ? "all" : "owner")}
-            className={`p-3.5 rounded-xl border text-left transition flex flex-col justify-between cursor-pointer ${
-              typeFilter === "owner"
-                ? "bg-amber-500/20 border-amber-500/50 text-white"
-                : "bg-slate-900/60 border-slate-800 text-amber-300 hover:bg-white/[0.02]"
-            }`}
-          >
-            <div className="flex items-center justify-between">
-              <span className="font-bold flex items-center gap-1.5">
-                <UserCheck size={14} className="text-amber-400" /> Owner Activations
-              </span>
-              <span className="px-2 py-0.5 rounded-full bg-amber-500/20 font-extrabold text-xs">
-                {categories.ownerActivationsCount}
-              </span>
-            </div>
-            <span className="text-[11px] text-slate-400 mt-2 font-medium">Hostel activation notifications</span>
-          </button>
-
-          <button
-            onClick={() => setTypeFilter(typeFilter === "payment" ? "all" : "payment")}
-            className={`p-3.5 rounded-xl border text-left transition flex flex-col justify-between cursor-pointer ${
-              typeFilter === "payment"
-                ? "bg-yellow-500/20 border-yellow-500/50 text-white"
-                : "bg-slate-900/60 border-slate-800 text-yellow-300 hover:bg-white/[0.02]"
-            }`}
-          >
-            <div className="flex items-center justify-between">
-              <span className="font-bold flex items-center gap-1.5">
-                <CreditCard size={14} className="text-yellow-400" /> Payment Receipts
-              </span>
-              <span className="px-2 py-0.5 rounded-full bg-yellow-500/20 font-extrabold text-xs">
-                {categories.paymentConfirmationsCount}
-              </span>
-            </div>
-            <span className="text-[11px] text-slate-400 mt-2 font-medium">Payment receipt messages</span>
-          </button>
-
-          <button
-            onClick={() => setTypeFilter(typeFilter === "failed" ? "all" : "failed")}
-            className={`p-3.5 rounded-xl border text-left transition flex flex-col justify-between cursor-pointer ${
-              typeFilter === "failed"
-                ? "bg-blue-500/20 border-blue-500/50 text-white"
-                : "bg-slate-900/60 border-slate-800 text-blue-300 hover:bg-white/[0.02]"
-            }`}
-          >
-            <div className="flex items-center justify-between">
-              <span className="font-bold flex items-center gap-1.5">
-                <AlertTriangle size={14} className="text-blue-400" /> Failed Deliveries
-              </span>
-              <span className="px-2 py-0.5 rounded-full bg-blue-500/20 font-extrabold text-xs">
-                {categories.failedDeliveriesCount}
-              </span>
-            </div>
-            <span className="text-[11px] text-slate-400 mt-2 font-medium">Requires automatic retry</span>
-          </button>
-        </div>
-
-        {/* Filter Bar & Search */}
-        <div className="bg-slate-900/60 border border-[#202B45] rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="relative flex-1 max-w-md">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input
-              type="text"
-              placeholder="Search by recipient, phone, hostel, template..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-9 pr-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white placeholder-slate-500 outline-none focus:border-emerald-500 transition"
-            />
           </div>
 
+          <div className="p-4 rounded-2xl bg-slate-900/60 border border-[#202B45] shadow-lg">
+            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
+              WhatsApp Pending
+            </span>
+            <div className="flex items-center justify-between mt-2">
+              <span className="text-2xl font-black text-blue-400">
+                {categories.rentRemindersCount + categories.ownerActivationsCount + categories.paymentConfirmationsCount}
+              </span>
+              <div className="w-8 h-8 rounded-xl bg-blue-500/10 text-blue-400 flex items-center justify-center">
+                <Smartphone size={18} />
+              </div>
+            </div>
+          </div>
+
+          <div className="p-4 rounded-2xl bg-slate-900/60 border border-[#202B45] shadow-lg">
+            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
+              Failed Retries
+            </span>
+            <div className="flex items-center justify-between mt-2">
+              <span className="text-2xl font-black text-rose-400">{categories.failedDeliveriesCount}</span>
+              <div className="w-8 h-8 rounded-xl bg-rose-500/10 text-rose-400 flex items-center justify-center">
+                <AlertTriangle size={18} />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Tab Selection & Search Filters */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-900/80 border border-[#202B45] p-4 rounded-2xl">
+          {/* Main Tab Toggle */}
           <div className="flex items-center gap-2">
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs font-semibold text-slate-300 outline-none cursor-pointer"
+            <button
+              onClick={() => setActiveTab("pending")}
+              className={`px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer ${
+                activeTab === "pending"
+                  ? "bg-amber-500 text-slate-950 shadow-lg shadow-amber-500/20"
+                  : "bg-slate-800 text-slate-300 hover:bg-slate-700"
+              }`}
             >
-              <option value="all">All Statuses</option>
-              <option value="pending_manual">Pending Manual</option>
-              <option value="failed">Failed Delivery</option>
+              <Clock size={15} />
+              <span>Pending Tasks</span>
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-black/20 text-slate-950">
+                {pendingCount}
+              </span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab("completed")}
+              className={`px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer ${
+                activeTab === "completed"
+                  ? "bg-emerald-500 text-slate-950 shadow-lg shadow-emerald-500/20"
+                  : "bg-slate-800 text-slate-300 hover:bg-slate-700"
+              }`}
+            >
+              <CheckCircle2 size={15} />
+              <span>Completed Today</span>
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-black/20 text-slate-950">
+                {completedCount}
+              </span>
+            </button>
+          </div>
+
+          {/* Search & Category Filter */}
+          <div className="flex items-center gap-2.5 flex-1 max-w-lg">
+            <div className="relative flex-1">
+              <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Search hostel, recipient, phone, action..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full bg-slate-950 border border-slate-800 text-white placeholder-slate-500 rounded-xl py-2 pl-9 pr-3 text-xs outline-none focus:border-emerald-500"
+              />
+            </div>
+
+            <select
+              value={categoryFilter}
+              onChange={(e) => setCategoryFilter(e.target.value)}
+              className="bg-slate-950 border border-slate-800 text-slate-300 rounded-xl py-2 px-3 text-xs outline-none focus:border-emerald-500"
+            >
+              <option value="all">All Categories</option>
+              <option value="whatsapp">WhatsApp</option>
+              <option value="registration">Registrations</option>
+              <option value="subscription">Subscriptions</option>
+              <option value="failed">Failed Retries</option>
             </select>
+
+            <button
+              onClick={fetchTasks}
+              disabled={loading}
+              className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 hover:text-white transition cursor-pointer shrink-0"
+              title="Refresh Task Queue"
+            >
+              <RefreshCw size={15} className={loading ? "animate-spin text-emerald-400" : "text-emerald-400"} />
+            </button>
           </div>
         </div>
 
-        {/* Tasks Table */}
+        {/* Tasks List Table */}
         <div className="bg-slate-900/60 border border-[#202B45] rounded-2xl overflow-hidden shadow-xl">
           <div className="divide-y divide-[#202B45]">
-            {loading && tasks.length === 0 ? (
+            {loading && currentList.length === 0 ? (
               <div className="p-12 text-center text-slate-400 text-sm">
                 <RefreshCw size={24} className="animate-spin text-emerald-400 mx-auto mb-2" />
                 Loading operational tasks...
@@ -266,25 +301,41 @@ export default function AdminTasksPage() {
             ) : filteredTasks.length === 0 ? (
               <div className="p-12 text-center text-slate-400 text-sm flex flex-col items-center justify-center gap-2">
                 <CheckCircle2 size={36} className="text-emerald-400 opacity-80" />
-                <span className="text-white font-bold text-base">No Matching Tasks in Queue</span>
+                <span className="text-white font-bold text-base">
+                  {activeTab === "pending" ? "No Pending Tasks in Queue" : "No Completed Admin Work Logged Yet Today"}
+                </span>
                 <p className="text-slate-400 text-xs max-w-sm">
-                  All manual WhatsApp messages and automatic delivery retries are up to date.
+                  {activeTab === "pending"
+                    ? "All registrations, activations, manual WhatsApp messages, and delivery retries are up to date."
+                    : "Admin operations performed today will appear here in chronological order."}
                 </p>
               </div>
             ) : (
               filteredTasks.map((item) => {
-                const isFailed = item.status === "failed";
-                const isManual = item.status === "pending_manual";
-                const isRetrying = retryingIds[item._id];
+                const isFailed = item.status === "failed" || item.type === "whatsapp_failed";
+                const isManual = item.status === "pending_manual" || item.type === "whatsapp_manual";
+                const isRetrying = retryingIds[item.dbId || item.id];
 
                 return (
                   <div
-                    key={item._id}
+                    key={item.id || item.dbId || item._id}
                     className="p-4 hover:bg-white/[0.02] transition flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-xs"
                   >
                     <div className="flex items-start gap-3.5 min-w-0">
                       <div className="mt-0.5 shrink-0">
-                        {isFailed ? (
+                        {item.category === "registration" ? (
+                          <div className="w-9 h-9 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-400 flex items-center justify-center">
+                            <Building size={18} />
+                          </div>
+                        ) : item.category === "activation" ? (
+                          <div className="w-9 h-9 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center">
+                            <ShieldCheck size={18} />
+                          </div>
+                        ) : item.category === "subscription" || item.category === "payment" ? (
+                          <div className="w-9 h-9 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-400 flex items-center justify-center">
+                            <CreditCard size={18} />
+                          </div>
+                        ) : isFailed ? (
                           <div className="w-9 h-9 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 flex items-center justify-center">
                             <AlertTriangle size={18} />
                           </div>
@@ -292,13 +343,9 @@ export default function AdminTasksPage() {
                           <div className="w-9 h-9 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 flex items-center justify-center">
                             <Calendar size={18} />
                           </div>
-                        ) : item.templateCode === "OWNER_ACCOUNT_ACTIVATED" || item.recipientType === "Owner" ? (
-                          <div className="w-9 h-9 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center">
-                            <UserCheck size={18} />
-                          </div>
                         ) : (
-                          <div className="w-9 h-9 rounded-xl bg-yellow-500/10 border border-yellow-500/20 text-yellow-400 flex items-center justify-center">
-                            <CreditCard size={18} />
+                          <div className="w-9 h-9 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center">
+                            <Smartphone size={18} />
                           </div>
                         )}
                       </div>
@@ -306,22 +353,52 @@ export default function AdminTasksPage() {
                       <div className="min-w-0">
                         <div className="flex items-center gap-2 mb-1 flex-wrap">
                           <span className="font-bold text-white text-sm">
-                            {item.recipientName || "Recipient"}
+                            {item.title || item.recipientName || "Task Item"}
                           </span>
-                          <span className="font-mono text-[11px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded border border-slate-700">
-                            {item.recipient}
-                          </span>
-                          {item.hostelId?.hostelName && (
-                            <span className="text-xs text-slate-400 font-medium">• {item.hostelId.hostelName}</span>
+                          {item.badge && (
+                            <span
+                              className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full border ${
+                                item.badgeColor === "emerald"
+                                  ? "bg-emerald-500/20 border-emerald-500/30 text-emerald-300"
+                                  : item.badgeColor === "rose"
+                                  ? "bg-rose-500/20 border-rose-500/30 text-rose-300"
+                                  : item.badgeColor === "amber"
+                                  ? "bg-amber-500/20 border-amber-500/30 text-amber-300"
+                                  : item.badgeColor === "purple"
+                                  ? "bg-purple-500/20 border-purple-500/30 text-purple-300"
+                                  : item.badgeColor === "blue"
+                                  ? "bg-blue-500/20 border-blue-500/30 text-blue-300"
+                                  : "bg-slate-800 border-slate-700 text-slate-300"
+                              }`}
+                            >
+                              {item.badge}
+                            </span>
+                          )}
+                          {item.phone && (
+                            <span className="font-mono text-[11px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded border border-slate-700">
+                              {item.phone}
+                            </span>
+                          )}
+                          {item.hostelName && (
+                            <span className="text-xs text-slate-400 font-medium">• {item.hostelName}</span>
                           )}
                         </div>
 
-                        <div className="flex items-center gap-2 text-xs text-slate-400 flex-wrap">
-                          <span className="font-semibold text-slate-200">
-                            {item.templateCode || item.businessEvent}
+                        <p className="text-xs text-slate-300 max-w-xl">
+                          {item.subtitle || item.details || item.message || "Operational activity"}
+                        </p>
+
+                        <div className="flex items-center gap-2 text-xs text-slate-400 flex-wrap mt-1">
+                          <span>
+                            {item.timestamp
+                              ? new Date(item.timestamp).toLocaleString("en-IN", {
+                                  month: "short",
+                                  day: "numeric",
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                })
+                              : "Today"}
                           </span>
-                          <span>•</span>
-                          <span>{new Date(item.createdAt).toLocaleString("en-IN")}</span>
                           {item.attemptCount > 0 && (
                             <span className="text-amber-400 font-semibold">
                               (Attempt {item.attemptCount}/3)
@@ -336,8 +413,9 @@ export default function AdminTasksPage() {
                       </div>
                     </div>
 
+                    {/* Action Triggers */}
                     <div className="flex items-center gap-2 shrink-0 sm:self-center">
-                      {isManual && item.waMeUrl && (
+                      {isManual && (item.waMeUrl || item.phone) && (
                         <button
                           onClick={() => handleOpenWaMe(item)}
                           className="px-3.5 py-2 rounded-xl bg-emerald-500 text-white hover:bg-emerald-600 font-bold text-xs flex items-center gap-1.5 shadow-md shadow-emerald-500/20 transition cursor-pointer"
@@ -349,7 +427,7 @@ export default function AdminTasksPage() {
 
                       {isFailed && (
                         <button
-                          onClick={() => handleRetryTask(item._id)}
+                          onClick={() => handleRetryTask(item.dbId || item.id)}
                           disabled={isRetrying || item.attemptCount >= 3}
                           className="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-bold text-xs flex items-center gap-1.5 shadow-md shadow-indigo-600/20 transition cursor-pointer"
                         >
@@ -358,13 +436,45 @@ export default function AdminTasksPage() {
                         </button>
                       )}
 
-                      <button
-                        onClick={() => setSelectedComm(item)}
-                        className="px-3.5 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white border border-white/10 font-bold text-xs flex items-center gap-1 transition cursor-pointer"
-                      >
-                        <Eye size={14} />
-                        <span>Review</span>
-                      </button>
+                      {item.actionType === "review_registration" && (
+                        <button
+                          onClick={() => navigate("/admin/requests")}
+                          className="px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center gap-1.5 transition cursor-pointer"
+                        >
+                          <Building size={14} />
+                          <span>Review Registration</span>
+                        </button>
+                      )}
+
+                      {item.actionType === "finalize_activation" && (
+                        <button
+                          onClick={() => navigate("/admin/requests")}
+                          className="px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs flex items-center gap-1.5 transition cursor-pointer"
+                        >
+                          <ShieldCheck size={14} />
+                          <span>Finalize Activation</span>
+                        </button>
+                      )}
+
+                      {item.actionType === "approve_subscription" && (
+                        <button
+                          onClick={() => navigate("/admin/subscriptions")}
+                          className="px-3.5 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs flex items-center gap-1.5 transition cursor-pointer"
+                        >
+                          <CreditCard size={14} />
+                          <span>Review Subscription</span>
+                        </button>
+                      )}
+
+                      {item.raw && (
+                        <button
+                          onClick={() => setSelectedComm(item.raw)}
+                          className="px-3.5 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white border border-white/10 font-bold text-xs flex items-center gap-1 transition cursor-pointer"
+                        >
+                          <Eye size={14} />
+                          <span>Inspect</span>
+                        </button>
+                      )}
                     </div>
                   </div>
                 );

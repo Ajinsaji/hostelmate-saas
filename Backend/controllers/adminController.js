@@ -233,6 +233,22 @@ const approveHostel = async (req, res) => {
     request.timeline.push({ action: "Approved - Activation Pending", by: "SuperAdmin" });
     await request.save();
 
+    await AuditLog.create({
+      adminId: req.user?._id || req.admin?._id,
+      hostelId: result.hostel._id,
+      action: "APPROVE_REGISTRATION",
+      actionType: "APPROVE",
+      entity: "HostelRequest",
+      targetId: request._id,
+      details: {
+        hostelName: request.hostelName,
+        ownerName: request.ownerName,
+        phone: request.phone,
+        message: `Approved hostel registration for ${request.hostelName} (${request.ownerName})`
+      },
+      timestamp: new Date()
+    }).catch(() => {});
+
     // NOTIFICATION: Hostel request approved by admin (Pending Activation)
     try {
       const { publishNotification } = require("../utils/notificationPublisher");
@@ -562,6 +578,22 @@ const finalizeHostelActivation = async (req, res) => {
       console.error("[EventBus] OWNER_ACCOUNT_ACTIVATED emission error (non-blocking):", eventErr?.message);
     }
 
+    await AuditLog.create({
+      adminId: req.user?._id || req.admin?._id,
+      hostelId: hostel._id,
+      action: "FINALIZE_ACTIVATION",
+      actionType: "ACTIVATE",
+      entity: "Hostel",
+      targetId: hostel._id,
+      details: {
+        hostelName: hostel.hostelName || hostel.name,
+        planType: planType || "Pro",
+        amount: amount || 0,
+        message: `Finalized hostel activation for ${hostel.hostelName || hostel.name} with ${planType || "Pro"} plan`
+      },
+      timestamp: new Date()
+    }).catch(() => {});
+
     // 12. Return Controlled HTTP 200 Activation Response
     return res.status(200).json({
       success: true,
@@ -638,6 +670,21 @@ const rejectRequest = async (req, res) => {
     if (!updated) {
       return res.status(404).json({ success: false, message: "Request not found" });
     }
+
+    await AuditLog.create({
+      adminId: req.user?._id || req.admin?._id,
+      action: "REJECT_REGISTRATION",
+      actionType: "REJECT",
+      entity: "HostelRequest",
+      targetId: updated._id,
+      details: {
+        hostelName: updated.hostelName,
+        ownerName: updated.ownerName,
+        reason: reason || "Rejected by Superadmin",
+        message: `Rejected registration for ${updated.hostelName}: ${reason || "No reason provided"}`
+      },
+      timestamp: new Date()
+    }).catch(() => {});
 
     res.status(200).json({
       success: true,
@@ -960,6 +1007,21 @@ const resetOwnerTempPassword = async (req, res) => {
       { $set: { isRevoked: true } }
     );
 
+    await AuditLog.create({
+      adminId: req.user?._id || req.admin?._id,
+      hostelId: owner.hostelId,
+      action: "RESET_OWNER_PASSWORD",
+      actionType: "UPDATE",
+      entity: "Owner",
+      targetId: owner._id,
+      details: {
+        ownerName: owner.ownerName || owner.name,
+        phone: owner.phone,
+        message: `Reset temporary password for owner ${owner.ownerName || owner.name}`
+      },
+      timestamp: new Date()
+    }).catch(() => {});
+
     const frontendBase = process.env.FRONTEND_URL || process.env.VITE_APP_URL || process.env.PUBLIC_URL || (req.headers && req.headers.origin ? req.headers.origin : "https://hostelmate-saas.vercel.app");
     const loginUrl = `${String(frontendBase).replace(/\/$/, "")}/owner/login`;
 
@@ -1146,6 +1208,20 @@ const restoreHostelFromTrash = async (req, res) => {
     hostel.deletedBy = null;
     hostel.deleteReason = "";
     await hostel.save();
+
+    await AuditLog.create({
+      adminId: req.user?._id || req.admin?._id,
+      hostelId: hostel._id,
+      action: "RESTORE_HOSTEL",
+      actionType: "RESTORE",
+      entity: "Hostel",
+      targetId: hostel._id,
+      details: {
+        hostelName: hostel.hostelName || hostel.name,
+        message: `Restored hostel ${hostel.hostelName || hostel.name} from Trash`
+      },
+      timestamp: new Date()
+    }).catch(() => {});
 
     return res.status(200).json({
       success: true,
@@ -2397,6 +2473,22 @@ const setOwnerStatus = async (req, res) => {
       const OwnerSession = require("../models/OwnerSession");
       await OwnerSession.updateMany({ ownerId: owner._id, isRevoked: false }, { $set: { isRevoked: true } }).catch(() => {});
     }
+
+    await AuditLog.create({
+      adminId: req.user?._id || req.admin?._id,
+      hostelId: owner.hostelId,
+      action: status === "suspended" ? "SUSPEND_OWNER" : "SET_OWNER_STATUS",
+      actionType: "UPDATE",
+      entity: "Owner",
+      targetId: owner._id,
+      details: {
+        ownerName: owner.ownerName || owner.name,
+        status,
+        message: `Updated owner ${owner.ownerName || owner.name} status to ${status}`
+      },
+      timestamp: new Date()
+    }).catch(() => {});
+
     return res.status(200).json({ success: true, message: `Owner status updated to ${status}`, owner });
   } catch (error) {
     console.error("setOwnerStatus error:", error);

@@ -218,10 +218,15 @@ const getCommunicationTemplates = async (req, res) => {
   }
 };
 
-// 7. Get Pending Operational Action Tasks (Role-Aware Today's Tasks Queue)
+const HostelRequest = require("../models/HostelRequest");
+const SubscriptionRequest = require("../models/SubscriptionRequest");
+const Payment = require("../models/Payment");
+const AuditLog = require("../models/AuditLog");
+
+// 7. Get Pending & Completed Operational Action Tasks (Today's Operational Activity)
 const getPendingCommunicationTasks = async (req, res) => {
   try {
-    const userRole = req.user?.role || "unknown";
+    const userRole = req.user?.role || req.admin?.role || "unknown";
     const isAdmin = ["super_admin", "admin", "eps_admin"].includes(userRole);
     const isOwner = ["owner", "owner_admin", "Warden", "Accountant"].includes(userRole);
 
@@ -229,45 +234,155 @@ const getPendingCommunicationTasks = async (req, res) => {
       return res.status(403).json({ success: false, message: "Forbidden: Access denied to task queue" });
     }
 
-    const query = {
+    const now = new Date();
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+
+    const commQuery = {
       status: { $in: ["pending_manual", "failed"] },
     };
 
+    let ownerHostelId = null;
     if (isOwner && !isAdmin) {
-      const ownerHostelId = req.user.hostelId || req.owner?.hostelId;
+      ownerHostelId = req.user.hostelId || req.owner?.hostelId;
       if (!ownerHostelId) {
         return res.status(200).json({
           success: true,
+          concept: "Today's operational activity — pending work and completed Admin actions",
           count: 0,
           totalCount: 0,
-          categories: { rentRemindersCount: 0, ownerActivationsCount: 0, paymentConfirmationsCount: 0, failedDeliveriesCount: 0 },
+          pendingCount: 0,
+          completedCount: 0,
+          categories: {
+            rentRemindersCount: 0,
+            ownerActivationsCount: 0,
+            paymentConfirmationsCount: 0,
+            failedDeliveriesCount: 0,
+            pendingRegistrationsCount: 0,
+            pendingActivationsCount: 0,
+            pendingSubscriptionsCount: 0,
+            pendingPaymentsCount: 0,
+            completedTodayCount: 0,
+          },
+          pendingTasks: [],
+          completedTasksToday: [],
           tasks: [],
         });
       }
-      query.hostelId = ownerHostelId;
+      commQuery.hostelId = ownerHostelId;
       // Exclude Admin-only platform owner activations from Owner's view
-      query.recipientType = { $ne: "Owner" };
-      query.templateCode = { $ne: "OWNER_ACCOUNT_ACTIVATED" };
-      query.businessEvent = { $ne: "OWNER_ACCOUNT_ACTIVATED" };
+      commQuery.recipientType = { $ne: "Owner" };
+      commQuery.templateCode = { $ne: "OWNER_ACCOUNT_ACTIVATED" };
+      commQuery.businessEvent = { $ne: "OWNER_ACCOUNT_ACTIVATED" };
     }
 
-    const [tasks, totalCount] = await Promise.all([
-      Communication.find(query)
-        .sort({ createdAt: -1 })
-        .limit(50)
-        .populate("hostelId", "hostelName")
-        .populate("residentId", "firstName lastName fullName phone roomNumber")
-        .populate("ownerId", "ownerName phone email"),
-      Communication.countDocuments(query),
+    // 1. PENDING QUERIES
+    const commTasksPromise = Communication.find(commQuery)
+      .sort({ createdAt: -1 })
+      .limit(50)
+      .populate("hostelId", "hostelName")
+      .populate("residentId", "firstName lastName fullName phone roomNumber")
+      .populate("ownerId", "ownerName phone email")
+      .lean();
+
+    const pendingRequestsPromise = isAdmin
+      ? HostelRequest.find({ status: "pending" }).sort({ createdAt: -1 }).limit(30).lean()
+      : Promise.resolve([]);
+
+    const pendingActivationsPromise = isAdmin
+      ? HostelRequest.find({ status: "activation_pending" }).sort({ updatedAt: -1 }).limit(30).lean()
+      : Promise.resolve([]);
+
+    const pendingSubscriptionsPromise = isAdmin
+      ? SubscriptionRequest.find({ status: "pending" }).sort({ createdAt: -1 }).limit(30).populate("hostelId", "hostelName").lean()
+      : Promise.resolve([]);
+
+    const pendingPaymentsPromise = isAdmin
+      ? Payment.find({ status: { $in: ["Pending", "pending"] } }).sort({ createdAt: -1 }).limit(30).populate("hostelId", "hostelName").lean()
+      : Promise.resolve([]);
+
+    // 2. COMPLETED TODAY QUERIES (timestamp >= startOfToday)
+    const approvedRequestsTodayPromise = isAdmin
+      ? HostelRequest.find({ status: { $in: ["activation_pending", "approved", "activated"] }, updatedAt: { $gte: startOfToday } })
+          .sort({ updatedAt: -1 })
+          .limit(30)
+          .lean()
+      : Promise.resolve([]);
+
+    const rejectedRequestsTodayPromise = isAdmin
+      ? HostelRequest.find({ status: "rejected", updatedAt: { $gte: startOfToday } })
+          .sort({ updatedAt: -1 })
+          .limit(30)
+          .lean()
+      : Promise.resolve([]);
+
+    const finalizedActivationsTodayPromise = isAdmin
+      ? Hostel.find({ pendingActivation: false, isDeleted: { $ne: true }, activatedAt: { $gte: startOfToday } })
+          .sort({ activatedAt: -1 })
+          .limit(30)
+          .lean()
+      : Promise.resolve([]);
+
+    const manualWhatsAppTodayPromise = Communication.find(
+      isOwner && !isAdmin
+        ? { hostelId: ownerHostelId, status: "manual_opened", openedAt: { $gte: startOfToday } }
+        : { status: "manual_opened", openedAt: { $gte: startOfToday } }
+    )
+      .sort({ openedAt: -1 })
+      .limit(30)
+      .populate("hostelId", "hostelName")
+      .lean();
+
+    const retriedWhatsAppTodayPromise = Communication.find(
+      isOwner && !isAdmin
+        ? { hostelId: ownerHostelId, attemptCount: { $gt: 1 }, updatedAt: { $gte: startOfToday } }
+        : { attemptCount: { $gt: 1 }, updatedAt: { $gte: startOfToday } }
+    )
+      .sort({ updatedAt: -1 })
+      .limit(30)
+      .populate("hostelId", "hostelName")
+      .lean();
+
+    const auditLogsTodayPromise = isAdmin
+      ? AuditLog.find({ timestamp: { $gte: startOfToday } })
+          .sort({ timestamp: -1 })
+          .limit(50)
+          .populate("hostelId", "hostelName")
+          .lean()
+      : Promise.resolve([]);
+
+    const [
+      commTasks,
+      pendingRequests,
+      pendingActivations,
+      pendingSubscriptions,
+      pendingPayments,
+      approvedRequestsToday,
+      rejectedRequestsToday,
+      finalizedActivationsToday,
+      manualWhatsAppToday,
+      retriedWhatsAppToday,
+      auditLogsToday,
+    ] = await Promise.all([
+      commTasksPromise,
+      pendingRequestsPromise,
+      pendingActivationsPromise,
+      pendingSubscriptionsPromise,
+      pendingPaymentsPromise,
+      approvedRequestsTodayPromise,
+      rejectedRequestsTodayPromise,
+      finalizedActivationsTodayPromise,
+      manualWhatsAppTodayPromise,
+      retriedWhatsAppTodayPromise,
+      auditLogsTodayPromise,
     ]);
 
-    // Compute live categorized breakdown
+    // Compute live categorized counts
     let rentRemindersCount = 0;
     let ownerActivationsCount = 0;
     let paymentConfirmationsCount = 0;
     let failedDeliveriesCount = 0;
 
-    tasks.forEach((t) => {
+    commTasks.forEach((t) => {
       if (t.status === "failed") {
         failedDeliveriesCount++;
       } else if (t.templateCode === "RENT_REMINDER" || t.businessEvent === "RENT_REMINDER") {
@@ -279,21 +394,363 @@ const getPendingCommunicationTasks = async (req, res) => {
       }
     });
 
+    const pendingRegistrationsCount = pendingRequests.length;
+    const pendingActivationsCount = pendingActivations.length;
+    const pendingSubscriptionsCount = pendingSubscriptions.length;
+    const pendingPaymentsCount = pendingPayments.length;
+
+    // Build Formatted Pending Tasks List
+    const formattedPendingTasks = [];
+
+    // 1. Pending Hostel Registrations
+    pendingRequests.forEach((reqItem) => {
+      formattedPendingTasks.push({
+        id: `req_${reqItem._id}`,
+        dbId: reqItem._id,
+        type: "registration_pending",
+        category: "registration",
+        title: "New hostel registration awaiting review",
+        subtitle: `${reqItem.hostelName || "Hostel"} • Owner: ${reqItem.ownerName || "Applicant"}`,
+        hostelName: reqItem.hostelName,
+        recipientName: reqItem.ownerName,
+        phone: reqItem.phone,
+        status: "pending",
+        badge: "Needs Review",
+        badgeColor: "rose",
+        timestamp: reqItem.createdAt,
+        actionType: "review_registration",
+        actionUrl: "/admin/requests",
+        raw: reqItem,
+      });
+    });
+
+    // 2. Pending Activations
+    pendingActivations.forEach((actItem) => {
+      formattedPendingTasks.push({
+        id: `act_${actItem._id}`,
+        dbId: actItem._id,
+        type: "activation_pending",
+        category: "activation",
+        title: "Activation pending — Final subscription & credentials setup",
+        subtitle: `${actItem.hostelName || "Hostel"} • Owner: ${actItem.ownerName || "Owner"}`,
+        hostelName: actItem.hostelName,
+        recipientName: actItem.ownerName,
+        phone: actItem.phone,
+        status: "activation_pending",
+        badge: "Activation Pending",
+        badgeColor: "amber",
+        timestamp: actItem.updatedAt || actItem.createdAt,
+        actionType: "finalize_activation",
+        actionUrl: "/admin/requests",
+        raw: actItem,
+      });
+    });
+
+    // 3. Pending WhatsApp Dispatches & Failed Retries
+    commTasks.forEach((commItem) => {
+      const isFailed = commItem.status === "failed";
+      const isManual = commItem.status === "pending_manual";
+
+      let taskTitle = "WhatsApp message awaiting manual send";
+      let badge = "Manual WhatsApp";
+      let badgeColor = "emerald";
+
+      if (isFailed) {
+        taskTitle = `Failed WhatsApp delivery (Attempt ${commItem.attemptCount || 1}/3)`;
+        badge = "Failed Delivery";
+        badgeColor = "rose";
+      } else if (commItem.templateCode === "RENT_REMINDER" || commItem.businessEvent === "RENT_REMINDER") {
+        taskTitle = "Rent reminder WhatsApp awaiting manual send";
+        badge = "Rent Reminder";
+        badgeColor = "rose";
+      } else if (commItem.templateCode === "OWNER_ACCOUNT_ACTIVATED" || commItem.recipientType === "Owner" || commItem.businessEvent === "OWNER_ACCOUNT_ACTIVATED") {
+        taskTitle = "Owner activation credentials WhatsApp awaiting send";
+        badge = "Owner Activation";
+        badgeColor = "amber";
+      } else if (commItem.templateCode === "PAYMENT_RECEIVED" || commItem.businessEvent === "PAYMENT_RECEIVED") {
+        taskTitle = "Payment receipt WhatsApp awaiting send";
+        badge = "Payment Receipt";
+        badgeColor = "yellow";
+      }
+
+      formattedPendingTasks.push({
+        id: String(commItem._id),
+        dbId: commItem._id,
+        type: isFailed ? "whatsapp_failed" : "whatsapp_manual",
+        category: "whatsapp",
+        title: taskTitle,
+        subtitle: `${commItem.recipientName || "Resident"} (${commItem.recipient || "Phone"}) • ${commItem.hostelId?.hostelName || "Hostel"}`,
+        hostelName: commItem.hostelId?.hostelName,
+        recipientName: commItem.recipientName,
+        phone: commItem.recipient,
+        templateCode: commItem.templateCode,
+        businessEvent: commItem.businessEvent,
+        waMeUrl: commItem.waMeUrl,
+        message: commItem.message,
+        attemptCount: commItem.attemptCount || 0,
+        failureReason: commItem.failureReason,
+        status: commItem.status,
+        badge,
+        badgeColor,
+        timestamp: commItem.createdAt,
+        actionType: isFailed ? "retry_whatsapp" : "open_whatsapp",
+        actionUrl: "/admin/tasks",
+        raw: commItem,
+      });
+    });
+
+    // 4. Pending Subscription Requests
+    pendingSubscriptions.forEach((subItem) => {
+      formattedPendingTasks.push({
+        id: `sub_${subItem._id}`,
+        dbId: subItem._id,
+        type: "subscription_pending",
+        category: "subscription",
+        title: "Subscription continuation request awaiting review",
+        subtitle: `${subItem.hostelId?.hostelName || subItem.hostelName || "Hostel"} • Plan: ${subItem.planType || "Pro"}`,
+        hostelName: subItem.hostelId?.hostelName || subItem.hostelName,
+        recipientName: subItem.ownerName,
+        phone: subItem.phone,
+        status: "pending",
+        badge: "Subscription Request",
+        badgeColor: "purple",
+        timestamp: subItem.createdAt,
+        actionType: "approve_subscription",
+        actionUrl: "/admin/subscriptions",
+        raw: subItem,
+      });
+    });
+
+    // 5. Pending Payments
+    pendingPayments.forEach((payItem) => {
+      formattedPendingTasks.push({
+        id: `pay_${payItem._id}`,
+        dbId: payItem._id,
+        type: "payment_pending",
+        category: "payment",
+        title: "Payment confirmation awaiting action",
+        subtitle: `Amount: ₹${payItem.amount || 0} • ${payItem.hostelId?.hostelName || "Hostel"}`,
+        hostelName: payItem.hostelId?.hostelName,
+        status: "Pending",
+        badge: "Payment Confirmation",
+        badgeColor: "yellow",
+        timestamp: payItem.createdAt,
+        actionType: "verify_payment",
+        actionUrl: "/admin/revenue",
+        raw: payItem,
+      });
+    });
+
+    // Build Formatted Completed Today List
+    const formattedCompletedToday = [];
+    const seenActionIds = new Set();
+
+    // Helper to push deduplicated completed items
+    const pushCompletedItem = (item) => {
+      if (!seenActionIds.has(item.id)) {
+        seenActionIds.add(item.id);
+        formattedCompletedToday.push(item);
+      }
+    };
+
+    // 1. Approved Registrations Today
+    approvedRequestsToday.forEach((reqItem) => {
+      pushCompletedItem({
+        id: `done_app_${reqItem._id}`,
+        dbId: reqItem._id,
+        type: "approved_registration",
+        category: "registration",
+        title: "Approved hostel registration",
+        subtitle: `${reqItem.hostelName || "Hostel"} • Owner: ${reqItem.ownerName || "Applicant"}`,
+        hostelName: reqItem.hostelName,
+        recipientName: reqItem.ownerName,
+        status: "completed",
+        badge: "Approved",
+        badgeColor: "emerald",
+        timestamp: reqItem.updatedAt || reqItem.createdAt,
+        details: "Hostel registration approved and transitioned to activation pending.",
+        actionUrl: "/admin/requests",
+        raw: reqItem,
+      });
+    });
+
+    // 2. Rejected Registrations Today
+    rejectedRequestsToday.forEach((reqItem) => {
+      pushCompletedItem({
+        id: `done_rej_${reqItem._id}`,
+        dbId: reqItem._id,
+        type: "rejected_registration",
+        category: "registration",
+        title: "Rejected registration",
+        subtitle: `${reqItem.hostelName || "Hostel"} • Reason: ${reqItem.rejectionReason || "Requirements not met"}`,
+        hostelName: reqItem.hostelName,
+        recipientName: reqItem.ownerName,
+        status: "rejected",
+        badge: "Rejected",
+        badgeColor: "rose",
+        timestamp: reqItem.updatedAt || reqItem.createdAt,
+        details: reqItem.rejectionReason || "Application rejected by SuperAdmin.",
+        actionUrl: "/admin/requests",
+        raw: reqItem,
+      });
+    });
+
+    // 3. Finalized Activations Today
+    finalizedActivationsToday.forEach((actHostel) => {
+      pushCompletedItem({
+        id: `done_act_${actHostel._id}`,
+        dbId: actHostel._id,
+        type: "finalized_activation",
+        category: "activation",
+        title: "Finalized hostel activation",
+        subtitle: `${actHostel.hostelName || actHostel.name || "Hostel"} • Public Code: ${actHostel.publicCode || "Active"}`,
+        hostelName: actHostel.hostelName || actHostel.name,
+        recipientName: actHostel.ownerName,
+        status: "activated",
+        badge: "Activated",
+        badgeColor: "emerald",
+        timestamp: actHostel.activatedAt || actHostel.updatedAt,
+        details: "Hostel fully activated, subscription provisioned, and owner account unlocked.",
+        actionUrl: "/admin/hostels",
+        raw: actHostel,
+      });
+    });
+
+    // 4. Sent Manual WhatsApp Today
+    manualWhatsAppToday.forEach((commItem) => {
+      pushCompletedItem({
+        id: `done_wame_${commItem._id}`,
+        dbId: commItem._id,
+        type: "manual_whatsapp_sent",
+        category: "whatsapp",
+        title: "Sent manual WhatsApp",
+        subtitle: `${commItem.recipientName || "Recipient"} (${commItem.recipient || "Phone"}) • ${commItem.templateCode || commItem.businessEvent || "Message"}`,
+        hostelName: commItem.hostelId?.hostelName,
+        recipientName: commItem.recipientName,
+        phone: commItem.recipient,
+        status: "manual_opened",
+        badge: "Dispatched",
+        badgeColor: "emerald",
+        timestamp: commItem.openedAt || commItem.updatedAt,
+        details: "Manual WhatsApp message link opened and logged for delivery.",
+        actionUrl: "/admin/tasks",
+        raw: commItem,
+      });
+    });
+
+    // 5. Retried WhatsApp Today
+    retriedWhatsAppToday.forEach((commItem) => {
+      pushCompletedItem({
+        id: `done_retry_${commItem._id}`,
+        dbId: commItem._id,
+        type: "retried_whatsapp",
+        category: "whatsapp",
+        title: `Retried failed WhatsApp (Attempt ${commItem.attemptCount})`,
+        subtitle: `${commItem.recipientName || "Recipient"} (${commItem.recipient || "Phone"})`,
+        hostelName: commItem.hostelId?.hostelName,
+        recipientName: commItem.recipientName,
+        phone: commItem.recipient,
+        status: commItem.status,
+        badge: "Retried",
+        badgeColor: "blue",
+        timestamp: commItem.updatedAt,
+        details: `Automatic retry executed (Attempt ${commItem.attemptCount}/3).`,
+        actionUrl: "/admin/tasks",
+        raw: commItem,
+      });
+    });
+
+    // 6. Audit Logs Today (Restores from Trash, Owner Suspensions, Password Resets, Subscription Extensions, Payments)
+    auditLogsToday.forEach((log) => {
+      let actionTitle = "Admin operational action completed";
+      let badge = "Audit Log";
+      let badgeColor = "indigo";
+      let category = "system";
+
+      const action = log.action || "";
+      if (action.includes("RESTORE")) {
+        actionTitle = "Restored hostel from Trash";
+        badge = "Restored";
+        badgeColor = "blue";
+        category = "hostel";
+      } else if (action.includes("SUSPEND") || (action.includes("OWNER_STATUS") && log.details?.status === "suspended")) {
+        actionTitle = "Suspended owner";
+        badge = "Suspended";
+        badgeColor = "rose";
+        category = "security";
+      } else if (action.includes("RESET") && action.includes("PASSWORD")) {
+        actionTitle = "Reset owner password";
+        badge = "Password Reset";
+        badgeColor = "indigo";
+        category = "security";
+      } else if (action.includes("EXTEND") || action.includes("SUBSCRIPTION")) {
+        actionTitle = "Extended subscription / approved continuation";
+        badge = "Extended";
+        badgeColor = "purple";
+        category = "subscription";
+      } else if (action.includes("PAYMENT")) {
+        actionTitle = "Recorded payment";
+        badge = "Paid";
+        badgeColor = "emerald";
+        category = "payment";
+      } else if (action.includes("APPROVE")) {
+        actionTitle = "Approved hostel registration";
+        badge = "Approved";
+        badgeColor = "emerald";
+        category = "registration";
+      } else if (action.includes("ACTIVAT")) {
+        actionTitle = "Finalized hostel activation";
+        badge = "Activated";
+        badgeColor = "emerald";
+        category = "activation";
+      }
+
+      pushCompletedItem({
+        id: `audit_${log._id}`,
+        dbId: log._id,
+        type: action.toLowerCase() || "admin_audit",
+        category,
+        title: actionTitle,
+        subtitle: log.details?.message || log.details?.hostelName || log.details?.ownerName || log.action || "Completed admin task",
+        hostelName: log.hostelId?.hostelName || log.details?.hostelName,
+        status: "completed",
+        badge,
+        badgeColor,
+        timestamp: log.timestamp || log.createdAt,
+        details: log.details?.message || typeof log.details === "string" ? log.details : JSON.stringify(log.details || {}),
+        actionUrl: "/admin/audit",
+        raw: log,
+      });
+    });
+
+    const completedTodayCount = formattedCompletedToday.length;
+    const totalCount = formattedPendingTasks.length + formattedCompletedToday.length;
+
     return res.status(200).json({
       success: true,
-      count: tasks.length,
+      concept: "Today's operational activity — pending work and completed Admin actions",
+      count: commTasks.length, // Backward compatibility for test suites
       totalCount,
+      pendingCount: formattedPendingTasks.length,
+      completedCount: completedTodayCount,
       categories: {
         rentRemindersCount,
         ownerActivationsCount,
         paymentConfirmationsCount,
         failedDeliveriesCount,
+        pendingRegistrationsCount,
+        pendingActivationsCount,
+        pendingSubscriptionsCount,
+        pendingPaymentsCount,
+        completedTodayCount,
       },
-      tasks,
+      pendingTasks: formattedPendingTasks,
+      completedTasksToday: formattedCompletedToday,
+      tasks: commTasks, // Backward compatibility for test suites
     });
   } catch (error) {
-    logger.error({ err: error }, "Failed to fetch pending communication tasks");
-    return res.status(500).json({ success: false, message: "Failed to fetch pending tasks" });
+    logger.error({ err: error }, "Failed to fetch today's tasks and operational activity");
+    return res.status(500).json({ success: false, message: "Failed to fetch today's tasks" });
   }
 };
 
@@ -437,6 +894,7 @@ module.exports = {
   getCommunications,
   getCommunicationTemplates,
   getPendingCommunicationTasks,
+  getAdminTodayTasks: getPendingCommunicationTasks,
   testWhatsAppDiagnostic,
   retryCommunication,
   getCommunicationDetail,

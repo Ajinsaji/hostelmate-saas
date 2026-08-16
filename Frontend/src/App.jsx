@@ -271,7 +271,13 @@ function App() {
  
             <Routes>
 
-          {/* Pending approval enforcement (no login/register) */}
+          {/* Public Request Tracking & Status Pages (Direct Public Access, Never Auth-Guarded) */}
+          <Route path="/request-status" element={<RequestStatus />} />
+          <Route path="/request-tracking" element={<RequestStatus />} />
+          <Route path="/track-request" element={<RequestStatus />} />
+          <Route path="/application-status" element={<RequestStatus />} />
+
+          {/* Pending approval page */}
           <Route
             path="/pending-approval"
             element={<PendingApproval />}
@@ -280,20 +286,12 @@ function App() {
           {/* Subscription expiry page (owner only, but must not override mustChangePassword redirect) */}
           <Route path="/subscription-expired" element={<SubscriptionExpired />} />
 
-
-        {shouldRedirectPending ? (
-          <Route path="*" element={<Navigate to="/pending-approval" replace />} />
-        ) : (
-          <>
-            <Route path="/" element={<LandingPage />} />
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/owner/login" element={<LoginPage />} />
-            <Route path="/owner/reset-password" element={<ResetPasswordPage />} />
-            <Route path="/register" element={<RegisterPage />} />
-            <Route path="/request-status" element={<RequestStatus />} />
-            <Route path="/back" element={<Navigate to="/owner/login" replace />} />
-          </>
-        )}
+          <Route path="/" element={<LandingPage />} />
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/owner/login" element={<LoginPage />} />
+          <Route path="/owner/reset-password" element={<ResetPasswordPage />} />
+          <Route path="/register" element={<RegisterPage />} />
+          <Route path="/back" element={<Navigate to="/owner/login" replace />} />
 
 
 

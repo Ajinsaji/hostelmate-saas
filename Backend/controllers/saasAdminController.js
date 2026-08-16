@@ -7,6 +7,7 @@ const SubscriptionFeature = require("../models/SubscriptionFeature");
 const SubscriptionPlan = require("../models/SubscriptionPlan");
 const BillingSettings = require("../models/BillingSettings");
 const ReminderLog = require("../models/ReminderLog");
+const AuditLog = require("../models/AuditLog");
 const Hostel = require("../models/Hostel");
 const Owner = require("../models/Owner");
 const Resident = require("../models/Resident");
@@ -193,6 +194,23 @@ const approveSubscriptionRequest = async (req, res) => {
       reason: adminNote || `Approved extension for ${days} days`,
     });
 
+    await AuditLog.create({
+      adminId: adminId,
+      hostelId: requestDoc.hostelId,
+      action: "APPROVE_SUBSCRIPTION",
+      actionType: "APPROVE",
+      entity: "SubscriptionRequest",
+      targetId: requestDoc._id,
+      details: {
+        hostelName: requestDoc.hostelName,
+        planType: requestDoc.planType,
+        extensionDays: days,
+        amount: finalAmount,
+        message: `Approved subscription continuation of +${days} days for ${requestDoc.hostelName || "Hostel"}`
+      },
+      timestamp: new Date()
+    }).catch(() => {});
+
     return res.status(200).json({
       success: true,
       message: `Subscription continuation approved for ${days} days!`,
@@ -310,6 +328,21 @@ const manualExtendSubscription = async (req, res) => {
       changedBy: adminUser.name || adminUser.role || "Admin",
       reason: reason || `Manual extension of +${days} days by Admin`,
     });
+
+    await AuditLog.create({
+      adminId: adminId,
+      hostelId: sub.hostelId,
+      action: "EXTEND_SUBSCRIPTION",
+      actionType: "EXTEND",
+      entity: "Subscription",
+      targetId: sub._id,
+      details: {
+        daysAdjustment: days,
+        reason: reason || `Manual extension of +${days} days by Admin`,
+        message: `Extended subscription by +${days} days`
+      },
+      timestamp: new Date()
+    }).catch(() => {});
 
     return res.status(200).json({
       success: true,

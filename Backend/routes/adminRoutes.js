@@ -104,6 +104,13 @@ router.get("/dashboard/monitoring", getDashboardMonitoring);
 router.get("/dashboard/executive-summary", getExecutiveSummaryHandler);
 
 // ==========================
+// TODAY'S OPERATIONAL TASKS (Pending + Completed Today)
+// ==========================
+const { getAdminTodayTasks } = require("../controllers/communicationController");
+router.get("/tasks/today", getAdminTodayTasks);
+router.get("/tasks/pending", getAdminTodayTasks);
+
+// ==========================
 // OWNERS & RESIDENTS
 // ==========================
 
