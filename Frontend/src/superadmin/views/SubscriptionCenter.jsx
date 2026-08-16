@@ -7,6 +7,7 @@ import StatusBadge from "../components/feedback/StatusBadge";
 import LoadingState from "../components/feedback/LoadingState";
 import EmptyState from "../components/feedback/EmptyState";
 import toast from "../../services/toast";
+import { api } from "../../services/api";
 import {
   FiDollarSign,
   FiTrendingUp,
@@ -31,6 +32,7 @@ export const SubscriptionCenter = React.memo(() => {
   const [hostels, setHostels] = useState([]);
   const [reminderLogs, setReminderLogs] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState(null);
 
   // Search and filters
   const [statusFilter, setStatusFilter] = useState("all");
@@ -77,45 +79,43 @@ export const SubscriptionCenter = React.memo(() => {
   const [calcData, setCalcData] = useState(null);
   const [calcLoading, setCalcLoading] = useState(false);
 
-  const getHeaders = () => {
-    const token = localStorage.getItem("token") || localStorage.getItem("adminToken");
-    return {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    };
-  };
-
   const fetchDashboardData = useCallback(async () => {
     try {
       setLoading(true);
-      const headers = getHeaders();
+      setFetchError(null);
 
       const [dashRes, requestsRes, hostelsRes, logsRes] = await Promise.all([
-        fetch("/api/admin/subscriptions/dashboard", { headers }),
-        fetch(`/api/admin/subscriptions/requests?status=${requestStatusFilter}`, { headers }),
-        fetch(`/api/admin/subscriptions/hostels?status=${statusFilter}&search=${encodeURIComponent(searchQuery)}`, { headers }),
-        fetch("/api/admin/subscriptions/reminder-logs", { headers }),
+        api.get("/api/admin/subscriptions/dashboard"),
+        api.get("/api/admin/subscriptions/requests", {
+          params: { status: requestStatusFilter },
+        }),
+        api.get("/api/admin/subscriptions/hostels", {
+          params: { status: statusFilter, search: searchQuery },
+        }),
+        api.get("/api/admin/subscriptions/reminder-logs"),
       ]);
 
-      const [dashData, requestsData, hostelsData, logsData] = await Promise.all([
-        dashRes.json(),
-        requestsRes.json(),
-        hostelsRes.json(),
-        logsRes.json(),
-      ]);
+      const dashData = dashRes?.data || {};
+      const requestsData = requestsRes?.data || {};
+      const hostelsData = hostelsRes?.data || {};
+      const logsData = logsRes?.data || {};
 
       if (dashData.success) setAnalytics(dashData.analytics);
-      if (requestsData.success) setRequests(requestsData.requests);
+      if (requestsData.success) setRequests(requestsData.requests || []);
       if (hostelsData.success) {
-        setHostels(hostelsData.subscriptions);
-        if (!calcHostelId && hostelsData.subscriptions.length > 0) {
-          setCalcHostelId(hostelsData.subscriptions[0].hostelId);
+        const subs = hostelsData.subscriptions || [];
+        setHostels(subs);
+        if (!calcHostelId && subs.length > 0) {
+          setCalcHostelId(subs[0].hostelId);
         }
       }
-      if (logsData.success) setReminderLogs(logsData.logs);
+      if (logsData.success) setReminderLogs(logsData.logs || []);
     } catch (err) {
-      console.error(err);
-      toast.error("Failed to load subscription data");
+      console.error("[SubscriptionCenter] Error loading data:", err);
+      const friendlyMsg =
+        err?.response?.data?.message || err?.message || "Unable to load subscription requests.";
+      setFetchError(friendlyMsg);
+      toast.error(friendlyMsg);
     } finally {
       setLoading(false);
     }
@@ -131,15 +131,14 @@ export const SubscriptionCenter = React.memo(() => {
     setShowHistoryModal(true);
     try {
       setHistoryLoading(true);
-      const res = await fetch(`/api/admin/subscriptions/${hostel.hostelId}/history`, {
-        headers: getHeaders(),
-      });
-      const data = await res.json();
+      const res = await api.get(`/api/admin/subscriptions/${hostel.hostelId}/history`);
+      const data = res?.data || {};
       if (data.success) {
         setHistoryRecords(data.history || []);
       }
     } catch (err) {
-      toast.error("Failed to load history");
+      console.error("[SubscriptionCenter] Error loading history:", err);
+      toast.error(err?.response?.data?.message || "Failed to load history");
     } finally {
       setHistoryLoading(false);
     }
@@ -151,15 +150,16 @@ export const SubscriptionCenter = React.memo(() => {
     if (!targetId) return;
     try {
       setCalcLoading(true);
-      const res = await fetch(`/api/admin/subscriptions/calculator?hostelId=${targetId}&monthlyRate=10`, {
-        headers: getHeaders(),
+      const res = await api.get("/api/admin/subscriptions/calculator", {
+        params: { hostelId: targetId, monthlyRate: 10 },
       });
-      const data = await res.json();
+      const data = res?.data || {};
       if (data.success) {
         setCalcData(data.calculation);
       }
     } catch (err) {
-      toast.error("Failed to run resident calculator");
+      console.error("[SubscriptionCenter] Calculator error:", err);
+      toast.error(err?.response?.data?.message || "Failed to run resident calculator");
     } finally {
       setCalcLoading(false);
     }
@@ -170,12 +170,8 @@ export const SubscriptionCenter = React.memo(() => {
     e.preventDefault();
     if (!selectedRequest) return;
     try {
-      const res = await fetch(`/api/admin/subscriptions/requests/${selectedRequest._id}/approve`, {
-        method: "POST",
-        headers: getHeaders(),
-        body: JSON.stringify(approveForm),
-      });
-      const data = await res.json();
+      const res = await api.post(`/api/admin/subscriptions/requests/${selectedRequest._id}/approve`, approveForm);
+      const data = res?.data || {};
       if (data.success) {
         toast.success(data.message || "Continuation request approved!");
         setShowApproveModal(false);
@@ -184,7 +180,7 @@ export const SubscriptionCenter = React.memo(() => {
         toast.error(data.message || "Approval failed");
       }
     } catch (err) {
-      toast.error("Error approving request");
+      toast.error(err?.response?.data?.message || "Error approving request");
     }
   };
 
@@ -193,12 +189,10 @@ export const SubscriptionCenter = React.memo(() => {
     e.preventDefault();
     if (!selectedRequest) return;
     try {
-      const res = await fetch(`/api/admin/subscriptions/requests/${selectedRequest._id}/reject`, {
-        method: "POST",
-        headers: getHeaders(),
-        body: JSON.stringify({ reason: rejectReason }),
+      const res = await api.post(`/api/admin/subscriptions/requests/${selectedRequest._id}/reject`, {
+        reason: rejectReason,
       });
-      const data = await res.json();
+      const data = res?.data || {};
       if (data.success) {
         toast.success("Request rejected");
         setShowRejectModal(false);
@@ -208,7 +202,7 @@ export const SubscriptionCenter = React.memo(() => {
         toast.error(data.message || "Rejection failed");
       }
     } catch (err) {
-      toast.error("Error rejecting request");
+      toast.error(err?.response?.data?.message || "Error rejecting request");
     }
   };
 
@@ -217,12 +211,8 @@ export const SubscriptionCenter = React.memo(() => {
     e.preventDefault();
     if (!selectedHostel) return;
     try {
-      const res = await fetch(`/api/admin/subscriptions/${selectedHostel.hostelId}/extend`, {
-        method: "POST",
-        headers: getHeaders(),
-        body: JSON.stringify(extendForm),
-      });
-      const data = await res.json();
+      const res = await api.post(`/api/admin/subscriptions/${selectedHostel.hostelId}/extend`, extendForm);
+      const data = res?.data || {};
       if (data.success) {
         toast.success(data.message || "Subscription extended successfully!");
         setShowExtendModal(false);
@@ -231,7 +221,7 @@ export const SubscriptionCenter = React.memo(() => {
         toast.error(data.message || "Extension failed");
       }
     } catch (err) {
-      toast.error("Error extending subscription");
+      toast.error(err?.response?.data?.message || "Error extending subscription");
     }
   };
 
@@ -240,12 +230,8 @@ export const SubscriptionCenter = React.memo(() => {
     e.preventDefault();
     if (!selectedHostel) return;
     try {
-      const res = await fetch(`/api/admin/subscriptions/${selectedHostel.hostelId}/adjust-days`, {
-        method: "POST",
-        headers: getHeaders(),
-        body: JSON.stringify(adjustForm),
-      });
-      const data = await res.json();
+      const res = await api.post(`/api/admin/subscriptions/${selectedHostel.hostelId}/adjust-days`, adjustForm);
+      const data = res?.data || {};
       if (data.success) {
         toast.success(data.message || "Subscription days adjusted!");
         setShowAdjustModal(false);
@@ -254,9 +240,34 @@ export const SubscriptionCenter = React.memo(() => {
         toast.error(data.message || "Adjustment failed");
       }
     } catch (err) {
-      toast.error("Error adjusting subscription days");
+      toast.error(err?.response?.data?.message || "Error adjusting subscription days");
     }
   };
+
+  if (fetchError && !analytics) {
+    return (
+      <PageContainer>
+        <SectionHeader title="SaaS Subscription & Continuation Hub" subtitle="HostelMate Enterprise Unified Owner Plan" />
+        <ContentContainer>
+          <div className="bg-[#0b1739]/60 border border-rose-500/30 rounded-2xl p-8 text-center space-y-4 max-w-lg mx-auto my-12 shadow-xl">
+            <div className="w-12 h-12 rounded-full bg-rose-500/10 border border-rose-500/30 flex items-center justify-center mx-auto text-rose-400">
+              <FiAlertCircle size={24} />
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-white mb-1">Unable to load subscription requests.</h3>
+              <p className="text-xs text-slate-400">{fetchError}</p>
+            </div>
+            <button
+              onClick={fetchDashboardData}
+              className="px-6 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded-xl text-xs inline-flex items-center gap-2 transition shadow-lg shadow-emerald-500/20"
+            >
+              <FiRefreshCw /> Retry
+            </button>
+          </div>
+        </ContentContainer>
+      </PageContainer>
+    );
+  }
 
   if (loading && !analytics) {
     return (

@@ -420,6 +420,21 @@ app.get("/api/health", (req, res) => {
 
 
 // ==========================
+// API 404 NOT FOUND HANDLER
+// ==========================
+// Guarantee that all unhandled /api/* endpoints return JSON, never HTML
+app.use((req, res, next) => {
+  if (req.path.startsWith("/api/")) {
+    return res.status(404).json({
+      success: false,
+      code: "NOT_FOUND",
+      message: `API endpoint not found: ${req.method} ${req.originalUrl}`,
+    });
+  }
+  next();
+});
+
+// ==========================
 // ERROR HANDLER
 // ==========================
 app.use(require("./middleware/errorHandler"));

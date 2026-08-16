@@ -63,7 +63,6 @@ import EnterpriseConsole from "./owner/EnterpriseConsole";
 import ReleaseNotes from "./pages/ReleaseNotes";
 import ReleaseNotesAdmin from "./admin/ReleaseNotesAdmin";
 import UpdateModal from "./components/UpdateModal";
-import PwaUpdateModal from "./components/feedback/PwaUpdateModal";
 import { useVersionChecker } from "./hooks/useVersionChecker";
 import GlobalSearchModal from "./components/GlobalSearchModal";
 import OfflineBanner from "./components/OfflineBanner";
@@ -250,7 +249,6 @@ function App() {
 
   return (
     <ServerLoadingWrapper>
-      <PwaUpdateModal />
       <OfflineBanner />
       <ErrorBoundary>
       <BrowserRouter>

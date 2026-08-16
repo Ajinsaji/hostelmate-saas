@@ -5,40 +5,8 @@ import "./index.css";
 import "react-toastify/dist/ReactToastify.css";
 import { ToastContainer } from "react-toastify";
 import { Toaster } from "react-hot-toast";
-import AppUpdateBanner from "./components/AppUpdateBanner";
-import { ThemeProvider } from './design-system/ThemeProvider';
-
-const SW_UPDATE_LOOP_GUARD_KEY = "sw_update_applied_v1";
-
-function safeReloadOnceAfterControllerChange() {
-  if (!("serviceWorker" in navigator)) return;
-
-  // If we already performed the reload for this session, never loop.
-  let didReload = false;
-  try {
-    didReload = sessionStorage.getItem(SW_UPDATE_LOOP_GUARD_KEY) === "1";
-  } catch {
-    // ignore
-  }
-
-  navigator.serviceWorker.addEventListener("controllerchange", () => {
-    if (didReload) return;
-    didReload = true;
-    try {
-      sessionStorage.setItem(SW_UPDATE_LOOP_GUARD_KEY, "1");
-    } catch {
-      // ignore
-    }
-
-    // Give the new SW a tick to take control and update caches.
-    setTimeout(() => {
-      window.location.reload();
-    }, 50);
-  });
-}
-
-safeReloadOnceAfterControllerChange();
-
+import AppUpdateManager from "./components/pwa/AppUpdateManager";
+import { ThemeProvider } from "./design-system/ThemeProvider";
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
@@ -50,12 +18,8 @@ ReactDOM.createRoot(document.getElementById("root")).render(
           duration: 4000,
         }}
       />
-      <AppUpdateBanner />
+      <AppUpdateManager />
       <App />
     </ThemeProvider>
   </React.StrictMode>
 );
-
-
-
-

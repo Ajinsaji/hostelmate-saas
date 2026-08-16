@@ -47,7 +47,7 @@ export default defineConfig(({ mode }) => {
         workbox: {
           cleanupOutdatedCaches: true,
           clientsClaim: true,
-          skipWaiting: true,
+          skipWaiting: false,
           maximumFileSizeToCacheInBytes: 15 * 1024 * 1024,
           importScripts: [],
         },

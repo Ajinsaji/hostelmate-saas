@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
 import api from "../utils/apiClient";
+import { APP_VERSION } from "../config/version";
 
 export function useVersionChecker() {
-  const CURRENT_APP_VERSION = "v4.2.0";
+  const CURRENT_APP_VERSION = `v${APP_VERSION}`;
   const [latestRelease, setLatestRelease] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [loading, setLoading] = useState(true);
