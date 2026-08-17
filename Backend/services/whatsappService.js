@@ -156,6 +156,9 @@ const compileTemplate = (templateCode, variablesDict = {}, customText = null) =>
     safeVars.residentName = safeVars.residentName || "Resident";
     safeVars.hostelName = safeVars.hostelName || "Hostel";
     safeVars.actualCheckoutDate = safeVars.actualCheckoutDate || "Today";
+  } else if (templateCode === "GENERAL_ANNOUNCEMENT") {
+    safeVars.hostelName = safeVars.hostelName || "Hostel";
+    safeVars.customMessage = safeVars.customMessage || safeVars.message || "Important Announcement";
   }
 
   let compiled = text;
@@ -377,6 +380,7 @@ const dispatchWhatsAppMessage = async ({
       planType: variables.planType || "HostelMate Unified Plan",
       expiryDate: variables.expiryDate || "",
       loginUrl: variables.loginUrl || "",
+      messageText,
     });
 
     if (result?.success) {

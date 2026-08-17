@@ -111,19 +111,21 @@ export default function AdminWhatsAppConsole() {
       }
     } catch (err) {
       alert(err.response?.data?.message || "Failed to update global automation setting");
-    } fontFinally: {
+    } finally {
       setSavingGlobal(false);
     }
   };
 
-  // Run Meta API Diagnostic Test
+  // Run Meta API Diagnostic Test (Safe verification without sending message)
   const handleRunDiagnosticTest = async () => {
     try {
       setTestingMeta(true);
-      const res = await api.post("/api/communication/diagnostics/test");
+      const res = await api.post("/api/admin/whatsapp/test").catch(() => 
+        api.post("/api/communication/diagnostics/test")
+      );
       setDiagnostics(res.data);
     } catch (err) {
-      setDiagnostics(err.response?.data || { success: false, status: "Failed", message: err.message });
+      setDiagnostics(err.response?.data || { success: false, verified: false, status: "Authentication Failed", message: err.response?.data?.message || err.message });
     } finally {
       setTestingMeta(false);
     }
@@ -252,22 +254,45 @@ export default function AdminWhatsAppConsole() {
                 </p>
               </div>
 
-              <div className="pt-4 border-t border-slate-100 flex items-center justify-between">
-                <div>
-                  <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold ${diagnostics?.configured || settings?.metaStatus?.configured ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"}`}>
-                    {diagnostics?.configured || settings?.metaStatus?.configured ? <CheckCircle className="w-3.5 h-3.5 mr-1" /> : <AlertTriangle className="w-3.5 h-3.5 mr-1" />}
-                    {diagnostics?.configured || settings?.metaStatus?.configured ? "Configured" : "Not Configured"}
-                  </span>
+              <div className="space-y-3 pt-4 border-t border-slate-100">
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <div className="flex items-center gap-2">
+                    <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold ${diagnostics?.configured || settings?.metaStatus?.configured ? "bg-slate-100 text-slate-700 border border-slate-200" : "bg-amber-100 text-amber-800"}`}>
+                      {diagnostics?.configured || settings?.metaStatus?.configured ? "Configured" : "Not Configured"}
+                    </span>
+
+                    {diagnostics?.verified ? (
+                      <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                        <CheckCircle className="w-3.5 h-3.5 mr-1 text-emerald-600" />
+                        Verified
+                      </span>
+                    ) : diagnostics?.status === "Authentication Failed" || diagnostics?.errorType === "META_AUTHENTICATION" ? (
+                      <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-rose-100 text-rose-800 border border-rose-200">
+                        <AlertTriangle className="w-3.5 h-3.5 mr-1 text-rose-600" />
+                        Authentication Failed
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-600">
+                        Unverified
+                      </span>
+                    )}
+                  </div>
+
+                  <button
+                    onClick={handleRunDiagnosticTest}
+                    disabled={testingMeta}
+                    className="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 text-xs font-semibold px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition cursor-pointer"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${testingMeta ? "animate-spin text-indigo-600" : ""}`} />
+                    Test API Connection
+                  </button>
                 </div>
 
-                <button
-                  onClick={handleRunDiagnosticTest}
-                  disabled={testingMeta}
-                  className="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition"
-                >
-                  <RefreshCw className={`w-3.5 h-3.5 ${testingMeta ? "animate-spin" : ""}`} />
-                  Test API
-                </button>
+                {diagnostics?.message && (
+                  <p className={`text-[11px] font-medium leading-normal ${diagnostics.verified ? "text-emerald-700" : "text-rose-600"}`}>
+                    {diagnostics.message}
+                  </p>
+                )}
               </div>
             </div>
 

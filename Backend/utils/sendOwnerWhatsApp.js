@@ -41,34 +41,70 @@ const normalizePhoneNumber = (phone) => {
   return null;
 };
 
-// Safe WhatsApp Configuration Validator
+// Clean and validate Meta WhatsApp configuration from process.env
+const getCleanMetaConfig = () => {
+  const rawToken = process.env.WHATSAPP_TOKEN;
+  const rawPhoneId = process.env.WHATSAPP_PHONE_NUMBER_ID;
+  const rawApiVersion = process.env.WHATSAPP_API_VERSION;
+
+  const token =
+    typeof rawToken === "string"
+      ? rawToken
+          .replace(/^Bearer\s+/i, "")
+          .replace(/^["']|["']$/g, "")
+          .trim()
+      : "";
+
+  const phoneNumberId =
+    typeof rawPhoneId === "string"
+      ? rawPhoneId
+          .replace(/^["']|["']$/g, "")
+          .trim()
+      : "";
+
+  let apiVersion =
+    typeof rawApiVersion === "string" && rawApiVersion.trim()
+      ? rawApiVersion.replace(/^["']|["']$/g, "").trim()
+      : "v19.0";
+
+  if (apiVersion && !apiVersion.startsWith("v")) {
+    apiVersion = `v${apiVersion}`;
+  }
+  if (!apiVersion) {
+    apiVersion = "v19.0";
+  }
+
+  const isDummyToken =
+    /^(your_|dummy|eaag_dummy|placeholder|<token>|00000000|null|undefined|none)/i.test(token);
+  const isDummyPhoneId =
+    /^(your_|dummy|placeholder|<phone_number_id>|00000000|null|undefined|none)/i.test(phoneNumberId);
+
+  const hasToken = Boolean(token) && token.length >= 20 && !isDummyToken;
+  const hasPhoneNumberId = Boolean(phoneNumberId) && phoneNumberId.length >= 10 && !isDummyPhoneId;
+  const hasApiVersion = Boolean(apiVersion) && /^v\d+(\.\d+)?$/.test(apiVersion);
+
+  const isConfigured = hasToken && hasPhoneNumberId && hasApiVersion;
+
+  return {
+    token,
+    phoneNumberId,
+    apiVersion,
+    isConfigured,
+    hasToken,
+    hasPhoneNumberId,
+    hasApiVersion,
+  };
+};
+
+// Safe WhatsApp Configuration Validator (Returns ONLY boolean flags - NEVER secrets)
 const validateWhatsAppConfig = () => {
-  const token = process.env.WHATSAPP_TOKEN;
-  const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
-
-  const hasToken =
-    Boolean(token) &&
-    typeof token === "string" &&
-    token.trim().length > 0 &&
-    !/your_|dummy|eaag_dummy|placeholder|<token>|00000000/i.test(token);
-
-  const hasPhoneNumberId =
-    Boolean(phoneNumberId) &&
-    typeof phoneNumberId === "string" &&
-    phoneNumberId.trim().length > 0 &&
-    !/your_|dummy|placeholder|<phone_number_id>|00000000/i.test(phoneNumberId);
-
-  const isConfigured = hasToken && hasPhoneNumberId;
+  const { isConfigured, hasToken, hasPhoneNumberId, hasApiVersion } = getCleanMetaConfig();
 
   return {
     isConfigured,
     hasToken,
     hasPhoneNumberId,
-    reason: !hasToken
-      ? "WHATSAPP_TOKEN is missing or placeholder"
-      : !hasPhoneNumberId
-      ? "WHATSAPP_PHONE_NUMBER_ID is missing or placeholder"
-      : null,
+    hasApiVersion,
   };
 };
 
@@ -115,30 +151,27 @@ const classifyMetaError = (err) => {
 
 // Perform safe Meta API verification ping without sending message
 const verifyMetaWhatsAppConfig = async () => {
-  const config = validateWhatsAppConfig();
+  const config = getCleanMetaConfig();
   if (!config.isConfigured) {
     return {
       success: false,
       verified: false,
       configured: false,
-      phoneNumberIdConfigured: config.hasPhoneNumberId,
-      tokenConfigured: config.hasToken,
+      errorType: "UNCONFIGURED",
+      deliveryStatus: "unconfigured",
       status: "Not Configured",
       message: "WhatsApp credential delivery service is not configured.",
     };
   }
 
-  const token = process.env.WHATSAPP_TOKEN;
-  const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
-  const apiVersion = process.env.WHATSAPP_API_VERSION || "v19.0";
-  const url = `https://graph.facebook.com/${apiVersion}/${phoneNumberId}?fields=id,verified_name`;
+  const url = `https://graph.facebook.com/${config.apiVersion}/${config.phoneNumberId}?fields=id,verified_name,display_phone_number`;
 
   try {
     const resp = await axios.get(url, {
       headers: {
-        Authorization: `Bearer ${token}`,
+        Authorization: `Bearer ${config.token}`,
       },
-      timeout: 5000,
+      timeout: 7000,
     });
 
     if (resp?.data?.id) {
@@ -146,8 +179,7 @@ const verifyMetaWhatsAppConfig = async () => {
         success: true,
         verified: true,
         configured: true,
-        phoneNumberIdConfigured: true,
-        tokenConfigured: true,
+        deliveryStatus: "verified",
         status: "Connected",
         message: "WhatsApp configuration verified",
       };
@@ -157,8 +189,8 @@ const verifyMetaWhatsAppConfig = async () => {
       success: false,
       verified: false,
       configured: true,
-      phoneNumberIdConfigured: true,
-      tokenConfigured: true,
+      errorType: "META_REJECTED",
+      deliveryStatus: "failed",
       status: "Verification Failed",
       message: "Meta API returned unexpected response format",
     };
@@ -168,8 +200,7 @@ const verifyMetaWhatsAppConfig = async () => {
       success: false,
       verified: false,
       configured: true,
-      phoneNumberIdConfigured: config.hasPhoneNumberId,
-      tokenConfigured: config.hasToken,
+      deliveryStatus: "failed",
       status:
         classified.originalStatus === 401
           ? "Authentication Failed"
@@ -230,14 +261,17 @@ const sendOwnerWhatsApp = async (payload) => {
     planType,
     expiryDate,
     loginUrl,
+    messageText,
+    customMessage,
   } = payload || {};
 
-  const config = validateWhatsAppConfig();
+  const config = getCleanMetaConfig();
 
   if (!config.isConfigured) {
     logger.info("Meta WhatsApp not configured. Skipping real send.", {
       hasToken: config.hasToken,
       hasPhoneNumberId: config.hasPhoneNumberId,
+      hasApiVersion: config.hasApiVersion,
     });
     return {
       success: false,
@@ -250,7 +284,7 @@ const sendOwnerWhatsApp = async (payload) => {
 
   const normalizedPhone = normalizePhoneNumber(phone);
   if (!normalizedPhone) {
-    throw new WhatsAppDeliveryError("Invalid owner phone number format for WhatsApp delivery", {
+    throw new WhatsAppDeliveryError("Invalid recipient phone number format for WhatsApp delivery", {
       statusCode: 502,
       errorType: "INVALID_PHONE",
     });
@@ -261,26 +295,25 @@ const sendOwnerWhatsApp = async (payload) => {
     normalizedPhone,
     hasOwnerName: Boolean(ownerName),
     hasHostelName: Boolean(hostelName),
-    apiVersion: process.env.WHATSAPP_API_VERSION || "v19.0",
+    apiVersion: config.apiVersion,
     hasToken: config.hasToken,
     hasPhoneNumberId: config.hasPhoneNumberId,
   });
 
-  const token = process.env.WHATSAPP_TOKEN;
-  const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
-  const apiVersion = process.env.WHATSAPP_API_VERSION || "v19.0";
-  const url = `https://graph.facebook.com/${apiVersion}/${phoneNumberId}/messages`;
-
+  const url = `https://graph.facebook.com/${config.apiVersion}/${config.phoneNumberId}/messages`;
   const to = normalizedPhone;
-  const message = formatMessage({
-    ownerName,
-    hostelName,
-    username,
-    tempPassword,
-    planType,
-    expiryDate,
-    loginUrl,
-  });
+  const message =
+    messageText ||
+    customMessage ||
+    formatMessage({
+      ownerName,
+      hostelName,
+      username,
+      tempPassword,
+      planType,
+      expiryDate,
+      loginUrl,
+    });
 
   const body = {
     messaging_product: "whatsapp",
@@ -301,10 +334,10 @@ const sendOwnerWhatsApp = async (payload) => {
   try {
     const resp = await axios.post(url, body, {
       headers: {
-        Authorization: `Bearer ${token}`,
+        Authorization: `Bearer ${config.token}`,
         "Content-Type": "application/json",
       },
-      timeout: 5000,
+      timeout: 8000,
     });
 
     logger.info("WHATSAPP SENT SUCCESS", {
@@ -315,7 +348,7 @@ const sendOwnerWhatsApp = async (payload) => {
       success: true,
       deliveryStatus: "sent",
       provider: "meta-cloud-api",
-      messageId: resp?.data?.messages?.[0]?.id,
+      messageId: resp?.data?.messages?.[0]?.id || "accepted",
       to,
     };
   } catch (err) {
@@ -335,6 +368,8 @@ module.exports = {
   sendOwnerWhatsApp,
   validateWhatsAppConfig,
   verifyMetaWhatsAppConfig,
+  getCleanMetaConfig,
+  classifyMetaError,
   WhatsAppDeliveryError,
 };
 

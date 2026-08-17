@@ -1936,6 +1936,9 @@ const getWhatsAppDiagnostics = async (req, res) => {
     return res.status(200).json({
       success: true,
       configured: config.isConfigured,
+      hasToken: config.hasToken,
+      hasPhoneNumberId: config.hasPhoneNumberId,
+      hasApiVersion: config.hasApiVersion,
       phoneNumberIdConfigured: config.hasPhoneNumberId,
       tokenConfigured: config.hasToken,
     });
@@ -1958,14 +1961,16 @@ const testWhatsAppConfig = async (req, res) => {
       verified: result.verified,
       configured: result.configured,
       status: result.status,
-      phoneNumberIdConfigured: result.phoneNumberIdConfigured,
-      tokenConfigured: result.tokenConfigured,
+      errorType: result.errorType,
+      deliveryStatus: result.deliveryStatus || (result.success ? "verified" : "failed"),
       message: result.message,
     });
   } catch (error) {
     return res.status(502).json({
       success: false,
       verified: false,
+      errorType: "META_AUTHENTICATION",
+      deliveryStatus: "failed",
       status: "Verification Failed",
       message: error?.message || "WhatsApp configuration test failed",
     });
