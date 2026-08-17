@@ -5,7 +5,7 @@ import "./index.css";
 import "react-toastify/dist/ReactToastify.css";
 import { ToastContainer } from "react-toastify";
 import { Toaster } from "react-hot-toast";
-import AppUpdateManager from "./components/pwa/AppUpdateManager";
+import AppUpdateManager from "./components/AppUpdateManager";
 import { ThemeProvider } from "./design-system/ThemeProvider";
 
 ReactDOM.createRoot(document.getElementById("root")).render(

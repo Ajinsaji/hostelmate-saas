@@ -31,7 +31,7 @@ export default function AdminTodayTasksWidget({ onRefreshTrigger }) {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("pending"); // "pending" | "completed"
-  const [activeCategoryFilter, setActiveCategoryFilter] = useState("all");
+  const [categoryFilter, setCategoryFilter] = useState("all");
 
   const [pendingTasks, setPendingTasks] = useState([]);
   const [completedTasksToday, setCompletedTasksToday] = useState([]);
@@ -58,22 +58,31 @@ export default function AdminTodayTasksWidget({ onRefreshTrigger }) {
     try {
       setLoading(true);
       const res = await api.get("/api/communication/tasks/pending");
-      if (res.data?.success) {
-        const pTasks = res.data.pendingTasks || res.data.tasks || [];
-        const cTasks = res.data.completedTasksToday || [];
+      if (res?.data?.success) {
+        const pTasks = Array.isArray(res.data.pendingTasks)
+          ? res.data.pendingTasks
+          : Array.isArray(res.data.tasks)
+          ? res.data.tasks
+          : [];
+        const cTasks = Array.isArray(res.data.completedTasksToday)
+          ? res.data.completedTasksToday
+          : [];
 
         setPendingTasks(pTasks);
         setCompletedTasksToday(cTasks);
-        setPendingCount(res.data.pendingCount ?? pTasks.length);
-        setCompletedCount(res.data.completedCount ?? cTasks.length);
-        setTotalCount(res.data.totalCount ?? (pTasks.length + cTasks.length));
+        setPendingCount(Number(res.data.pendingCount ?? res.data.summary?.pendingCount ?? pTasks.length) || 0);
+        setCompletedCount(Number(res.data.completedCount ?? res.data.completedTodayCount ?? res.data.summary?.completedTodayCount ?? cTasks.length) || 0);
+        setTotalCount(Number(res.data.totalCount ?? res.data.summary?.totalActivityCount ?? (pTasks.length + cTasks.length)) || 0);
 
-        if (res.data.categories) {
-          setCategories(res.data.categories);
+        if (res.data.categories && typeof res.data.categories === "object") {
+          setCategories((prev) => ({ ...prev, ...res.data.categories }));
         }
       }
     } catch (err) {
       console.warn("Could not load Admin Today's Tasks:", err);
+      // Retain safe default states
+      setPendingTasks((prev) => prev || []);
+      setCompletedTasksToday((prev) => prev || []);
     } finally {
       setLoading(false);
     }
@@ -88,10 +97,10 @@ export default function AdminTodayTasksWidget({ onRefreshTrigger }) {
 
   // Handle Manual wa.me Link Click
   const handleOpenWaMe = async (task) => {
-    const raw = task.raw || task;
-    const waUrl = task.waMeUrl || raw.waMeUrl;
-    const phone = task.phone || task.recipient || raw.recipient;
-    const message = task.message || raw.message || raw.customMessage || "";
+    const raw = task?.raw || task || {};
+    const waUrl = task?.waMeUrl || raw.waMeUrl;
+    const phone = task?.phone || task?.recipient || raw.recipient;
+    const message = task?.message || raw.message || raw.customMessage || "";
 
     if (waUrl) {
       window.open(waUrl, "_blank", "noopener,noreferrer");
@@ -106,7 +115,7 @@ export default function AdminTodayTasksWidget({ onRefreshTrigger }) {
     }
 
     try {
-      const dbId = task.dbId || task.id || raw._id;
+      const dbId = task?.dbId || task?.id || raw._id;
       if (dbId) {
         await api.post(`/api/communication/whatsapp/log-manual/${dbId}`, { communicationId: dbId });
       }
@@ -121,10 +130,10 @@ export default function AdminTodayTasksWidget({ onRefreshTrigger }) {
     try {
       setRetryingIds((prev) => ({ ...prev, [taskId]: true }));
       const res = await api.post(`/api/communication/whatsapp/retry/${taskId}`);
-      if (res.data?.success) {
+      if (res?.data?.success) {
         fetchTasks();
       } else {
-        alert(res.data?.message || "Retry failed");
+        alert(res?.data?.message || "Retry failed");
         fetchTasks();
       }
     } catch (err) {
@@ -135,26 +144,64 @@ export default function AdminTodayTasksWidget({ onRefreshTrigger }) {
     }
   };
 
-  // Current display list based on active tab
-  const currentList = activeTab === "pending" ? pendingTasks : completedTasksToday;
+  // Current display list based on active tab with safe array coercion
+  const rawList = activeTab === "pending" ? pendingTasks : completedTasksToday;
+  const currentList = Array.isArray(rawList) ? rawList : [];
 
   const filteredTasks = currentList.filter((item) => {
-    if (activeCategoryFilter === "all") return true;
-    if (activeCategoryFilter === "whatsapp") return item.category === "whatsapp" || item.type?.includes("whatsapp");
-    if (activeCategoryFilter === "registration") {
+    if (!item) return false;
+    if (categoryFilter === "all") return true;
+    if (categoryFilter === "whatsapp") {
       return (
-        item.category === "registration" ||
-        item.category === "activation" ||
-        item.type?.includes("registration") ||
-        item.type?.includes("activation")
+        item.category === "whatsapp" ||
+        item.type?.includes("whatsapp") ||
+        item.templateCode === "RENT_REMINDER" ||
+        item.templateCode === "OWNER_ACCOUNT_ACTIVATED" ||
+        item.templateCode === "PAYMENT_RECEIVED"
       );
     }
-    if (activeCategoryFilter === "subscription_payment") {
+    if (categoryFilter === "registration" || categoryFilter === "registrations") {
+      return (
+        item.category === "registration" ||
+        item.type?.includes("registration") ||
+        item.actionType === "review_registration"
+      );
+    }
+    if (categoryFilter === "activation" || categoryFilter === "activations") {
+      return (
+        item.category === "activation" ||
+        item.type?.includes("activation") ||
+        item.actionType === "finalize_activation"
+      );
+    }
+    if (categoryFilter === "subscription" || categoryFilter === "subscriptions") {
+      return (
+        item.category === "subscription" ||
+        item.type?.includes("subscription") ||
+        item.actionType === "approve_subscription"
+      );
+    }
+    if (categoryFilter === "payment" || categoryFilter === "payments") {
+      return (
+        item.category === "payment" ||
+        item.type?.includes("payment") ||
+        item.actionType === "verify_payment"
+      );
+    }
+    if (categoryFilter === "subscription_payment") {
       return (
         item.category === "subscription" ||
         item.category === "payment" ||
         item.type?.includes("subscription") ||
         item.type?.includes("payment")
+      );
+    }
+    if (categoryFilter === "failed" || categoryFilter === "failed_deliveries") {
+      return (
+        item.status === "failed" ||
+        item.category === "failed" ||
+        item.type === "whatsapp_failed" ||
+        item.type?.includes("failed")
       );
     }
     return true;
@@ -246,32 +293,42 @@ export default function AdminTodayTasksWidget({ onRefreshTrigger }) {
           <button
             onClick={() => setCategoryFilter("registration")}
             className={`px-2.5 py-1 rounded-lg font-bold transition cursor-pointer text-[11px] ${
-              categoryFilter === "registration"
+              categoryFilter === "registration" || categoryFilter === "registrations"
                 ? "bg-blue-500/20 text-blue-300 border border-blue-500/30"
                 : "text-slate-400 hover:text-slate-200"
             }`}
           >
-            Registrations ({categories.pendingRegistrationsCount || 0})
+            Registrations ({categories?.pendingRegistrationsCount || 0})
           </button>
           <button
             onClick={() => setCategoryFilter("activation")}
             className={`px-2.5 py-1 rounded-lg font-bold transition cursor-pointer text-[11px] ${
-              categoryFilter === "activation"
+              categoryFilter === "activation" || categoryFilter === "activations"
                 ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
                 : "text-slate-400 hover:text-slate-200"
             }`}
           >
-            Activations ({categories.pendingActivationsCount || 0})
+            Activations ({categories?.pendingActivationsCount || 0})
           </button>
           <button
             onClick={() => setCategoryFilter("subscription")}
             className={`px-2.5 py-1 rounded-lg font-bold transition cursor-pointer text-[11px] ${
-              categoryFilter === "subscription"
+              categoryFilter === "subscription" || categoryFilter === "subscriptions"
                 ? "bg-purple-500/20 text-purple-300 border border-purple-500/30"
                 : "text-slate-400 hover:text-slate-200"
             }`}
           >
-            Subscriptions ({categories.pendingSubscriptionsCount || 0})
+            Subscriptions ({categories?.pendingSubscriptionsCount || 0})
+          </button>
+          <button
+            onClick={() => setCategoryFilter("payment")}
+            className={`px-2.5 py-1 rounded-lg font-bold transition cursor-pointer text-[11px] ${
+              categoryFilter === "payment" || categoryFilter === "payments"
+                ? "bg-yellow-500/20 text-yellow-300 border border-yellow-500/30"
+                : "text-slate-400 hover:text-slate-200"
+            }`}
+          >
+            Payments ({categories?.pendingPaymentsCount || 0})
           </button>
           <button
             onClick={() => setCategoryFilter("whatsapp")}
@@ -281,17 +338,17 @@ export default function AdminTodayTasksWidget({ onRefreshTrigger }) {
                 : "text-slate-400 hover:text-slate-200"
             }`}
           >
-            WhatsApp ({(categories.rentRemindersCount || 0) + (categories.ownerActivationsCount || 0) + (categories.paymentConfirmationsCount || 0)})
+            WhatsApp ({(categories?.rentRemindersCount || 0) + (categories?.ownerActivationsCount || 0) + (categories?.paymentConfirmationsCount || 0)})
           </button>
           <button
             onClick={() => setCategoryFilter("failed")}
             className={`px-2.5 py-1 rounded-lg font-bold transition cursor-pointer text-[11px] ${
-              categoryFilter === "failed"
+              categoryFilter === "failed" || categoryFilter === "failed_deliveries"
                 ? "bg-rose-500/20 text-rose-300 border border-rose-500/30"
                 : "text-slate-400 hover:text-slate-200"
             }`}
           >
-            Failed ({categories.failedDeliveriesCount || 0})
+            Failed ({categories?.failedDeliveriesCount || 0})
           </button>
         </div>
       </div>

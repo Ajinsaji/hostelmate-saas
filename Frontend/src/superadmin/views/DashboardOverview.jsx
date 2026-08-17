@@ -149,15 +149,18 @@ export const DashboardOverview = React.memo(() => {
     // default adminName
   }
 
-  // Real Database Metrics
+  // Real Database Metrics & Safe Coercion
+  const safeWorkQueue = Array.isArray(workQueue) ? workQueue : [];
+  const safeRecentActivity = Array.isArray(recentActivity) ? recentActivity : [];
+
   const activeHostelsCount = statsData?.activeHostelsVal ?? statsData?.totalHostels ?? 0;
   const activeOwnersCount = statsData?.totalOwnersVal ?? 0;
   const totalResidentsCount = statsData?.totalResidentsVal ?? 0;
-  const pendingApprovalsCount = statsData?.pendingApprovals ?? workQueue.filter((q) => q.queueCategory === "Needs Approval" || q.queueCategory === "Activation Pending").length;
+  const pendingApprovalsCount = statsData?.pendingApprovals ?? safeWorkQueue.filter((q) => q?.queueCategory === "Needs Approval" || q?.queueCategory === "Activation Pending").length;
   const todayRevVal = statsData?.todayRevenue ?? (typeof revenueData?.todayRevenue?.value === "number" ? revenueData.todayRevenue.value : 0);
 
-  const pendingApprovalRequests = workQueue.filter(
-    (item) => item.type === "request" && (item.status === "pending" || item.status === "activation_pending" || item.queueCategory === "Needs Approval" || item.queueCategory === "Activation Pending")
+  const pendingApprovalRequests = safeWorkQueue.filter(
+    (item) => item?.type === "request" && (item?.status === "pending" || item?.status === "activation_pending" || item?.queueCategory === "Needs Approval" || item?.queueCategory === "Activation Pending")
   );
 
   return (
@@ -493,11 +496,11 @@ export const DashboardOverview = React.memo(() => {
             </div>
 
             <div className="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-4 shadow-lg">
-              {recentActivity.length === 0 ? (
+              {safeRecentActivity.length === 0 ? (
                 <div className="p-8 text-center text-slate-500 text-xs">No recent activity recorded in the database.</div>
               ) : (
                 <div className="space-y-3">
-                  {recentActivity.slice(0, 5).map((act, idx) => (
+                  {safeRecentActivity.slice(0, 5).map((act, idx) => (
                     <div
                       key={act.id || act._id || idx}
                       className="p-3 rounded-xl bg-slate-800/40 hover:bg-slate-800/80 border border-slate-800/60 transition flex items-start gap-3 cursor-pointer"

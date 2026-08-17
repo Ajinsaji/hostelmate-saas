@@ -133,9 +133,12 @@ export default function AdminTasksPage() {
     }
   };
 
-  const currentList = activeTab === "pending" ? pendingTasks : completedTasksToday;
+  const rawList = activeTab === "pending" ? pendingTasks : completedTasksToday;
+  const currentList = Array.isArray(rawList) ? rawList : [];
 
   const filteredTasks = currentList.filter((item) => {
+    if (!item) return false;
+
     // Search match
     if (searchTerm) {
       const q = searchTerm.toLowerCase();
@@ -152,10 +155,51 @@ export default function AdminTasksPage() {
 
     // Category filter
     if (categoryFilter === "all") return true;
-    if (categoryFilter === "whatsapp") return item.category === "whatsapp";
-    if (categoryFilter === "registration") return item.category === "registration" || item.category === "activation";
-    if (categoryFilter === "subscription") return item.category === "subscription" || item.category === "payment";
-    if (categoryFilter === "failed") return item.status === "failed" || item.type === "whatsapp_failed";
+    if (categoryFilter === "whatsapp") {
+      return (
+        item.category === "whatsapp" ||
+        item.type?.includes("whatsapp") ||
+        item.templateCode === "RENT_REMINDER" ||
+        item.templateCode === "OWNER_ACCOUNT_ACTIVATED" ||
+        item.templateCode === "PAYMENT_RECEIVED"
+      );
+    }
+    if (categoryFilter === "registration" || categoryFilter === "registrations") {
+      return (
+        item.category === "registration" ||
+        item.type?.includes("registration") ||
+        item.actionType === "review_registration"
+      );
+    }
+    if (categoryFilter === "activation" || categoryFilter === "activations") {
+      return (
+        item.category === "activation" ||
+        item.type?.includes("activation") ||
+        item.actionType === "finalize_activation"
+      );
+    }
+    if (categoryFilter === "subscription" || categoryFilter === "subscriptions") {
+      return (
+        item.category === "subscription" ||
+        item.type?.includes("subscription") ||
+        item.actionType === "approve_subscription"
+      );
+    }
+    if (categoryFilter === "payment" || categoryFilter === "payments") {
+      return (
+        item.category === "payment" ||
+        item.type?.includes("payment") ||
+        item.actionType === "verify_payment"
+      );
+    }
+    if (categoryFilter === "failed" || categoryFilter === "failed_deliveries") {
+      return (
+        item.status === "failed" ||
+        item.category === "failed" ||
+        item.type === "whatsapp_failed" ||
+        item.type?.includes("failed")
+      );
+    }
 
     return true;
   });
@@ -273,9 +317,11 @@ export default function AdminTasksPage() {
               className="bg-slate-950 border border-slate-800 text-slate-300 rounded-xl py-2 px-3 text-xs outline-none focus:border-emerald-500"
             >
               <option value="all">All Categories</option>
-              <option value="whatsapp">WhatsApp</option>
               <option value="registration">Registrations</option>
+              <option value="activation">Activations</option>
               <option value="subscription">Subscriptions</option>
+              <option value="payment">Payments</option>
+              <option value="whatsapp">WhatsApp</option>
               <option value="failed">Failed Retries</option>
             </select>
 
