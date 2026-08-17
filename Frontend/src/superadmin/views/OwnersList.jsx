@@ -407,7 +407,7 @@ export const OwnersList = React.memo(() => {
 
                         {/* Plan & Expiry */}
                         <div className="flex items-center justify-between text-[11px] pt-1">
-                          <span className="font-semibold text-slate-400">{owner.planName || "Basic Plan"}</span>
+                          <span className="font-semibold text-slate-400">{owner.planName || "HostelMate Unified Plan"}</span>
                           <span className="font-bold text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded border border-amber-400/20 text-[10px]">
                             {owner.daysRemaining ?? 0} Days Left
                           </span>

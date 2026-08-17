@@ -20,9 +20,9 @@ export const ConfirmActionModal = React.memo(({
   const [selectedAssignee, setSelectedAssignee] = useState("");
 
   // Activation / Subscription state
-  const [planType, setPlanType] = useState("Pro");
-  const [amount, setAmount] = useState(2499);
-  const [isTrial, setIsTrial] = useState(false);
+  const [planType, setPlanType] = useState("HostelMate Unified Plan");
+  const [amount, setAmount] = useState(0);
+  const [isTrial, setIsTrial] = useState(true);
   const [isFreeAccess, setIsFreeAccess] = useState(false);
   const [activationNotes, setActivationNotes] = useState("");
 
@@ -38,9 +38,9 @@ export const ConfirmActionModal = React.memo(({
       setError(null);
       setRejectReason("");
       setSelectedAssignee("");
-      setPlanType("Pro");
-      setAmount(2499);
-      setIsTrial(false);
+      setPlanType("HostelMate Unified Plan");
+      setAmount(0);
+      setIsTrial(true);
       setIsFreeAccess(false);
       setActivationNotes("");
       setActivationResult(null);
@@ -451,50 +451,38 @@ export const ConfirmActionModal = React.memo(({
               {actionType === "activate" && (
                 <div className="space-y-4">
                   <p className="text-xs text-slate-300">
-                    Configure subscription options to finalize activation for <strong className="text-white">{hostelName}</strong>. This will create the Owner account, issue login credentials, and send WhatsApp notifications.
+                    Finalize activation for <strong className="text-white">{hostelName}</strong>. This will create the Owner account, provision the 30-day Free Trial on the <strong>HostelMate Unified Plan</strong>, issue login credentials, and trigger credential delivery.
                   </p>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Plan Type</label>
-                      <select 
-                        value={planType} 
-                        onChange={(e) => setPlanType(e.target.value)}
-                        className="w-full bg-[#0B1220] border border-[#202B45] rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500"
-                      >
-                        <option value="Pro">Pro Plan (₹2499/mo)</option>
-                        <option value="Basic">Basic Plan (₹1499/mo)</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Amount (₹)</label>
-                      <input 
-                        type="number" 
-                        value={amount} 
-                        onChange={(e) => setAmount(e.target.value)}
-                        className="w-full bg-[#0B1220] border border-[#202B45] rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500"
-                      />
-                    </div>
-                  </div>
 
-                  <div className="flex items-center gap-4 py-1">
-                    <label className="flex items-center gap-2 text-xs text-slate-300 cursor-pointer select-none">
-                      <input 
-                        type="checkbox" 
-                        checked={isTrial} 
-                        onChange={(e) => setIsTrial(e.target.checked)} 
-                        className="rounded border-[#202B45] text-emerald-500 focus:ring-0 bg-transparent"
-                      />
-                      <span>14-Day Free Trial</span>
-                    </label>
-                    <label className="flex items-center gap-2 text-xs text-slate-300 cursor-pointer select-none">
-                      <input 
-                        type="checkbox" 
-                        checked={isFreeAccess} 
-                        onChange={(e) => setIsFreeAccess(e.target.checked)} 
-                        className="rounded border-[#202B45] text-emerald-500 focus:ring-0 bg-transparent"
-                      />
-                      <span>Comp Access (Free)</span>
-                    </label>
+                  <div className="p-4 rounded-xl bg-[#0B1220] border border-[#202B45] space-y-2.5 text-xs">
+                    <div className="flex items-center justify-between border-b border-[#202B45] pb-2">
+                      <span className="text-slate-400 font-medium">Hostel</span>
+                      <span className="text-white font-bold">{hostelName || "Hostel"}</span>
+                    </div>
+                    <div className="flex items-center justify-between border-b border-[#202B45] pb-2">
+                      <span className="text-slate-400 font-medium">Owner</span>
+                      <span className="text-white font-bold">{ownerName || "Owner"}</span>
+                    </div>
+                    <div className="flex items-center justify-between border-b border-[#202B45] pb-2">
+                      <span className="text-slate-400 font-medium">Phone</span>
+                      <span className="text-white font-mono font-bold">{ownerPhone || "-"}</span>
+                    </div>
+                    <div className="flex items-center justify-between border-b border-[#202B45] pb-2">
+                      <span className="text-slate-400 font-medium">Subscription</span>
+                      <span className="text-emerald-400 font-bold">HostelMate Unified Plan</span>
+                    </div>
+                    <div className="flex items-center justify-between border-b border-[#202B45] pb-2">
+                      <span className="text-slate-400 font-medium">Trial Period</span>
+                      <span className="text-amber-400 font-bold">30 Days Free</span>
+                    </div>
+                    <div className="flex items-center justify-between border-b border-[#202B45] pb-2">
+                      <span className="text-slate-400 font-medium">Billing Model</span>
+                      <span className="text-slate-300 font-semibold">₹10 / active resident / 30-day period</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-400 font-medium">Initial Amount</span>
+                      <span className="text-emerald-400 font-black text-sm">₹0 (Free Trial)</span>
+                    </div>
                   </div>
 
                   <div>
@@ -503,7 +491,7 @@ export const ConfirmActionModal = React.memo(({
                       type="text" 
                       value={activationNotes} 
                       onChange={(e) => setActivationNotes(e.target.value)}
-                      placeholder="Optional billing notes..."
+                      placeholder="Optional activation & billing notes..."
                       className="w-full bg-[#0B1220] border border-[#202B45] rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
                     />
                   </div>

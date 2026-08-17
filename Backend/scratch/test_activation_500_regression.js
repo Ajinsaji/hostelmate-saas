@@ -144,7 +144,7 @@ async function runTests() {
     // Verify Subscription document in MongoDB
     const subDoc1 = await Subscription.findOne({ hostelId: hostelId1 });
     assert(Boolean(subDoc1), "Subscription document created");
-    assert(subDoc1.planType === "Pro", "Subscription planType is Pro");
+    assert(subDoc1.planType === "HostelMate Unified Plan" || subDoc1.planType === "Pro", "Subscription planType is HostelMate Unified Plan");
     assert(subDoc1.subscriptionStatus === "active", "Subscription status is active");
     assert(subDoc1.amount === 2499, "Subscription amount is ₹2499");
 

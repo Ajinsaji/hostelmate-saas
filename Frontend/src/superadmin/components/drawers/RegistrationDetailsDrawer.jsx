@@ -5,6 +5,7 @@ import {
   ExternalLink, Layers, Award, Clock, Zap
 } from "lucide-react";
 import ConfirmActionModal from "../modals/ConfirmActionModal";
+import DocumentPreviewCard from "../../../components/DocumentPreviewCard";
 
 export const RegistrationDetailsDrawer = React.memo(({
   isOpen,
@@ -198,41 +199,20 @@ export const RegistrationDetailsDrawer = React.memo(({
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="p-4 bg-[#0B1220]/60 border border-[#202B45] rounded-xl flex items-center justify-between">
-                  <div>
-                    <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Identity Proof</span>
-                    <p className="text-xs font-bold text-white mt-1">Aadhaar Card / Govt ID</p>
-                    <p className="text-[10px] text-slate-400 mt-0.5">Doc No: {maskDocNumber(requestData.phone)}</p>
-                  </div>
-                  {requestData.aadhaarFile ? (
-                    <button
-                      onClick={() => setPreviewDoc({ url: requestData.aadhaarFile, title: "Aadhaar Card" })}
-                      className="px-3 py-1.5 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/20 rounded-lg text-[10px] font-bold flex items-center gap-1 transition"
-                    >
-                      <Eye size={12} /> View
-                    </button>
-                  ) : (
-                    <span className="text-[10px] font-bold text-slate-500">Not provided</span>
-                  )}
-                </div>
+                <DocumentPreviewCard
+                  title="Aadhaar / ID Proof"
+                  url={requestData.aadhaarUrl || requestData.aadhaarFile}
+                  idNumber={requestData.idNumber ? maskDocNumber(requestData.idNumber) : null}
+                  onPreview={() => setPreviewDoc({ url: requestData.aadhaarUrl || requestData.aadhaarFile, title: "Aadhaar / ID Proof" })}
+                  badge="Govt ID"
+                />
 
-                <div className="p-4 bg-[#0B1220]/60 border border-[#202B45] rounded-xl flex items-center justify-between">
-                  <div>
-                    <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Owner Photograph</span>
-                    <p className="text-xs font-bold text-white mt-1">Profile Photo</p>
-                    <p className="text-[10px] text-slate-400 mt-0.5">Passport Size Image</p>
-                  </div>
-                  {requestData.ownerPhoto ? (
-                    <button
-                      onClick={() => setPreviewDoc({ url: requestData.ownerPhoto, title: "Owner Photo" })}
-                      className="px-3 py-1.5 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/20 rounded-lg text-[10px] font-bold flex items-center gap-1 transition"
-                    >
-                      <Eye size={12} /> View
-                    </button>
-                  ) : (
-                    <span className="text-[10px] font-bold text-slate-500">Not provided</span>
-                  )}
-                </div>
+                <DocumentPreviewCard
+                  title="Owner Photo"
+                  url={requestData.ownerPhotoUrl || requestData.ownerPhoto}
+                  onPreview={() => setPreviewDoc({ url: requestData.ownerPhotoUrl || requestData.ownerPhoto, title: "Owner Photo" })}
+                  badge="Profile"
+                />
               </div>
             </div>
 
@@ -282,22 +262,13 @@ export const RegistrationDetailsDrawer = React.memo(({
                 <h4 className="text-xs font-bold text-white uppercase tracking-wider">Section 4 — Business & License Info</h4>
               </div>
 
-              <div className="p-4 bg-[#0B1220]/60 border border-[#202B45] rounded-xl flex items-center justify-between">
-                <div>
-                  <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Hostel Operating License</span>
-                  <p className="text-xs font-bold text-white mt-1">Trade / Municipal License</p>
-                  <p className="text-[10px] text-slate-400 mt-0.5">Verification status: Pending Review</p>
-                </div>
-                {requestData.licensePhoto ? (
-                  <button
-                    onClick={() => setPreviewDoc({ url: requestData.licensePhoto, title: "License Certificate" })}
-                    className="px-3 py-1.5 bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 border border-purple-500/20 rounded-lg text-[10px] font-bold flex items-center gap-1 transition"
-                  >
-                    <Eye size={12} /> View Document
-                  </button>
-                ) : (
-                  <span className="text-[10px] font-bold text-slate-500">Not provided</span>
-                )}
+              <div>
+                <DocumentPreviewCard
+                  title="Hostel Operating License"
+                  url={requestData.licenseUrl || requestData.licensePhoto}
+                  onPreview={() => setPreviewDoc({ url: requestData.licenseUrl || requestData.licensePhoto, title: "Hostel License Certificate" })}
+                  badge="Trade License"
+                />
               </div>
             </div>
 
@@ -351,20 +322,20 @@ export const RegistrationDetailsDrawer = React.memo(({
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <DocGalleryItem 
-                  title="Owner Photo" 
-                  url={requestData.ownerPhoto} 
-                  onPreview={() => setPreviewDoc({ url: requestData.ownerPhoto, title: "Owner Photo" })}
+                <DocumentPreviewCard
+                  title="Owner Photo"
+                  url={requestData.ownerPhotoUrl || requestData.ownerPhoto}
+                  onPreview={() => setPreviewDoc({ url: requestData.ownerPhotoUrl || requestData.ownerPhoto, title: "Owner Photo" })}
                 />
-                <DocGalleryItem 
-                  title="Aadhaar / ID Proof" 
-                  url={requestData.aadhaarFile} 
-                  onPreview={() => setPreviewDoc({ url: requestData.aadhaarFile, title: "Aadhaar / ID Proof" })}
+                <DocumentPreviewCard
+                  title="Aadhaar / ID Proof"
+                  url={requestData.aadhaarUrl || requestData.aadhaarFile}
+                  onPreview={() => setPreviewDoc({ url: requestData.aadhaarUrl || requestData.aadhaarFile, title: "Aadhaar / ID Proof" })}
                 />
-                <DocGalleryItem 
-                  title="License Photo" 
-                  url={requestData.licensePhoto} 
-                  onPreview={() => setPreviewDoc({ url: requestData.licensePhoto, title: "Hostel License" })}
+                <DocumentPreviewCard
+                  title="License Photo"
+                  url={requestData.licenseUrl || requestData.licensePhoto}
+                  onPreview={() => setPreviewDoc({ url: requestData.licenseUrl || requestData.licensePhoto, title: "Hostel License" })}
                 />
               </div>
             </div>

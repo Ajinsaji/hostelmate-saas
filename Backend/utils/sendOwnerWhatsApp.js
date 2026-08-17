@@ -191,6 +191,11 @@ const formatMessage = ({
   expiryDate,
   loginUrl,
 }) => {
+  const safePlan =
+    !planType || planType === "Pro" || planType === "Basic" || planType === "Enterprise"
+      ? "HostelMate Unified Plan"
+      : planType;
+
   return [
     "✨ Welcome to HostelMate",
     "",
@@ -202,11 +207,12 @@ const formatMessage = ({
     `Username: ${username || "-"}`,
     `Temporary Password: ${tempPassword || "-"}`,
     "",
-    `📦 Subscription Plan: ${planType || "-"}`,
+    `📦 Subscription: ${safePlan}`,
+    "⏳ Trial Period: 30 Days Free",
     `📅 Expiry Date: ${expiryDate || "-"}`,
     "",
     "🌐 Login:",
-    `${loginUrl || ""}`,
+    `${loginUrl || "https://hostelmate-saas.vercel.app/owner/login"}`,
     "",
     "⚠️ Please change your password immediately after login.",
     "",

@@ -3,6 +3,8 @@
 const Communication = require("../models/Communication");
 const SystemSetting = require("../models/SystemSetting");
 const Hostel = require("../models/Hostel");
+const Resident = require("../models/Resident");
+const Owner = require("../models/Owner");
 const { logger } = require("../utils/logger");
 const { validateWhatsAppConfig, verifyMetaWhatsAppConfig } = require("../utils/sendOwnerWhatsApp");
 const { dispatchWhatsAppMessage, TEMPLATES } = require("../services/whatsappService");
@@ -723,16 +725,23 @@ const getPendingCommunicationTasks = async (req, res) => {
       });
     });
 
+    const pendingCount = formattedPendingTasks.length;
     const completedTodayCount = formattedCompletedToday.length;
-    const totalCount = formattedPendingTasks.length + formattedCompletedToday.length;
+    const totalActivityCount = pendingCount + completedTodayCount;
 
     return res.status(200).json({
       success: true,
       concept: "Today's operational activity — pending work and completed Admin actions",
+      summary: {
+        pendingCount,
+        completedTodayCount,
+        totalActivityCount,
+      },
       count: commTasks.length, // Backward compatibility for test suites
-      totalCount,
-      pendingCount: formattedPendingTasks.length,
+      totalCount: totalActivityCount,
+      pendingCount,
       completedCount: completedTodayCount,
+      completedTodayCount,
       categories: {
         rentRemindersCount,
         ownerActivationsCount,

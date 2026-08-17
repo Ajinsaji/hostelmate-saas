@@ -129,10 +129,25 @@ const getAllRequests = async (req, res) => {
       HostelRequest.countDocuments({}),
     ]);
 
+    const { resolveOwnerDocuments, normalizeAssetUrl } = require("../utils/documentResolver");
+    const formattedRequests = requests.map((reqItem) => {
+      const docs = resolveOwnerDocuments(reqItem);
+      return {
+        ...reqItem,
+        ownerPhoto: docs.ownerPhotoUrl || normalizeAssetUrl(reqItem.ownerPhoto) || "",
+        ownerPhotoUrl: docs.ownerPhotoUrl || "",
+        aadhaarFile: docs.aadhaarUrl || normalizeAssetUrl(reqItem.aadhaarFile) || "",
+        aadhaarUrl: docs.aadhaarUrl || "",
+        licensePhoto: docs.licenseUrl || normalizeAssetUrl(reqItem.licensePhoto) || "",
+        licenseUrl: docs.licenseUrl || "",
+        documents: docs,
+      };
+    });
+
     return res.status(200).json({
       success: true,
-      requests,
-      data: requests,
+      requests: formattedRequests,
+      data: formattedRequests,
       pagination: {
         total: totalCount,
         page: pageNum,
@@ -376,10 +391,16 @@ const finalizeHostelActivation = async (req, res) => {
 
     // 5. Subscription Preparation (Idempotent reuse or creation)
     const isTrialMode = isTrial !== undefined ? !!isTrial : true;
-    const normalizedPlanType = planType === "Pro" || planType === "Monthly" || planType === "Yearly" ? "Pro" : (planType || "Unified");
+    const normalizedPlanType = "HostelMate Unified Plan";
     const finalStartDate = startDate ? new Date(startDate) : new Date();
     const finalEndDate = endDate ? new Date(endDate) : new Date(finalStartDate.getTime() + 30 * 24 * 60 * 60 * 1000);
     const subStatus = isTrialMode ? "trial" : "active";
+
+    const months = [
+      "January", "February", "March", "April", "May", "June",
+      "July", "August", "September", "October", "November", "December"
+    ];
+    const formattedExpiryDate = `${finalEndDate.getDate()} ${months[finalEndDate.getMonth()]} ${finalEndDate.getFullYear()}`;
 
     let subscriptionDoc = await Subscription.findOne({ hostelId: hostel._id });
     if (subscriptionDoc) {
@@ -430,7 +451,7 @@ const finalizeHostelActivation = async (req, res) => {
     }
 
     // 6. Generate Temporary Password and Create Owner
-    const tempPassword = `HM${Math.floor(1000 + Math.random() * 9000)}@`;
+    const tempPassword = `HM${Math.floor(1000 + Math.random() * 9000)}@${String.fromCharCode(65 + Math.floor(Math.random() * 26))}${Math.floor(10 + Math.random() * 90)}`;
     const bcryptjs = require("bcryptjs");
     const hashedPassword = await bcryptjs.hash(tempPassword, 10);
 
@@ -532,35 +553,7 @@ const finalizeHostelActivation = async (req, res) => {
     // 9. Construct canonical Owner Login URL
     const loginUrl = `${cleanFrontendBase}/owner/login`;
 
-    // 10. WhatsApp Onboarding Delivery (Isolated & Non-blocking)
-    try {
-      const { sendOwnerOnboarding } = require("../utils/sendOwnerOnboarding");
-      const deliveryResult = await sendOwnerOnboarding({
-        ownerName: hostel.ownerName,
-        hostelName: hostel.hostelName,
-        phone: hostel.phone,
-        username: hostel.phone,
-        tempPassword,
-        planType: hostel.planType,
-        expiryDate: hostel.subscriptionEndDate,
-        qrUrl: hostel.qrCodeUrl,
-        loginUrl,
-      });
-
-      if (deliveryResult?.skipped || deliveryResult?.unconfigured) {
-        createdOwner.credentialDeliveryStatus = "unconfigured";
-        await createdOwner.save();
-      } else if (deliveryResult?.success) {
-        createdOwner.credentialDeliveryStatus = "sent";
-        await createdOwner.save();
-      }
-    } catch (e) {
-      console.error("WhatsApp delivery error during activation (non-blocking):", e?.message || e);
-      createdOwner.credentialDeliveryStatus = "failed";
-      await createdOwner.save().catch(() => {});
-    }
-
-    // 11. EventBus Notification (Isolated & Non-blocking)
+    // 10. Canonical One-Time EventBus Notification & Credential Delivery (Isolated & Non-blocking)
     try {
       const EventBus = require("../services/EventBus");
       EventBus.emit("OWNER_ACCOUNT_ACTIVATED", {
@@ -571,11 +564,17 @@ const finalizeHostelActivation = async (req, res) => {
         hostelName: hostel.hostelName,
         username: createdOwner.phone,
         tempPassword,
-        planType: hostel.planType,
+        planType: "HostelMate Unified Plan",
+        expiryDate: formattedExpiryDate,
         loginUrl,
       });
+
+      createdOwner.credentialDeliveryStatus = "sent";
+      await createdOwner.save();
     } catch (eventErr) {
       console.error("[EventBus] OWNER_ACCOUNT_ACTIVATED emission error (non-blocking):", eventErr?.message);
+      createdOwner.credentialDeliveryStatus = "failed";
+      await createdOwner.save().catch(() => {});
     }
 
     await AuditLog.create({
@@ -587,9 +586,9 @@ const finalizeHostelActivation = async (req, res) => {
       targetId: hostel._id,
       details: {
         hostelName: hostel.hostelName || hostel.name,
-        planType: planType || "Pro",
+        planType: "HostelMate Unified Plan",
         amount: amount || 0,
-        message: `Finalized hostel activation for ${hostel.hostelName || hostel.name} with ${planType || "Pro"} plan`
+        message: `Finalized hostel activation for ${hostel.hostelName || hostel.name} with HostelMate Unified Plan`
       },
       timestamp: new Date()
     }).catch(() => {});

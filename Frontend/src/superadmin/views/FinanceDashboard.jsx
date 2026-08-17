@@ -176,12 +176,12 @@ export const FinanceDashboard = React.memo(() => {
                 <div className="text-[11px] text-slate-400 font-bold mt-1">Trial Hostels</div>
               </div>
               <div className="bg-white/5 p-4 rounded-xl border border-white/5">
-                <div className="text-2xl font-black text-indigo-400">{analytics?.baseSubscribers || 0}</div>
-                <div className="text-[11px] text-slate-400 font-bold mt-1">Base Plan Hostels</div>
+                <div className="text-2xl font-black text-indigo-400">{(analytics?.proSubscribers || 0) + (analytics?.baseSubscribers || 0)}</div>
+                <div className="text-[11px] text-slate-400 font-bold mt-1">Unified Plan Active</div>
               </div>
               <div className="bg-white/5 p-4 rounded-xl border border-white/5">
-                <div className="text-2xl font-black text-emerald-400">{analytics?.proSubscribers || 0}</div>
-                <div className="text-[11px] text-slate-400 font-bold mt-1">Pro Plan Hostels</div>
+                <div className="text-2xl font-black text-emerald-400">{analytics?.freeAccessHostels || 0}</div>
+                <div className="text-[11px] text-slate-400 font-bold mt-1">Comp / Free Access</div>
               </div>
             </div>
             <div className="mt-4 p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-xs text-emerald-300 flex items-center justify-between">

@@ -302,11 +302,11 @@ export default function AdminTasksPage() {
               <div className="p-12 text-center text-slate-400 text-sm flex flex-col items-center justify-center gap-2">
                 <CheckCircle2 size={36} className="text-emerald-400 opacity-80" />
                 <span className="text-white font-bold text-base">
-                  {activeTab === "pending" ? "No Pending Tasks in Queue" : "No Completed Admin Work Logged Yet Today"}
+                  {activeTab === "pending" ? "You're all caught up" : "No Completed Admin Work Logged Yet Today"}
                 </span>
                 <p className="text-slate-400 text-xs max-w-sm">
                   {activeTab === "pending"
-                    ? "All registrations, activations, manual WhatsApp messages, and delivery retries are up to date."
+                    ? "No pending admin actions. All registrations, activations, manual WhatsApp messages, and delivery retries are up to date."
                     : "Admin operations performed today will appear here in chronological order."}
                 </p>
               </div>

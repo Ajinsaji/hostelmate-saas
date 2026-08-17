@@ -17,7 +17,7 @@ export default function CustomerSubscription() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
           <div>
             <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Current Plan</p>
-            <p className="text-sm font-black text-white">{data.subscription.plan || "Pro Plan"}</p>
+            <p className="text-sm font-black text-white">{data.subscription.plan || "HostelMate Unified Plan"}</p>
           </div>
           <div>
             <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Status</p>

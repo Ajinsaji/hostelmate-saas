@@ -80,7 +80,7 @@ const TEMPLATES = {
     name: "Owner Account Activation & Credentials",
     category: "announcement",
     defaultText:
-      "✨ Welcome to HostelMate\n\nHello {{ownerName}},\n\nYour hostel \"{{hostelName}}\" has been successfully activated.\n\n🔐 Login Details\nUsername: {{username}}\nTemporary Password: {{tempPassword}}\n\n📦 Subscription Plan: {{planType}}\n📅 Expiry Date: {{expiryDate}}\n\n🌐 Login:\n{{loginUrl}}\n\n⚠️ Please change your password immediately after login.\n\nThank you for choosing HostelMate ❤️",
+      "✨ Welcome to HostelMate\n\nHello {{ownerName}},\n\nYour hostel \"{{hostelName}}\" has been successfully activated.\n\n🔐 Login Details\nUsername: {{username}}\nTemporary Password: {{tempPassword}}\n\n📦 Subscription: {{planType}}\n⏳ Trial Period: 30 Days Free\n📅 Expiry Date: {{expiryDate}}\n\n🌐 Login:\n{{loginUrl}}\n\n⚠️ Please change your password immediately after login.\n\nThank you for choosing HostelMate ❤️",
     variables: ["ownerName", "hostelName", "username", "tempPassword", "planType", "expiryDate", "loginUrl"],
   },
   GENERAL_ANNOUNCEMENT: {
@@ -92,19 +92,85 @@ const TEMPLATES = {
   },
 };
 
+// Safe date formatter for template dates
+const formatExpiryDate = (d) => {
+  if (!d) return "";
+  try {
+    const dt = new Date(d);
+    if (isNaN(dt.getTime())) return String(d);
+    const months = [
+      "January", "February", "March", "April", "May", "June",
+      "July", "August", "September", "October", "November", "December"
+    ];
+    return `${dt.getDate()} ${months[dt.getMonth()]} ${dt.getFullYear()}`;
+  } catch {
+    return String(d);
+  }
+};
+
 // Compile Handlebars-style template variables
 const compileTemplate = (templateCode, variablesDict = {}, customText = null) => {
   let text = customText;
+  const tpl = TEMPLATES[templateCode] || TEMPLATES.GENERAL_ANNOUNCEMENT;
   if (!text) {
-    const tpl = TEMPLATES[templateCode] || TEMPLATES.GENERAL_ANNOUNCEMENT;
     text = tpl.defaultText;
   }
 
+  const safeVars = { ...variablesDict };
+  if (templateCode === "OWNER_ACCOUNT_ACTIVATED") {
+    if (!safeVars.planType || safeVars.planType === "Pro" || safeVars.planType === "Basic" || safeVars.planType === "Enterprise") {
+      safeVars.planType = "HostelMate Unified Plan";
+    }
+    if (safeVars.expiryDate) {
+      safeVars.expiryDate = formatExpiryDate(safeVars.expiryDate);
+    }
+    if (!safeVars.loginUrl) {
+      safeVars.loginUrl = "https://hostelmate-saas.vercel.app/owner/login";
+    }
+  } else if (templateCode === "RENT_REMINDER") {
+    safeVars.residentName = safeVars.residentName || "Resident";
+    safeVars.amount = safeVars.amount || "0";
+    safeVars.month = safeVars.month || "Current Month";
+    safeVars.dueDate = safeVars.dueDate || "Due Date";
+    safeVars.hostelName = safeVars.hostelName || "Hostel";
+    safeVars.roomNumber = safeVars.roomNumber || "-";
+  } else if (templateCode === "PAYMENT_RECEIVED") {
+    safeVars.residentName = safeVars.residentName || "Resident";
+    safeVars.amount = safeVars.amount || "0";
+    safeVars.month = safeVars.month || "Current Month";
+    safeVars.balance = safeVars.balance || "0";
+    safeVars.hostelName = safeVars.hostelName || "Hostel";
+    safeVars.receiptNo = safeVars.receiptNo || "REC-001";
+  } else if (templateCode === "ADMISSION_APPROVED") {
+    safeVars.residentName = safeVars.residentName || "Resident";
+    safeVars.hostelName = safeVars.hostelName || "Hostel";
+    safeVars.roomNumber = safeVars.roomNumber || "-";
+    safeVars.bedNumber = safeVars.bedNumber || "-";
+  } else if (templateCode === "ROOM_ASSIGNED") {
+    safeVars.residentName = safeVars.residentName || "Resident";
+    safeVars.roomNumber = safeVars.roomNumber || "-";
+    safeVars.bedNumber = safeVars.bedNumber || "-";
+    safeVars.hostelName = safeVars.hostelName || "Hostel";
+    safeVars.monthlyRent = safeVars.monthlyRent || "0";
+  } else if (templateCode === "CHECKOUT_CLEARANCE") {
+    safeVars.residentName = safeVars.residentName || "Resident";
+    safeVars.hostelName = safeVars.hostelName || "Hostel";
+    safeVars.actualCheckoutDate = safeVars.actualCheckoutDate || "Today";
+  }
+
   let compiled = text;
-  Object.keys(variablesDict).forEach((key) => {
+  Object.keys(safeVars).forEach((key) => {
     const regex = new RegExp(`{{\\s*${key}\\s*}}`, "g");
-    compiled = compiled.replace(regex, variablesDict[key] !== undefined && variablesDict[key] !== null ? String(variablesDict[key]) : "");
+    const val = safeVars[key] !== undefined && safeVars[key] !== null ? String(safeVars[key]) : "";
+    compiled = compiled.replace(regex, val);
   });
+
+  // Safety check: ensure no unresolved {{...}} tags remain
+  if (/{{\s*[\w.-]+\s*}}/.test(compiled)) {
+    const unresolved = compiled.match(/{{\s*[\w.-]+\s*}}/g);
+    throw new Error(`Template compilation failed: Unresolved template variables remaining: ${unresolved?.join(", ")}`);
+  }
+
   return compiled;
 };
 
@@ -143,10 +209,15 @@ const resolveAutomationMode = async (hostelId = null, category = "rent") => {
     const cat = (category || "").toLowerCase();
     let typeEnabled = true;
 
-    if (cat.includes("rent")) typeEnabled = cfg.rentRemindersEnabled !== false;
-    else if (cat.includes("pay")) typeEnabled = cfg.paymentReceiptsEnabled !== false;
-    else if (cat.includes("admis") || cat.includes("room")) typeEnabled = cfg.admissionMessagesEnabled !== false;
-    else if (cat.includes("announc") || cat.includes("owner") || cat.includes("checkout")) typeEnabled = cfg.announcementsEnabled !== false;
+    if (cat === "rent") {
+      typeEnabled = cfg.rentRemindersEnabled !== false;
+    } else if (cat === "payment") {
+      typeEnabled = cfg.paymentReceiptsEnabled !== false;
+    } else if (cat === "admission") {
+      typeEnabled = cfg.admissionMessagesEnabled !== false;
+    } else if (cat === "announcement") {
+      typeEnabled = cfg.announcementsEnabled !== false;
+    }
 
     if (!typeEnabled) {
       return { mode: "manual_wame", isAutomatic: false, reason: `Message category '${category}' is disabled for this hostel` };
@@ -197,6 +268,14 @@ const dispatchWhatsAppMessage = async ({
   const tplCategory = (TEMPLATES[templateCode] || TEMPLATES.GENERAL_ANNOUNCEMENT).category;
   const messageText = compileTemplate(templateCode, variables, customMessage);
 
+  // Redacted variables & message text for safe MongoDB storage (Security Boundary)
+  const sanitizedVariables = { ...variables };
+  if (sanitizedVariables.tempPassword && sanitizedVariables.tempPassword !== "[Controlled Activation Credential]") {
+    sanitizedVariables.tempPassword = "[Controlled Activation Credential]";
+  }
+  const sanitizedMessageText = compileTemplate(templateCode, sanitizedVariables, customMessage);
+  const sanitizedWaMeUrl = buildWaMeUrl(normalizedPhone, sanitizedMessageText);
+
   // 1. Resolve Automation Mode via Precedence Engine
   const { mode, isAutomatic, reason } = await resolveAutomationMode(hostelId, tplCategory);
 
@@ -216,7 +295,7 @@ const dispatchWhatsAppMessage = async ({
 
   // 3. MANUAL MODE HANDLING
   if (!isAutomatic) {
-    const waMeUrl = buildWaMeUrl(normalizedPhone, messageText);
+    const liveWaMeUrl = buildWaMeUrl(normalizedPhone, messageText);
     const commRecord = await Communication.create({
       hostelId,
       ownerId,
@@ -227,13 +306,13 @@ const dispatchWhatsAppMessage = async ({
       recipientType,
       templateCode,
       subject: (TEMPLATES[templateCode] || {}).name || "WhatsApp Message",
-      message: messageText,
+      message: sanitizedMessageText,
       mode: "manual_wame",
       status: "pending_manual",
       businessEvent,
       referenceId,
-      waMeUrl,
-      metadata: { precedenceReason: reason, variables },
+      waMeUrl: sanitizedWaMeUrl,
+      metadata: { precedenceReason: reason, variables: sanitizedVariables },
       createdBy,
     });
 
@@ -241,7 +320,7 @@ const dispatchWhatsAppMessage = async ({
       success: true,
       mode: "manual_wame",
       status: "pending_manual",
-      waMeUrl,
+      waMeUrl: liveWaMeUrl,
       messageText,
       communicationId: commRecord._id,
       reason,
@@ -251,7 +330,7 @@ const dispatchWhatsAppMessage = async ({
   // 4. AUTOMATIC MODE HANDLING (Meta API)
   const metaConfig = validateWhatsAppConfig();
 
-  // Create initial queued record
+  // Create initial queued record with sanitized password
   const commRecord = await Communication.create({
     hostelId,
     ownerId,
@@ -262,14 +341,14 @@ const dispatchWhatsAppMessage = async ({
     recipientType,
     templateCode,
     subject: (TEMPLATES[templateCode] || {}).name || "WhatsApp Message",
-    message: messageText,
+    message: sanitizedMessageText,
     mode: "meta_api",
     status: metaConfig.isConfigured ? "queued" : "unconfigured",
     businessEvent,
     referenceId,
     attemptCount: 1,
     failureReason: metaConfig.isConfigured ? "" : metaConfig.reason,
-    metadata: { precedenceReason: reason, variables },
+    metadata: { precedenceReason: reason, variables: sanitizedVariables },
     createdBy,
   });
 
@@ -295,7 +374,7 @@ const dispatchWhatsAppMessage = async ({
       hostelName: variables.hostelName || "",
       username: variables.username || "",
       tempPassword: variables.tempPassword || "",
-      planType: variables.planType || "",
+      planType: variables.planType || "HostelMate Unified Plan",
       expiryDate: variables.expiryDate || "",
       loginUrl: variables.loginUrl || "",
     });

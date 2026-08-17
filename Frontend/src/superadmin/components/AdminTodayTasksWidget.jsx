@@ -171,12 +171,12 @@ export default function AdminTodayTasksWidget({ onRefreshTrigger }) {
           <div>
             <div className="flex items-center gap-2">
               <h3 className="text-sm font-bold text-white uppercase tracking-wider">Today's Tasks</h3>
-              <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 font-extrabold text-xs">
+              <span className="px-2.5 py-0.5 rounded-full bg-amber-500/20 border border-amber-500/30 text-amber-300 font-extrabold text-xs">
                 {pendingCount} Pending
               </span>
               {completedCount > 0 && (
-                <span className="px-2 py-0.5 rounded-full bg-slate-800 border border-slate-700 text-slate-300 font-bold text-[11px] hidden sm:inline">
-                  {completedCount} Done Today
+                <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 font-bold text-[11px] hidden sm:inline">
+                  {completedCount} Completed Today
                 </span>
               )}
             </div>
@@ -234,47 +234,64 @@ export default function AdminTodayTasksWidget({ onRefreshTrigger }) {
         {/* Category Filters */}
         <div className="flex items-center gap-1.5 overflow-x-auto text-xs py-1">
           <button
-            onClick={() => setActiveCategoryFilter("all")}
-            className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition cursor-pointer ${
-              activeCategoryFilter === "all"
-                ? "bg-white/20 text-white"
-                : "bg-transparent text-slate-400 hover:text-white"
+            onClick={() => setCategoryFilter("all")}
+            className={`px-2.5 py-1 rounded-lg font-bold transition cursor-pointer text-[11px] ${
+              categoryFilter === "all"
+                ? "bg-white/10 text-white"
+                : "text-slate-400 hover:text-slate-200"
             }`}
           >
             All
           </button>
           <button
-            onClick={() => setActiveCategoryFilter("whatsapp")}
-            className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition cursor-pointer flex items-center gap-1 ${
-              activeCategoryFilter === "whatsapp"
-                ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
-                : "bg-transparent text-slate-400 hover:text-emerald-300"
-            }`}
-          >
-            <Smartphone size={12} />
-            WhatsApp
-          </button>
-          <button
-            onClick={() => setActiveCategoryFilter("registration")}
-            className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition cursor-pointer flex items-center gap-1 ${
-              activeCategoryFilter === "registration"
+            onClick={() => setCategoryFilter("registration")}
+            className={`px-2.5 py-1 rounded-lg font-bold transition cursor-pointer text-[11px] ${
+              categoryFilter === "registration"
                 ? "bg-blue-500/20 text-blue-300 border border-blue-500/30"
-                : "bg-transparent text-slate-400 hover:text-blue-300"
+                : "text-slate-400 hover:text-slate-200"
             }`}
           >
-            <Building size={12} />
-            Registrations
+            Registrations ({categories.pendingRegistrationsCount || 0})
           </button>
           <button
-            onClick={() => setActiveCategoryFilter("subscription_payment")}
-            className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition cursor-pointer flex items-center gap-1 ${
-              activeCategoryFilter === "subscription_payment"
-                ? "bg-purple-500/20 text-purple-300 border border-purple-500/30"
-                : "bg-transparent text-slate-400 hover:text-purple-300"
+            onClick={() => setCategoryFilter("activation")}
+            className={`px-2.5 py-1 rounded-lg font-bold transition cursor-pointer text-[11px] ${
+              categoryFilter === "activation"
+                ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
+                : "text-slate-400 hover:text-slate-200"
             }`}
           >
-            <CreditCard size={12} />
-            Billing
+            Activations ({categories.pendingActivationsCount || 0})
+          </button>
+          <button
+            onClick={() => setCategoryFilter("subscription")}
+            className={`px-2.5 py-1 rounded-lg font-bold transition cursor-pointer text-[11px] ${
+              categoryFilter === "subscription"
+                ? "bg-purple-500/20 text-purple-300 border border-purple-500/30"
+                : "text-slate-400 hover:text-slate-200"
+            }`}
+          >
+            Subscriptions ({categories.pendingSubscriptionsCount || 0})
+          </button>
+          <button
+            onClick={() => setCategoryFilter("whatsapp")}
+            className={`px-2.5 py-1 rounded-lg font-bold transition cursor-pointer text-[11px] ${
+              categoryFilter === "whatsapp"
+                ? "bg-blue-500/20 text-blue-300 border border-blue-500/30"
+                : "text-slate-400 hover:text-slate-200"
+            }`}
+          >
+            WhatsApp ({(categories.rentRemindersCount || 0) + (categories.ownerActivationsCount || 0) + (categories.paymentConfirmationsCount || 0)})
+          </button>
+          <button
+            onClick={() => setCategoryFilter("failed")}
+            className={`px-2.5 py-1 rounded-lg font-bold transition cursor-pointer text-[11px] ${
+              categoryFilter === "failed"
+                ? "bg-rose-500/20 text-rose-300 border border-rose-500/30"
+                : "text-slate-400 hover:text-slate-200"
+            }`}
+          >
+            Failed ({categories.failedDeliveriesCount || 0})
           </button>
         </div>
       </div>
@@ -290,11 +307,11 @@ export default function AdminTodayTasksWidget({ onRefreshTrigger }) {
           <div className="p-8 text-center text-slate-400 text-xs flex flex-col items-center justify-center gap-2">
             <CheckCircle2 size={32} className="text-emerald-400 opacity-70" />
             <span className="text-white font-bold text-sm">
-              {activeTab === "pending" ? "All Caught Up!" : "No Completed Admin Actions Logged Yet Today"}
+              {activeTab === "pending" ? "You're all caught up" : "No Completed Admin Actions Logged Yet Today"}
             </span>
             <p className="text-slate-400 max-w-sm text-xs">
               {activeTab === "pending"
-                ? "There are no pending registrations, activations, WhatsApp messages, or billing items requiring attention."
+                ? "No pending admin actions. All registrations, activations, WhatsApp messages, and billing items are up to date."
                 : "Completed hostel approvals, activations, WhatsApp dispatches, and security actions for today will appear here."}
             </p>
           </div>
