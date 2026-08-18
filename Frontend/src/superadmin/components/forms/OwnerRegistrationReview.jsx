@@ -1,5 +1,5 @@
 import React from "react";
-import { User, Shield, Building2, FileCheck, CheckCircle2, AlertTriangle, Eye, Info } from "lucide-react";
+import { User, Shield, Building2, FileCheck, CheckCircle2, AlertTriangle, Info, Loader2 } from "lucide-react";
 
 export const OwnerRegistrationReview = ({
   formData,
@@ -18,7 +18,8 @@ export const OwnerRegistrationReview = ({
 
   return (
     <div className="space-y-6">
-      <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-2xl p-4 flex items-start gap-3 text-xs text-emerald-300">
+      {/* Canonical Lifecycle Banner */}
+      <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-2xl p-4 flex items-start gap-3 text-xs text-emerald-300 shadow-md">
         <Info size={18} className="shrink-0 mt-0.5 text-emerald-400" />
         <div>
           <span className="font-bold block text-white mb-0.5">Canonical Registration Lifecycle</span>
@@ -27,7 +28,7 @@ export const OwnerRegistrationReview = ({
       </div>
 
       {error && (
-        <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-4 flex items-center gap-3 text-xs text-red-300">
+        <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-4 flex items-center gap-3 text-xs text-red-300 shadow-md">
           <AlertTriangle size={18} className="shrink-0 text-[#EF4444]" />
           <span>{error}</span>
         </div>
@@ -36,7 +37,7 @@ export const OwnerRegistrationReview = ({
       {/* Summary Cards Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Owner Details Card */}
-        <div className="bg-[#0B1220] border border-[#202B45] rounded-2xl p-5 space-y-4">
+        <div className="bg-[#0B1220] border border-[#202B45] rounded-2xl p-5 space-y-4 shadow-md">
           <div className="flex items-center gap-2 text-xs font-bold text-emerald-400 uppercase tracking-wider border-b border-[#202B45] pb-3">
             <User size={16} /> Owner Information
           </div>
@@ -65,7 +66,7 @@ export const OwnerRegistrationReview = ({
         </div>
 
         {/* Identity & KYC Card */}
-        <div className="bg-[#0B1220] border border-[#202B45] rounded-2xl p-5 space-y-4">
+        <div className="bg-[#0B1220] border border-[#202B45] rounded-2xl p-5 space-y-4 shadow-md">
           <div className="flex items-center gap-2 text-xs font-bold text-emerald-400 uppercase tracking-wider border-b border-[#202B45] pb-3">
             <Shield size={16} /> Identity & KYC Verification
           </div>
@@ -100,7 +101,7 @@ export const OwnerRegistrationReview = ({
         </div>
 
         {/* Hostel Details Card */}
-        <div className="bg-[#0B1220] border border-[#202B45] rounded-2xl p-5 space-y-4 md:col-span-2">
+        <div className="bg-[#0B1220] border border-[#202B45] rounded-2xl p-5 space-y-4 md:col-span-2 shadow-md">
           <div className="flex items-center gap-2 text-xs font-bold text-emerald-400 uppercase tracking-wider border-b border-[#202B45] pb-3">
             <Building2 size={16} /> Hostel & Facility Information
           </div>
@@ -134,7 +135,7 @@ export const OwnerRegistrationReview = ({
       </div>
 
       {/* Uploaded Documents Checklist */}
-      <div className="bg-[#0B1220] border border-[#202B45] rounded-2xl p-5 space-y-3">
+      <div className="bg-[#0B1220] border border-[#202B45] rounded-2xl p-5 space-y-3 shadow-md">
         <div className="flex items-center justify-between border-b border-[#202B45] pb-3">
           <span className="text-xs font-bold text-slate-200 uppercase tracking-wider flex items-center gap-2">
             <FileCheck size={16} className="text-emerald-400" /> Document Checklist
@@ -151,13 +152,13 @@ export const OwnerRegistrationReview = ({
           ].map((item, idx) => (
             <div
               key={idx}
-              className={`p-3 rounded-xl border flex items-center gap-2 text-xs font-medium ${
+              className={`p-3 rounded-xl border flex items-center gap-2 text-xs font-medium transition ${
                 item.present
                   ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-300"
                   : "bg-white/5 border-white/10 text-slate-400"
               }`}
             >
-              <CheckCircle2 size={16} className={item.present ? "text-emerald-400" : "text-slate-600"} />
+              <CheckCircle2 size={16} className={item.present ? "text-emerald-400 stroke-[2.5]" : "text-slate-600"} />
               <span className="truncate">{item.label}</span>
             </div>
           ))}
@@ -172,7 +173,13 @@ export const OwnerRegistrationReview = ({
           disabled={loading}
           className="w-full py-4 px-6 rounded-2xl font-bold text-sm text-white bg-emerald-500 hover:bg-emerald-600 shadow-xl shadow-emerald-500/20 transition disabled:opacity-50 flex items-center justify-center gap-2 min-h-[52px]"
         >
-          {loading ? "Submitting Registration..." : "Submit Owner Registration"}
+          {loading ? (
+            <>
+              <Loader2 size={18} className="animate-spin text-white" /> Submitting Registration Request...
+            </>
+          ) : (
+            "Submit Owner Registration Request"
+          )}
         </button>
       </div>
     </div>
