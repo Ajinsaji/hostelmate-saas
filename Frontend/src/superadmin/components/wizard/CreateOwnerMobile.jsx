@@ -102,6 +102,13 @@ export const CreateOwnerMobile = ({
             ))}
           </div>
         )}
+
+        {/* Compact Branding */}
+        <div className="text-center pt-0.5">
+          <p className="text-[9px] text-slate-400 tracking-wide">
+            Powered by <strong className="text-emerald-400">BetaMind Tech Solutions</strong> • HostelMate SaaS
+          </p>
+        </div>
       </div>
 
       {/* Main Scrollable Content Area */}

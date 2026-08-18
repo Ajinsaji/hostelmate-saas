@@ -1,5 +1,4 @@
 import axios from "axios";
-
 import toast from "react-hot-toast";
 
 const apiBaseURL = import.meta.env.VITE_API_URL || "https://hostelmate-saas-1.onrender.com";
@@ -48,7 +47,7 @@ const PUBLIC_PATHS = new Set([
   "/pending-approval",
 ]);
 
-const isPublicPath = (pathname) => {
+export const isPublicPath = (pathname) => {
   if (!pathname) return false;
   if (PUBLIC_PATHS.has(pathname)) return true;
   if (pathname.startsWith("/h/")) return true; // public hostel pages
@@ -56,6 +55,7 @@ const isPublicPath = (pathname) => {
   if (pathname.startsWith("/request-status")) return true;
   if (pathname.startsWith("/request-tracking")) return true;
   if (pathname.startsWith("/track-request")) return true;
+  if (pathname.startsWith("/application-status")) return true;
   return false;
 };
 
@@ -76,7 +76,7 @@ const PUBLIC_API_PATTERNS = [
  * Used to suppress spurious "AUTH REDIRECT TRIGGERED" noise and prevent
  * redirect-to-login when a public endpoint responds with 401.
  */
-const isPublicApiUrl = (url) => {
+export const isPublicApiUrl = (url) => {
   if (!url) return false;
   return PUBLIC_API_PATTERNS.some((pattern) => url.includes(pattern));
 };
@@ -100,13 +100,9 @@ const redirectToLogin = (path) => {
 // Detect admin context for redirect decisions.
 const isAdminContext = () => window.location.pathname.startsWith("/admin");
 
-
-
-
 import { getDeviceId } from "../utils/authToken";
 
 api.interceptors.request.use(
-
   (config) => {
     config.headers = config.headers || {};
 
@@ -127,20 +123,13 @@ api.interceptors.request.use(
       requestUrl.includes("/api/admin") || isAdminContext();
 
     // Admin and owner tokens must not cross-redirect each other.
-    // Admin requests should only ever read adminToken.
-    // Fallback to generic token keys if adminToken is missing (prevents Authorization: Missing).
     const token = isAdminRequest
       ? localStorage.getItem("adminToken") || localStorage.getItem("token")
       : localStorage.getItem("ownerToken") || localStorage.getItem("token");
 
-
     const authorizationHeaderExists = !!config.headers?.Authorization;
     const method = (config.method || "").toUpperCase();
 
-    // [API REQUEST]
-    // Only log a prefix of the token (never the full JWT)
-    // NOTE: we log both whether an Authorization header exists *before* we set it,
-    // and whether a token exists in localStorage.
     if (import.meta.env.DEV) {
       console.log("[API REQUEST]", {
         Method: method,
@@ -153,6 +142,10 @@ api.interceptors.request.use(
 
     if (token) {
       if (isTokenExpired(token)) {
+        // If current API endpoint is public or current route is public, do NOT trigger token expiry redirect
+        if (isPublicApiUrl(requestUrl) || isPublicPath(window.location.pathname)) {
+          return config;
+        }
         if (isAdminRequest) {
           localStorage.removeItem("adminToken");
           redirectToLogin("/admin/login");
@@ -190,19 +183,17 @@ api.interceptors.response.use(
       const message = responseBody?.message || "";
 
       // If subscription is expired, do not clear tokens or redirect to login.
-      // The OwnerProtectedRoute will handle redirection to /subscription-expired.
       if (code === "SUBSCRIPTION_EXPIRED" || message === "Subscription expired") {
         return Promise.reject(error);
       }
 
-      // ── Public API endpoints never require auth tokens ──────────────────────
-      // A 401 from a public registration or pincode endpoint must NOT trigger
-      // an auth redirect or flood the console with misleading auth-redirect logs.
-      if (isPublicApiUrl(requestUrl)) {
+      // ── Public API endpoints and public routes never force auth redirects ───
+      // A 401 from a public API or on a public route must NOT trigger auth redirect
+      // or flood the console with misleading auth-redirect logs.
+      if (isPublicApiUrl(requestUrl) || isPublicPath(window.location.pathname)) {
         if (import.meta.env.DEV) {
-          console.warn("[API] 401 on public endpoint (no auth required):", requestUrl);
+          console.warn("[API] 401 on public endpoint or route (no auth required):", requestUrl);
         }
-        // Pass the error through so the caller can handle it normally.
         return Promise.reject(error);
       }
 
@@ -223,7 +214,7 @@ api.interceptors.response.use(
         "(no message)";
 
       // ***** AUTH REDIRECT TRIGGERED *****
-      // Only logged for genuinely authenticated endpoints that returned 401.
+      // Only logged for genuinely authenticated endpoints on protected routes that returned 401.
       console.log("***** AUTH REDIRECT TRIGGERED *****", {
         Request: {
           Method: method,
@@ -234,7 +225,6 @@ api.interceptors.response.use(
         "Current Route": window.location.pathname,
         "Token Exists": !!localStorage.getItem("ownerToken"),
         "Owner Exists": !!localStorage.getItem("ownerUser"),
-        // Keep existing redirect logic unchanged.
       });
 
       if (isAdminRequest) {
@@ -250,5 +240,3 @@ api.interceptors.response.use(
     return Promise.reject(error);
   }
 );
-
-

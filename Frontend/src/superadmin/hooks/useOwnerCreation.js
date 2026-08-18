@@ -189,11 +189,19 @@ export function useOwnerCreation(initialMode = "admin") {
         setSubmittedResult(response.data);
         setStep(5); // Success step
       } else {
-        setError(response.data?.message || "Failed to create registration request.");
+        const is413 = response.data?.code === "FILE_TOO_LARGE";
+        const msg = is413
+          ? "One or more uploaded files are too large. Please compress the image or choose a smaller file."
+          : response.data?.message || "Failed to create registration request.";
+        setError(msg);
       }
     } catch (err) {
       console.error("submitRegistration error:", err);
-      setError(err.response?.data?.message || err.message || "Failed to submit registration request.");
+      const is413 = err.response?.status === 413 || err.response?.data?.code === "FILE_TOO_LARGE";
+      const msg = is413
+        ? "One or more uploaded files are too large. Please compress the image or choose a smaller file."
+        : err.response?.data?.message || err.message || "Failed to submit registration request.";
+      setError(msg);
     } finally {
       setLoading(false);
     }

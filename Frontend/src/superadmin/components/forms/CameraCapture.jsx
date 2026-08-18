@@ -1,6 +1,7 @@
 import React, { useEffect } from "react";
 import { Camera, RefreshCw, X, Check, Upload, AlertCircle, Image as ImageIcon } from "lucide-react";
 import useCameraCapture from "../../hooks/useCameraCapture";
+import { compressImage } from "../../../utils/imageCompressor";
 
 export const CameraCapture = ({
   isOpen,
@@ -40,10 +41,11 @@ export const CameraCapture = ({
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
-      reader.onload = (evt) => {
+      reader.onload = async (evt) => {
         const result = evt.target?.result;
         if (result) {
-          setCapturedImage(result);
+          const compressed = await compressImage(result, 1200, 0.8);
+          setCapturedImage(compressed || result);
           stopCamera();
         }
       };
@@ -123,18 +125,27 @@ export const CameraCapture = ({
               <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center mx-auto">
                 <AlertCircle size={24} />
               </div>
-              <p className="text-xs text-slate-300 leading-relaxed">
-                {error || "Camera stream unavailable. Please upload an image file instead."}
+              <p className="text-xs text-slate-300 leading-relaxed font-medium">
+                {permissionDenied ? "Camera access was not granted." : error || "Camera stream unavailable."}
               </p>
-              <label className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold text-white bg-blue-600 hover:bg-blue-500 cursor-pointer shadow-lg shadow-blue-500/20 transition min-h-[44px]">
-                <Upload size={16} /> Choose File from Device
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleFileUpload}
-                  className="hidden"
-                />
-              </label>
+              <div className="flex items-center justify-center gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => startCamera(facingMode)}
+                  className="px-4 py-2.5 rounded-xl text-xs font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 hover:bg-emerald-500/20 transition min-h-[44px]"
+                >
+                  Try Again
+                </button>
+                <label className="px-4 py-2.5 rounded-xl text-xs font-bold text-white bg-blue-600 hover:bg-blue-500 cursor-pointer shadow-lg shadow-blue-500/20 transition min-h-[44px] flex items-center gap-1.5">
+                  <Upload size={14} /> Upload Photo Instead
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleFileUpload}
+                    className="hidden"
+                  />
+                </label>
+              </div>
             </div>
           )}
         </div>
@@ -184,12 +195,12 @@ export const CameraCapture = ({
               </label>
             </>
           ) : (
-            <div className="w-full flex justify-between">
+            <div className="w-full flex justify-between items-center">
               <button
                 onClick={() => startCamera(facingMode)}
                 className="py-2.5 px-4 rounded-xl text-xs font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 hover:bg-emerald-500/20 transition"
               >
-                Try Camera Again
+                Try Again
               </button>
               <button
                 onClick={() => {

@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
+import { compressImage } from "../../utils/imageCompressor";
 
 export function useCameraCapture({ defaultFacingMode = "user" } = {}) {
   const [isActive, setIsActive] = useState(false);
@@ -61,13 +62,22 @@ export function useCameraCapture({ defaultFacingMode = "user" } = {}) {
       setFacingMode(mode);
       return true;
     } catch (err) {
-      console.warn("useCameraCapture error:", err);
-      if (err.name === "NotAllowedError" || err.name === "PermissionDeniedError") {
+      // Gracefully handle permission dismissal & hardware availability without console error spam
+      if (err.name === "NotAllowedError" || err.name === "PermissionDeniedError" || err.name === "PermissionDismissedError") {
         setPermissionDenied(true);
-        setError("Camera permission was denied.");
+        setError("Camera access was not granted.");
+      } else if (err.name === "NotFoundError" || err.name === "DevicesNotFoundError") {
+        setHasCamera(false);
+        setError("No camera device was found.");
+      } else if (err.name === "NotReadableError" || err.name === "TrackStartError") {
+        setHasCamera(false);
+        setError("Camera is currently in use by another application.");
+      } else if (err.name === "SecurityError") {
+        setHasCamera(false);
+        setError("Camera access restricted due to security settings.");
       } else {
         setHasCamera(false);
-        setError("Camera unavailable. You can upload an image instead.");
+        setError("Camera access was not granted.");
       }
       setIsActive(false);
       return false;
@@ -79,7 +89,7 @@ export function useCameraCapture({ defaultFacingMode = "user" } = {}) {
     startCamera(nextMode);
   }, [facingMode, startCamera]);
 
-  const captureFrame = useCallback(() => {
+  const captureFrame = useCallback(async () => {
     if (!videoRef.current) return null;
 
     const video = videoRef.current;
@@ -97,17 +107,21 @@ export function useCameraCapture({ defaultFacingMode = "user" } = {}) {
     }
 
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-    const dataUrl = canvas.toDataURL("image/jpeg", 0.85);
+    const rawDataUrl = canvas.toDataURL("image/jpeg", 0.85);
 
     // Validate captured frame basic quality
-    if (!dataUrl || dataUrl.length < 500) {
+    if (!rawDataUrl || rawDataUrl.length < 500) {
       setError("Image looks blurry or empty. Please retake photo.");
       return null;
     }
 
-    setCapturedImage(dataUrl);
+    // Compress image to prevent giant payloads
+    const compressed = await compressImage(rawDataUrl, 1200, 0.8);
+    const finalImage = compressed || rawDataUrl;
+
+    setCapturedImage(finalImage);
     stopCamera();
-    return dataUrl;
+    return finalImage;
   }, [facingMode, stopCamera]);
 
   const retake = useCallback(() => {

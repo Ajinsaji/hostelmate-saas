@@ -1,7 +1,7 @@
 import React, { useState } from "react";
-import { motion } from "framer-motion";
 import { Camera, Upload, Check, Eye, Trash2, Shield, FileText } from "lucide-react";
 import CameraCapture from "./CameraCapture";
+import { compressImage } from "../../../utils/imageCompressor";
 
 export const DocumentCapture = ({
   idType,
@@ -19,11 +19,13 @@ export const DocumentCapture = ({
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
-      reader.onload = (evt) => {
+      reader.onload = async (evt) => {
         const result = evt.target?.result;
         if (result) {
-          if (side === "front") setFrontDoc(result);
-          if (side === "back") setBackDoc(result);
+          const compressed = await compressImage(result, 1200, 0.8);
+          const finalDoc = compressed || result;
+          if (side === "front") setFrontDoc(finalDoc);
+          if (side === "back") setBackDoc(finalDoc);
         }
       };
       reader.readAsDataURL(file);

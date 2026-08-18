@@ -14,7 +14,30 @@ const getApiBaseUrl = () => {
   return import.meta.env.VITE_API_URL || "https://hostelmate-saas-1.onrender.com";
 };
 
+const PUBLIC_PATHS = new Set([
+  "/",
+  "/login",
+  "/owner/login",
+  "/admin-login",
+  "/admin/login",
+  "/register",
+  "/request-status",
+  "/request-tracking",
+  "/track-request",
+  "/application-status",
+  "/pending-approval",
+]);
+
+const isPublicRoutePath = (pathname) => {
+  if (!pathname) return false;
+  if (PUBLIC_PATHS.has(pathname)) return true;
+  if (pathname.startsWith("/h/") || pathname.startsWith("/hostel/")) return true;
+  if (pathname.startsWith("/request-")) return true;
+  return false;
+};
+
 const redirectToLogin = () => {
+  if (isPublicRoutePath(window.location.pathname)) return;
   try {
     if (window.location.pathname.startsWith("/admin")) {
       window.location.assign("/admin/login");
@@ -65,13 +88,15 @@ export const apiFetch = async (url, options = {}) => {
     : `${baseUrl.replace(/\/+$/, "")}/${url.replace(/^\/+/, "")}`;
 
   const isAdminRoute = resolvedUrl.includes("/api/admin") || window.location.pathname.startsWith("/admin");
+  const isPublicApi = resolvedUrl.includes("/api/request/") || resolvedUrl.includes("/api/public/");
+
   const authToken = isAdminRoute
     ? localStorage.getItem("adminToken") || localStorage.getItem("token")
     : getAuthToken();
 
   const headers = {
     ...(options.headers || {}),
-    ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+    ...(!isPublicApi && authToken ? { Authorization: `Bearer ${authToken}` } : {}),
   };
 
   const fetchOptions = {
@@ -79,7 +104,6 @@ export const apiFetch = async (url, options = {}) => {
     headers,
   };
 
-  // If body is plain object and caller forgot JSON header, handle JSON serialization.
   if (fetchOptions.body && typeof fetchOptions.body === "object" && !(fetchOptions.body instanceof FormData)) {
     if (!headers["Content-Type"]) {
       fetchOptions.headers["Content-Type"] = "application/json";
@@ -90,12 +114,14 @@ export const apiFetch = async (url, options = {}) => {
   const res = await fetch(resolvedUrl, fetchOptions);
 
   if (res.status === 401) {
-    if (!isAdminRoute) {
-      clearAuth();
-    } else {
-      localStorage.removeItem("adminToken");
+    if (!isPublicApi && !isPublicRoutePath(window.location.pathname)) {
+      if (!isAdminRoute) {
+        clearAuth();
+      } else {
+        localStorage.removeItem("adminToken");
+      }
+      redirectToLogin();
     }
-    redirectToLogin();
     throw new ApiError("Session expired or unauthorized", 401, "UNAUTHORIZED");
   }
 
