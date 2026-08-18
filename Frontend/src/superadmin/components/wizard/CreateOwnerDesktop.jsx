@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { CheckCircle2, ChevronRight, ChevronLeft, Camera, User, Building2, Shield, FileCheck, Check, Clock } from "lucide-react";
+import { CheckCircle2, ChevronRight, ChevronLeft, Camera, User, Building2, Shield, FileCheck, Check, Clock, MapPin, Search } from "lucide-react";
 import DocumentCapture from "../forms/DocumentCapture";
 import OwnerRegistrationReview from "../forms/OwnerRegistrationReview";
 import CameraCapture from "../forms/CameraCapture";
@@ -17,6 +17,9 @@ export const CreateOwnerDesktop = ({
   step,
   formData,
   updateFormData,
+  handlePincodeChange,
+  pincodeLoading,
+  pincodeStatus,
   nextStep,
   prevStep,
   submitRegistration,
@@ -25,10 +28,20 @@ export const CreateOwnerDesktop = ({
   submittedResult,
 }) => {
   const [isSelfieCameraOpen, setIsSelfieCameraOpen] = useState(false);
+  const navigate = useNavigate();
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     updateFormData({ [name]: value });
+  };
+
+  const onPincodeInput = (e, target = "hostel") => {
+    const val = e.target.value;
+    if (handlePincodeChange) {
+      handlePincodeChange(val, target);
+    } else {
+      handleChange(e);
+    }
   };
 
   return (
@@ -40,43 +53,45 @@ export const CreateOwnerDesktop = ({
             HM
           </div>
           <div>
-            <h2 className="text-sm font-bold text-white">HostelMate Enterprise Owner Registration</h2>
+            <h2 className="text-sm font-bold text-white tracking-tight">Enterprise Owner Registration</h2>
             <p className="text-[11px] text-slate-400">
-              Powered by <strong className="text-emerald-400">BetaMind Tech Solutions</strong> • Creators of HostelMate
+              Powered by <strong className="text-emerald-400">BetaMind Tech Solutions</strong> • Creators of HostelMate SaaS
             </p>
           </div>
         </div>
-        <div className="px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-bold">
-          Canonical Approval Workflow
+
+        <div className="text-right font-mono text-xs text-emerald-400 font-bold bg-emerald-500/10 border border-emerald-500/20 px-3 py-1.5 rounded-xl">
+          {step < 5 ? `Step ${step + 1} of 5` : "✓ Complete"}
         </div>
       </div>
 
-      {/* Step Header Indicator */}
+      {/* Stepper Navigation Header */}
       {step < 5 && (
-        <div className="bg-[#131C2E] border border-[#202B45] rounded-2xl p-4 flex items-center justify-between">
+        <div className="bg-[#131C2E] border border-[#202B45] rounded-2xl p-4 flex items-center justify-between shadow-lg">
           {STEPS.map((s, idx) => {
             const Icon = s.icon;
-            const isDone = idx < step;
-            const isActive = idx === step;
+            const isCompleted = idx < step;
+            const isCurrent = idx === step;
+
             return (
               <div key={idx} className="flex items-center flex-1">
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2.5">
                   <div
-                    className={`w-9 h-9 rounded-xl flex items-center justify-center text-xs font-bold transition ${
-                      isDone
+                    className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold text-xs transition ${
+                      isCompleted
                         ? "bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/20"
-                        : isActive
-                        ? "bg-blue-600 text-white shadow-md shadow-blue-500/20 border border-blue-400/40"
+                        : isCurrent
+                        ? "bg-emerald-500/20 border-2 border-emerald-500 text-emerald-400"
                         : "bg-[#0B1220] border border-[#202B45] text-slate-500"
                     }`}
                   >
-                    {isDone ? <Check size={16} /> : idx + 1}
+                    {isCompleted ? <Check size={16} /> : <Icon size={16} />}
                   </div>
-                  <div>
-                    <span className={`text-xs font-bold block ${isActive ? "text-white" : isDone ? "text-slate-300" : "text-slate-500"}`}>
+                  <div className="hidden lg:block">
+                    <span className={`block text-xs font-bold ${isCurrent ? "text-white" : "text-slate-400"}`}>
                       {s.label}
                     </span>
-                    <span className="text-[10px] text-slate-500 font-mono">Step 0{idx + 1}</span>
+                    <span className="text-[10px] text-slate-500">Step {idx + 1}</span>
                   </div>
                 </div>
                 {idx !== STEPS.length - 1 && (
@@ -91,8 +106,9 @@ export const CreateOwnerDesktop = ({
       {/* Form Content Area */}
       <div className="bg-[#131C2E] border border-[#202B45] rounded-3xl p-8 min-h-[440px] shadow-xl">
         {error && (
-          <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-2xl text-red-300 text-xs font-medium">
-            {error}
+          <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-2xl text-red-300 text-xs font-medium flex items-center gap-2">
+            <span className="text-[#EF4444] font-bold">⚠️</span>
+            <span>{error}</span>
           </div>
         )}
 
@@ -100,7 +116,7 @@ export const CreateOwnerDesktop = ({
           <div className="space-y-6">
             <div className="border-b border-[#202B45] pb-4">
               <h3 className="text-base font-bold text-white">Step 1: Owner Information</h3>
-              <p className="text-xs text-slate-400 mt-1">Enter primary owner contact and business details.</p>
+              <p className="text-xs text-slate-400 mt-1">Enter primary owner contact and residential address details.</p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -228,7 +244,7 @@ export const CreateOwnerDesktop = ({
               isOpen={isSelfieCameraOpen}
               onClose={() => setIsSelfieCameraOpen(false)}
               title="Take Owner Selfie"
-              defaultFacingMode="user" // Front camera for selfie
+              defaultFacingMode="user"
               onConfirm={(imageData) => {
                 updateFormData({ selfie: imageData, ownerPhoto: imageData });
                 setIsSelfieCameraOpen(false);
@@ -240,8 +256,10 @@ export const CreateOwnerDesktop = ({
         {step === 2 && (
           <div className="space-y-6">
             <div className="border-b border-[#202B45] pb-4">
-              <h3 className="text-base font-bold text-white">Step 3: Hostel Information</h3>
-              <p className="text-xs text-slate-400 mt-1">Specify hostel property location, rooms, and capacity.</p>
+              <h3 className="text-base font-bold text-white flex items-center gap-2">
+                <Building2 size={18} className="text-emerald-400" /> Step 3: Hostel Information & Location
+              </h3>
+              <p className="text-xs text-slate-400 mt-1">Specify property name, address, and PINCODE for auto-location lookup.</p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -288,43 +306,84 @@ export const CreateOwnerDesktop = ({
                 />
               </div>
 
-              <div className="space-y-2">
-                <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider">
-                  City <span className="text-[#EF4444]">*</span>
-                </label>
-                <input
-                  name="city"
-                  value={formData.city}
-                  onChange={handleChange}
-                  placeholder="e.g. New Delhi"
-                  className="w-full bg-[#0B1220] border border-[#202B45] rounded-xl px-4 py-3.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition min-h-[48px]"
-                />
-              </div>
+              {/* Pincode First Auto-Location Lookup Section */}
+              <div className="space-y-2 md:col-span-2 bg-[#0B1220] border border-emerald-500/20 rounded-2xl p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-xs font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
+                    <MapPin size={15} /> Pincode Auto-Location Lookup <span className="text-[#EF4444]">*</span>
+                  </label>
+                  {pincodeLoading && (
+                    <span className="text-[11px] font-mono text-amber-400 flex items-center gap-1">
+                      <Search size={12} className="animate-spin" /> Looking up location...
+                    </span>
+                  )}
+                </div>
 
-              <div className="space-y-2">
-                <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider">
-                  State
-                </label>
-                <input
-                  name="state"
-                  value={formData.state}
-                  onChange={handleChange}
-                  placeholder="e.g. Delhi"
-                  className="w-full bg-[#0B1220] border border-[#202B45] rounded-xl px-4 py-3.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition min-h-[48px]"
-                />
-              </div>
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">
+                      Pincode (6 digits)
+                    </label>
+                    <input
+                      name="pincode"
+                      value={formData.pincode}
+                      onChange={(e) => onPincodeInput(e, "hostel")}
+                      placeholder="e.g. 110001"
+                      className="w-full bg-[#131C2E] border border-emerald-500/40 rounded-xl px-3.5 py-3 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-400 transition min-h-[44px]"
+                    />
+                  </div>
 
-              <div className="space-y-2">
-                <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider">
-                  Pincode (6 digits) <span className="text-[#EF4444]">*</span>
-                </label>
-                <input
-                  name="pincode"
-                  value={formData.pincode}
-                  onChange={handleChange}
-                  placeholder="110001"
-                  className="w-full bg-[#0B1220] border border-[#202B45] rounded-xl px-4 py-3.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition min-h-[48px]"
-                />
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">
+                      State (Auto-Filled)
+                    </label>
+                    <input
+                      name="state"
+                      value={formData.state}
+                      onChange={handleChange}
+                      placeholder="Auto-filled State"
+                      className="w-full bg-[#131C2E] border border-[#202B45] rounded-xl px-3.5 py-3 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition min-h-[44px]"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">
+                      District (Auto-Filled)
+                    </label>
+                    <input
+                      name="district"
+                      value={formData.district}
+                      onChange={handleChange}
+                      placeholder="Auto-filled District"
+                      className="w-full bg-[#131C2E] border border-[#202B45] rounded-xl px-3.5 py-3 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition min-h-[44px]"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">
+                      City / Place (Auto-Filled)
+                    </label>
+                    <input
+                      name="city"
+                      value={formData.city}
+                      onChange={handleChange}
+                      placeholder="Auto-filled City"
+                      className="w-full bg-[#131C2E] border border-[#202B45] rounded-xl px-3.5 py-3 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition min-h-[44px]"
+                    />
+                  </div>
+                </div>
+
+                {pincodeStatus && (
+                  <div className={`mt-2 text-xs font-medium p-2 rounded-xl flex items-center gap-2 ${
+                    pincodeStatus.type === 'success'
+                      ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30'
+                      : pincodeStatus.type === 'error'
+                      ? 'bg-red-500/10 text-red-300 border border-red-500/30'
+                      : 'text-amber-300 bg-amber-500/10'
+                  }`}>
+                    {pincodeStatus.text}
+                  </div>
+                )}
               </div>
 
               <div className="space-y-2">
@@ -335,6 +394,19 @@ export const CreateOwnerDesktop = ({
                   name="roomsCount"
                   type="number"
                   value={formData.roomsCount}
+                  onChange={handleChange}
+                  className="w-full bg-[#0B1220] border border-[#202B45] rounded-xl px-4 py-3.5 text-xs text-white focus:outline-none focus:border-emerald-500 transition min-h-[48px]"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider">
+                  Total Bed Capacity
+                </label>
+                <input
+                  name="capacity"
+                  type="number"
+                  value={formData.capacity}
                   onChange={handleChange}
                   className="w-full bg-[#0B1220] border border-[#202B45] rounded-xl px-4 py-3.5 text-xs text-white focus:outline-none focus:border-emerald-500 transition min-h-[48px]"
                 />
@@ -350,29 +422,25 @@ export const CreateOwnerDesktop = ({
               <p className="text-xs text-slate-400 mt-1">Review status of captured KYC and identity assets.</p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-4">
               {[
-                { title: "Owner Photo / Selfie", doc: formData.selfie || formData.ownerPhoto, fieldName: "selfie" },
-                { title: "Identity Document Front", doc: formData.frontDoc, fieldName: "frontDoc" },
-                { title: "Identity Document Back", doc: formData.backDoc, fieldName: "backDoc" },
+                { title: "Owner Photo / Live Selfie", doc: formData.selfie || formData.ownerPhoto, desc: "Owner portrait for account avatar and security profile" },
+                { title: "ID Proof Front Side", doc: formData.frontDoc, desc: "Aadhaar / Passport / DL front image" },
+                { title: "ID Proof Back Side", doc: formData.backDoc, desc: "Aadhaar / DL address back side image" },
               ].map((item, idx) => (
-                <div key={idx} className="bg-[#0B1220] border border-[#202B45] rounded-2xl p-5 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-slate-200">{item.title}</span>
-                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${item.doc ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" : "bg-white/5 text-slate-400"}`}>
-                      {item.doc ? "✓ Uploaded" : "○ Not Uploaded"}
-                    </span>
+                <div key={idx} className="bg-[#0B1220] border border-[#202B45] rounded-2xl p-5 flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm ${item.doc ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" : "bg-white/5 text-slate-500"}`}>
+                      {item.doc ? "✓" : idx + 1}
+                    </div>
+                    <div>
+                      <span className="text-xs font-bold text-white block">{item.title}</span>
+                      <span className="text-[11px] text-slate-400">{item.desc}</span>
+                    </div>
                   </div>
-
-                  {item.doc ? (
-                    <div className="h-36 rounded-xl bg-slate-950 overflow-hidden border border-white/10 flex items-center justify-center relative group">
-                      <img src={item.doc} alt={item.title} className="h-full w-auto object-contain" />
-                    </div>
-                  ) : (
-                    <div className="h-36 rounded-xl border border-dashed border-[#202B45] flex items-center justify-center text-slate-500 text-xs">
-                      No photo captured yet
-                    </div>
-                  )}
+                  <span className={`text-xs font-bold px-3 py-1 rounded-full ${item.doc ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/30" : "bg-white/5 text-slate-400"}`}>
+                    {item.doc ? "✓ Uploaded" : "○ Pending"}
+                  </span>
                 </div>
               ))}
             </div>
@@ -391,63 +459,67 @@ export const CreateOwnerDesktop = ({
         {step === 5 && (
           <div className="text-center space-y-6 py-12">
             <div className="w-16 h-16 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 flex items-center justify-center mx-auto shadow-xl shadow-emerald-500/20">
-              <CheckCircle2 size={40} />
+              <CheckCircle2 size={42} />
             </div>
 
-            <div>
-              <h3 className="text-2xl font-black text-white">Owner Registration Submitted!</h3>
-              <p className="text-xs text-slate-400 max-w-md mx-auto mt-2 leading-relaxed">
-                The registration request has been created in status <strong className="text-amber-400">PENDING</strong>. It is now queued under Superadmin's Today's Work Queue for approval & activation.
+            <div className="max-w-md mx-auto space-y-2">
+              <h3 className="text-2xl font-bold text-white">Registration Request Created!</h3>
+              <p className="text-xs text-slate-400 leading-relaxed">
+                The owner registration request is in status <strong className="text-amber-400 font-bold">PENDING</strong> with source <strong className="text-emerald-400 font-bold">ADMIN</strong>. It is queued in Superadmin's Work Queue for approval.
               </p>
             </div>
 
-            {submittedResult && (
-              <div className="bg-[#0B1220] border border-[#202B45] p-5 rounded-2xl inline-block text-left text-xs space-y-2 text-slate-300">
-                <p><strong className="text-white">Request ID:</strong> {submittedResult.requestId || submittedResult.request?._id}</p>
-                <p><strong className="text-white">Status:</strong> <span className="text-amber-400 font-bold uppercase">Pending Approval</span></p>
-              </div>
-            )}
+            <div className="flex items-center justify-center gap-4 pt-4 max-w-sm mx-auto">
+              <button
+                type="button"
+                onClick={() => navigate("/admin/requests")}
+                className="flex-1 py-3.5 px-4 bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs rounded-xl shadow-lg shadow-emerald-500/20 transition min-h-[48px] flex items-center justify-center gap-2"
+              >
+                <Clock size={16} /> View Requests Queue
+              </button>
 
-            <div className="pt-4 flex flex-wrap justify-center gap-3">
               <button
                 type="button"
                 onClick={() => window.location.reload()}
-                className="px-5 py-3 bg-white/5 hover:bg-white/10 text-slate-300 font-bold text-xs rounded-xl border border-white/10 transition min-h-[44px]"
+                className="flex-1 py-3.5 px-4 bg-white/5 border border-white/10 text-slate-300 hover:text-white font-bold text-xs rounded-xl transition min-h-[48px]"
               >
                 Register Another Owner
-              </button>
-              <button
-                type="button"
-                onClick={() => window.location.href = "/admin/requests"}
-                className="px-6 py-3 bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs rounded-xl shadow-lg shadow-emerald-500/20 transition min-h-[44px] flex items-center gap-2"
-              >
-                <Clock size={16} />
-                View Pending Requests Queue
               </button>
             </div>
           </div>
         )}
       </div>
 
-      {/* Navigation Buttons Bar */}
-      {step < 4 && (
-        <div className="flex justify-between items-center bg-[#131C2E] border border-[#202B45] rounded-2xl p-4 shadow-lg">
+      {/* Navigation Actions Footer */}
+      {step < 5 && (
+        <div className="bg-[#131C2E] border border-[#202B45] rounded-2xl p-4 flex items-center justify-between shadow-lg">
           <button
             type="button"
             onClick={prevStep}
-            disabled={step === 0}
-            className="flex items-center gap-1.5 px-5 py-3 text-xs font-bold text-slate-300 hover:text-white bg-white/5 hover:bg-white/10 rounded-xl border border-white/10 disabled:opacity-30 transition min-h-[48px]"
+            disabled={step === 0 || loading}
+            className="py-3 px-6 rounded-xl text-xs font-bold text-slate-300 bg-white/5 border border-white/10 hover:bg-white/10 disabled:opacity-30 transition min-h-[44px]"
           >
-            <ChevronLeft size={18} /> Back
+            ← Back
           </button>
 
-          <button
-            type="button"
-            onClick={nextStep}
-            className="flex items-center gap-1.5 px-6 py-3 text-xs font-bold text-white bg-emerald-500 hover:bg-emerald-600 rounded-xl shadow-lg shadow-emerald-500/20 transition min-h-[48px]"
-          >
-            Continue <ChevronRight size={18} />
-          </button>
+          {step < 4 ? (
+            <button
+              type="button"
+              onClick={nextStep}
+              className="py-3 px-6 rounded-xl text-xs font-bold text-white bg-emerald-500 hover:bg-emerald-600 shadow-lg shadow-emerald-500/20 transition flex items-center gap-2 min-h-[44px]"
+            >
+              Continue <ChevronRight size={16} />
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={submitRegistration}
+              disabled={loading}
+              className="py-3 px-6 rounded-xl text-xs font-bold text-white bg-emerald-500 hover:bg-emerald-600 shadow-lg shadow-emerald-500/20 transition disabled:opacity-50 flex items-center gap-2 min-h-[44px]"
+            >
+              {loading ? "Submitting Registration Request..." : "Submit Registration Request"} <ChevronRight size={16} />
+            </button>
+          )}
         </div>
       )}
     </div>

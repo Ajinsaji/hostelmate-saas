@@ -1,11 +1,15 @@
 import { useState } from "react";
 import { api } from "../../services/api";
+import { lookupPincode } from "../../utils/pincodeLookup";
 
 export function useOwnerCreation() {
   const [step, setStep] = useState(0); // 0: Owner Info, 1: Identity & KYC, 2: Hostel Info, 3: Documents, 4: Review
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [submittedResult, setSubmittedResult] = useState(null);
+
+  const [pincodeLoading, setPincodeLoading] = useState(false);
+  const [pincodeStatus, setPincodeStatus] = useState(null); // { type: 'info'|'success'|'error', text: '' }
 
   const [formData, setFormData] = useState({
     // Step 1: Owner Info
@@ -14,6 +18,10 @@ export function useOwnerCreation() {
     altPhone: "",
     email: "",
     ownerAddress: "",
+    ownerPincode: "",
+    ownerState: "",
+    ownerDistrict: "",
+    ownerCity: "",
 
     // Step 2: Identity & Photo
     idType: "Aadhaar",
@@ -39,9 +47,65 @@ export function useOwnerCreation() {
     setFormData((prev) => ({ ...prev, ...fields }));
   };
 
+  /**
+   * Pincode Auto-Location Handler
+   * Triggers when a 6-digit pincode is entered.
+   * Auto-fills state, district, and city for owner address or hostel address.
+   */
+  const handlePincodeChange = async (pincodeVal, target = "hostel") => {
+    const cleanPin = String(pincodeVal || "").trim();
+
+    if (target === "owner") {
+      updateFormData({ ownerPincode: cleanPin });
+    } else {
+      updateFormData({ pincode: cleanPin });
+    }
+
+    if (!/^\d{6}$/.test(cleanPin)) {
+      setPincodeStatus(null);
+      return;
+    }
+
+    setPincodeLoading(true);
+    setPincodeStatus({ type: "info", text: "Finding location for pincode " + cleanPin + "..." });
+
+    const locationData = await lookupPincode(cleanPin);
+
+    if (locationData) {
+      const { place, district, state } = locationData;
+      if (target === "owner") {
+        updateFormData({
+          ownerPincode: cleanPin,
+          ownerState: state || formData.ownerState,
+          ownerDistrict: district || formData.ownerDistrict,
+          ownerCity: place || formData.ownerCity,
+        });
+      } else {
+        updateFormData({
+          pincode: cleanPin,
+          state: state || formData.state,
+          district: district || formData.district,
+          city: place || formData.city,
+        });
+      }
+
+      setPincodeStatus({
+        type: "success",
+        text: `✓ Auto-filled location: ${place ? place + ", " : ""}${district}, ${state}`,
+      });
+    } else {
+      setPincodeStatus({
+        type: "error",
+        text: "Location not found for pincode " + cleanPin + ". Please enter location manually.",
+      });
+    }
+
+    setPincodeLoading(false);
+  };
+
   const nextStep = () => {
     setError(null);
-    // Basic step validation
+    // Step validation
     if (step === 0) {
       if (!formData.ownerName.trim()) {
         setError("Owner Full Name is required.");
@@ -63,8 +127,8 @@ export function useOwnerCreation() {
         setError("Hostel Name is required.");
         return;
       }
-      if (!formData.city.trim() || !formData.pincode.trim()) {
-        setError("City and Pincode are required.");
+      if (!formData.pincode.trim()) {
+        setError("Hostel Pincode is required.");
         return;
       }
     }
@@ -95,10 +159,10 @@ export function useOwnerCreation() {
         hostelName: formData.hostelName,
         hostelType: formData.hostelType,
         hostelAddress: formData.hostelAddress || formData.ownerAddress,
-        city: formData.city,
-        district: formData.district || formData.city,
-        state: formData.state,
-        pincode: formData.pincode,
+        city: formData.city || formData.ownerCity || "New Delhi",
+        district: formData.district || formData.ownerDistrict || formData.city || "Delhi",
+        state: formData.state || formData.ownerState || "Delhi",
+        pincode: formData.pincode || formData.ownerPincode,
         roomsCount: formData.roomsCount,
         capacity: formData.capacity,
         idType: formData.idType,
@@ -134,6 +198,9 @@ export function useOwnerCreation() {
     setStep,
     formData,
     updateFormData,
+    handlePincodeChange,
+    pincodeLoading,
+    pincodeStatus,
     nextStep,
     prevStep,
     submitRegistration,

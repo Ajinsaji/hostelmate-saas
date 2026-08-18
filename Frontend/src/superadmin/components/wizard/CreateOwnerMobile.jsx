@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { ChevronLeft, ChevronRight, Camera, CheckCircle2, Shield, User, Building2, FileCheck, Check, Clock } from "lucide-react";
+import { ChevronLeft, ChevronRight, Camera, CheckCircle2, Shield, User, Building2, FileCheck, Check, Clock, MapPin, Search } from "lucide-react";
 import DocumentCapture from "../forms/DocumentCapture";
 import OwnerRegistrationReview from "../forms/OwnerRegistrationReview";
 import CameraCapture from "../forms/CameraCapture";
@@ -10,6 +10,9 @@ export const CreateOwnerMobile = ({
   step,
   formData,
   updateFormData,
+  handlePincodeChange,
+  pincodeLoading,
+  pincodeStatus,
   nextStep,
   prevStep,
   submitRegistration,
@@ -22,6 +25,15 @@ export const CreateOwnerMobile = ({
   const handleChange = (e) => {
     const { name, value } = e.target;
     updateFormData({ [name]: value });
+  };
+
+  const onPincodeInput = (e, target = "hostel") => {
+    const val = e.target.value;
+    if (handlePincodeChange) {
+      handlePincodeChange(val, target);
+    } else {
+      handleChange(e);
+    }
   };
 
   return (
@@ -224,9 +236,9 @@ export const CreateOwnerMobile = ({
           <div className="space-y-4">
             <div className="space-y-1 border-b border-[#202B45] pb-3">
               <h3 className="text-xs font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
-                <Building2 size={15} /> Hostel Details
+                <Building2 size={15} /> Hostel Details & Pincode Lookup
               </h3>
-              <p className="text-[11px] text-slate-400">Specify property name, location, and capacity.</p>
+              <p className="text-[11px] text-slate-400">Specify property name and pincode for auto-location fill.</p>
             </div>
 
             <div className="space-y-3.5">
@@ -260,30 +272,78 @@ export const CreateOwnerMobile = ({
                 </select>
               </div>
 
-              <div>
-                <label className="block text-[11px] font-bold text-slate-300 uppercase tracking-wider mb-1">
-                  City <span className="text-[#EF4444]">*</span>
-                </label>
-                <input
-                  name="city"
-                  value={formData.city}
-                  onChange={handleChange}
-                  placeholder="New Delhi"
-                  className="w-full bg-[#131C2E] border border-[#202B45] rounded-xl px-4 py-3 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition min-h-[48px]"
-                />
-              </div>
+              {/* Mobile Pincode Auto-Location Section */}
+              <div className="bg-[#131C2E] border border-emerald-500/30 rounded-2xl p-3.5 space-y-3">
+                <div className="flex items-center justify-between">
+                  <label className="block text-[11px] font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-1">
+                    <MapPin size={14} /> Pincode Auto-Location <span className="text-[#EF4444]">*</span>
+                  </label>
+                  {pincodeLoading && (
+                    <span className="text-[10px] text-amber-400 font-mono flex items-center gap-1">
+                      <Search size={10} className="animate-spin" /> Lookup...
+                    </span>
+                  )}
+                </div>
 
-              <div>
-                <label className="block text-[11px] font-bold text-slate-300 uppercase tracking-wider mb-1">
-                  Pincode <span className="text-[#EF4444]">*</span>
-                </label>
-                <input
-                  name="pincode"
-                  value={formData.pincode}
-                  onChange={handleChange}
-                  placeholder="110001"
-                  className="w-full bg-[#131C2E] border border-[#202B45] rounded-xl px-4 py-3 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition min-h-[48px]"
-                />
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">
+                    Pincode (6 digits)
+                  </label>
+                  <input
+                    name="pincode"
+                    value={formData.pincode}
+                    onChange={(e) => onPincodeInput(e, "hostel")}
+                    placeholder="e.g. 110001"
+                    className="w-full bg-[#0B1220] border border-emerald-500/40 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-400 transition min-h-[44px]"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">State</label>
+                    <input
+                      name="state"
+                      value={formData.state}
+                      onChange={handleChange}
+                      placeholder="State"
+                      className="w-full bg-[#0B1220] border border-[#202B45] rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition min-h-[44px]"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">District</label>
+                    <input
+                      name="district"
+                      value={formData.district}
+                      onChange={handleChange}
+                      placeholder="District"
+                      className="w-full bg-[#0B1220] border border-[#202B45] rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition min-h-[44px]"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">City / Place</label>
+                  <input
+                    name="city"
+                    value={formData.city}
+                    onChange={handleChange}
+                    placeholder="City / Place"
+                    className="w-full bg-[#0B1220] border border-[#202B45] rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition min-h-[44px]"
+                  />
+                </div>
+
+                {pincodeStatus && (
+                  <div className={`text-[11px] font-medium p-2 rounded-xl flex items-center gap-1.5 ${
+                    pincodeStatus.type === 'success'
+                      ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                      : pincodeStatus.type === 'error'
+                      ? 'bg-red-500/10 text-red-300 border border-red-500/20'
+                      : 'text-amber-300 bg-amber-500/10'
+                  }`}>
+                    {pincodeStatus.text}
+                  </div>
+                )}
               </div>
             </div>
           </div>
