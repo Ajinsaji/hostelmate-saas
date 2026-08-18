@@ -9,7 +9,7 @@
  * 5. Verifies compact top header redesign with dot indicators and minimal branding
  * 6. Verifies single-column form inputs (w-full, min-h-[48px], grid-cols-1) on phone viewports
  * 7. Verifies CreateOwnerDesktop.jsx remains 100% intact and unchanged
- * 8. Verifies CreateOwnerWizard.jsx responsive switching (hidden md:block vs block md:hidden)
+ * 8. Verifies SharedRegistrationWizard.jsx responsive switching (hidden md:block vs block md:hidden)
  * 9. Verifies zero mutation of registration business logic or HostelRequest workflow
  */
 
@@ -39,16 +39,18 @@ function runTests() {
   const mobilePath = path.join(__dirname, "../../Frontend/src/superadmin/components/wizard/CreateOwnerMobile.jsx");
   const desktopPath = path.join(__dirname, "../../Frontend/src/superadmin/components/wizard/CreateOwnerDesktop.jsx");
   const wizardPath = path.join(__dirname, "../../Frontend/src/superadmin/views/CreateOwnerWizard.jsx");
+  const sharedPath = path.join(__dirname, "../../Frontend/src/components/SharedRegistrationWizard.jsx");
 
   // [1/8] File Existence
   console.log("[1/8] Verifying Wizard Layout File Structure...");
   assert(fs.existsSync(mobilePath), "CreateOwnerMobile.jsx exists");
   assert(fs.existsSync(desktopPath), "CreateOwnerDesktop.jsx exists");
   assert(fs.existsSync(wizardPath), "CreateOwnerWizard.jsx exists");
+  assert(fs.existsSync(sharedPath), "SharedRegistrationWizard.jsx exists");
 
   const mobileContent = fs.readFileSync(mobilePath, "utf8");
   const desktopContent = fs.readFileSync(desktopPath, "utf8");
-  const wizardContent = fs.readFileSync(wizardPath, "utf8");
+  const sharedContent = fs.readFileSync(sharedPath, "utf8");
 
   // [2/8] Dedicated Mobile Action Bar Positioning
   console.log("\n[2/8] Verifying Mobile Action Bar & Bottom Nav Offset...");
@@ -87,10 +89,10 @@ function runTests() {
   assert(desktopContent.includes("STEPS"), "Desktop component retains full 5-step desktop navigation");
   assert(desktopContent.includes("max-w-5xl") || desktopContent.includes("CreateOwnerDesktop"), "Desktop component structure untouched");
 
-  // [8/8] Responsive Switcher in Wizard Wrapper
-  console.log("\n[8/8] Verifying Responsive Breakpoints in CreateOwnerWizard.jsx...");
-  assert(wizardContent.includes("hidden md:block"), "Desktop layout scoped to md:block");
-  assert(wizardContent.includes("block md:hidden"), "Mobile layout scoped to block md:hidden");
+  // [8/8] Responsive Switcher in Shared Registration Wizard
+  console.log("\n[8/8] Verifying Responsive Breakpoints in SharedRegistrationWizard.jsx...");
+  assert(sharedContent.includes("hidden md:block"), "Desktop layout scoped to md:block");
+  assert(sharedContent.includes("block md:hidden"), "Mobile layout scoped to block md:hidden");
 
   console.log("\n=======================================================");
   console.log(`  FINAL RESULT: ${passed} PASSED, ${failed} FAILED`);

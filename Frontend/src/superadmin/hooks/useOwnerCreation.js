@@ -2,7 +2,8 @@ import { useState } from "react";
 import { api } from "../../services/api";
 import { lookupPincode } from "../../utils/pincodeLookup";
 
-export function useOwnerCreation() {
+export function useOwnerCreation(initialMode = "admin") {
+  const [mode, setMode] = useState(initialMode);
   const [step, setStep] = useState(0); // 0: Owner Info, 1: Identity & KYC, 2: Hostel Info, 3: Documents, 4: Review
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -145,7 +146,8 @@ export function useOwnerCreation() {
     }
   };
 
-  const submitRegistration = async () => {
+  const submitRegistration = async (overrideMode) => {
+    const activeMode = overrideMode || mode || "admin";
     setLoading(true);
     setError(null);
 
@@ -174,10 +176,14 @@ export function useOwnerCreation() {
         licensePhoto: "default_license.png",
       };
 
-      // Call canonical admin request creation endpoint
-      const response = await api.post("/api/admin/requests", payload).catch(() =>
-        api.post("/api/request/register", payload)
-      );
+      const endpoint = activeMode === "public" ? "/api/request/register" : "/api/admin/requests";
+
+      const response = await api.post(endpoint, payload).catch((err) => {
+        if (activeMode === "admin") {
+          return api.post("/api/request/register", payload);
+        }
+        throw err;
+      });
 
       if (response.data?.success) {
         setSubmittedResult(response.data);
@@ -194,6 +200,8 @@ export function useOwnerCreation() {
   };
 
   return {
+    mode,
+    setMode,
     step,
     setStep,
     formData,
