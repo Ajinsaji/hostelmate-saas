@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { ChevronLeft, ChevronRight, Camera, CheckCircle2, Shield, User, Building2, FileCheck, Check } from "lucide-react";
+import { ChevronLeft, ChevronRight, Camera, CheckCircle2, Shield, User, Building2, FileCheck, Check, Clock } from "lucide-react";
 import DocumentCapture from "../forms/DocumentCapture";
 import OwnerRegistrationReview from "../forms/OwnerRegistrationReview";
 import CameraCapture from "../forms/CameraCapture";
@@ -25,44 +25,40 @@ export const CreateOwnerMobile = ({
   };
 
   return (
-    <div className="min-h-screen bg-[#0B1220] text-white flex flex-col pb-24">
-      {/* Mobile Top Header */}
-      <div className="sticky top-0 z-40 bg-[#131C2E]/95 backdrop-blur-md border-b border-[#202B45] p-4 flex flex-col gap-2">
+    <div className="min-h-screen bg-[#0B1220] text-white flex flex-col pb-[calc(140px+env(safe-area-inset-bottom,0px))]">
+      {/* Compact Mobile Top Header */}
+      <div className="sticky top-0 z-40 bg-[#131C2E]/95 backdrop-blur-md border-b border-[#202B45] px-4 py-2.5 flex flex-col gap-1.5 shadow-md">
         <div className="flex items-center justify-between">
-          <button
-            type="button"
-            onClick={prevStep}
-            disabled={step === 0}
-            className="p-2 text-slate-400 hover:text-white disabled:opacity-30 min-h-[44px] min-w-[44px] flex items-center justify-center"
-          >
-            <ChevronLeft size={22} />
-          </button>
-
-          <h2 className="text-sm font-bold text-white text-center">
-            {step < 5 ? STEP_NAMES[step] : "Registration Complete"}
-          </h2>
-
-          <div className="w-10 text-right text-[11px] font-mono text-emerald-400">
-            {step < 5 ? `${step + 1}/5` : "✓"}
+          <div className="flex items-center gap-2">
+            {step > 0 && step < 5 && (
+              <button
+                type="button"
+                onClick={prevStep}
+                className="p-1.5 text-slate-400 hover:text-white rounded-lg bg-white/5 border border-white/10 flex items-center justify-center min-h-[36px] min-w-[36px]"
+                aria-label="Previous step"
+              >
+                <ChevronLeft size={18} />
+              </button>
+            )}
+            <h2 className="text-xs font-bold text-white tracking-tight">
+              {step < 5 ? STEP_NAMES[step] : "Registration Complete"}
+            </h2>
           </div>
-        </div>
 
-        {/* Branding Subheader */}
-        <div className="text-center pt-1 border-t border-white/5">
-          <p className="text-[10px] text-slate-400">
-            Powered by <strong className="text-emerald-400">BetaMind Tech Solutions</strong> • Creators of HostelMate
-          </p>
+          <div className="px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[11px] font-mono font-bold text-emerald-400">
+            {step < 5 ? `${step + 1} / 5` : "✓"}
+          </div>
         </div>
 
         {/* Dot Step Indicators */}
         {step < 5 && (
-          <div className="flex items-center justify-center gap-2 pt-2">
+          <div className="flex items-center justify-center gap-1.5 pt-0.5">
             {[0, 1, 2, 3, 4].map((idx) => (
               <div
                 key={idx}
-                className={`h-2 rounded-full transition-all ${
+                className={`h-1.5 rounded-full transition-all duration-300 ${
                   idx === step
-                    ? "w-6 bg-emerald-500 shadow-md shadow-emerald-500/30"
+                    ? "w-7 bg-emerald-500 shadow-md shadow-emerald-500/30"
                     : idx < step
                     ? "w-2 bg-emerald-500/60"
                     : "w-2 bg-[#202B45]"
@@ -71,24 +67,34 @@ export const CreateOwnerMobile = ({
             ))}
           </div>
         )}
+
+        {/* Compact Branding */}
+        <div className="text-center pt-0.5">
+          <p className="text-[9px] text-slate-400 tracking-wide">
+            Powered by <strong className="text-emerald-400">BetaMind Tech Solutions</strong> • HostelMate SaaS
+          </p>
+        </div>
       </div>
 
-      {/* Main Content Area */}
-      <div className="flex-1 p-4 space-y-6">
+      {/* Main Scrollable Content Area */}
+      <div className="flex-1 px-4 py-4 space-y-5">
         {error && (
-          <div className="p-3.5 bg-red-500/10 border border-red-500/20 rounded-2xl text-red-300 text-xs font-medium">
-            {error}
+          <div className="p-3.5 bg-red-500/10 border border-red-500/20 rounded-2xl text-red-300 text-xs font-medium flex items-start gap-2">
+            <span className="text-[#EF4444] font-bold">⚠️</span>
+            <span>{error}</span>
           </div>
         )}
 
         {step === 0 && (
           <div className="space-y-4">
-            <div className="space-y-1">
-              <h3 className="text-sm font-bold text-white">Owner Details</h3>
+            <div className="space-y-1 border-b border-[#202B45] pb-3">
+              <h3 className="text-xs font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
+                <User size={15} /> Owner Details
+              </h3>
               <p className="text-[11px] text-slate-400">Owner contact & full name for account verification.</p>
             </div>
 
-            <div className="space-y-3">
+            <div className="space-y-3.5">
               <div>
                 <label className="block text-[11px] font-bold text-slate-300 uppercase tracking-wider mb-1">
                   Full Name <span className="text-[#EF4444]">*</span>
@@ -98,7 +104,7 @@ export const CreateOwnerMobile = ({
                   value={formData.ownerName}
                   onChange={handleChange}
                   placeholder="e.g. Ramesh Kumar"
-                  className="w-full bg-[#131C2E] border border-[#202B45] rounded-xl px-4 py-3 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 min-h-[48px]"
+                  className="w-full bg-[#131C2E] border border-[#202B45] rounded-xl px-4 py-3 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition min-h-[48px]"
                 />
               </div>
 
@@ -111,7 +117,7 @@ export const CreateOwnerMobile = ({
                   value={formData.phone}
                   onChange={handleChange}
                   placeholder="e.g. 9876543210"
-                  className="w-full bg-[#131C2E] border border-[#202B45] rounded-xl px-4 py-3 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 min-h-[48px]"
+                  className="w-full bg-[#131C2E] border border-[#202B45] rounded-xl px-4 py-3 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition min-h-[48px]"
                 />
               </div>
 
@@ -124,7 +130,7 @@ export const CreateOwnerMobile = ({
                   value={formData.altPhone}
                   onChange={handleChange}
                   placeholder="e.g. 9123456789"
-                  className="w-full bg-[#131C2E] border border-[#202B45] rounded-xl px-4 py-3 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 min-h-[48px]"
+                  className="w-full bg-[#131C2E] border border-[#202B45] rounded-xl px-4 py-3 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition min-h-[48px]"
                 />
               </div>
 
@@ -138,7 +144,21 @@ export const CreateOwnerMobile = ({
                   value={formData.email}
                   onChange={handleChange}
                   placeholder="ramesh@example.com"
-                  className="w-full bg-[#131C2E] border border-[#202B45] rounded-xl px-4 py-3 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 min-h-[48px]"
+                  className="w-full bg-[#131C2E] border border-[#202B45] rounded-xl px-4 py-3 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition min-h-[48px]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-300 uppercase tracking-wider mb-1">
+                  Owner Residential Address
+                </label>
+                <textarea
+                  name="ownerAddress"
+                  rows={2}
+                  value={formData.ownerAddress || ""}
+                  onChange={handleChange}
+                  placeholder="Street, locality, area..."
+                  className="w-full bg-[#131C2E] border border-[#202B45] rounded-xl px-4 py-3 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition"
                 />
               </div>
             </div>
@@ -147,9 +167,11 @@ export const CreateOwnerMobile = ({
 
         {step === 1 && (
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between border-b border-[#202B45] pb-3">
               <div>
-                <h3 className="text-sm font-bold text-white">Owner Photo & Camera KYC</h3>
+                <h3 className="text-xs font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
+                  <Shield size={15} /> Owner Photo & KYC
+                </h3>
                 <p className="text-[11px] text-slate-400">Capture selfie and verify ID document.</p>
               </div>
 
@@ -168,7 +190,7 @@ export const CreateOwnerMobile = ({
                   <img src={formData.selfie} alt="Selfie" className="w-12 h-12 rounded-xl object-cover border border-emerald-400/40" />
                   <span className="text-xs font-bold text-emerald-400">✓ Selfie Captured</span>
                 </div>
-                <button type="button" onClick={() => setIsSelfieCameraOpen(true)} className="text-xs text-slate-400 underline">
+                <button type="button" onClick={() => setIsSelfieCameraOpen(true)} className="text-xs text-slate-400 underline p-2">
                   Retake
                 </button>
               </div>
@@ -200,12 +222,14 @@ export const CreateOwnerMobile = ({
 
         {step === 2 && (
           <div className="space-y-4">
-            <div className="space-y-1">
-              <h3 className="text-sm font-bold text-white">Hostel Details</h3>
+            <div className="space-y-1 border-b border-[#202B45] pb-3">
+              <h3 className="text-xs font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
+                <Building2 size={15} /> Hostel Details
+              </h3>
               <p className="text-[11px] text-slate-400">Specify property name, location, and capacity.</p>
             </div>
 
-            <div className="space-y-3">
+            <div className="space-y-3.5">
               <div>
                 <label className="block text-[11px] font-bold text-slate-300 uppercase tracking-wider mb-1">
                   Hostel Name <span className="text-[#EF4444]">*</span>
@@ -215,7 +239,7 @@ export const CreateOwnerMobile = ({
                   value={formData.hostelName}
                   onChange={handleChange}
                   placeholder="Green Valley PG"
-                  className="w-full bg-[#131C2E] border border-[#202B45] rounded-xl px-4 py-3 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 min-h-[48px]"
+                  className="w-full bg-[#131C2E] border border-[#202B45] rounded-xl px-4 py-3 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition min-h-[48px]"
                 />
               </div>
 
@@ -227,7 +251,7 @@ export const CreateOwnerMobile = ({
                   name="hostelType"
                   value={formData.hostelType}
                   onChange={handleChange}
-                  className="w-full bg-[#131C2E] border border-[#202B45] rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-emerald-500 min-h-[48px]"
+                  className="w-full bg-[#131C2E] border border-[#202B45] rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-emerald-500 transition min-h-[48px]"
                 >
                   <option value="Boys Hostel">Boys Hostel</option>
                   <option value="Girls Hostel">Girls Hostel</option>
@@ -245,7 +269,7 @@ export const CreateOwnerMobile = ({
                   value={formData.city}
                   onChange={handleChange}
                   placeholder="New Delhi"
-                  className="w-full bg-[#131C2E] border border-[#202B45] rounded-xl px-4 py-3 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 min-h-[48px]"
+                  className="w-full bg-[#131C2E] border border-[#202B45] rounded-xl px-4 py-3 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition min-h-[48px]"
                 />
               </div>
 
@@ -258,7 +282,7 @@ export const CreateOwnerMobile = ({
                   value={formData.pincode}
                   onChange={handleChange}
                   placeholder="110001"
-                  className="w-full bg-[#131C2E] border border-[#202B45] rounded-xl px-4 py-3 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 min-h-[48px]"
+                  className="w-full bg-[#131C2E] border border-[#202B45] rounded-xl px-4 py-3 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition min-h-[48px]"
                 />
               </div>
             </div>
@@ -267,8 +291,10 @@ export const CreateOwnerMobile = ({
 
         {step === 3 && (
           <div className="space-y-4">
-            <div className="space-y-1">
-              <h3 className="text-sm font-bold text-white">Documents Summary</h3>
+            <div className="space-y-1 border-b border-[#202B45] pb-3">
+              <h3 className="text-xs font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
+                <FileCheck size={15} /> Documents Summary
+              </h3>
               <p className="text-[11px] text-slate-400">Captured assets ready for verification.</p>
             </div>
 
@@ -309,36 +335,63 @@ export const CreateOwnerMobile = ({
               The owner request is in status <strong className="text-amber-400">PENDING</strong>. It is queued in Superadmin's Work Queue for approval.
             </p>
 
-            <button
-              type="button"
-              onClick={() => window.location.reload()}
-              className="w-full py-3.5 bg-emerald-500 text-white font-bold text-xs rounded-xl shadow-lg shadow-emerald-500/20 transition min-h-[48px]"
-            >
-              Register Another Owner
-            </button>
+            <div className="space-y-3 pt-2">
+              <a
+                href="/admin/requests"
+                className="w-full py-3.5 bg-emerald-500 text-white font-bold text-xs rounded-xl shadow-lg shadow-emerald-500/20 transition min-h-[48px] flex items-center justify-center gap-2"
+              >
+                <Clock size={16} /> View Pending Requests Queue
+              </a>
+
+              <button
+                type="button"
+                onClick={() => window.location.reload()}
+                className="w-full py-3.5 bg-white/5 border border-white/10 text-slate-300 hover:text-white font-bold text-xs rounded-xl transition min-h-[48px]"
+              >
+                Register Another Owner
+              </button>
+            </div>
           </div>
         )}
       </div>
 
-      {/* Fixed Mobile Bottom Bar */}
-      {step < 4 && (
-        <div className="fixed bottom-0 left-0 right-0 z-40 bg-[#131C2E]/95 backdrop-blur-md border-t border-[#202B45] p-4 flex items-center justify-between gap-3">
-          <button
-            type="button"
-            onClick={prevStep}
-            disabled={step === 0}
-            className="flex-1 py-3.5 px-4 rounded-xl text-xs font-bold text-slate-300 bg-white/5 border border-white/10 disabled:opacity-30 min-h-[48px]"
-          >
-            Back
-          </button>
+      {/* Dedicated Mobile Wizard Action Bar (Fixed above global bottom nav) */}
+      {step < 5 && (
+        <div className="fixed bottom-[calc(64px+env(safe-area-inset-bottom,0px))] left-0 right-0 z-[950] bg-[#131C2E]/95 backdrop-blur-md border-t border-[#202B45] p-3 px-4 flex items-center justify-between gap-3 shadow-2xl">
+          {step > 0 ? (
+            <button
+              type="button"
+              onClick={prevStep}
+              disabled={loading}
+              className="flex-1 py-3 px-4 rounded-xl text-xs font-bold text-slate-300 bg-white/5 border border-white/10 hover:bg-white/10 active:bg-white/15 disabled:opacity-40 transition flex items-center justify-center gap-1 min-h-[48px] min-w-[100px]"
+            >
+              <ChevronLeft size={16} /> Back
+            </button>
+          ) : (
+            <div className="w-20 hidden sm:block" />
+          )}
 
-          <button
-            type="button"
-            onClick={nextStep}
-            className="flex-1 py-3.5 px-4 rounded-xl text-xs font-bold text-white bg-emerald-500 shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-1 min-h-[48px]"
-          >
-            Continue <ChevronRight size={16} />
-          </button>
+          {step < 4 ? (
+            <button
+              type="button"
+              onClick={() => {
+                nextStep();
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
+              className="flex-1 py-3 px-4 rounded-xl text-xs font-bold text-white bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 shadow-lg shadow-emerald-500/20 transition flex items-center justify-center gap-1.5 min-h-[48px]"
+            >
+              Continue <ChevronRight size={16} />
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={submitRegistration}
+              disabled={loading}
+              className="flex-1 py-3 px-4 rounded-xl text-xs font-bold text-white bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 shadow-lg shadow-emerald-500/20 transition disabled:opacity-50 flex items-center justify-center gap-1.5 min-h-[48px]"
+            >
+              {loading ? "Submitting Request..." : "Submit Registration"} <ChevronRight size={16} />
+            </button>
+          )}
         </div>
       )}
     </div>
