@@ -1636,7 +1636,7 @@ const getAdminProfile = async (req, res) => {
 const updateAdminProfile = async (req, res) => {
   try {
     const adminId = req.user?.id || req.userId;
-    const { fullName, email, phone, profileImage } = req.body;
+    const { fullName, email, phone, profileImage, twoFactorEnabled } = req.body;
 
     if (!adminId) {
       return res.status(401).json({
@@ -1645,11 +1645,24 @@ const updateAdminProfile = async (req, res) => {
       });
     }
 
-    // Check for duplicate email (if being updated)
-    if (email) {
-      const existingAdmin = await Admin.findOne({ 
-        email, 
-        _id: { $ne: adminId } 
+    // Validate fullName if provided
+    if (fullName !== undefined) {
+      const trimmedName = String(fullName).trim();
+      if (trimmedName.length < 2 || trimmedName.length > 100) {
+        return res.status(400).json({ success: false, message: "Full name must be between 2 and 100 characters" });
+      }
+    }
+
+    // Validate email format if provided
+    if (email !== undefined) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(String(email).trim())) {
+        return res.status(400).json({ success: false, message: "Invalid email format" });
+      }
+      // Check for duplicate email (if being updated)
+      const existingAdmin = await Admin.findOne({
+        email: String(email).trim().toLowerCase(),
+        _id: { $ne: adminId }
       });
       if (existingAdmin) {
         return res.status(400).json({
@@ -1659,18 +1672,37 @@ const updateAdminProfile = async (req, res) => {
       }
     }
 
+    // Validate phone if provided
+    if (phone !== undefined && String(phone).trim().length > 0) {
+      const cleanPhone = String(phone).replace(/[\s\-()]/g, "");
+      if (!/^\+?\d{7,15}$/.test(cleanPhone)) {
+        return res.status(400).json({ success: false, message: "Invalid phone number format" });
+      }
+    }
+
+    // Build update object — explicitly whitelist allowed fields
+    // NEVER allow role, permissions, password, or session data through this endpoint
     const updateData = {};
-    if (fullName) updateData.fullName = fullName;
-    if (email) updateData.email = email;
-    if (phone) updateData.phone = phone;
-    if (profileImage) updateData.profileImage = profileImage;
+    if (fullName !== undefined) updateData.fullName = String(fullName).trim();
+    if (email !== undefined) updateData.email = String(email).trim().toLowerCase();
+    if (phone !== undefined) updateData.phone = String(phone).trim();
+    if (profileImage !== undefined) updateData.profileImage = String(profileImage).trim();
+    if (twoFactorEnabled !== undefined) updateData.twoFactorEnabled = Boolean(twoFactorEnabled);
     updateData.updatedAt = new Date();
+
+    if (Object.keys(updateData).length <= 1) {
+      return res.status(400).json({ success: false, message: "No valid fields provided to update" });
+    }
 
     const admin = await Admin.findByIdAndUpdate(
       adminId,
       updateData,
       { returnDocument: "after", runValidators: true }
     ).select("-password");
+
+    if (!admin) {
+      return res.status(404).json({ success: false, message: "Admin not found" });
+    }
 
     res.status(200).json({
       success: true,
@@ -1685,6 +1717,7 @@ const updateAdminProfile = async (req, res) => {
     });
   }
 };
+
 
 // ==========================
 // CHANGE ADMIN PASSWORD
@@ -2437,28 +2470,11 @@ const getAuditTrails = async (req, res) => {
   }
 };
 
-const getSystemSettings = async (req, res) => {
-  try {
-    res.status(200).json({
-      success: true,
-      data: {
-        maintenanceMode: false,
-        registrationOpen: true,
-        defaultTrialDays: 14,
-        platformFeePercentage: 2
-      }
-    });
-  } catch (error) {
-    res.status(500).json({ success: false, message: "Server Error" });
-  }
-};
-
 module.exports.getBusinessBI = getBusinessBI;
 module.exports.getCustomerSuccess = getCustomerSuccess;
 module.exports.getCommunications = getCommunications;
 module.exports.getSupportTickets = getSupportTickets;
 module.exports.getAuditTrails = getAuditTrails;
-module.exports.getSystemSettings = getSystemSettings;
 module.exports.getAllOwnersList = getAllOwnersList;
 module.exports.getAllResidentsList = getAllResidentsList;
 
@@ -2500,16 +2516,315 @@ const setOwnerStatus = async (req, res) => {
   }
 };
 
+
 const forceResetOwnerPassword = resetOwnerTempPassword;
 const markCommunicationRead = async (req, res) => res.status(200).json({ success: true });
 const deleteCommunication = async (req, res) => res.status(200).json({ success: true });
 const generateReport = async (req, res) => res.status(200).json({ success: true });
-const updateSystemSettings = async (req, res) => res.status(200).json({ success: true });
 const bulkHostelAction = async (req, res) => res.status(200).json({ success: true });
-const runBackup = async (req, res) => res.status(200).json({ success: true, backup: { backupId: 'mock', sizeBytes: 100 } });
-const getBackups = async (req, res) => res.status(200).json({ success: true, data: [] });
-const downloadBackup = async (req, res) => res.status(200).json({ success: true });
 const impersonateOwner = async (req, res) => res.status(200).json({ success: true });
+
+// ==========================
+// SYSTEM SETTINGS (Real DB-backed via SystemSetting model)
+// ==========================
+
+// Fields that are SAFE to expose to the browser (no secrets)
+const SAFE_SETTING_FIELDS = [
+  "platformName",
+  "supportEmail",
+  "phone",
+  "timezone",
+  "currency",
+  "maintenanceMode",
+  "billingRate",
+  "securityLevel",
+  "storageProvider",
+  "storageLimitGB",
+  "smtpHost",
+  "smtpPort",
+  "whatsappAutomationEnabled",
+];
+
+const getSystemSettings = async (req, res) => {
+  try {
+    const SystemSetting = require("../models/SystemSetting");
+    let settings = await SystemSetting.findOne().lean();
+
+    // Seed defaults on first load
+    if (!settings) {
+      const doc = await SystemSetting.create({});
+      settings = doc.toObject();
+    }
+
+    // Return only safe fields — never expose jwtSecret, smtpPassword, storageApiKey, firebaseKey
+    const safeData = {};
+    SAFE_SETTING_FIELDS.forEach((field) => {
+      if (settings[field] !== undefined) safeData[field] = settings[field];
+    });
+
+    // Add configuration-status indicators for sensitive fields (configured / not configured)
+    safeData.smtpConfigured = Boolean(settings.smtpPassword);
+    safeData.storageApiKeyConfigured = Boolean(settings.storageApiKey);
+    safeData.firebaseConfigured = Boolean(settings.firebaseKey);
+
+    return res.status(200).json({ success: true, data: safeData });
+  } catch (error) {
+    console.error("getSystemSettings error:", error);
+    return res.status(500).json({ success: false, message: "Failed to load settings", error: error?.message });
+  }
+};
+
+const updateSystemSettings = async (req, res) => {
+  try {
+    const SystemSetting = require("../models/SystemSetting");
+
+    // Only allow safe fields — prevent injection of secrets through this endpoint
+    const update = {};
+    SAFE_SETTING_FIELDS.forEach((field) => {
+      if (req.body[field] !== undefined) {
+        update[field] = req.body[field];
+      }
+    });
+
+    if (Object.keys(update).length === 0) {
+      return res.status(400).json({ success: false, message: "No valid settings fields provided" });
+    }
+
+    const settings = await SystemSetting.findOneAndUpdate(
+      {},
+      { $set: update },
+      { upsert: true, returnDocument: "after", new: true, runValidators: true }
+    ).lean();
+
+    // Return safe fields only
+    const safeData = {};
+    SAFE_SETTING_FIELDS.forEach((field) => {
+      if (settings[field] !== undefined) safeData[field] = settings[field];
+    });
+    safeData.smtpConfigured = Boolean(settings.smtpPassword);
+    safeData.storageApiKeyConfigured = Boolean(settings.storageApiKey);
+    safeData.firebaseConfigured = Boolean(settings.firebaseKey);
+
+    // Audit the settings change
+    try {
+      await AuditLog.create({
+        adminId: req.user?._id || req.userId,
+        action: "UPDATE_SYSTEM_SETTINGS",
+        actionType: "UPDATE",
+        entity: "SystemSetting",
+        details: { updatedFields: Object.keys(update) },
+        timestamp: new Date(),
+      });
+    } catch (_) {}
+
+    return res.status(200).json({ success: true, message: "Settings saved successfully", data: safeData });
+  } catch (error) {
+    console.error("updateSystemSettings error:", error);
+    return res.status(500).json({ success: false, message: "Failed to save settings", error: error?.message });
+  }
+};
+
+const runBackup = async (req, res) => {
+  try {
+    const Backup = require("../models/Backup");
+
+    // Record a backup intent/metadata record (actual mongodump must run server-side via cron/script)
+    const backupRecord = await Backup.create({
+      triggeredBy: req.user?._id || req.userId,
+      status: "initiated",
+      backupFile: `hostelmate_backup_${Date.now()}.archive`,
+      sizeBytes: 0,
+      notes: "Manual backup triggered from SuperAdmin Settings",
+      createdAt: new Date(),
+    }).catch(() => ({ _id: "manual", status: "initiated" }));
+
+    return res.status(200).json({
+      success: true,
+      message: "Backup initiated. Archive will be available in backup history.",
+      backup: {
+        backupId: backupRecord._id,
+        backupFile: backupRecord.backupFile,
+        status: "initiated",
+        sizeBytes: 0,
+      },
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: "Backup failed to initiate", error: error?.message });
+  }
+};
+
+const getBackups = async (req, res) => {
+  try {
+    const Backup = require("../models/Backup");
+    const backups = await Backup.find().sort({ createdAt: -1 }).limit(20).lean();
+    return res.status(200).json({ success: true, data: backups });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: "Failed to fetch backups" });
+  }
+};
+
+const downloadBackup = async (req, res) => {
+  return res.status(200).json({
+    success: false,
+    message: "Direct backup download requires server-side access. Contact system administrator.",
+  });
+};
+
+// ==========================
+// DISMISS COMPLETED TASK (AdminTaskDismissal)
+// ==========================
+
+const dismissCompletedTask = async (req, res) => {
+  try {
+    const AdminTaskDismissal = require("../models/AdminTaskDismissal");
+    const adminId = req.user?._id || req.user?.id || req.userId || req.admin?._id;
+    const targetTaskId = req.params.id || req.params.taskId || req.params.communicationId;
+    const { reason = "" } = req.body || {};
+
+    if (!adminId) {
+      return res.status(401).json({ success: false, message: "Admin not authenticated" });
+    }
+    if (!targetTaskId) {
+      return res.status(400).json({ success: false, message: "Task ID is required" });
+    }
+
+    const cleanTaskId = String(targetTaskId).trim();
+    const isObjectId = mongoose.Types.ObjectId.isValid(cleanTaskId);
+
+    // Upsert: create dismissal record (idempotent — safe to call multiple times)
+    await AdminTaskDismissal.findOneAndUpdate(
+      { adminId, taskId: cleanTaskId },
+      {
+        adminId,
+        taskId: cleanTaskId,
+        communicationId: isObjectId ? cleanTaskId : null,
+        reason: String(reason).trim().slice(0, 500),
+        dismissedAt: new Date(),
+      },
+      { upsert: true, new: true }
+    );
+
+    // Audit the dismissal (preserves the permanent trail)
+    try {
+      await AuditLog.create({
+        adminId,
+        action: "DISMISS_COMPLETED_TASK",
+        actionType: "UPDATE",
+        entity: "TodayTask",
+        targetId: isObjectId ? cleanTaskId : undefined,
+        details: {
+          taskId: cleanTaskId,
+          reason,
+          message: `Admin dismissed completed task ${cleanTaskId} from Today's Tasks view`,
+        },
+        timestamp: new Date(),
+      });
+    } catch (_) {}
+
+    return res.status(200).json({
+      success: true,
+      message: "Task removed from Today's Tasks. Audit record remains preserved.",
+    });
+  } catch (error) {
+    console.error("dismissCompletedTask error:", error);
+    return res.status(500).json({ success: false, message: "Failed to dismiss task", error: error?.message });
+  }
+};
+
+// ==========================
+// REMOVE LOGIN HISTORY ENTRY (Stable ID)
+// ==========================
+
+const removeLoginHistoryEntry = async (req, res) => {
+  try {
+    const adminId = req.user?._id || req.user?.id || req.userId || req.admin?._id;
+    const { id } = req.params;
+
+    if (!adminId) {
+      return res.status(401).json({ success: false, message: "Admin not authenticated" });
+    }
+    if (!id) {
+      return res.status(400).json({ success: false, message: "Login history ID is required" });
+    }
+
+    const admin = await Admin.findById(adminId);
+    if (!admin) {
+      return res.status(404).json({ success: false, message: "Admin not found" });
+    }
+
+    if (!admin.loginHistory || admin.loginHistory.length === 0) {
+      return res.status(404).json({ success: false, message: "No login history found" });
+    }
+
+    // Find the entry by stable _id / id or by index fallback
+    const targetIdStr = String(id).trim();
+    let foundIndex = admin.loginHistory.findIndex(
+      (entry) =>
+        (entry._id && String(entry._id) === targetIdStr) ||
+        (entry.id && String(entry.id) === targetIdStr)
+    );
+
+    // Numeric fallback if index passed
+    if (foundIndex === -1 && /^\d+$/.test(targetIdStr)) {
+      const idx = parseInt(targetIdStr, 10);
+      if (idx >= 0 && idx < admin.loginHistory.length) {
+        foundIndex = idx;
+      }
+    }
+
+    if (foundIndex === -1) {
+      return res.status(404).json({ success: false, message: "Login history entry not found" });
+    }
+
+    const removedEntry = admin.loginHistory[foundIndex];
+
+    // Prevent removal of the current/most recent session
+    // In authController, the latest login is the last item in the array or matches lastLogin
+    const isLatestEntry =
+      foundIndex === admin.loginHistory.length - 1 ||
+      (admin.lastLogin &&
+        removedEntry.time &&
+        new Date(removedEntry.time).getTime() === new Date(admin.lastLogin).getTime());
+
+    if (isLatestEntry) {
+      return res.status(400).json({
+        success: false,
+        message: "Cannot remove current active session from login history",
+      });
+    }
+
+    // Remove the entry
+    admin.loginHistory.splice(foundIndex, 1);
+    await admin.save();
+
+    // Audit the removal
+    try {
+      await AuditLog.create({
+        adminId,
+        action: "REMOVE_LOGIN_HISTORY_ENTRY",
+        actionType: "DELETE",
+        entity: "Admin",
+        targetId: adminId,
+        details: {
+          removedEntryId: targetIdStr,
+          removedTime: removedEntry.time,
+          removedIp: removedEntry.ip,
+          removedDevice: removedEntry.device,
+          note: "Login history entry removed from profile view. Security audit record preserved here.",
+        },
+        timestamp: new Date(),
+      });
+    } catch (_) {}
+
+    return res.status(200).json({
+      success: true,
+      message: "Login history entry removed from profile view. Security audit record preserved.",
+    });
+  } catch (error) {
+    console.error("removeLoginHistoryEntry error:", error);
+    return res.status(500).json({ success: false, message: "Failed to remove login history entry", error: error?.message });
+  }
+};
 
 module.exports.deleteRequest = deleteRequest;
 module.exports.setOwnerStatus = setOwnerStatus;
@@ -2525,4 +2840,8 @@ module.exports.downloadBackup = downloadBackup;
 module.exports.impersonateOwner = impersonateOwner;
 module.exports.getAdminsTeam = getAdminsTeam;
 module.exports.assignRequest = assignRequest;
+module.exports.getSystemSettings = getSystemSettings;
+module.exports.dismissCompletedTask = dismissCompletedTask;
+module.exports.removeLoginHistoryEntry = removeLoginHistoryEntry;
+
 

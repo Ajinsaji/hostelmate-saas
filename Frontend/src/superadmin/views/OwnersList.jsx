@@ -31,7 +31,8 @@ import {
   ShieldAlert,
   ChevronLeft,
   ChevronRight,
-  User
+  User,
+  UserPlus
 } from "lucide-react";
 
 export const OwnersList = React.memo(() => {
@@ -265,15 +266,25 @@ export const OwnersList = React.memo(() => {
           placeholder="Search owners by name, phone, email, hostel name, city, district..." 
           onChange={handleSearchChange} 
         />
-        <button
-          onClick={fetchOwners}
-          disabled={loading}
-          className="px-4 py-2.5 rounded-xl border border-white/10 bg-slate-900/80 hover:bg-white/5 text-slate-300 text-xs font-bold flex items-center justify-center gap-2 transition cursor-pointer shrink-0 disabled:opacity-50 min-h-[44px]"
-          title="Refresh owners CRM"
-        >
-          <RefreshCw size={14} className={loading ? "animate-spin text-emerald-400" : "text-emerald-400"} />
-          <span>Refresh</span>
-        </button>
+        <div className="flex items-center gap-2.5 shrink-0">
+          <button
+            onClick={() => navigate("/admin/owners/new")}
+            className="px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold flex items-center justify-center gap-2 transition cursor-pointer shadow-lg shadow-emerald-500/20 min-h-[44px]"
+            title="Create new owner registration request"
+          >
+            <UserPlus size={15} />
+            <span>Register Owner</span>
+          </button>
+          <button
+            onClick={fetchOwners}
+            disabled={loading}
+            className="px-4 py-2.5 rounded-xl border border-white/10 bg-slate-900/80 hover:bg-white/5 text-slate-300 text-xs font-bold flex items-center justify-center gap-2 transition cursor-pointer disabled:opacity-50 min-h-[44px]"
+            title="Refresh owners CRM"
+          >
+            <RefreshCw size={14} className={loading ? "animate-spin text-emerald-400" : "text-emerald-400"} />
+            <span>Refresh</span>
+          </button>
+        </div>
       </div>
 
       {/* 3. OWNERS CARDS GRID */}
@@ -294,14 +305,21 @@ export const OwnersList = React.memo(() => {
             </button>
           </div>
         ) : data.length === 0 ? (
-          <div className="p-16 text-center text-slate-400 border border-white/5 bg-white/[0.02] rounded-2xl">
+          <div className="p-16 text-center text-slate-400 border border-white/5 bg-white/[0.02] rounded-2xl flex flex-col items-center justify-center">
             <User size={36} className="mx-auto mb-3 text-slate-500" />
             <h3 className="text-base font-bold text-white mb-1">No Owners Found</h3>
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-slate-400 mb-4 max-w-md">
               {debouncedSearch || statusFilter !== "all"
                 ? "No owner accounts match your current search or status filter."
-                : "No owner accounts registered in the database."}
+                : "No owner accounts registered in the database. Create a new owner registration request to get started."}
             </p>
+            <button
+              onClick={() => navigate("/admin/owners/new")}
+              className="px-5 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-xs font-bold transition flex items-center gap-2 shadow-lg shadow-emerald-500/20"
+            >
+              <UserPlus size={16} />
+              <span>Register New Owner</span>
+            </button>
           </div>
         ) : (
           <>

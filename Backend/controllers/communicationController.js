@@ -352,6 +352,13 @@ const getPendingCommunicationTasks = async (req, res) => {
           .lean()
       : Promise.resolve([]);
 
+    const AdminTaskDismissal = require("../models/AdminTaskDismissal");
+    const currentAdminId = req.user?._id || req.user?.id || req.userId || req.admin?._id;
+
+    const dismissalsPromise = currentAdminId
+      ? AdminTaskDismissal.find({ adminId: currentAdminId }).select("taskId communicationId").lean()
+      : Promise.resolve([]);
+
     const [
       commTasks,
       pendingRequests,
@@ -364,6 +371,7 @@ const getPendingCommunicationTasks = async (req, res) => {
       manualWhatsAppToday,
       retriedWhatsAppToday,
       auditLogsToday,
+      dismissedRecords,
     ] = await Promise.all([
       commTasksPromise,
       pendingRequestsPromise,
@@ -376,7 +384,14 @@ const getPendingCommunicationTasks = async (req, res) => {
       manualWhatsAppTodayPromise,
       retriedWhatsAppTodayPromise,
       auditLogsTodayPromise,
+      dismissalsPromise,
     ]);
+
+    const dismissedIdsSet = new Set();
+    (dismissedRecords || []).forEach((d) => {
+      if (d.taskId) dismissedIdsSet.add(String(d.taskId));
+      if (d.communicationId) dismissedIdsSet.add(String(d.communicationId));
+    });
 
     // Compute live categorized counts
     let rentRemindersCount = 0;
@@ -547,9 +562,13 @@ const getPendingCommunicationTasks = async (req, res) => {
     const formattedCompletedToday = [];
     const seenActionIds = new Set();
 
-    // Helper to push deduplicated completed items
+    // Helper to push deduplicated completed items (filtering out any dismissed tasks)
     const pushCompletedItem = (item) => {
-      if (!seenActionIds.has(item.id)) {
+      const isDismissed =
+        dismissedIdsSet.has(String(item.id)) ||
+        (item.dbId && dismissedIdsSet.has(String(item.dbId)));
+
+      if (!isDismissed && !seenActionIds.has(item.id)) {
         seenActionIds.add(item.id);
         formattedCompletedToday.push(item);
       }

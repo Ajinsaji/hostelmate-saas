@@ -3,12 +3,13 @@ import PageContainer from "../layouts/PageContainer";
 import SectionHeader from "../layouts/SectionHeader";
 import ContentContainer from "../layouts/ContentContainer";
 import { api } from "../../services/api";
-import { User, Mail, Shield, Smartphone, Laptop, Clock, Activity, Key, MapPin, Monitor, Phone, X } from "lucide-react";
+import { User, Mail, Shield, Smartphone, Laptop, Clock, Activity, Key, MapPin, Monitor, Phone, X, Trash2 } from "lucide-react";
 import { toast } from "react-hot-toast";
 
 export const AdminProfile = React.memo(() => {
   const [data, setData] = useState({});
   const [loading, setLoading] = useState(true);
+  const [deletingHistoryId, setDeletingHistoryId] = useState(null);
 
   const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
   const [editFormData, setEditFormData] = useState({ fullName: "", email: "", phone: "", profileImage: "" });
@@ -32,6 +33,7 @@ export const AdminProfile = React.memo(() => {
       }
     } catch (error) {
       console.error("Error fetching Profile:", error);
+      toast.error("Failed to load profile");
     } finally {
       setLoading(false);
     }
@@ -40,6 +42,29 @@ export const AdminProfile = React.memo(() => {
   useEffect(() => {
     fetchProfile();
   }, []);
+
+  const handleRemoveLoginHistory = async (entryId) => {
+    if (!entryId) return;
+    const confirmed = window.confirm(
+      "Remove this login history record from your profile view?\n\nNote: The underlying system security audit log remains preserved."
+    );
+    if (!confirmed) return;
+
+    try {
+      setDeletingHistoryId(entryId);
+      const res = await api.delete(`/api/admin/profile/login-history/${encodeURIComponent(entryId)}`);
+      if (res.data?.success) {
+        toast.success("Login history entry removed");
+        fetchProfile();
+      } else {
+        toast.error(res.data?.message || "Failed to remove entry");
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to remove login history entry");
+    } finally {
+      setDeletingHistoryId(null);
+    }
+  };
 
   const handleEditProfileSubmit = async (e) => {
     e.preventDefault();
@@ -207,20 +232,71 @@ export const AdminProfile = React.memo(() => {
                       <th className="px-6 py-3 border-b border-slate-700/50">Date & Time</th>
                       <th className="px-6 py-3 border-b border-slate-700/50">Location / IP</th>
                       <th className="px-6 py-3 border-b border-slate-700/50">Status</th>
+                      <th className="px-6 py-3 border-b border-slate-700/50 text-right">Action</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-800">
-                    {data.loginHistory && data.loginHistory.length > 0 ? data.loginHistory.map((log, idx) => (
-                      <tr key={idx} className="hover:bg-slate-800/30 transition-colors">
-                        <td className="px-6 py-4">{new Date(log.time).toLocaleString()}</td>
-                        <td className="px-6 py-4 text-slate-400">{log.location || "Local"} <br/><span className="text-xs">{log.ip || "Unknown"}</span></td>
-                        <td className="px-6 py-4"><span className={`text-xs font-medium px-2 py-1 rounded ${log.status === 'Failed' ? 'text-rose-400 bg-rose-400/10' : 'text-emerald-400 bg-emerald-400/10'}`}>{log.status || "Successful"}</span></td>
-                      </tr>
-                    )) : (
+                    {data.loginHistory && data.loginHistory.length > 0 ? (
+                      // Reverse order so most recent is on top
+                      [...data.loginHistory].reverse().map((log, idx) => {
+                        const isCurrent = idx === 0;
+                        const entryId = log._id || log.id || log.time;
+                        const isDeleting = deletingHistoryId === entryId;
+
+                        return (
+                          <tr key={log._id || idx} className="hover:bg-slate-800/30 transition-colors">
+                            <td className="px-6 py-4">{log.time ? new Date(log.time).toLocaleString() : "Unknown"}</td>
+                            <td className="px-6 py-4 text-slate-400">
+                              {log.location || "Local"} <br />
+                              <span className="text-xs">{log.ip || "Unknown IP"}</span>
+                            </td>
+                            <td className="px-6 py-4">
+                              <span
+                                className={`text-xs font-medium px-2 py-1 rounded ${
+                                  log.status === "Failed"
+                                    ? "text-rose-400 bg-rose-400/10 border border-rose-400/20"
+                                    : "text-emerald-400 bg-emerald-400/10 border border-emerald-400/20"
+                                }`}
+                              >
+                                {log.status || "Successful"}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 text-right">
+                              {isCurrent ? (
+                                <span className="text-xs text-emerald-400/80 font-semibold bg-emerald-400/10 px-2 py-0.5 rounded">
+                                  Current Session
+                                </span>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveLoginHistory(entryId)}
+                                  disabled={isDeleting}
+                                  className="inline-flex items-center gap-1 text-xs text-rose-400 hover:text-rose-300 font-medium px-2.5 py-1 rounded bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 transition cursor-pointer disabled:opacity-50"
+                                  title="Remove from profile history (Security audit log remains preserved)"
+                                >
+                                  <Trash2 className={`w-3 h-3 ${isDeleting ? "animate-spin" : ""}`} />
+                                  <span>{isDeleting ? "Removing..." : "Remove"}</span>
+                                </button>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })
+                    ) : (
                       <tr className="hover:bg-slate-800/30 transition-colors">
                         <td className="px-6 py-4">Current Login</td>
-                        <td className="px-6 py-4 text-slate-400">Local <br/><span className="text-xs">IP recorded securely</span></td>
-                        <td className="px-6 py-4"><span className="text-emerald-400 text-xs font-medium px-2 py-1 bg-emerald-400/10 rounded">Successful</span></td>
+                        <td className="px-6 py-4 text-slate-400">
+                          Local <br />
+                          <span className="text-xs">IP recorded securely</span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className="text-emerald-400 text-xs font-medium px-2 py-1 bg-emerald-400/10 rounded">
+                            Successful
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          <span className="text-xs text-slate-500 italic">Active Session</span>
+                        </td>
                       </tr>
                     )}
                   </tbody>

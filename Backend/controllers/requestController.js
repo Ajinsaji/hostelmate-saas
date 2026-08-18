@@ -109,40 +109,72 @@ const createRequest = async (req, res) => {
       }
     }
 
-    logger.info("Saving hostel request...");
-    const request =
-      await HostelRequest.create({
-        ownerName,
-        phone,
-        email: req.body.email || "",
-        company: req.body.company || "",
-        hostelName,
-        ownerAddress: ownerAddress || "",
-        hostelAddress: hostelAddress || "",
-        state: state || "",
-        district: district || "",
-        city: city || "",
-        pincode: safePincode || "",
-        hostelType: hostelType || "PG",
-        aadhaarFile: aadhaarFileName,
-        aadhaarBack: aadhaarBackName,
-        selfie: selfieName,
-        ownerPhoto: ownerPhotoFileName,
-        licensePhoto: licensePhotoFileName,
-        idType: req.body.idType || "Aadhaar",
-        idNumber: req.body.idNumber || "",
-        altPhone: req.body.altPhone || "",
-        roomsCount: Number(req.body.roomsCount || req.body.rooms) || 0,
-        capacity: Number(req.body.capacity) || 0,
-        amenities: Array.isArray(req.body.amenities) ? req.body.amenities : [],
-        status: "pending",
-      });
+    // Determine source & createdBy from authenticated server context (prevent client spoofing)
+    const AuditLog = require("../models/AuditLog");
+    const isAuthAdmin = !!(req.user || req.admin);
+    const adminId = req.user?.id || req.user?.userId || req.user?._id || req.admin?._id || req.admin?.id || null;
+    const requestSource = isAuthAdmin ? "admin" : "public";
+
+    logger.info(`Saving hostel request (source: ${requestSource})...`);
+    const request = await HostelRequest.create({
+      ownerName,
+      phone,
+      email: req.body.email || "",
+      company: req.body.company || "",
+      hostelName,
+      ownerAddress: ownerAddress || "",
+      hostelAddress: hostelAddress || "",
+      state: state || "",
+      district: district || "",
+      city: city || "",
+      pincode: safePincode || "",
+      hostelType: hostelType || "PG",
+      aadhaarFile: aadhaarFileName,
+      aadhaarBack: aadhaarBackName,
+      selfie: selfieName,
+      ownerPhoto: ownerPhotoFileName,
+      licensePhoto: licensePhotoFileName,
+      idType: req.body.idType || "Aadhaar",
+      idNumber: req.body.idNumber || "",
+      altPhone: req.body.altPhone || "",
+      roomsCount: Number(req.body.roomsCount || req.body.rooms) || 0,
+      capacity: Number(req.body.capacity) || 0,
+      amenities: Array.isArray(req.body.amenities) ? req.body.amenities : [],
+      status: "pending",
+      source: requestSource,
+      createdBy: adminId,
+      timeline: [
+        {
+          action: isAuthAdmin ? "Registration Request Created by Admin" : "Public Registration Submitted",
+          by: isAuthAdmin ? (req.user?.role || "SuperAdmin") : "Public",
+          date: new Date()
+        }
+      ]
+    });
+
+    if (isAuthAdmin && adminId) {
+      await AuditLog.create({
+        adminId,
+        action: "ADMIN_CREATED_REGISTRATION_REQUEST",
+        actionType: "CREATE",
+        entity: "HostelRequest",
+        targetId: request._id,
+        details: {
+          hostelName: request.hostelName,
+          ownerName: request.ownerName,
+          phone: request.phone,
+          source: "admin",
+          message: `Admin created hostel registration request for ${request.hostelName} (${request.ownerName})`
+        },
+        timestamp: new Date()
+      }).catch(() => {});
+    }
 
     logger.info("Hostel request saved successfully");
 
-    res.status(201).json({
+    return res.status(201).json({
       success: true,
-      message: "Application Submitted",
+      message: isAuthAdmin ? "Manual Owner Registration Request Created" : "Application Submitted",
       request,
       requestId: request?._id || request?.id,
     });
@@ -164,11 +196,12 @@ const createRequest = async (req, res) => {
     }
 
     // All other unexpected errors
-    logger.error("CREATE REQUEST ERROR:", error);
+    logger.error("CREATE REQUEST ERROR:", error?.message || error);
 
     res.status(500).json({
       success: false,
       message: "Server error while submitting application",
+      error: error?.message || String(error),
     });
   }
 };

@@ -63,9 +63,13 @@ const {
   impersonateOwner,
   getAdminsTeam,
   assignRequest,
+  // Task dismissal & login history
+  dismissCompletedTask,
+  removeLoginHistoryEntry,
   // NOTE: Phase 4.2B handlers are implemented in hostelAdminController
   // and imported separately below to avoid module.exports mismatch.
 } = require("../controllers/adminController");
+
 
 const {
   getHostelFinancials,
@@ -163,7 +167,20 @@ router.get("/health-score", resolvedHealthScoreHandler);
 // REQUESTS
 // ==========================
 
+const { createRequest } = require("../controllers/requestController");
+
 router.get("/requests", getAllRequests);
+router.post(
+  "/requests",
+  uploadFields([
+    { name: "aadhaarFile", maxCount: 1 },
+    { name: "aadhaarBack", maxCount: 1 },
+    { name: "ownerPhoto", maxCount: 1 },
+    { name: "selfie", maxCount: 1 },
+    { name: "licensePhoto", maxCount: 1 },
+  ]),
+  createRequest
+);
 router.delete("/requests/:id", deleteRequest);
 
 router.get("/team", getAdminsTeam);
@@ -268,6 +285,18 @@ router.get("/profile", getAdminProfile);
 router.put("/profile/update", updateAdminProfile);
 
 router.put("/profile/change-password", changeAdminPassword);
+
+// Remove a login history entry from profile view (does NOT delete security audit log)
+router.delete("/profile/login-history/:id", removeLoginHistoryEntry);
+
+// ==========================
+// TODAY'S TASKS — DISMISSAL
+// ==========================
+
+// Dismiss a completed task from the Today's Tasks UI view
+// Does NOT delete the underlying Communication or AuditLog record
+router.post("/tasks/completed/:id/dismiss", dismissCompletedTask);
+router.post("/tasks/completed/:communicationId/dismiss", dismissCompletedTask);
 
 module.exports = router;
 

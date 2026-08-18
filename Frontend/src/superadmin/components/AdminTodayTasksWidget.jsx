@@ -22,6 +22,7 @@ import {
   Sparkles,
   Layers,
   ArrowUpRight,
+  Trash2,
 } from "lucide-react";
 import api from "../../utils/apiClient";
 import useAdminAutoRefresh from "../hooks/useAdminAutoRefresh";
@@ -38,6 +39,7 @@ export default function AdminTodayTasksWidget({ onRefreshTrigger }) {
   const [pendingCount, setPendingCount] = useState(0);
   const [completedCount, setCompletedCount] = useState(0);
   const [totalCount, setTotalCount] = useState(0);
+  const [dismissingIds, setDismissingIds] = useState({});
 
   const [categories, setCategories] = useState({
     rentRemindersCount: 0,
@@ -141,6 +143,30 @@ export default function AdminTodayTasksWidget({ onRefreshTrigger }) {
       fetchTasks();
     } finally {
       setRetryingIds((prev) => ({ ...prev, [taskId]: false }));
+    }
+  };
+
+  const handleDismissTask = async (taskId) => {
+    if (!taskId) return;
+    const confirmed = window.confirm(
+      "Remove this task from Today's Tasks list?\n\nNote: The underlying permanent Audit Log and Communication record will remain completely intact."
+    );
+    if (!confirmed) return;
+
+    try {
+      setDismissingIds((prev) => ({ ...prev, [taskId]: true }));
+      const res = await api.post(`/api/admin/tasks/completed/${encodeURIComponent(taskId)}/dismiss`, {
+        reason: "Dismissed by admin from Today's Tasks Widget",
+      });
+      if (res?.data?.success) {
+        fetchTasks();
+      } else {
+        alert(res?.data?.message || "Failed to remove task");
+      }
+    } catch (err) {
+      alert(err?.response?.data?.message || "Failed to remove task");
+    } finally {
+      setDismissingIds((prev) => ({ ...prev, [taskId]: false }));
     }
   };
 
@@ -543,6 +569,18 @@ export default function AdminTodayTasksWidget({ onRefreshTrigger }) {
                     >
                       <Eye size={13} />
                       <span>Inspect</span>
+                    </button>
+                  )}
+
+                  {activeTab === "completed" && (
+                    <button
+                      onClick={() => handleDismissTask(item.id || item.dbId)}
+                      disabled={dismissingIds[item.id || item.dbId]}
+                      className="px-3 py-1.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 border border-rose-500/30 font-bold text-xs flex items-center gap-1 transition cursor-pointer disabled:opacity-50"
+                      title="Remove from Today's Tasks"
+                    >
+                      <Trash2 size={13} className={dismissingIds[item.id || item.dbId] ? "animate-spin" : ""} />
+                      <span>{dismissingIds[item.id || item.dbId] ? "Removing..." : "Remove"}</span>
                     </button>
                   )}
                 </div>

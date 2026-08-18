@@ -177,7 +177,7 @@ async function main() {
     ownerPhoto:   "selfie_sample.png"
   };
 
-  const regRes = await postJSON("/api/auth/approve/new", regPayload, adminToken);
+  const regRes = await postJSON("/api/admin/requests", regPayload, adminToken);
   if (regRes.status !== 201 || !regRes.body?.success) {
     fail("Registration — HTTP 201 + success", `HTTP ${regRes.status}: ${JSON.stringify(regRes.body)}`);
     throw new Error("Aborting — registration failed");

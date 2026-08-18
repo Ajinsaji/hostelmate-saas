@@ -278,7 +278,7 @@ export const DashboardOverview = React.memo(() => {
           </h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
             <button
-              onClick={() => openDrawer("owner", { title: "New Owner Registration" })}
+              onClick={() => navigate("/admin/owners/new")}
               className="p-3 rounded-xl bg-slate-800/80 hover:bg-slate-800 border border-slate-700/80 hover:border-emerald-500/40 text-left transition group cursor-pointer flex items-center gap-2.5"
             >
               <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition">
@@ -286,7 +286,7 @@ export const DashboardOverview = React.memo(() => {
               </div>
               <div className="min-w-0">
                 <p className="text-xs font-bold text-white truncate">Register Owner</p>
-                <p className="text-[10px] text-slate-400 truncate">Create Account</p>
+                <p className="text-[10px] text-slate-400 truncate">Create Request</p>
               </div>
             </button>
 

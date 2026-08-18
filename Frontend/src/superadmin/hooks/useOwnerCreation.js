@@ -110,9 +110,9 @@ export function useOwnerCreation() {
         licensePhoto: "default_license.png",
       };
 
-      // Call registration endpoint or approve/new alias
-      const response = await api.post("/api/request/register", payload).catch(() =>
-        api.post("/api/auth/approve/new", payload)
+      // Call canonical admin request creation endpoint
+      const response = await api.post("/api/admin/requests", payload).catch(() =>
+        api.post("/api/request/register", payload)
       );
 
       if (response.data?.success) {

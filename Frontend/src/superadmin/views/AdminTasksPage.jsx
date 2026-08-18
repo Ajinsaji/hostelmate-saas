@@ -22,6 +22,8 @@ import {
   Clock,
   RotateCcw,
   Sparkles,
+  Trash2,
+  Wallet,
 } from "lucide-react";
 import api from "../../utils/apiClient";
 import useAdminAutoRefresh from "../hooks/useAdminAutoRefresh";
@@ -54,6 +56,7 @@ export default function AdminTasksPage() {
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [selectedComm, setSelectedComm] = useState(null);
   const [retryingIds, setRetryingIds] = useState({});
+  const [dismissingIds, setDismissingIds] = useState({});
 
   const fetchTasks = useCallback(async () => {
     try {
@@ -130,6 +133,30 @@ export default function AdminTasksPage() {
       fetchTasks();
     } finally {
       setRetryingIds((prev) => ({ ...prev, [taskId]: false }));
+    }
+  };
+
+  const handleDismissTask = async (taskId) => {
+    if (!taskId) return;
+    const confirmed = window.confirm(
+      "Remove this task from Today's Tasks list?\n\nNote: The underlying permanent Audit Log and Communication record will remain completely intact."
+    );
+    if (!confirmed) return;
+
+    try {
+      setDismissingIds((prev) => ({ ...prev, [taskId]: true }));
+      const res = await api.post(`/api/admin/tasks/completed/${encodeURIComponent(taskId)}/dismiss`, {
+        reason: "Dismissed by admin from Today's Tasks UI",
+      });
+      if (res.data?.success) {
+        fetchTasks();
+      } else {
+        alert(res.data?.message || "Failed to remove task");
+      }
+    } catch (err) {
+      alert(err.response?.data?.message || "Failed to remove task");
+    } finally {
+      setDismissingIds((prev) => ({ ...prev, [taskId]: false }));
     }
   };
 
@@ -512,6 +539,16 @@ export default function AdminTasksPage() {
                         </button>
                       )}
 
+                      {item.actionType === "verify_payment" && (
+                        <button
+                          onClick={() => navigate("/admin/revenue")}
+                          className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1.5 transition cursor-pointer"
+                        >
+                          <Wallet size={14} />
+                          <span>Verify Payment</span>
+                        </button>
+                      )}
+
                       {item.raw && (
                         <button
                           onClick={() => setSelectedComm(item.raw)}
@@ -519,6 +556,18 @@ export default function AdminTasksPage() {
                         >
                           <Eye size={14} />
                           <span>Inspect</span>
+                        </button>
+                      )}
+
+                      {activeTab === "completed" && (
+                        <button
+                          onClick={() => handleDismissTask(item.id || item.dbId)}
+                          disabled={dismissingIds[item.id || item.dbId]}
+                          className="px-3.5 py-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 border border-rose-500/30 font-bold text-xs flex items-center gap-1.5 transition cursor-pointer disabled:opacity-50"
+                          title="Remove from Today's Tasks (Audit trail preserved)"
+                        >
+                          <Trash2 size={14} className={dismissingIds[item.id || item.dbId] ? "animate-spin" : ""} />
+                          <span>{dismissingIds[item.id || item.dbId] ? "Removing..." : "Remove"}</span>
                         </button>
                       )}
                     </div>

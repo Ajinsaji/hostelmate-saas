@@ -123,9 +123,15 @@ export const adminMenuItems = [
     { key: 'analytics', label: 'BI Analytics', icon: 'BarChart3', href: '/admin/analytics' },
     { key: 'customer-success', label: 'Customer Success', icon: 'Activity', href: '/admin/customer-success' },
   ]},
+  { section: 'Operations', items: [
+    { key: 'tasks', label: "Today's Tasks", icon: 'CheckSquare', href: '/admin/tasks' },
+    { key: 'whatsapp', label: 'WhatsApp Engine', icon: 'MessageCircle', href: '/admin/communications/whatsapp' },
+    { key: 'communication', label: 'Communication Desk', icon: 'MessageSquare', href: '/admin/communication' },
+    { key: 'monitoring', label: 'Monitoring', icon: 'Activity', href: '/admin/monitoring' },
+  ]},
   { section: 'Support & Security', items: [
     { key: 'support', label: 'Support Desk', icon: 'HelpCircle', href: '/admin/support' },
-    { key: 'audit', label: 'Audit Trails', icon: 'Settings', href: '/admin/audit' },
+    { key: 'audit', label: 'Audit Trails', icon: 'Shield', href: '/admin/audit' },
     { key: 'settings', label: 'Settings', icon: 'Settings', href: '/admin/settings' },
     { key: 'profile', label: 'Profile', icon: 'User', href: '/admin/profile' },
   ]},

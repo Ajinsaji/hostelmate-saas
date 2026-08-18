@@ -57,6 +57,16 @@ const hostelRequestSchema = new mongoose.Schema(
     assignedTeam: { type: String, default: "" },
     assignedAt: { type: Date, default: null },
     assignedBy: { type: String, default: "" },
+    source: {
+      type: String,
+      enum: ["public", "admin"],
+      default: "public",
+    },
+    createdBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Admin",
+      default: null,
+    },
     rejectionReason: String,
     timeline: [{
       action: String,

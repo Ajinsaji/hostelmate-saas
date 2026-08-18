@@ -1,5 +1,6 @@
 import React, { useState } from "react";
-import { CheckCircle2, ChevronRight, ChevronLeft, Camera, User, Building2, Shield, FileCheck, Check } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { CheckCircle2, ChevronRight, ChevronLeft, Camera, User, Building2, Shield, FileCheck, Check, Clock } from "lucide-react";
 import DocumentCapture from "../forms/DocumentCapture";
 import OwnerRegistrationReview from "../forms/OwnerRegistrationReview";
 import CameraCapture from "../forms/CameraCapture";
@@ -407,13 +408,21 @@ export const CreateOwnerDesktop = ({
               </div>
             )}
 
-            <div className="pt-4 flex justify-center gap-4">
+            <div className="pt-4 flex flex-wrap justify-center gap-3">
               <button
                 type="button"
                 onClick={() => window.location.reload()}
-                className="px-6 py-3 bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs rounded-xl shadow-lg shadow-emerald-500/20 transition min-h-[48px]"
+                className="px-5 py-3 bg-white/5 hover:bg-white/10 text-slate-300 font-bold text-xs rounded-xl border border-white/10 transition min-h-[44px]"
               >
                 Register Another Owner
+              </button>
+              <button
+                type="button"
+                onClick={() => window.location.href = "/admin/requests"}
+                className="px-6 py-3 bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs rounded-xl shadow-lg shadow-emerald-500/20 transition min-h-[44px] flex items-center gap-2"
+              >
+                <Clock size={16} />
+                View Pending Requests Queue
               </button>
             </div>
           </div>
