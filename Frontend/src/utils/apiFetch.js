@@ -111,7 +111,15 @@ export const apiFetch = async (url, options = {}) => {
     fetchOptions.body = JSON.stringify(fetchOptions.body);
   }
 
-  const res = await fetch(resolvedUrl, fetchOptions);
+  let res;
+  try {
+    res = await fetch(resolvedUrl, fetchOptions);
+  } catch (err) {
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("hostelmate:network-error", { detail: { url: resolvedUrl, message: err?.message } }));
+    }
+    throw new ApiError(err?.message || "Network request failed", 0, "NETWORK_ERROR");
+  }
 
   if (res.status === 401) {
     if (!isPublicApi && !isPublicRoutePath(window.location.pathname)) {

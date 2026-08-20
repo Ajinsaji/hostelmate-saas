@@ -1,22 +1,32 @@
-import { useServerReady } from "../hooks/useServerReady";
+import React from "react";
+import { useConnection, CONNECTION_STATES } from "../contexts/ConnectionContext";
 import LoadingScreen from "./LoadingScreen";
+import ConnectionErrorScreen from "./ConnectionErrorScreen";
 
 /**
- * Wrapper component that shows LoadingScreen while server is connecting
- * Automatically dismisses when server is ready
+ * Wrapper component that manages startup readiness.
+ * - Shows LoadingScreen while connection state is INITIALIZING
+ * - Shows ConnectionErrorScreen if initial check detects OFFLINE or SERVER_UNAVAILABLE
+ * - Dismisses full screen blocking UI once connection is ONLINE so children render cleanly
  */
 function ServerLoadingWrapper({ children }) {
-  const { isReady, isChecking } = useServerReady();
+  const { connectionState, isChecking, hasCompletedInitialCheck } = useConnection();
 
-  // Keep current visual design: render LoadingScreen on initial server readiness check.
-  // Note: the hook also provides an `error` string for wake-up/timeout, but LoadingScreen already owns the full UI.
-  return (
-    <>
-      {isChecking && !isReady && <LoadingScreen />}
-      {children}
-    </>
-  );
+  // 1. Startup phase: initial health check in progress
+  if (!hasCompletedInitialCheck || connectionState === CONNECTION_STATES.INITIALIZING) {
+    return <LoadingScreen />;
+  }
+
+  // 2. Startup failure: Device offline or HostelMate server unreachable on app boot
+  if (
+    connectionState === CONNECTION_STATES.OFFLINE ||
+    connectionState === CONNECTION_STATES.SERVER_UNAVAILABLE
+  ) {
+    return <ConnectionErrorScreen />;
+  }
+
+  // 3. Operational phase: Connection is ONLINE (or error recovered)
+  return <>{children}</>;
 }
 
 export default ServerLoadingWrapper;
-

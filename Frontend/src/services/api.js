@@ -235,8 +235,15 @@ api.interceptors.response.use(
         localStorage.removeItem("token");
         redirectToLogin("/login");
       }
+    } else if (!status || error?.code === "ERR_NETWORK" || error?.message === "Network Error") {
+      // Network failure (device offline, server down, connection reset)
+      // DO NOT clear auth tokens or redirect! Dispatch event to ConnectionContext.
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("hostelmate:network-error", { detail: { url: requestUrl, message: error?.message } }));
+      }
     }
 
     return Promise.reject(error);
   }
 );
+

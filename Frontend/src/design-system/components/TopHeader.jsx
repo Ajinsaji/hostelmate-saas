@@ -6,6 +6,8 @@ import NotificationBell from "../../components/NotificationBell";
 import HostelSwitcher from "./HostelSwitcher";
 import { useNavigate, useLocation } from "react-router-dom";
 
+import ConnectionStatus from "../../components/ConnectionStatus";
+
 export function TopHeader({ role, userName, userRole, userAvatar, onLogout, onMenuClick }) {
   const { colors, typography } = useTheme();
   const { user } = useCurrentUser();
@@ -70,8 +72,10 @@ export function TopHeader({ role, userName, userRole, userAvatar, onLogout, onMe
         )}
       </div>
 
-      {/* Right section: Notifications & Profile */}
+      {/* Right section: Connection Status, Notifications & Profile */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+        <ConnectionStatus />
+        {/* Notification Bell (Owner Only) */}
         {/* Notification Bell (Owner Only) */}
         {!isAdmin && (
           <div style={{ display: 'flex', alignItems: 'center', minWidth: '44px', minHeight: '44px', justifyContent: 'center' }}>

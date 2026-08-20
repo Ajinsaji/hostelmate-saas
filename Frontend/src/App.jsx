@@ -10,6 +10,8 @@ import { useEffect, useState, Suspense, lazy } from 'react';
 import ErrorBoundary from './components/ErrorBoundary';
 import { HostelProvider } from "./contexts/HostelContext";
 import { NotificationProvider } from "./contexts/NotificationContext";
+import { ConnectionProvider } from "./contexts/ConnectionContext";
+import ConnectionDiagnosticModal from "./components/ConnectionDiagnosticModal";
 
 import LandingPage from "./components/LandingPage";
 import LoginPage from "./components/LoginPage";
@@ -248,10 +250,12 @@ function App() {
   }, []);
 
   return (
-    <ServerLoadingWrapper>
-      <OfflineBanner />
-      <ErrorBoundary>
-      <BrowserRouter>
+    <ConnectionProvider>
+      <ServerLoadingWrapper>
+        <OfflineBanner />
+        <ConnectionDiagnosticModal />
+        <ErrorBoundary>
+        <BrowserRouter>
         <HostelProvider>
           <NotificationProvider>
             <SessionGateWrapper />
@@ -1083,6 +1087,7 @@ function App() {
       </BrowserRouter>
     </ErrorBoundary>
     </ServerLoadingWrapper>
+    </ConnectionProvider>
   );
 }
 
