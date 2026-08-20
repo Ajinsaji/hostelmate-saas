@@ -94,8 +94,10 @@ export const ConfirmActionModal = React.memo(({
 
   const requestId = requestData._id || requestData.id;
   const targetHostelId = requestData.hostelId || requestData._id || requestData.id;
-  const hostelName = requestData.hostelName || requestData.subtitle || "Hostel";
-  const ownerName = requestData.ownerName || requestData.owner || "Owner";
+  const hostelName = requestData.hostelName || requestData.title || requestData.subtitle || requestData.name || requestData.hostel?.name || "Hostel";
+  const ownerName = requestData.ownerName || requestData.owner || requestData.owner?.fullName || requestData.owner?.name || requestData.hostel?.owner?.fullName || "Owner";
+  const ownerPhone = requestData.phone || requestData.ownerPhone || requestData.mobile || requestData.phoneNumber || requestData.owner?.phone || requestData.owner?.phoneNumber || "";
+  const ownerEmail = requestData.email || requestData.ownerEmail || requestData.owner?.email || requestData.hostel?.owner?.email || "";
 
   const handleSendCredentials = async (ownerId) => {
     if (sendingCredentials) return;
@@ -150,13 +152,16 @@ export const ConfirmActionModal = React.memo(({
         });
 
         if (res.data?.success) {
-          const ownerPhone = requestData.phone || res.data?.credentials?.username;
+          const activeUsername = ownerPhone || res.data?.credentials?.username || requestData.phone || "";
           const resultObj = {
-            username: ownerPhone,
+            username: activeUsername,
             tempPassword: res.data?.credentials?.tempPassword || "",
             loginUrl: res.data?.loginUrl || `${window.location.origin}/owner/login`,
-            ownerId: res.data?.ownerId || requestData.ownerId,
+            ownerId: res.data?.ownerId || requestData.ownerId || requestData.owner?._id,
             credentialStatus: res.data?.credentialStatus || "issued",
+            fullName: ownerName,
+            email: ownerEmail,
+            phone: ownerPhone,
           };
           setActivationResult(resultObj);
           setDeliveryStatus(resultObj.credentialStatus);
@@ -465,7 +470,7 @@ export const ConfirmActionModal = React.memo(({
                     </div>
                     <div className="flex items-center justify-between border-b border-[#202B45] pb-2">
                       <span className="text-slate-400 font-medium">Phone</span>
-                      <span className="text-white font-mono font-bold">{ownerPhone || "-"}</span>
+                      <span className="text-white font-mono font-bold">{ownerPhone || "Not provided"}</span>
                     </div>
                     <div className="flex items-center justify-between border-b border-[#202B45] pb-2">
                       <span className="text-slate-400 font-medium">Subscription</span>
