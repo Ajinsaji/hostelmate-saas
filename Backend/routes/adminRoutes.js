@@ -66,6 +66,12 @@ const {
   // Task dismissal & login history
   dismissCompletedTask,
   removeLoginHistoryEntry,
+  bulkRemoveLoginHistoryEntries,
+  recordHostelView,
+  getRecentlyViewedHostels,
+  getStorageStats,
+  sendTestEmail,
+  uploadAdminProfileImage,
   // NOTE: Phase 4.2B handlers are implemented in hostelAdminController
   // and imported separately below to avoid module.exports mismatch.
 } = require("../controllers/adminController");
@@ -277,17 +283,35 @@ router.get("/hostels/:id/subscription", getHostelSubscription);
 router.get("/hostels/:id/support", getHostelSupportTickets);
 
 // ==========================
-// ADMIN PROFILE
+// ADMIN PROFILE & ACTIVITY
 // ==========================
 
 router.get("/profile", getAdminProfile);
-
 router.put("/profile/update", updateAdminProfile);
+router.patch("/profile/update", updateAdminProfile);
+router.patch("/profile", updateAdminProfile);
+router.put("/profile", updateAdminProfile);
+
+router.post(
+  "/profile/upload-image",
+  uploadFields([{ name: "profileImage", maxCount: 1 }]),
+  uploadAdminProfileImage
+);
 
 router.put("/profile/change-password", changeAdminPassword);
+router.post("/profile/change-password", changeAdminPassword);
 
-// Remove a login history entry from profile view (does NOT delete security audit log)
+// Login History deletion
+router.delete("/profile/login-history/bulk", bulkRemoveLoginHistoryEntries);
 router.delete("/profile/login-history/:id", removeLoginHistoryEntry);
+
+// Activity Tracking & Recently Viewed Hostels
+router.post("/activity/view-hostel", recordHostelView);
+router.get("/recently-viewed-hostels", getRecentlyViewedHostels);
+
+// Additional System Settings Utilities
+router.get("/storage/stats", getStorageStats);
+router.post("/email/test", sendTestEmail);
 
 // ==========================
 // TODAY'S TASKS — DISMISSAL

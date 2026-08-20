@@ -27,6 +27,12 @@ const hostelRequestSchema = new mongoose.Schema(
     pincode: String,
     hostelType: String,
 
+    // Owner Specific Permanent Location
+    ownerPincode: String,
+    ownerState: String,
+    ownerDistrict: String,
+    ownerCity: String,
+
     aadhaarFile: String,
     aadhaarBack: String,
     selfie: String,

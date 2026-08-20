@@ -202,9 +202,67 @@ export const CreateOwnerDesktop = ({
                   />
                 </div>
 
+                {/* 6-Digit Indian Pincode Field (Auto-Lookup) */}
+                <div className="space-y-2">
+                  <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center justify-between">
+                    <span>6-Digit Indian Pincode <span className="text-[#EF4444]">*</span></span>
+                    {pincodeLoading && <span className="text-[10px] text-emerald-400 font-normal flex items-center gap-1"><Loader2 size={12} className="animate-spin" /> Looking up...</span>}
+                  </label>
+                  <div className="relative">
+                    <input
+                      name="ownerPincode"
+                      maxLength={6}
+                      value={formData.ownerPincode || ""}
+                      onChange={(e) => onPincodeInput(e, "owner")}
+                      placeholder="e.g. 110001"
+                      className="w-full bg-[#0B1220] border border-[#202B45] rounded-xl px-4 py-3.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition-all min-h-[48px] focus:ring-2 focus:ring-emerald-500/20 font-mono tracking-wider"
+                    />
+                    <MapPin size={16} className="absolute right-4 top-3.5 text-slate-500 pointer-events-none" />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider">
+                    State
+                  </label>
+                  <input
+                    name="ownerState"
+                    value={formData.ownerState || ""}
+                    onChange={handleChange}
+                    placeholder="e.g. Delhi"
+                    className="w-full bg-[#0B1220] border border-[#202B45] rounded-xl px-4 py-3.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition-all min-h-[48px] focus:ring-2 focus:ring-emerald-500/20"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider">
+                    District
+                  </label>
+                  <input
+                    name="ownerDistrict"
+                    value={formData.ownerDistrict || ""}
+                    onChange={handleChange}
+                    placeholder="e.g. North Delhi"
+                    className="w-full bg-[#0B1220] border border-[#202B45] rounded-xl px-4 py-3.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition-all min-h-[48px] focus:ring-2 focus:ring-emerald-500/20"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider">
+                    Place / Post Office / City
+                  </label>
+                  <input
+                    name="ownerCity"
+                    value={formData.ownerCity || ""}
+                    onChange={handleChange}
+                    placeholder="e.g. Connaught Place"
+                    className="w-full bg-[#0B1220] border border-[#202B45] rounded-xl px-4 py-3.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition-all min-h-[48px] focus:ring-2 focus:ring-emerald-500/20"
+                  />
+                </div>
+
                 <div className="space-y-2 md:col-span-2">
                   <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider">
-                    Owner Permanent Address
+                    Permanent Address
                   </label>
                   <input
                     name="ownerAddress"
@@ -214,6 +272,18 @@ export const CreateOwnerDesktop = ({
                     className="w-full bg-[#0B1220] border border-[#202B45] rounded-xl px-4 py-3.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition-all min-h-[48px] focus:ring-2 focus:ring-emerald-500/20"
                   />
                 </div>
+
+                {pincodeStatus && (
+                  <div className={`md:col-span-2 p-3 rounded-xl text-xs flex items-center gap-2 border ${
+                    pincodeStatus.type === "error"
+                      ? "bg-rose-500/10 border-rose-500/20 text-rose-300"
+                      : pincodeStatus.type === "success"
+                      ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-300"
+                      : "bg-cyan-500/10 border-cyan-500/20 text-cyan-300"
+                  }`}>
+                    <span>{pincodeStatus.text}</span>
+                  </div>
+                )}
               </div>
             </motion.div>
           )}

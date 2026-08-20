@@ -143,8 +143,11 @@ connectDB().then(() => {
 
 
 // ==========================
-// API ROUTES
+// API ROUTES & MAINTENANCE
 // ==========================
+
+const maintenanceModeMiddleware = require("./middleware/maintenanceMode");
+app.use(maintenanceModeMiddleware);
 
 // V2 WORKSPACE & SAAS ROUTES
 const v2Routes = require("./routes/v2Routes");

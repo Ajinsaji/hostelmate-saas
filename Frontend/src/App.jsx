@@ -1056,6 +1056,7 @@ function App() {
           
           <Route path="owners" element={<OwnersList />} />
           <Route path="owners/new" element={<CreateOwnerWizard />} />
+          <Route path="register-owner" element={<CreateOwnerWizard />} />
           <Route path="residents" element={<ResidentsList />} />
           <Route path="subscriptions" element={<SubscriptionCenter />} />
           <Route path="finance-dashboard" element={<FinanceDashboard />} />

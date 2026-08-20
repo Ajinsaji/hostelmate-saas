@@ -48,6 +48,14 @@ export const HostelDetailsLayout = React.memo(() => {
   const status = hostelData?.status || hostelData?.subscriptionStatus || hostelData?.hostel?.status || "active";
   const plan = hostelData?.plan || hostelData?.planType || hostelData?.hostel?.plan || "Basic";
 
+  // Record Admin Activity HOSTEL_VIEW
+  React.useEffect(() => {
+    if (id && hostelData) {
+      const hName = hostelData?.hostelName || hostelData?.name || hostelData?.hostel?.name || "Hostel";
+      api.post("/api/admin/activity/view-hostel", { hostelId: id, hostelName: hName }).catch(() => {});
+    }
+  }, [id, hostelData]);
+
   const handleImpersonation = async () => {
     const ownerId = hostelData?.owner?._id || hostelData?.owner?.id || hostelData?.ownerId || hostelData?.hostel?.owner?._id;
     if (!ownerId) {

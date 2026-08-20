@@ -189,9 +189,64 @@ export const CreateOwnerMobile = ({
                   />
                 </div>
 
+                {/* 6-Digit Indian Pincode Field (Auto-Lookup) */}
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-300 uppercase tracking-wider mb-1 flex items-center justify-between">
+                    <span>6-Digit Indian Pincode <span className="text-[#EF4444]">*</span></span>
+                    {pincodeLoading && <span className="text-[10px] text-emerald-400 font-normal">Looking up...</span>}
+                  </label>
+                  <input
+                    name="ownerPincode"
+                    maxLength={6}
+                    value={formData.ownerPincode || ""}
+                    onChange={(e) => handlePincodeChange && handlePincodeChange(e.target.value, "owner")}
+                    placeholder="e.g. 110001"
+                    className="w-full bg-[#131C2E] border border-[#202B45] rounded-xl px-4 py-3 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition min-h-[48px] font-mono"
+                  />
+                </div>
+
                 <div>
                   <label className="block text-[11px] font-bold text-slate-300 uppercase tracking-wider mb-1">
-                    Owner Permanent Address
+                    State
+                  </label>
+                  <input
+                    name="ownerState"
+                    value={formData.ownerState || ""}
+                    onChange={handleChange}
+                    placeholder="e.g. Delhi"
+                    className="w-full bg-[#131C2E] border border-[#202B45] rounded-xl px-4 py-3 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition min-h-[48px]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-300 uppercase tracking-wider mb-1">
+                    District
+                  </label>
+                  <input
+                    name="ownerDistrict"
+                    value={formData.ownerDistrict || ""}
+                    onChange={handleChange}
+                    placeholder="e.g. North Delhi"
+                    className="w-full bg-[#131C2E] border border-[#202B45] rounded-xl px-4 py-3 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition min-h-[48px]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-300 uppercase tracking-wider mb-1">
+                    Place / Post Office / City
+                  </label>
+                  <input
+                    name="ownerCity"
+                    value={formData.ownerCity || ""}
+                    onChange={handleChange}
+                    placeholder="e.g. Connaught Place"
+                    className="w-full bg-[#131C2E] border border-[#202B45] rounded-xl px-4 py-3 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition min-h-[48px]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-300 uppercase tracking-wider mb-1">
+                    Permanent Address
                   </label>
                   <textarea
                     name="ownerAddress"
@@ -202,6 +257,18 @@ export const CreateOwnerMobile = ({
                     className="w-full bg-[#131C2E] border border-[#202B45] rounded-xl px-4 py-3 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition"
                   />
                 </div>
+
+                {pincodeStatus && (
+                  <div className={`p-2.5 rounded-xl text-xs border ${
+                    pincodeStatus.type === "error"
+                      ? "bg-rose-500/10 border-rose-500/20 text-rose-300"
+                      : pincodeStatus.type === "success"
+                      ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-300"
+                      : "bg-cyan-500/10 border-cyan-500/20 text-cyan-300"
+                  }`}>
+                    <span>{pincodeStatus.text}</span>
+                  </div>
+                )}
               </div>
             </motion.div>
           )}

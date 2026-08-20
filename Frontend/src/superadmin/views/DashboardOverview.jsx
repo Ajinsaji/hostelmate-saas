@@ -59,18 +59,20 @@ export const DashboardOverview = React.memo(() => {
     metaStatus: { configured: false, status: "Checking..." },
   });
   const [trashCount, setTrashCount] = useState(0);
+  const [recentlyViewed, setRecentlyViewed] = useState([]);
 
   // Data hooks
   const { data: statsData, loading: statsLoading, refetch: refetchStats } = useDashboardStats();
   const { data: revenueData, loading: revenueLoading, refetch: refetchRevenue } = useRevenueMetrics();
   const { workQueue, recentActivity, loading: queueLoading, refetch: refetchQueue } = useActionQueue();
 
-  // Fetch secondary operational state (WhatsApp & Trash)
+  // Fetch secondary operational state (WhatsApp, Trash, Recently Viewed Hostels)
   const fetchOperationalStatus = useCallback(async () => {
     try {
-      const [commRes, trashRes] = await Promise.allSettled([
+      const [commRes, trashRes, recentRes] = await Promise.allSettled([
         api.get("/api/communication/settings"),
         api.get("/api/admin/trash/hostels"),
+        api.get("/api/admin/recently-viewed-hostels"),
       ]);
 
       if (commRes.status === "fulfilled" && commRes.value?.data?.success) {
@@ -83,6 +85,10 @@ export const DashboardOverview = React.memo(() => {
       if (trashRes.status === "fulfilled" && trashRes.value?.data?.success) {
         const count = trashRes.value.data.count ?? trashRes.value.data.hostels?.length ?? 0;
         setTrashCount(count);
+      }
+
+      if (recentRes.status === "fulfilled" && recentRes.value?.data?.success) {
+        setRecentlyViewed(recentRes.value.data.data || []);
       }
     } catch {
       // Graceful fallback for operational status cards
@@ -525,6 +531,52 @@ export const DashboardOverview = React.memo(() => {
               )}
             </div>
           </section>
+
+          {/* RECENTLY VIEWED HOSTELS */}
+          {recentlyViewed.length > 0 && (
+            <section className="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-5 shadow-lg space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xs font-black uppercase tracking-[0.2em] text-white flex items-center gap-1.5">
+                  <Building size={15} className="text-emerald-400" />
+                  Recently Viewed Hostels
+                </h3>
+                <span className="text-[10px] font-bold text-slate-400 bg-white/5 px-2 py-0.5 rounded-full border border-white/5">
+                  {recentlyViewed.length} Hostels
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {recentlyViewed.map((h) => (
+                  <div
+                    key={h.id || h._id}
+                    className="p-3.5 rounded-xl bg-slate-800/40 hover:bg-slate-800/80 border border-slate-800/60 transition flex items-center gap-3 group"
+                  >
+                    <div className="w-11 h-11 rounded-xl bg-slate-900 border border-slate-700/60 overflow-hidden shrink-0 flex items-center justify-center">
+                      {h.image ? (
+                        <img src={h.image} alt={h.hostelName} className="w-full h-full object-cover" />
+                      ) : (
+                        <Building size={18} className="text-emerald-400" />
+                      )}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-bold text-white truncate group-hover:text-emerald-400 transition">{h.hostelName}</p>
+                      <p className="text-[11px] text-slate-400 truncate mt-0.5">{h.location}</p>
+                      <p className="text-[10px] text-slate-500 font-mono mt-0.5">
+                        {h.viewedAt ? new Date(h.viewedAt).toLocaleString("en-IN", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "Recently viewed"}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => navigate(`/admin/hostels/${h.id || h._id}`)}
+                      className="px-3 py-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-xs font-bold transition cursor-pointer shrink-0"
+                    >
+                      Open
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
         </div>
 
         {/* RIGHT COLUMN: SYSTEM HEALTH & OPERATIONAL PANELS (1 col on desktop) */}

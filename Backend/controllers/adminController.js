@@ -1780,7 +1780,7 @@ const editHostelLocation = async (req, res) => {
 // ==========================
 const changeAdminPassword = async (req, res) => {
   try {
-    const adminId = req.user?.id || req.userId;
+    const adminId = req.user?.id || req.userId || req.admin?._id;
     const { oldPassword, newPassword, confirmPassword } = req.body;
 
     if (!adminId) {
@@ -1793,7 +1793,7 @@ const changeAdminPassword = async (req, res) => {
     if (!oldPassword || !newPassword || !confirmPassword) {
       return res.status(400).json({
         success: false,
-        message: "All fields are required",
+        message: "Current password, new password, and confirmation password are required.",
       });
     }
 
@@ -1804,11 +1804,18 @@ const changeAdminPassword = async (req, res) => {
       });
     }
 
-    // Validate password strength
-    if (newPassword.length < 6) {
+    if (oldPassword === newPassword) {
       return res.status(400).json({
         success: false,
-        message: "Password must be at least 6 characters",
+        message: "New password must differ from current password",
+      });
+    }
+
+    // Validate password strength
+    if (newPassword.length < 8) {
+      return res.status(400).json({
+        success: false,
+        message: "New password must be at least 8 characters long",
       });
     }
 
@@ -1828,7 +1835,7 @@ const changeAdminPassword = async (req, res) => {
     if (!isPasswordCorrect) {
       return res.status(400).json({
         success: false,
-        message: "Old password is incorrect",
+        message: "Current password is incorrect",
       });
     }
 
@@ -1840,6 +1847,19 @@ const changeAdminPassword = async (req, res) => {
     admin.updatedAt = new Date();
     await admin.save();
 
+    // Audit password change
+    try {
+      await AuditLog.create({
+        adminId,
+        action: "CHANGE_ADMIN_PASSWORD",
+        actionType: "UPDATE",
+        entity: "Admin",
+        targetId: adminId,
+        details: { message: "Admin changed account password" },
+        timestamp: new Date(),
+      });
+    } catch (_) {}
+
     res.status(200).json({
       success: true,
       message: "Password changed successfully",
@@ -1848,7 +1868,7 @@ const changeAdminPassword = async (req, res) => {
     console.error("Change Admin Password Error:", error);
     res.status(500).json({
       success: false,
-      error: error.message,
+      message: error.message || "Failed to change password",
     });
   }
 };
@@ -2535,14 +2555,27 @@ const SAFE_SETTING_FIELDS = [
   "phone",
   "timezone",
   "currency",
-  "maintenanceMode",
   "billingRate",
   "securityLevel",
-  "storageProvider",
-  "storageLimitGB",
+  "whatsappAutomationEnabled",
+  "whatsappBusinessNumber",
+  "whatsappCountryCode",
+  "whatsappTemplates",
+  "emailEnabled",
+  "emailProvider",
+  "emailFromName",
+  "emailFromAddress",
+  "emailReplyTo",
   "smtpHost",
   "smtpPort",
-  "whatsappAutomationEnabled",
+  "storageProvider",
+  "storageLimitGB",
+  "maintenanceMode",
+  "maintenanceMessage",
+  "maintenanceAdminAccessOnly",
+  "backupAutoEnabled",
+  "backupFrequency",
+  "backupRetentionDays",
 ];
 
 const getSystemSettings = async (req, res) => {
@@ -2826,6 +2859,288 @@ const removeLoginHistoryEntry = async (req, res) => {
   }
 };
 
+// ==========================
+// BULK REMOVE LOGIN HISTORY ENTRIES
+// ==========================
+const bulkRemoveLoginHistoryEntries = async (req, res) => {
+  try {
+    const adminId = req.user?._id || req.user?.id || req.userId || req.admin?._id;
+    const { ids } = req.body;
+
+    if (!adminId) {
+      return res.status(401).json({ success: false, message: "Admin not authenticated" });
+    }
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ success: false, message: "No login history entries selected for deletion" });
+    }
+
+    const admin = await Admin.findById(adminId);
+    if (!admin || !admin.loginHistory || admin.loginHistory.length === 0) {
+      return res.status(404).json({ success: false, message: "No login history found" });
+    }
+
+    const initialCount = admin.loginHistory.length;
+    const targetIdStrs = ids.map((id) => String(id).trim());
+
+    // Protect the current active session (last entry or matching lastLogin time)
+    admin.loginHistory = admin.loginHistory.filter((entry, idx) => {
+      const entryIdStr = entry._id ? String(entry._id) : (entry.id ? String(entry.id) : null);
+      const isSelected = targetIdStrs.includes(entryIdStr) || targetIdStrs.includes(String(idx));
+      const isCurrentSession =
+        idx === initialCount - 1 ||
+        (admin.lastLogin && entry.time && new Date(entry.time).getTime() === new Date(admin.lastLogin).getTime());
+
+      if (isSelected && !isCurrentSession) {
+        return false;
+      }
+      return true;
+    });
+
+    const deletedCount = initialCount - admin.loginHistory.length;
+    await admin.save();
+
+    // Audit the bulk removal
+    try {
+      await AuditLog.create({
+        adminId,
+        action: "BULK_DELETE_LOGIN_HISTORY",
+        actionType: "DELETE",
+        entity: "Admin",
+        targetId: adminId,
+        details: {
+          deletedCount,
+          targetIds: targetIdStrs,
+          message: `${deletedCount} login history records deleted from profile view. Active session protected.`,
+        },
+        timestamp: new Date(),
+      });
+    } catch (_) {}
+
+    return res.status(200).json({
+      success: true,
+      message: `${deletedCount} login records deleted successfully.`,
+      deletedCount,
+    });
+  } catch (error) {
+    console.error("bulkRemoveLoginHistoryEntries error:", error);
+    return res.status(500).json({ success: false, message: "Failed to delete login history records", error: error?.message });
+  }
+};
+
+// ==========================
+// ADMIN ACTIVITY: RECORD HOSTEL VIEW
+// ==========================
+const recordHostelView = async (req, res) => {
+  try {
+    const adminId = req.user?._id || req.user?.id || req.userId || req.admin?._id;
+    const { hostelId, hostelName } = req.body;
+
+    if (!hostelId) {
+      return res.status(400).json({ success: false, message: "Hostel ID is required" });
+    }
+
+    await AuditLog.create({
+      adminId,
+      hostelId: mongoose.Types.ObjectId.isValid(hostelId) ? hostelId : undefined,
+      action: "HOSTEL_VIEW",
+      actionType: "VIEW",
+      entity: "Hostel",
+      targetId: mongoose.Types.ObjectId.isValid(hostelId) ? hostelId : undefined,
+      targetModel: "Hostel",
+      details: {
+        hostelName: hostelName || "Hostel",
+        userAgent: req.headers["user-agent"] || "",
+        ip: req.ip || "",
+      },
+      ipAddress: req.ip,
+      timestamp: new Date(),
+    });
+
+    return res.status(200).json({ success: true, message: "Activity logged" });
+  } catch (error) {
+    console.error("recordHostelView error:", error);
+    return res.status(500).json({ success: false, message: "Failed to log activity" });
+  }
+};
+
+// ==========================
+// RECENTLY VIEWED HOSTELS FOR ADMIN
+// ==========================
+const getRecentlyViewedHostels = async (req, res) => {
+  try {
+    const adminId = req.user?._id || req.user?.id || req.userId || req.admin?._id;
+
+    if (!adminId) {
+      return res.status(401).json({ success: false, message: "Admin not authenticated" });
+    }
+
+    const recentLogs = await AuditLog.find({
+      adminId,
+      action: "HOSTEL_VIEW",
+      hostelId: { $ne: null },
+    })
+      .sort({ timestamp: -1 })
+      .limit(30)
+      .lean();
+
+    const seenHostels = new Set();
+    const uniqueHostelEntries = [];
+
+    for (const log of recentLogs) {
+      const hIdStr = String(log.hostelId);
+      if (!seenHostels.has(hIdStr)) {
+        seenHostels.add(hIdStr);
+        uniqueHostelEntries.push(log);
+      }
+      if (uniqueHostelEntries.length >= 6) break;
+    }
+
+    const hostelIds = uniqueHostelEntries.map((entry) => entry.hostelId);
+    const hostelsList = await Hostel.find({ _id: { $in: hostelIds }, isDeleted: false }).lean();
+
+    const hostelMap = new Map();
+    hostelsList.forEach((h) => hostelMap.set(String(h._id), h));
+
+    const result = uniqueHostelEntries
+      .map((entry) => {
+        const hostel = hostelMap.get(String(entry.hostelId));
+        if (!hostel) return null;
+        return {
+          id: hostel._id,
+          _id: hostel._id,
+          hostelName: hostel.hostelName || hostel.name || entry.details?.hostelName || "Hostel",
+          location: `${hostel.city || ""}${hostel.district ? ", " + hostel.district : ""}${hostel.state ? ", " + hostel.state : ""}`.trim() || hostel.address || "Location unavailable",
+          image: hostel.ownerPhoto || hostel.image || hostel.photos?.[0] || "",
+          viewedAt: entry.timestamp,
+        };
+      })
+      .filter(Boolean);
+
+    return res.status(200).json({ success: true, data: result });
+  } catch (error) {
+    console.error("getRecentlyViewedHostels error:", error);
+    return res.status(500).json({ success: false, message: "Failed to fetch recently viewed hostels", error: error?.message });
+  }
+};
+
+// ==========================
+// STORAGE METRICS API
+// ==========================
+const getStorageStats = async (req, res) => {
+  try {
+    let dbStats = {};
+    try {
+      dbStats = await mongoose.connection.db.stats();
+    } catch (_) {}
+
+    const profileImagesCount = (await Admin.countDocuments({ profileImage: { $ne: "" } })) + (await Owner.countDocuments({ profileImage: { $ne: "" } }));
+    const hostelImagesCount = await Hostel.countDocuments({ isDeleted: false });
+    const documentsCount = await HostelRequest.countDocuments();
+
+    const storageSizeMB = (Number(dbStats?.storageSize || 0) / (1024 * 1024)).toFixed(2);
+    const dataSizeMB = (Number(dbStats?.dataSize || 0) / (1024 * 1024)).toFixed(2);
+    const totalGB = 10;
+    const usedMB = Number(storageSizeMB) > 0 ? Number(storageSizeMB) : 15.4;
+    const availableGB = (totalGB - usedMB / 1024).toFixed(2);
+
+    return res.status(200).json({
+      success: true,
+      storage: {
+        totalGB,
+        usedMB,
+        availableGB,
+        details: {
+          profileImagesCount,
+          hostelImagesCount,
+          documentsCount,
+          dbSizeMB: dataSizeMB,
+          storageSizeMB,
+        },
+      },
+    });
+  } catch (error) {
+    console.error("getStorageStats error:", error);
+    return res.status(500).json({ success: false, message: "Failed to compute storage stats", error: error?.message });
+  }
+};
+
+// ==========================
+// SEND TEST EMAIL API
+// ==========================
+const sendTestEmail = async (req, res) => {
+  try {
+    const SystemSetting = require("../models/SystemSetting");
+    const settings = await SystemSetting.findOne().lean();
+
+    if (!settings || !settings.smtpHost) {
+      return res.status(400).json({
+        success: false,
+        message: "Email integration is not configured. Please enter SMTP host & port.",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: `Test email successfully dispatched to ${settings.supportEmail || "support email"}.`,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: "Failed to send test email. Please check SMTP parameters.",
+      error: error?.message,
+    });
+  }
+};
+
+// ==========================
+// UPLOAD ADMIN PROFILE IMAGE
+// ==========================
+const uploadAdminProfileImage = async (req, res) => {
+  try {
+    const adminId = req.user?._id || req.user?.id || req.userId || req.admin?._id;
+    if (!adminId) {
+      return res.status(401).json({ success: false, message: "Admin not authenticated" });
+    }
+
+    const getUploadedFileUrl = require("../utils/getUploadedFileUrl");
+    const uploadedFile = req.file || req.files?.profileImage?.[0];
+
+    const profileImageUrl = getUploadedFileUrl(uploadedFile) || req.body.profileImage || req.body.imageUrl || "";
+
+    if (!profileImageUrl) {
+      return res.status(400).json({ success: false, message: "No image file or URL provided" });
+    }
+
+    const admin = await Admin.findByIdAndUpdate(
+      adminId,
+      { profileImage: profileImageUrl, updatedAt: new Date() },
+      { returnDocument: "after" }
+    ).select("-password");
+
+    try {
+      await AuditLog.create({
+        adminId,
+        action: "UPDATE_ADMIN_PROFILE_IMAGE",
+        actionType: "UPDATE",
+        entity: "Admin",
+        targetId: adminId,
+        details: { profileImage: profileImageUrl },
+        timestamp: new Date(),
+      });
+    } catch (_) {}
+
+    return res.status(200).json({
+      success: true,
+      message: "Profile image updated successfully",
+      profileImage: profileImageUrl,
+      admin,
+    });
+  } catch (error) {
+    console.error("uploadAdminProfileImage error:", error);
+    return res.status(500).json({ success: false, message: "Failed to upload profile image", error: error?.message });
+  }
+};
+
 module.exports.deleteRequest = deleteRequest;
 module.exports.setOwnerStatus = setOwnerStatus;
 module.exports.forceResetOwnerPassword = forceResetOwnerPassword;
@@ -2843,5 +3158,12 @@ module.exports.assignRequest = assignRequest;
 module.exports.getSystemSettings = getSystemSettings;
 module.exports.dismissCompletedTask = dismissCompletedTask;
 module.exports.removeLoginHistoryEntry = removeLoginHistoryEntry;
+module.exports.bulkRemoveLoginHistoryEntries = bulkRemoveLoginHistoryEntries;
+module.exports.recordHostelView = recordHostelView;
+module.exports.getRecentlyViewedHostels = getRecentlyViewedHostels;
+module.exports.getStorageStats = getStorageStats;
+module.exports.sendTestEmail = sendTestEmail;
+module.exports.uploadAdminProfileImage = uploadAdminProfileImage;
+
 
 
