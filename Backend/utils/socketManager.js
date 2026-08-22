@@ -26,7 +26,10 @@ function setSocketServer(server) {
         return next(new Error("Authentication token required"));
       }
 
-      const secret = process.env.JWT_SECRET || "change_me_secret";
+      const secret = process.env.JWT_SECRET;
+      if (!secret) {
+        return next(new Error("Server misconfigured: JWT_SECRET missing"));
+      }
       const payload = jwt.verify(token, secret);
       if (!payload || (!payload.userId && !payload.ownerId)) {
         return next(new Error("Invalid token payload"));

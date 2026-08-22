@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { api } from "../../../services/api";
 import toast from "react-hot-toast";
+import ConfirmDialog from "../../components/modals/ConfirmDialog";
 
 export default function CustomerOwner() {
   const { id } = useParams();
@@ -225,6 +226,26 @@ export default function CustomerOwner() {
   const trashDaysRemaining = ownerData?.hostelDaysRemaining || 0;
   const deletedAtStr = ownerData?.hostelDeletedAt ? new Date(ownerData.hostelDeletedAt).toLocaleDateString() : (hostelData?.deletedAt ? new Date(hostelData.deletedAt).toLocaleDateString() : "");
 
+  const [isRestoreConfirmOpen, setIsRestoreConfirmOpen] = useState(false);
+
+  const handleConfirmRestoreHostel = async () => {
+    try {
+      const toastId = toast.loading("Restoring hostel from Trash...");
+      const res = await api.post(`/api/admin/trash/hostels/${id}/restore`);
+      if (res.data?.success) {
+        toast.success("Hostel restored successfully!", { id: toastId });
+        refetch();
+        fetchOwnerDetails();
+      } else {
+        toast.error(res.data?.message || "Failed to restore hostel", { id: toastId });
+      }
+    } catch (err) {
+      toast.error("Failed to restore hostel");
+    } finally {
+      setIsRestoreConfirmOpen(false);
+    }
+  };
+
   return (
     <div className="p-6 space-y-6">
       {/* HOSTEL IN TRASH PROMINENT BANNER */}
@@ -247,22 +268,7 @@ export default function CustomerOwner() {
             </div>
           </div>
           <button
-            onClick={async () => {
-              if (!window.confirm(`Restore "${hostelData?.hostelName || "this hostel"}" to active registry?`)) return;
-              try {
-                const toastId = toast.loading("Restoring hostel from Trash...");
-                const res = await api.post(`/api/admin/trash/hostels/${id}/restore`);
-                if (res.data?.success) {
-                  toast.success("Hostel restored successfully!", { id: toastId });
-                  refetch();
-                  fetchOwnerDetails();
-                } else {
-                  toast.error(res.data?.message || "Failed to restore hostel", { id: toastId });
-                }
-              } catch (err) {
-                toast.error("Failed to restore hostel");
-              }
-            }}
+            onClick={() => setIsRestoreConfirmOpen(true)}
             className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-1.5 transition shrink-0 cursor-pointer shadow-md"
           >
             <RefreshCw size={14} />
@@ -527,6 +533,17 @@ export default function CustomerOwner() {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        isOpen={isRestoreConfirmOpen}
+        onClose={() => setIsRestoreConfirmOpen(false)}
+        onConfirm={handleConfirmRestoreHostel}
+        title="Restore Hostel to Active Registry?"
+        message={`Are you sure you want to restore "${hostelData?.hostelName || "this hostel"}" from 60-day Trash? Owner dashboard access and operations will be reactivated immediately.`}
+        confirmLabel="Restore Hostel"
+        cancelLabel="Cancel"
+        isDanger={false}
+      />
     </div>
   );
 }

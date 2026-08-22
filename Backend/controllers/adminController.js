@@ -2764,6 +2764,75 @@ const dismissCompletedTask = async (req, res) => {
   }
 };
 
+const bulkDismissCompletedTasks = async (req, res) => {
+  try {
+    const AdminTaskDismissal = require("../models/AdminTaskDismissal");
+    const adminId = req.user?._id || req.user?.id || req.userId || req.admin?._id;
+    const { taskIds = [], reason = "" } = req.body || {};
+
+    if (!adminId) {
+      return res.status(401).json({ success: false, message: "Admin not authenticated" });
+    }
+    if (!Array.isArray(taskIds) || taskIds.length === 0) {
+      return res.status(400).json({ success: false, message: "Array of taskIds is required" });
+    }
+
+    let dismissedCount = 0;
+    const failedIds = [];
+
+    for (const rawId of taskIds) {
+      if (!rawId) continue;
+      const cleanTaskId = String(rawId).trim();
+      const isObjectId = mongoose.Types.ObjectId.isValid(cleanTaskId);
+
+      try {
+        await AdminTaskDismissal.findOneAndUpdate(
+          { adminId, taskId: cleanTaskId },
+          {
+            adminId,
+            taskId: cleanTaskId,
+            communicationId: isObjectId ? cleanTaskId : null,
+            reason: String(reason).trim().slice(0, 500),
+            dismissedAt: new Date(),
+          },
+          { upsert: true, new: true }
+        );
+        dismissedCount++;
+      } catch (err) {
+        failedIds.push(cleanTaskId);
+      }
+    }
+
+    try {
+      await AuditLog.create({
+        adminId,
+        action: "BULK_DISMISS_COMPLETED_TASKS",
+        actionType: "UPDATE",
+        entity: "TodayTask",
+        details: {
+          dismissedCount,
+          failedCount: failedIds.length,
+          failedIds,
+          reason,
+          message: `Admin bulk dismissed ${dismissedCount} completed task(s) from Today's Tasks view`,
+        },
+        timestamp: new Date(),
+      });
+    } catch (_) {}
+
+    return res.status(200).json({
+      success: true,
+      dismissedCount,
+      failedCount: failedIds.length,
+      failedIds,
+      message: `Successfully removed ${dismissedCount} task(s) from Today's Tasks.`,
+    });
+  } catch (error) {
+    console.error("bulkDismissCompletedTasks error:", error);
+    return res.status(500).json({ success: false, message: "Failed to bulk dismiss tasks", error: error?.message });
+  }
+};
+
 // ==========================
 // REMOVE LOGIN HISTORY ENTRY (Stable ID)
 // ==========================
@@ -3157,6 +3226,7 @@ module.exports.getAdminsTeam = getAdminsTeam;
 module.exports.assignRequest = assignRequest;
 module.exports.getSystemSettings = getSystemSettings;
 module.exports.dismissCompletedTask = dismissCompletedTask;
+module.exports.bulkDismissCompletedTasks = bulkDismissCompletedTasks;
 module.exports.removeLoginHistoryEntry = removeLoginHistoryEntry;
 module.exports.bulkRemoveLoginHistoryEntries = bulkRemoveLoginHistoryEntries;
 module.exports.recordHostelView = recordHostelView;

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Plus, Edit3, Trash2, Rocket, Save, Send, Sparkles } from "lucide-react";
 import toast from "react-hot-toast";
 import api from "../utils/apiClient";
+import ConfirmDialog from "../superadmin/components/modals/ConfirmDialog";
 import { OwnerLayout } from "../design-system/layouts/OwnerLayout";
 import { PageContainer } from "../design-system/layouts/PageContainer";
 import { Card } from "../design-system/components/Card";
@@ -72,17 +73,25 @@ export default function ReleaseNotesAdmin() {
     }
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm("Delete this release note?")) return;
+  const [deleteTargetId, setDeleteTargetId] = useState(null);
+
+  const confirmDeleteRelease = async () => {
+    if (!deleteTargetId) return;
     try {
-      const res = await api.delete(`/api/v2/releases/${id}`);
+      const res = await api.delete(`/api/v2/releases/${deleteTargetId}`);
       if (res.data?.success) {
         toast.success("Release note deleted");
         fetchReleases();
       }
     } catch (err) {
       toast.error("Deletion failed");
+    } finally {
+      setDeleteTargetId(null);
     }
+  };
+
+  const handleDelete = (id) => {
+    setDeleteTargetId(id);
   };
 
   return (
@@ -214,6 +223,17 @@ export default function ReleaseNotesAdmin() {
             </div>
           </div>
         )}
+
+        <ConfirmDialog
+          isOpen={Boolean(deleteTargetId)}
+          onClose={() => setDeleteTargetId(null)}
+          onConfirm={confirmDeleteRelease}
+          title="Delete Release Note?"
+          message="Are you sure you want to delete this release note entry? This action cannot be undone."
+          confirmLabel="Delete"
+          cancelLabel="Cancel"
+          isDanger={true}
+        />
 
       </PageContainer>
     </OwnerLayout>

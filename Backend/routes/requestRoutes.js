@@ -48,11 +48,14 @@ router.get("/status/:phone", checkRequestStatus);
 
 
 
-// CANCEL REQUEST
+const { requireRole } = require("../middleware/auth");
+
+// CANCEL REQUEST (Public user self-cancellation for pending requests)
 router.delete("/cancel/:id", cancelRequest);
 
-// DELETE REQUEST (permanent)
-router.delete("/:id", deleteRequest);
+// DELETE REQUEST (permanent - admin only)
+const adminGuard = requireRole(["super_admin", "admin"]);
+router.delete("/:id", adminGuard, deleteRequest);
 
 module.exports = router;
 

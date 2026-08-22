@@ -58,6 +58,19 @@ const createRequest = async (req, res) => {
       });
     }
 
+    // Aadhaar 12-digit validation
+    const idType = req.body.idType || "Aadhaar";
+    const idNumber = String(req.body.idNumber || "").trim();
+    if (idType === "Aadhaar" && idNumber) {
+      const cleanAadhaar = idNumber.replace(/\D/g, "");
+      if (cleanAadhaar.length !== 12) {
+        return res.status(400).json({
+          success: false,
+          message: "Enter a valid 12-digit Aadhaar number.",
+        });
+      }
+    }
+
     // CHECK EXISTING REQUEST (duplicate prevention — fast pre-check before DB write)
     const existingRequest = await HostelRequest.findOne({
       phone,
@@ -272,20 +285,35 @@ const checkRequestStatus = async (req, res) => {
 
 const cancelRequest = async (req, res) => {
   try {
-    const deleted = await HostelRequest.findByIdAndDelete(req.params.id);
+    const { id } = req.params;
+    if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid request ID format",
+      });
+    }
 
-    if (!deleted) {
+    const request = await HostelRequest.findById(id);
+    if (!request) {
       return res.status(404).json({
         success: false,
         message: "Request not found",
       });
     }
 
+    if (request.status !== "pending") {
+      return res.status(400).json({
+        success: false,
+        message: "Cannot cancel an application that has already been processed.",
+      });
+    }
+
+    await HostelRequest.findByIdAndDelete(id);
+
     res.status(200).json({
       success: true,
       message: "Request cancelled successfully",
     });
-
   } catch (error) {
     logger.error("Cancel Request Error:", error);
 

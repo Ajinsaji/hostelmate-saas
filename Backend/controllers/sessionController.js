@@ -21,7 +21,10 @@ const verifySession = async (req, res) => {
       return res.status(401).json(getError(401, "Missing token"));
     }
 
-    const secret = process.env.JWT_SECRET || "change_me_secret";
+    const secret = process.env.JWT_SECRET;
+    if (!secret) {
+      return res.status(500).json(getError(500, "Server misconfigured: JWT_SECRET missing"));
+    }
     let payload;
     try {
       payload = jwt.verify(token, secret);

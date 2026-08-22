@@ -6,6 +6,7 @@ import toast from "react-hot-toast";
 import { api } from "../services/api";
 import buildFileUrl from "../utils/buildFileUrl";
 import SuperadminBottomNav from "../components/SuperadminBottomNav";
+import ConfirmDialog from "../superadmin/components/modals/ConfirmDialog";
 
 function PendingRequests() {
   const [requests, setRequests] = useState([]);
@@ -90,11 +91,16 @@ function PendingRequests() {
     }
   };
 
-  const handleDelete = async (id) => {
-    try {
-      const confirmed = window.confirm("Delete this request permanently?");
-      if (!confirmed) return;
+  const [deleteTargetId, setDeleteTargetId] = useState(null);
 
+  const handleDelete = (id) => {
+    setDeleteTargetId(id);
+  };
+
+  const confirmDeleteRequest = async () => {
+    if (!deleteTargetId) return;
+    const id = deleteTargetId;
+    try {
       setLoadingActionId(id);
       await api.delete(`/api/request/${id}`);
       toast.success("Request deleted");
@@ -105,6 +111,7 @@ function PendingRequests() {
       await fetchRequests();
     } finally {
       setLoadingActionId(null);
+      setDeleteTargetId(null);
     }
   };
 
@@ -431,6 +438,18 @@ function PendingRequests() {
           )}
         </div>
       </div>
+
+      <ConfirmDialog
+        isOpen={Boolean(deleteTargetId)}
+        onClose={() => setDeleteTargetId(null)}
+        onConfirm={confirmDeleteRequest}
+        title="Delete Request?"
+        message="Are you sure you want to permanently delete this onboarding request? This action cannot be undone."
+        confirmLabel="Delete Request"
+        cancelLabel="Cancel"
+        isDanger={true}
+        loading={Boolean(loadingActionId)}
+      />
 
       <SuperadminBottomNav />
     </div>

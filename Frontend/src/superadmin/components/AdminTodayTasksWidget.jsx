@@ -27,6 +27,8 @@ import {
 import api from "../../utils/apiClient";
 import useAdminAutoRefresh from "../hooks/useAdminAutoRefresh";
 import MessageDetailDrawer from "../../components/MessageDetailDrawer";
+import toast from "react-hot-toast";
+import ConfirmDialog from "./modals/ConfirmDialog";
 
 export default function AdminTodayTasksWidget({ onRefreshTrigger }) {
   const navigate = useNavigate();
@@ -40,6 +42,11 @@ export default function AdminTodayTasksWidget({ onRefreshTrigger }) {
   const [completedCount, setCompletedCount] = useState(0);
   const [totalCount, setTotalCount] = useState(0);
   const [dismissingIds, setDismissingIds] = useState({});
+
+  const [selectedTaskIds, setSelectedTaskIds] = useState(new Set());
+  const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
+  const [taskToDelete, setTaskToDelete] = useState(null); // null for bulk, string id for single
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
 
   const [categories, setCategories] = useState({
     rentRemindersCount: 0,
@@ -133,40 +140,85 @@ export default function AdminTodayTasksWidget({ onRefreshTrigger }) {
       setRetryingIds((prev) => ({ ...prev, [taskId]: true }));
       const res = await api.post(`/api/communication/whatsapp/retry/${taskId}`);
       if (res?.data?.success) {
+        toast.success("Task retried successfully");
         fetchTasks();
       } else {
-        alert(res?.data?.message || "Retry failed");
+        toast.error(res?.data?.message || "Retry failed");
         fetchTasks();
       }
     } catch (err) {
-      alert(err.response?.data?.message || "Failed to retry message");
+      toast.error(err.response?.data?.message || "Failed to retry message");
       fetchTasks();
     } finally {
       setRetryingIds((prev) => ({ ...prev, [taskId]: false }));
     }
   };
 
-  const handleDismissTask = async (taskId) => {
+  const handleDismissTask = (taskId) => {
     if (!taskId) return;
-    const confirmed = window.confirm(
-      "Remove this task from Today's Tasks list?\n\nNote: The underlying permanent Audit Log and Communication record will remain completely intact."
-    );
-    if (!confirmed) return;
+    setTaskToDelete(taskId);
+    setIsConfirmModalOpen(true);
+  };
 
-    try {
-      setDismissingIds((prev) => ({ ...prev, [taskId]: true }));
-      const res = await api.post(`/api/admin/tasks/completed/${encodeURIComponent(taskId)}/dismiss`, {
-        reason: "Dismissed by admin from Today's Tasks Widget",
-      });
-      if (res?.data?.success) {
-        fetchTasks();
+  const toggleSelectTask = (taskId) => {
+    setSelectedTaskIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(taskId)) {
+        next.delete(taskId);
       } else {
-        alert(res?.data?.message || "Failed to remove task");
+        next.add(taskId);
       }
-    } catch (err) {
-      alert(err?.response?.data?.message || "Failed to remove task");
-    } finally {
-      setDismissingIds((prev) => ({ ...prev, [taskId]: false }));
+      return next;
+    });
+  };
+
+  const handleConfirmDelete = async () => {
+    if (taskToDelete) {
+      const taskId = taskToDelete;
+      try {
+        setDismissingIds((prev) => ({ ...prev, [taskId]: true }));
+        const res = await api.post(`/api/admin/tasks/completed/${encodeURIComponent(taskId)}/dismiss`, {
+          reason: "Dismissed by admin from Today's Tasks Widget",
+        });
+        if (res?.data?.success) {
+          toast.success("Task removed from Today's Tasks.");
+          setSelectedTaskIds((prev) => {
+            const next = new Set(prev);
+            next.delete(taskId);
+            return next;
+          });
+          fetchTasks();
+        } else {
+          toast.error(res?.data?.message || "Failed to remove task");
+        }
+      } catch (err) {
+        toast.error(err?.response?.data?.message || "Failed to remove task");
+      } finally {
+        setDismissingIds((prev) => ({ ...prev, [taskId]: false }));
+        setIsConfirmModalOpen(false);
+        setTaskToDelete(null);
+      }
+    } else if (selectedTaskIds.size > 0) {
+      const idsArray = Array.from(selectedTaskIds);
+      try {
+        setIsBulkDeleting(true);
+        const res = await api.post("/api/admin/tasks/completed/bulk-dismiss", {
+          taskIds: idsArray,
+          reason: "Bulk dismissed by admin from Today's Tasks Widget",
+        });
+        if (res?.data?.success) {
+          toast.success(`Successfully removed ${res.data.dismissedCount || idsArray.length} task(s).`);
+          setSelectedTaskIds(new Set());
+          fetchTasks();
+        } else {
+          toast.error(res?.data?.message || "Failed to remove selected tasks.");
+        }
+      } catch (err) {
+        toast.error(err?.response?.data?.message || "Failed to remove selected tasks.");
+      } finally {
+        setIsBulkDeleting(false);
+        setIsConfirmModalOpen(false);
+      }
     }
   };
 
@@ -378,6 +430,53 @@ export default function AdminTodayTasksWidget({ onRefreshTrigger }) {
           </button>
         </div>
       </div>
+      
+      {/* Select All & Bulk Action Toolbar */}
+      {filteredTasks.length > 0 && (
+        <div className="bg-[#131C2E] border-b border-[#202B45] px-4 py-2.5 flex items-center justify-between gap-3 text-xs">
+          <div className="flex items-center gap-3">
+            <label className="flex items-center gap-2 cursor-pointer select-none text-slate-300 font-bold hover:text-white">
+              <input
+                type="checkbox"
+                checked={
+                  filteredTasks.length > 0 &&
+                  filteredTasks.every((t) => selectedTaskIds.has(t.dbId || t.id || t._id))
+                }
+                onChange={() => {
+                  const visibleIds = filteredTasks.map((t) => t.dbId || t.id || t._id).filter(Boolean);
+                  const allSel = visibleIds.length > 0 && visibleIds.every((id) => selectedTaskIds.has(id));
+                  if (allSel) {
+                    setSelectedTaskIds(new Set());
+                  } else {
+                    setSelectedTaskIds(new Set(visibleIds));
+                  }
+                }}
+                className="w-4 h-4 rounded border-[#202B45] bg-[#0B1220] text-emerald-500 focus:ring-emerald-500/20 accent-emerald-500 cursor-pointer"
+              />
+              <span>Select All ({filteredTasks.length})</span>
+            </label>
+            {selectedTaskIds.size > 0 && (
+              <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-mono font-bold text-[11px]">
+                {selectedTaskIds.size} Selected
+              </span>
+            )}
+          </div>
+
+          {selectedTaskIds.size > 0 && (
+            <button
+              onClick={() => {
+                setTaskToDelete(null);
+                setIsConfirmModalOpen(true);
+              }}
+              disabled={isBulkDeleting}
+              className="px-3.5 py-1.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 border border-rose-500/30 font-bold text-xs flex items-center gap-1.5 transition cursor-pointer disabled:opacity-50"
+            >
+              <Trash2 size={14} className={isBulkDeleting ? "animate-spin" : ""} />
+              <span>{isBulkDeleting ? "Deleting..." : `Delete Selected (${selectedTaskIds.size})`}</span>
+            </button>
+          )}
+        </div>
+      )}
 
       {/* 3. Task List Queue */}
       <div className="divide-y divide-[#202B45] overflow-y-auto max-h-[380px]">
@@ -400,17 +499,25 @@ export default function AdminTodayTasksWidget({ onRefreshTrigger }) {
           </div>
         ) : (
           filteredTasks.map((item) => {
+            const taskId = item.dbId || item.id || item._id;
             const isCompleted = activeTab === "completed" || item.status === "completed" || item.status === "activated" || item.status === "manual_opened";
             const isFailed = item.status === "failed" || item.type === "whatsapp_failed";
             const isManual = item.status === "pending_manual" || item.type === "whatsapp_manual";
-            const isRetrying = retryingIds[item.dbId || item.id];
+            const isRetrying = retryingIds[taskId];
 
             return (
               <div
-                key={item.id || item.dbId || item._id}
+                key={taskId}
                 className="p-4 hover:bg-white/[0.02] transition flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs"
               >
                 <div className="flex items-start gap-3 min-w-0">
+                  <input
+                    type="checkbox"
+                    checked={selectedTaskIds.has(taskId)}
+                    onChange={() => toggleSelectTask(taskId)}
+                    className="w-4 h-4 rounded border-[#202B45] bg-[#0B1220] text-emerald-500 focus:ring-emerald-500/20 accent-emerald-500 cursor-pointer shrink-0 mt-2"
+                  />
+
                   <div className="mt-0.5 shrink-0">
                     {item.category === "registration" ? (
                       <div className="w-8 h-8 rounded-lg bg-blue-500/10 border border-blue-500/20 text-blue-400 flex items-center justify-center">
@@ -500,27 +607,26 @@ export default function AdminTodayTasksWidget({ onRefreshTrigger }) {
                   {isManual && (item.waMeUrl || item.phone) && (
                     <button
                       onClick={() => handleOpenWaMe(item)}
-                      className="px-3 py-1.5 rounded-xl bg-emerald-500 text-white hover:bg-emerald-600 font-bold text-xs flex items-center gap-1.5 shadow-md shadow-emerald-500/20 transition cursor-pointer"
-                      title="Open WhatsApp Web / App"
+                      className="px-3 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold text-xs flex items-center gap-1 shadow-md transition cursor-pointer"
                     >
                       <Send size={13} />
-                      <span>Open WhatsApp</span>
+                      <span>Send WhatsApp</span>
                     </button>
                   )}
 
-                  {/* Retry Failed WhatsApp */}
+                  {/* Retry Button */}
                   {isFailed && (
                     <button
-                      onClick={() => handleRetryTask(item.dbId || item.id)}
-                      disabled={isRetrying || item.attemptCount >= 3}
-                      className="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-bold text-xs flex items-center gap-1.5 shadow-md shadow-indigo-600/20 transition cursor-pointer"
+                      onClick={() => handleRetryTask(item.id || item.dbId)}
+                      disabled={isRetrying}
+                      className="px-3 py-1.5 rounded-xl bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/30 font-bold text-xs flex items-center gap-1 transition cursor-pointer disabled:opacity-50"
                     >
                       <RefreshCw size={13} className={isRetrying ? "animate-spin" : ""} />
-                      <span>{isRetrying ? "Retrying..." : item.attemptCount >= 3 ? "Action Req" : "Retry Send"}</span>
+                      <span>{isRetrying ? "Retrying..." : "Retry"}</span>
                     </button>
                   )}
 
-                  {/* Registration / Activation Navigation */}
+                  {/* Action Link Buttons */}
                   {item.actionType === "review_registration" && (
                     <button
                       onClick={() => navigate("/admin/requests")}
@@ -572,23 +678,41 @@ export default function AdminTodayTasksWidget({ onRefreshTrigger }) {
                     </button>
                   )}
 
-                  {activeTab === "completed" && (
-                    <button
-                      onClick={() => handleDismissTask(item.id || item.dbId)}
-                      disabled={dismissingIds[item.id || item.dbId]}
-                      className="px-3 py-1.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 border border-rose-500/30 font-bold text-xs flex items-center gap-1 transition cursor-pointer disabled:opacity-50"
-                      title="Remove from Today's Tasks"
-                    >
-                      <Trash2 size={13} className={dismissingIds[item.id || item.dbId] ? "animate-spin" : ""} />
-                      <span>{dismissingIds[item.id || item.dbId] ? "Removing..." : "Remove"}</span>
-                    </button>
-                  )}
+                  <button
+                    onClick={() => handleDismissTask(taskId)}
+                    disabled={dismissingIds[taskId]}
+                    className="px-3 py-1.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 border border-rose-500/30 font-bold text-xs flex items-center gap-1 transition cursor-pointer disabled:opacity-50"
+                    title="Remove from Today's Tasks"
+                  >
+                    <Trash2 size={13} className={dismissingIds[taskId] ? "animate-spin" : ""} />
+                    <span>{dismissingIds[taskId] ? "Removing..." : "Remove"}</span>
+                  </button>
                 </div>
               </div>
             );
           })
         )}
       </div>
+
+      {/* Confirmation Modal */}
+      <ConfirmDialog
+        isOpen={isConfirmModalOpen}
+        onClose={() => {
+          setIsConfirmModalOpen(false);
+          setTaskToDelete(null);
+        }}
+        onConfirm={handleConfirmDelete}
+        title={taskToDelete ? "Remove Task?" : `Remove ${selectedTaskIds.size} Selected Tasks?`}
+        message={
+          taskToDelete
+            ? "This will remove the task from Today's Tasks list. The permanent Audit Log and Communication record will remain intact."
+            : `This will remove ${selectedTaskIds.size} selected task(s) from Today's Tasks list. The permanent Audit Log and Communication records will remain intact.`
+        }
+        confirmLabel={isBulkDeleting ? "Deleting..." : "Remove Task"}
+        cancelLabel="Cancel"
+        isDanger={true}
+        loading={isBulkDeleting}
+      />
 
       {/* Message Detail Drawer */}
       <MessageDetailDrawer

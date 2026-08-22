@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Database, Download, RotateCcw, Plus, Trash2, ShieldCheck, Clock } from "lucide-react";
 import toast from "react-hot-toast";
 import api from "../utils/apiClient";
+import ConfirmDialog from "../superadmin/components/modals/ConfirmDialog";
 import { OwnerLayout } from "../design-system/layouts/OwnerLayout";
 import { PageContainer } from "../design-system/layouts/PageContainer";
 import { Card } from "../design-system/components/Card";
@@ -51,33 +52,50 @@ export default function BackupCenter() {
     }
   };
 
-  const handleRestore = async (backupId) => {
-    if (!window.confirm(`Warning: Restoring backup ${backupId} will overwrite current database state. Continue?`)) return;
-    try {
-      setProcessing(true);
-      const res = await api.post("/api/v2/backups/restore", { backupId });
-      if (res.data?.success) {
-        toast.success(res.data.message);
-        fetchBackups();
-      }
-    } catch (err) {
-      toast.error("Restore failed");
-    } finally {
-      setProcessing(false);
-    }
+  const [confirmModal, setConfirmModal] = useState({ isOpen: false, title: "", message: "", action: null });
+
+  const handleRestore = (backupId) => {
+    setConfirmModal({
+      isOpen: true,
+      title: "Restore Backup?",
+      message: `Warning: Restoring backup ${backupId} will overwrite current database state. Continue?`,
+      action: async () => {
+        try {
+          setProcessing(true);
+          const res = await api.post("/api/v2/backups/restore", { backupId });
+          if (res.data?.success) {
+            toast.success(res.data.message);
+            fetchBackups();
+          }
+        } catch (err) {
+          toast.error("Restore failed");
+        } finally {
+          setProcessing(false);
+          setConfirmModal({ isOpen: false, title: "", message: "", action: null });
+        }
+      },
+    });
   };
 
-  const handleDelete = async (backupId) => {
-    if (!window.confirm("Delete this backup archive?")) return;
-    try {
-      const res = await api.delete(`/api/v2/backups/${backupId}`);
-      if (res.data?.success) {
-        toast.success("Backup deleted");
-        fetchBackups();
-      }
-    } catch (err) {
-      toast.error("Deletion failed");
-    }
+  const handleDelete = (backupId) => {
+    setConfirmModal({
+      isOpen: true,
+      title: "Delete Backup Archive?",
+      message: `Are you sure you want to permanently delete backup archive ${backupId}?`,
+      action: async () => {
+        try {
+          const res = await api.delete(`/api/v2/backups/${backupId}`);
+          if (res.data?.success) {
+            toast.success("Backup deleted");
+            fetchBackups();
+          }
+        } catch (err) {
+          toast.error("Deletion failed");
+        } finally {
+          setConfirmModal({ isOpen: false, title: "", message: "", action: null });
+        }
+      },
+    });
   };
 
   return (
@@ -153,6 +171,18 @@ export default function BackupCenter() {
 
           </div>
         )}
+
+        <ConfirmDialog
+          isOpen={confirmModal.isOpen}
+          onClose={() => setConfirmModal({ isOpen: false, title: "", message: "", action: null })}
+          onConfirm={confirmModal.action}
+          title={confirmModal.title}
+          message={confirmModal.message}
+          confirmLabel="Confirm"
+          cancelLabel="Cancel"
+          isDanger={true}
+          loading={processing}
+        />
 
       </PageContainer>
     </OwnerLayout>

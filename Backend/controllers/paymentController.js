@@ -216,133 +216,144 @@ const getPaymentsByHostel =
 // GET RESIDENT PAYMENTS
 // ==========================
 
-const getResidentPayments =
-  async (req, res) => {
-    try {
-      const payments =
-        await Payment.find({
-          residentId:
-            req.params
-              .residentId,
-        });
+const getResidentPayments = async (req, res) => {
+  try {
+    const hostelId = req.owner?.hostelId;
+    const { residentId } = req.params;
 
-      res.status(200).json({
-        success: true,
-        payments,
-      });
-    } catch (error) {
-      res.status(500).json(error);
+    const query = { residentId };
+    if (hostelId) {
+      query.hostelId = hostelId;
     }
-  };
+
+    const payments = await Payment.find(query);
+
+    res.status(200).json({
+      success: true,
+      payments,
+    });
+  } catch (error) {
+    res.status(500).json(error);
+  }
+};
 
 
 // ==========================
 // VERIFY PAYMENT
 // ==========================
 
-const verifyPayment =
-  async (req, res) => {
-    try {
-      const { paymentId, entryId } = req.params;
+const verifyPayment = async (req, res) => {
+  try {
+    const { paymentId, entryId } = req.params;
+    const hostelId = req.owner?.hostelId;
 
-      const payment = await Payment.findById(paymentId);
-      if (!payment) {
-        return res.status(404).json({
-          success: false,
-          message: "Payment not found",
-        });
-      }
+    const paymentQuery = { _id: paymentId };
+    if (hostelId) {
+      paymentQuery.hostelId = hostelId;
+    }
 
-      const entry = payment.entries.id(entryId);
-      if (!entry) {
-        return res.status(404).json({
-          success: false,
-          message: "Payment entry not found",
-        });
-      }
-
-      // VERIFY
-      entry.verified = true;
-
-      // Recalculate totals/status to keep UI consistent
-      const totalPaid = payment.entries.reduce(
-        (sum, e) => sum + Number(e.amount || 0),
-        0
-      );
-      payment.balance = Number(payment.totalRent || payment.balance + (payment.totalRent ? 0 : 0)) - totalPaid;
-      // If totalRent exists in schema, prefer it; otherwise keep computed balance
-      if (payment.totalRent !== undefined && payment.totalRent !== null) {
-        payment.balance = payment.totalRent - totalPaid;
-      }
-      payment.status = payment.balance <= 0 ? "paid" : "partial";
-
-      await payment.save();
-
-      // NOTIFICATION: Payment verified
-      try {
-        const { publishNotification } = require("../utils/notificationPublisher");
-        const Resident = require("../models/Resident");
-        const Owner = require("../models/Owner");
-        const resident = await Resident.findById(payment.residentId);
-        const owner = await Owner.findOne({ hostelId: payment.hostelId, role: "owner" });
-        if (owner?._id) {
-          await publishNotification({
-            userId: owner._id,
-            hostelId: payment.hostelId,
-            type: "payment_verified",
-            title: `Payment Verified`,
-            message: `Payment from ${resident?.name || "resident"} has been verified`,
-            meta: { route: "/payments", paymentId: payment._id },
-          });
-        }
-      } catch (e) {
-        logger.error("Payment verified notification failed:", e?.message || e);
-      }
-
-      res.status(200).json({
-        success: true,
-        message: "Payment Verified",
-        payment,
-      });
-    } catch (error) {
-      res.status(500).json({
+    const payment = await Payment.findOne(paymentQuery);
+    if (!payment) {
+      return res.status(404).json({
         success: false,
-        message: "Failed to verify payment",
-        details: error?.message || String(error),
+        message: "Payment not found or unauthorized",
       });
     }
-  };
+
+    const entry = payment.entries.id(entryId);
+    if (!entry) {
+      return res.status(404).json({
+        success: false,
+        message: "Payment entry not found",
+      });
+    }
+
+    // VERIFY
+    entry.verified = true;
+
+    // Recalculate totals/status to keep UI consistent
+    const totalPaid = payment.entries.reduce(
+      (sum, e) => sum + Number(e.amount || 0),
+      0
+    );
+    payment.balance = Number(payment.totalRent || payment.balance + (payment.totalRent ? 0 : 0)) - totalPaid;
+    // If totalRent exists in schema, prefer it; otherwise keep computed balance
+    if (payment.totalRent !== undefined && payment.totalRent !== null) {
+      payment.balance = payment.totalRent - totalPaid;
+    }
+    payment.status = payment.balance <= 0 ? "paid" : "partial";
+
+    await payment.save();
+
+    // NOTIFICATION: Payment verified
+    try {
+      const { publishNotification } = require("../utils/notificationPublisher");
+      const Resident = require("../models/Resident");
+      const Owner = require("../models/Owner");
+      const resident = await Resident.findById(payment.residentId);
+      const owner = await Owner.findOne({ hostelId: payment.hostelId, role: "owner" });
+      if (owner?._id) {
+        await publishNotification({
+          userId: owner._id,
+          hostelId: payment.hostelId,
+          type: "payment_verified",
+          title: `Payment Verified`,
+          message: `Payment from ${resident?.name || "resident"} has been verified`,
+          meta: { route: "/payments", paymentId: payment._id },
+        });
+      }
+    } catch (e) {
+      logger.error("Payment verified notification failed:", e?.message || e);
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Payment Verified",
+      payment,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Failed to verify payment",
+      details: error?.message || String(error),
+    });
+  }
+};
 
 
 // ==========================
 // DELETE PAYMENT
 // ==========================
 
-const deletePayment =
-  async (req, res) => {
-    try {
-      await Payment.findByIdAndDelete(
-        req.params.paymentId
-      );
-
-      res.status(200).json({
-        success: true,
-        message:
-          "Payment Deleted",
-      });
-    } catch (error) {
-      res.status(500).json(error);
+const deletePayment = async (req, res) => {
+  try {
+    const hostelId = req.owner?.hostelId;
+    const deleteQuery = { _id: req.params.paymentId };
+    if (hostelId) {
+      deleteQuery.hostelId = hostelId;
     }
-  };
+
+    const deleted = await Payment.findOneAndDelete(deleteQuery);
+    if (!deleted) {
+      return res.status(404).json({
+        success: false,
+        message: "Payment not found or unauthorized",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Payment Deleted",
+    });
+  } catch (error) {
+    res.status(500).json(error);
+  }
+};
 
 module.exports = {
   createPayment,
-
   getPaymentsByHostel,
-
   getResidentPayments,
-
   verifyPayment,
-
   deletePayment,
 };

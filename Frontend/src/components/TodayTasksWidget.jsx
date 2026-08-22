@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { CheckCircle2, Clock, AlertTriangle, ExternalLink, RefreshCw, Send, Smartphone } from "lucide-react";
+import toast from "react-hot-toast";
 import api from "../utils/apiClient";
 
 export default function TodayTasksWidget({ onTaskComplete }) {
@@ -48,11 +49,12 @@ export default function TodayTasksWidget({ onTaskComplete }) {
     try {
       const res = await api.post(`/api/communication/whatsapp/retry/${task._id}`);
       if (res.data?.success) {
+        toast.success("Task retried successfully");
         fetchPendingTasks();
         if (onTaskComplete) onTaskComplete();
       }
     } catch (err) {
-      alert(err.response?.data?.message || "Retry failed");
+      toast.error(err.response?.data?.message || "Retry failed");
     }
   };
 

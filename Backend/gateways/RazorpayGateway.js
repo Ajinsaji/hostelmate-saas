@@ -74,8 +74,12 @@ class RazorpayGateway extends PaymentGatewayInterface {
   verifyPaymentSignature({ orderId, paymentId, signature }) {
     if (!orderId || !paymentId || !signature) return false;
     
-    // In mock/test environment without real secret, accept test format
+    // In mock/test environment without real secret, accept test format (SANDBOX/DEV ONLY)
     if (this.keySecret.includes("mock_secret")) {
+      if (process.env.NODE_ENV === "production") {
+        logger.error("RazorpayGateway: Mock secret cannot be used in production environment.");
+        return false;
+      }
       return signature.length > 5;
     }
 
@@ -100,6 +104,10 @@ class RazorpayGateway extends PaymentGatewayInterface {
     if (!body || !signature) return false;
 
     if (targetSecret.includes("mock_webhook")) {
+      if (process.env.NODE_ENV === "production") {
+        logger.error("RazorpayGateway: Mock webhook secret cannot be used in production environment.");
+        return false;
+      }
       return true;
     }
 

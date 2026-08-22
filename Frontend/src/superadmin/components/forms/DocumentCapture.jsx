@@ -82,14 +82,32 @@ export const DocumentCapture = ({
           <input
             type="text"
             value={idNumber}
-            onChange={(e) => setIdNumber(e.target.value)}
+            maxLength={idType === "Aadhaar" ? 12 : 30}
+            onChange={(e) => {
+              const val = e.target.value;
+              if (idType === "Aadhaar") {
+                const numericOnly = val.replace(/\D/g, "").slice(0, 12);
+                setIdNumber(numericOnly);
+              } else {
+                setIdNumber(val);
+              }
+            }}
             placeholder={getDocMaskPlaceholder()}
-            className="w-full bg-[#0B1220] border border-[#202B45] rounded-xl px-4 py-3.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition-all min-h-[48px] focus:ring-2 focus:ring-emerald-500/20"
+            className={`w-full bg-[#0B1220] border rounded-xl px-4 py-3.5 text-xs text-white placeholder-slate-500 focus:outline-none transition-all min-h-[48px] focus:ring-2 ${
+              idType === "Aadhaar" && idNumber && idNumber.length !== 12
+                ? "border-red-500/60 focus:border-red-500 focus:ring-red-500/20"
+                : "border-[#202B45] focus:border-emerald-500 focus:ring-emerald-500/20"
+            }`}
           />
           <div className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 text-[10px] font-mono tracking-wider">
             SECURE KYC
           </div>
         </div>
+        {idType === "Aadhaar" && idNumber.length > 0 && idNumber.length !== 12 && (
+          <p className="text-[11px] font-medium text-red-400 mt-1">
+            Enter a valid 12-digit Aadhaar number.
+          </p>
+        )}
       </div>
 
       {/* Front and Back Document Capture Cards */}

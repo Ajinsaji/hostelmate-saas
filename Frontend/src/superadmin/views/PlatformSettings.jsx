@@ -23,6 +23,7 @@ import {
   Building,
 } from "lucide-react";
 import { toast } from "react-hot-toast";
+import ConfirmDialog from "../components/modals/ConfirmDialog";
 
 export const PlatformSettings = React.memo(() => {
   const [data, setData] = useState({
@@ -273,8 +274,13 @@ export const PlatformSettings = React.memo(() => {
     }
   };
 
-  const handleRunBackup = async () => {
-    if (!window.confirm("Run a manual system backup snapshot now?")) return;
+  const [isBackupConfirmOpen, setIsBackupConfirmOpen] = useState(false);
+
+  const handleRunBackup = () => {
+    setIsBackupConfirmOpen(true);
+  };
+
+  const confirmRunBackup = async () => {
     setBackupRunning(true);
     const toastId = toast.loading("Executing system backup snapshot...");
     try {
@@ -290,6 +296,7 @@ export const PlatformSettings = React.memo(() => {
       toast.error("Backup execution failed", { id: toastId });
     } finally {
       setBackupRunning(false);
+      setIsBackupConfirmOpen(false);
     }
   };
 
@@ -865,6 +872,18 @@ export const PlatformSettings = React.memo(() => {
             )}
           </div>
         </div>
+
+        <ConfirmDialog
+          isOpen={isBackupConfirmOpen}
+          onClose={() => setIsBackupConfirmOpen(false)}
+          onConfirm={confirmRunBackup}
+          title="Run System Backup?"
+          message="Are you sure you want to execute a manual BSON/JSON system backup snapshot of all active collections now?"
+          confirmLabel="Run Backup"
+          cancelLabel="Cancel"
+          isDanger={false}
+          loading={backupRunning}
+        />
       </ContentContainer>
     </PageContainer>
   );

@@ -65,6 +65,7 @@ const {
   assignRequest,
   // Task dismissal & login history
   dismissCompletedTask,
+  bulkDismissCompletedTasks,
   removeLoginHistoryEntry,
   bulkRemoveLoginHistoryEntries,
   recordHostelView,
@@ -319,8 +320,8 @@ router.post("/email/test", sendTestEmail);
 
 // Dismiss a completed task from the Today's Tasks UI view
 // Does NOT delete the underlying Communication or AuditLog record
+router.post("/tasks/completed/bulk-dismiss", bulkDismissCompletedTasks);
 router.post("/tasks/completed/:id/dismiss", dismissCompletedTask);
 router.post("/tasks/completed/:communicationId/dismiss", dismissCompletedTask);
 
 module.exports = router;
-

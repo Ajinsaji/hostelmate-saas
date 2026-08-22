@@ -3,6 +3,7 @@ import toast from "react-hot-toast";
 
 import api from "../utils/apiClient";
 import { useCurrentHostel } from "../contexts/HostelContext";
+import ConfirmDialog from "../superadmin/components/modals/ConfirmDialog";
 
 import useIsMobile from "../hooks/useIsMobile";
 import ExpenseDashboardMobile from "./ExpenseDashboardMobile";
@@ -75,15 +76,23 @@ export function ExpenseDashboard() {
     }
   };
 
-  const handleDeleteExpense = async (id) => {
-    if (!window.confirm("Delete this expense record?")) return;
+  const [deleteExpenseId, setDeleteExpenseId] = useState(null);
+
+  const confirmDeleteExpense = async () => {
+    if (!deleteExpenseId) return;
     try {
-      await api.delete(`/api/expenses/${id}`);
+      await api.delete(`/api/expenses/${deleteExpenseId}`);
       toast.success("Expense deleted.");
       fetchData();
     } catch (err) {
       toast.error("Failed to delete expense.");
+    } finally {
+      setDeleteExpenseId(null);
     }
+  };
+
+  const handleDeleteExpense = (id) => {
+    setDeleteExpenseId(id);
   };
 
   const filteredExpenses = useMemo(() => {
@@ -98,48 +107,61 @@ export function ExpenseDashboard() {
     return expenses.reduce((acc, curr) => acc + (curr.netAmount || curr.amount || 0), 0);
   }, [expenses]);
 
-  if (isMobile) {
-    return (
-      <ExpenseDashboardMobile
-        expenses={expenses}
-        filteredExpenses={filteredExpenses}
-        totalExpenseSum={totalExpenseSum}
-        loading={loading}
-        search={search}
-        setSearch={setSearch}
-        filterCategory={filterCategory}
-        setFilterCategory={setFilterCategory}
-        categories={categories}
-        vendors={vendors}
-        showAddExpenseModal={showAddExpenseModal}
-        setShowAddExpenseModal={setShowAddExpenseModal}
-        expenseForm={expenseForm}
-        setExpenseForm={setExpenseForm}
-        handleCreateExpense={handleCreateExpense}
-        handleDeleteExpense={handleDeleteExpense}
-      />
-    );
-  }
-
   return (
-    <ExpenseDashboardDesktop
-      expenses={expenses}
-      filteredExpenses={filteredExpenses}
-      totalExpenseSum={totalExpenseSum}
-      loading={loading}
-      search={search}
-      setSearch={setSearch}
-      filterCategory={filterCategory}
-      setFilterCategory={setFilterCategory}
-      categories={categories}
-      vendors={vendors}
-      showAddExpenseModal={showAddExpenseModal}
-      setShowAddExpenseModal={setShowAddExpenseModal}
-      expenseForm={expenseForm}
-      setExpenseForm={setExpenseForm}
-      handleCreateExpense={handleCreateExpense}
-      handleDeleteExpense={handleDeleteExpense}
-    />
+    <>
+      {isMobile ? (
+        <ExpenseDashboardMobile
+          hostel={hostel}
+          expenses={expenses}
+          filteredExpenses={filteredExpenses}
+          totalExpenseSum={totalExpenseSum}
+          loading={loading}
+          search={search}
+          setSearch={setSearch}
+          filterCategory={filterCategory}
+          setFilterCategory={setFilterCategory}
+          categories={categories}
+          vendors={vendors}
+          showAddExpenseModal={showAddExpenseModal}
+          setShowAddExpenseModal={setShowAddExpenseModal}
+          expenseForm={expenseForm}
+          setExpenseForm={setExpenseForm}
+          handleCreateExpense={handleCreateExpense}
+          handleDeleteExpense={handleDeleteExpense}
+        />
+      ) : (
+        <ExpenseDashboardDesktop
+          hostel={hostel}
+          expenses={expenses}
+          filteredExpenses={filteredExpenses}
+          totalExpenseSum={totalExpenseSum}
+          loading={loading}
+          search={search}
+          setSearch={setSearch}
+          filterCategory={filterCategory}
+          setFilterCategory={setFilterCategory}
+          categories={categories}
+          vendors={vendors}
+          showAddExpenseModal={showAddExpenseModal}
+          setShowAddExpenseModal={setShowAddExpenseModal}
+          expenseForm={expenseForm}
+          setExpenseForm={setExpenseForm}
+          handleCreateExpense={handleCreateExpense}
+          handleDeleteExpense={handleDeleteExpense}
+        />
+      )}
+
+      <ConfirmDialog
+        isOpen={Boolean(deleteExpenseId)}
+        onClose={() => setDeleteExpenseId(null)}
+        onConfirm={confirmDeleteExpense}
+        title="Delete Expense Record?"
+        message="Are you sure you want to delete this expense record? This action cannot be undone."
+        confirmLabel="Delete Expense"
+        cancelLabel="Cancel"
+        isDanger={true}
+      />
+    </>
   );
 }
 

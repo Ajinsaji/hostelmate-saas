@@ -5,6 +5,7 @@ import toast from "react-hot-toast";
 import api from "../utils/apiClient";
 import { useCurrentHostel } from "../contexts/HostelContext";
 import { Badge } from "../design-system/components";
+import ConfirmDialog from "../superadmin/components/modals/ConfirmDialog";
 
 import useIsMobile from "../hooks/useIsMobile";
 import ResidentsMobile from "./ResidentsMobile";
@@ -127,15 +128,23 @@ export default function Residents() {
     }
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm("Are you sure you want to delete this resident?")) return;
+  const [deleteResidentId, setDeleteResidentId] = useState(null);
+
+  const confirmDeleteResident = async () => {
+    if (!deleteResidentId) return;
     try {
-      await api.delete(`/api/residents/${id}`);
+      await api.delete(`/api/residents/${deleteResidentId}`);
       toast.success("Resident deleted.");
       fetchResidents();
     } catch (err) {
       toast.error("Failed to delete resident.");
+    } finally {
+      setDeleteResidentId(null);
     }
+  };
+
+  const handleDelete = (id) => {
+    setDeleteResidentId(id);
   };
 
   const handleViewProfile = (id) => {
@@ -162,59 +171,70 @@ export default function Residents() {
     }
   };
 
-  if (isMobile) {
-    return (
-      <ResidentsMobile
-        residents={residents}
-        loading={loading}
-        search={search}
-        setSearch={setSearch}
-        filterStatus={filterStatus}
-        setFilterStatus={setFilterStatus}
-        filterGender={filterGender}
-        setFilterGender={setFilterGender}
-        showAddModal={showAddModal}
-        setShowAddModal={setShowAddModal}
-        form={form}
-        setForm={setForm}
-        rooms={rooms}
-        availableBeds={availableBeds}
-        handleRoomSelect={handleRoomSelect}
-        handleFormSubmit={handleFormSubmit}
-        handleDelete={handleDelete}
-        setEditingResident={setEditingResident}
-        handleViewProfile={handleViewProfile}
-      />
-    );
-  }
-
   return (
-    <ResidentsDesktop
-      residents={residents}
-      stats={stats}
-      loading={loading}
-      search={search}
-      setSearch={setSearch}
-      filterStatus={filterStatus}
-      setFilterStatus={setFilterStatus}
-      filterGender={filterGender}
-      setFilterGender={setFilterGender}
-      showAddModal={showAddModal}
-      setShowAddModal={setShowAddModal}
-      editingResident={editingResident}
-      setEditingResident={setEditingResident}
-      formStep={formStep}
-      setFormStep={setFormStep}
-      form={form}
-      setForm={setForm}
-      rooms={rooms}
-      availableBeds={availableBeds}
-      handleRoomSelect={handleRoomSelect}
-      handleFormSubmit={handleFormSubmit}
-      handleDelete={handleDelete}
-      handleViewProfile={handleViewProfile}
-      renderStatusBadge={renderStatusBadge}
-    />
+    <>
+      {isMobile ? (
+        <ResidentsMobile
+          residents={residents}
+          stats={stats}
+          loading={loading}
+          search={search}
+          setSearch={setSearch}
+          filterStatus={filterStatus}
+          setFilterStatus={setFilterStatus}
+          filterGender={filterGender}
+          setFilterGender={setFilterGender}
+          showAddModal={showAddModal}
+          setShowAddModal={setShowAddModal}
+          form={form}
+          setForm={setForm}
+          rooms={rooms}
+          availableBeds={availableBeds}
+          handleRoomSelect={handleRoomSelect}
+          handleFormSubmit={handleFormSubmit}
+          handleDelete={handleDelete}
+          setEditingResident={setEditingResident}
+          handleViewProfile={handleViewProfile}
+        />
+      ) : (
+        <ResidentsDesktop
+          residents={residents}
+          stats={stats}
+          loading={loading}
+          search={search}
+          setSearch={setSearch}
+          filterStatus={filterStatus}
+          setFilterStatus={setFilterStatus}
+          filterGender={filterGender}
+          setFilterGender={setFilterGender}
+          showAddModal={showAddModal}
+          setShowAddModal={setShowAddModal}
+          editingResident={editingResident}
+          setEditingResident={setEditingResident}
+          formStep={formStep}
+          setFormStep={setFormStep}
+          form={form}
+          setForm={setForm}
+          rooms={rooms}
+          availableBeds={availableBeds}
+          handleRoomSelect={handleRoomSelect}
+          handleFormSubmit={handleFormSubmit}
+          handleDelete={handleDelete}
+          handleViewProfile={handleViewProfile}
+          renderStatusBadge={renderStatusBadge}
+        />
+      )}
+
+      <ConfirmDialog
+        isOpen={Boolean(deleteResidentId)}
+        onClose={() => setDeleteResidentId(null)}
+        onConfirm={confirmDeleteResident}
+        title="Delete Resident?"
+        message="Are you sure you want to delete this resident profile? Room assignments and records will be unlinked."
+        confirmLabel="Delete Resident"
+        cancelLabel="Cancel"
+        isDanger={true}
+      />
+    </>
   );
 }
-

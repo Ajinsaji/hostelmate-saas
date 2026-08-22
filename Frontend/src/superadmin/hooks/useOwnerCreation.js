@@ -42,6 +42,7 @@ export function useOwnerCreation(initialMode = "admin") {
     pincode: "",
     roomsCount: 10,
     capacity: 20,
+    licensePhoto: null,
   });
 
   const updateFormData = (fields) => {
@@ -106,30 +107,59 @@ export function useOwnerCreation(initialMode = "admin") {
 
   const nextStep = () => {
     setError(null);
-    // Step validation
+    // Step 0: Owner Info Validation
     if (step === 0) {
       if (!formData.ownerName.trim()) {
         setError("Owner Full Name is required.");
         return;
       }
-      if (!formData.phone.trim() || formData.phone.trim().length < 10) {
-        setError("Valid 10-digit Phone Number is required.");
+      const cleanPhone = String(formData.phone || "").replace(/\D/g, "");
+      if (cleanPhone.length !== 10) {
+        setError("Enter a valid 10-digit mobile number.");
+        return;
+      }
+      if (formData.ownerPincode && String(formData.ownerPincode).replace(/\D/g, "").length !== 6) {
+        setError("Enter a valid 6-digit pincode.");
         return;
       }
     }
+
+    // Step 1: Identity & KYC Validation
     if (step === 1) {
       if (!formData.idNumber.trim()) {
         setError("Document ID number is required.");
         return;
       }
+      if (formData.idType === "Aadhaar") {
+        const cleanAadhaar = String(formData.idNumber).replace(/\D/g, "");
+        if (cleanAadhaar.length !== 12) {
+          setError("Enter a valid 12-digit Aadhaar number.");
+          return;
+        }
+      }
+      if (!formData.frontDoc) {
+        setError("Upload the Aadhaar front image.");
+        return;
+      }
+      if (formData.idType === "Aadhaar" && !formData.backDoc) {
+        setError("Upload the Aadhaar back image.");
+        return;
+      }
     }
+
+    // Step 2: Hostel Details Validation
     if (step === 2) {
       if (!formData.hostelName.trim()) {
         setError("Hostel Name is required.");
         return;
       }
-      if (!formData.pincode.trim()) {
-        setError("Hostel Pincode is required.");
+      const cleanPin = String(formData.pincode || "").replace(/\D/g, "");
+      if (cleanPin.length !== 6) {
+        setError("Enter a valid 6-digit pincode.");
+        return;
+      }
+      if (!formData.hostelAddress.trim()) {
+        setError("Hostel Address is required.");
         return;
       }
     }
@@ -147,7 +177,9 @@ export function useOwnerCreation(initialMode = "admin") {
   };
 
   const submitRegistration = async (overrideMode) => {
-    const activeMode = overrideMode || mode || "admin";
+    // FIX: SyntheticEvent objects passed by React event handlers (e.g. onClick) are truthy objects.
+    // Ensure activeMode is only overriden if passed a valid string mode.
+    const activeMode = (typeof overrideMode === "string" ? overrideMode : null) || mode || "admin";
     setLoading(true);
     setError(null);
 
@@ -177,7 +209,7 @@ export function useOwnerCreation(initialMode = "admin") {
         aadhaarBack: formData.backDoc || "",
         selfie: formData.selfie || "",
         ownerPhoto: formData.ownerPhoto || formData.selfie || "default_owner.png",
-        licensePhoto: "default_license.png",
+        licensePhoto: formData.licensePhoto || "default_license.png",
       };
 
       const endpoint = activeMode === "public" ? "/api/request/register" : "/api/admin/requests";

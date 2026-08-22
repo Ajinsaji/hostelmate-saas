@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Code, Key, Webhook, Trash2, Plus, Copy, Shield, Activity } from "lucide-react";
 import toast from "react-hot-toast";
 import api from "../utils/apiClient";
+import ConfirmDialog from "../superadmin/components/modals/ConfirmDialog";
 import { OwnerLayout } from "../design-system/layouts/OwnerLayout";
 import { PageContainer } from "../design-system/layouts/PageContainer";
 import { Card } from "../design-system/components/Card";
@@ -60,17 +61,25 @@ export default function DeveloperConsole() {
     }
   };
 
-  const handleRevokeKey = async (keyId) => {
-    if (!window.confirm("Revoke this API Key immediately?")) return;
+  const [revokeTargetKeyId, setRevokeTargetKeyId] = useState(null);
+
+  const confirmRevokeKey = async () => {
+    if (!revokeTargetKeyId) return;
     try {
-      const res = await api.delete(`/api/v2/developer/api-keys/${keyId}`);
+      const res = await api.delete(`/api/v2/developer/api-keys/${revokeTargetKeyId}`);
       if (res.data?.success) {
         toast.success("API Key revoked");
         fetchDevData();
       }
     } catch (err) {
       toast.error("Revocation failed");
+    } finally {
+      setRevokeTargetKeyId(null);
     }
+  };
+
+  const handleRevokeKey = (keyId) => {
+    setRevokeTargetKeyId(keyId);
   };
 
   return (
@@ -200,6 +209,17 @@ export default function DeveloperConsole() {
             </div>
           </div>
         )}
+
+        <ConfirmDialog
+          isOpen={Boolean(revokeTargetKeyId)}
+          onClose={() => setRevokeTargetKeyId(null)}
+          onConfirm={confirmRevokeKey}
+          title="Revoke API Key?"
+          message="Are you sure you want to immediately revoke this API key? Applications using this key will lose API access."
+          confirmLabel="Revoke Key"
+          cancelLabel="Cancel"
+          isDanger={true}
+        />
 
       </PageContainer>
     </OwnerLayout>

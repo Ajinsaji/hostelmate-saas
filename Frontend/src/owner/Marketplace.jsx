@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Grid, CheckCircle2, Plus, Settings, ExternalLink, ShieldCheck } from "lucide-react";
 import toast from "react-hot-toast";
 import api from "../utils/apiClient";
+import ConfirmDialog from "../superadmin/components/modals/ConfirmDialog";
 import { OwnerLayout } from "../design-system/layouts/OwnerLayout";
 import { PageContainer } from "../design-system/layouts/PageContainer";
 import { Card } from "../design-system/components/Card";
@@ -47,20 +48,27 @@ export default function Marketplace() {
     }
   };
 
-  const handleUninstall = async (pluginId) => {
-    if (!window.confirm(`Uninstall ${pluginId}?`)) return;
+  const [uninstallPluginId, setUninstallPluginId] = useState(null);
+
+  const confirmUninstall = async () => {
+    if (!uninstallPluginId) return;
     try {
       setProcessing(true);
-      const res = await api.delete("/api/v2/marketplace/uninstall", { data: { pluginId } });
+      const res = await api.delete("/api/v2/marketplace/uninstall", { data: { pluginId: uninstallPluginId } });
       if (res.data?.success) {
-        toast.success(`Uninstalled ${pluginId}`);
+        toast.success(`Uninstalled ${uninstallPluginId}`);
         fetchMarketplace();
       }
     } catch (err) {
       toast.error("Uninstall failed");
     } finally {
       setProcessing(false);
+      setUninstallPluginId(null);
     }
+  };
+
+  const handleUninstall = (pluginId) => {
+    setUninstallPluginId(pluginId);
   };
 
   return (
@@ -124,6 +132,18 @@ export default function Marketplace() {
             ))}
           </div>
         )}
+
+        <ConfirmDialog
+          isOpen={Boolean(uninstallPluginId)}
+          onClose={() => setUninstallPluginId(null)}
+          onConfirm={confirmUninstall}
+          title="Uninstall Integration?"
+          message={`Are you sure you want to uninstall integration ${uninstallPluginId}? Associated settings and tokens will be removed.`}
+          confirmLabel="Uninstall"
+          cancelLabel="Cancel"
+          isDanger={true}
+          loading={processing}
+        />
 
       </PageContainer>
     </OwnerLayout>

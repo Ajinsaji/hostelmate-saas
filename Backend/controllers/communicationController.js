@@ -145,6 +145,11 @@ const logManualWhatsAppClick = async (req, res) => {
       return res.status(404).json({ success: false, message: "Communication log not found" });
     }
 
+    // Multitenancy RBAC Check: Owner cannot update logs for other hostels
+    if (req.user?.role === "owner" && req.user?.hostelId && comm.hostelId?.toString() !== req.user.hostelId.toString()) {
+      return res.status(403).json({ success: false, message: "Forbidden: Access denied" });
+    }
+
     if (comm.status === "pending_manual") {
       comm.status = "manual_opened";
       comm.openedAt = new Date();

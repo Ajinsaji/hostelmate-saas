@@ -45,8 +45,18 @@ const getPayments = async (req, res) => {
 
 const streamReceiptPDF = async (req, res) => {
   try {
-    const filePath = await generatePaymentReceiptPDF(req.params.id);
+    const userCtx = getUserContext(req);
     const payment = await RentPayment.findById(req.params.id);
+
+    if (!payment) {
+      return res.status(404).json({ success: false, message: "Payment not found" });
+    }
+
+    if (userCtx.hostelId && String(payment.hostelId) !== String(userCtx.hostelId)) {
+      return res.status(403).json({ success: false, message: "Forbidden: Access denied to this receipt" });
+    }
+
+    const filePath = await generatePaymentReceiptPDF(req.params.id);
 
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader("Content-Disposition", `inline; filename="${payment?.paymentNumber || "Receipt"}.pdf"`);

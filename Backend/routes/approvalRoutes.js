@@ -1,5 +1,6 @@
 const express = require("express");
 const router = express.Router();
+const { requireRole } = require("../middleware/auth");
 
 const { 
   checkHostelRequestApproval,
@@ -12,9 +13,11 @@ const {
 // Query by phone (primary) and/or email (secondary, if available in future).
 router.get("/check-approval-status", checkHostelRequestApproval);
 
-router.post("/approve/:id", approveOnboardingRequest);
-router.post("/reject/:id", rejectOnboardingRequest);
-router.post("/assign/:id", assignOnboardingRequest);
+// Admin-only approval & workflow management actions
+const adminGuard = requireRole(["super_admin", "admin"]);
+router.post("/approve/:id", adminGuard, approveOnboardingRequest);
+router.post("/reject/:id", adminGuard, rejectOnboardingRequest);
+router.post("/assign/:id", adminGuard, assignOnboardingRequest);
 
 module.exports = router;
 

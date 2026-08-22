@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import api from "../utils/apiClient";
 import MessageDetailDrawer from "../components/MessageDetailDrawer";
+import toast from "react-hot-toast";
 
 export default function AdminWhatsAppConsole() {
   const [loading, setLoading] = useState(true);
@@ -108,9 +109,10 @@ export default function AdminWhatsAppConsole() {
       if (res.data?.success) {
         setGlobalAutomation(newValue);
         fetchSettingsAndDiagnostics();
+        toast.success("Global automation setting updated");
       }
     } catch (err) {
-      alert(err.response?.data?.message || "Failed to update global automation setting");
+      toast.error(err.response?.data?.message || "Failed to update global automation setting");
     } finally {
       setSavingGlobal(false);
     }
@@ -136,10 +138,10 @@ export default function AdminWhatsAppConsole() {
     try {
       setScanningReminders(true);
       const res = await api.post("/api/communication/whatsapp/scan-reminders");
-      alert(res.data?.message || "Rent reminder scan completed!");
+      toast.success(res.data?.message || "Rent reminder scan completed!");
       fetchCommunications();
     } catch (err) {
-      alert(err.response?.data?.message || "Failed to run rent reminder scan");
+      toast.error(err.response?.data?.message || "Failed to run rent reminder scan");
     } finally {
       setScanningReminders(false);
     }

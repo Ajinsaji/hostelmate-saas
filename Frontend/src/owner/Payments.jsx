@@ -4,6 +4,7 @@ import toast from "react-hot-toast";
 import api from "../utils/apiClient";
 import useGlobalPolling from "../hooks/useGlobalPolling";
 import { useCurrentHostel } from "../contexts/HostelContext";
+import ConfirmDialog from "../superadmin/components/modals/ConfirmDialog";
 
 import useIsMobile from "../hooks/useIsMobile";
 import PaymentsMobile from "./PaymentsMobile";
@@ -115,58 +116,77 @@ export default function Payments() {
     }
   };
 
-  const deletePayment = async (id) => {
-    if (!window.confirm("Delete this payment entry?")) return;
+  const [deletePaymentId, setDeletePaymentId] = useState(null);
+
+  const confirmDeletePayment = async () => {
+    if (!deletePaymentId) return;
     try {
-      await api.delete(`/api/payments/${id}`);
+      await api.delete(`/api/payments/${deletePaymentId}`);
       toast.success("Payment deleted.");
       fetchPayments();
     } catch (err) {
       toast.error("Failed to delete payment.");
+    } finally {
+      setDeletePaymentId(null);
     }
   };
 
-  if (isMobile) {
-    return (
-      <PaymentsMobile
-        payments={payments}
-        filteredPayments={filteredPayments}
-        totals={totals}
-        loading={loading}
-        search={search}
-        setSearch={setSearch}
-        activeTab={activeTab}
-        setActiveTab={setActiveTab}
-        showAddForm={showAddForm}
-        setShowAddForm={setShowAddForm}
-        formData={formData}
-        setFormData={setFormData}
-        residents={residents}
-        handleSavePayment={handleSavePayment}
-        deletePayment={deletePayment}
-        savingPayment={savingPayment}
-      />
-    );
-  }
+  const deletePayment = (id) => {
+    setDeletePaymentId(id);
+  };
 
   return (
-    <PaymentsDesktop
-      payments={payments}
-      filteredPayments={filteredPayments}
-      totals={totals}
-      loading={loading}
-      search={search}
-      setSearch={setSearch}
-      activeTab={activeTab}
-      setActiveTab={setActiveTab}
-      showAddForm={showAddForm}
-      setShowAddForm={setShowAddForm}
-      formData={formData}
-      setFormData={setFormData}
-      residents={residents}
-      handleSavePayment={handleSavePayment}
-      deletePayment={deletePayment}
-      savingPayment={savingPayment}
-    />
+    <>
+      {isMobile ? (
+        <PaymentsMobile
+          payments={payments}
+          filteredPayments={filteredPayments}
+          totals={totals}
+          loading={loading}
+          search={search}
+          setSearch={setSearch}
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+          showAddForm={showAddForm}
+          setShowAddForm={setShowAddForm}
+          formData={formData}
+          setFormData={setFormData}
+          residents={residents}
+          handleSavePayment={handleSavePayment}
+          deletePayment={deletePayment}
+          savingPayment={savingPayment}
+        />
+      ) : (
+        <PaymentsDesktop
+          payments={payments}
+          filteredPayments={filteredPayments}
+          totals={totals}
+          loading={loading}
+          search={search}
+          setSearch={setSearch}
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+          showAddForm={showAddForm}
+          setShowAddForm={setShowAddForm}
+          formData={formData}
+          setFormData={setFormData}
+          residents={residents}
+          handleSavePayment={handleSavePayment}
+          deletePayment={deletePayment}
+          savingPayment={savingPayment}
+        />
+      )}
+
+      <ConfirmDialog
+        isOpen={Boolean(deletePaymentId)}
+        onClose={() => setDeletePaymentId(null)}
+        onConfirm={confirmDeletePayment}
+        title="Delete Payment Entry?"
+        message="Are you sure you want to delete this payment record? This action cannot be undone."
+        confirmLabel="Delete Payment"
+        cancelLabel="Cancel"
+        isDanger={true}
+      />
+    </>
   );
 }

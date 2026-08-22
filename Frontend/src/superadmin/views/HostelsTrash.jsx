@@ -5,6 +5,7 @@ import ContentContainer from "../layouts/ContentContainer";
 import { RotateCcw, ShieldCheck, AlertTriangle, Loader2, Trash2, X } from "lucide-react";
 import toast from "react-hot-toast";
 import { api } from "../../services/api";
+import ConfirmDialog from "../components/modals/ConfirmDialog";
 
 export const HostelsTrash = React.memo(() => {
   const [trashHostels, setTrashHostels] = useState([]);
@@ -34,8 +35,15 @@ export const HostelsTrash = React.memo(() => {
     fetchTrash();
   }, []);
 
-  const handleRestore = async (id, hostelName) => {
-    if (!window.confirm(`Restore "${hostelName}" to active registry?`)) return;
+  const [restoreTargetHostel, setRestoreTargetHostel] = useState(null);
+
+  const handleRestore = (id, hostelName) => {
+    setRestoreTargetHostel({ id, hostelName });
+  };
+
+  const confirmRestoreHostel = async () => {
+    if (!restoreTargetHostel) return;
+    const { id, hostelName } = restoreTargetHostel;
 
     setRestoringId(id);
     const toastId = toast.loading(`Restoring ${hostelName}...`);
@@ -51,6 +59,7 @@ export const HostelsTrash = React.memo(() => {
       toast.error(err?.response?.data?.message || "Restore failed", { id: toastId });
     } finally {
       setRestoringId(null);
+      setRestoreTargetHostel(null);
     }
   };
 
@@ -260,6 +269,18 @@ export const HostelsTrash = React.memo(() => {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        isOpen={Boolean(restoreTargetHostel)}
+        onClose={() => setRestoreTargetHostel(null)}
+        onConfirm={confirmRestoreHostel}
+        title="Restore Hostel?"
+        message={`Are you sure you want to restore "${restoreTargetHostel?.hostelName || "this hostel"}" to the active registry?`}
+        confirmLabel="Restore Hostel"
+        cancelLabel="Cancel"
+        isDanger={false}
+        loading={Boolean(restoringId)}
+      />
     </PageContainer>
   );
 });

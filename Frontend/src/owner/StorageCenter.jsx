@@ -11,6 +11,7 @@ import api from "../utils/apiClient";
 import useIsMobile from "../hooks/useIsMobile";
 import StorageCenterMobile from "./StorageCenterMobile";
 import StorageCenterDesktop from "./StorageCenterDesktop";
+import ConfirmDialog from "../superadmin/components/modals/ConfirmDialog";
 
 export default function StorageCenter() {
   const isMobile = useIsMobile();
@@ -50,17 +51,25 @@ export default function StorageCenter() {
     }
   };
 
-  const handleDelete = async (itemId) => {
-    if (!window.confirm("Permanently delete this file?")) return;
+  const [deleteFileItemId, setDeleteFileItemId] = useState(null);
+
+  const confirmDeleteFile = async () => {
+    if (!deleteFileItemId) return;
     try {
-      const res = await api.delete("/api/v2/storage/delete", { data: { itemId } });
+      const res = await api.delete("/api/v2/storage/delete", { data: { itemId: deleteFileItemId } });
       if (res.data?.success) {
         toast.success("File deleted");
         fetchStorage();
       }
     } catch {
       toast.error("Deletion failed");
+    } finally {
+      setDeleteFileItemId(null);
     }
+  };
+
+  const handleDelete = (itemId) => {
+    setDeleteFileItemId(itemId);
   };
 
   const defaultFolders = [
@@ -81,32 +90,43 @@ export default function StorageCenter() {
   const usedMB = storageData?.storageUsedMB || 15.6;
   const limitMB = storageData?.storageLimitMB || 100;
 
-  if (isMobile) {
-    return (
-      <StorageCenterMobile
-        usedMB={usedMB}
-        limitMB={limitMB}
-        usagePercent={usagePercent}
-        defaultFolders={defaultFolders}
-        defaultFiles={defaultFiles}
-        handleCleanup={handleCleanup}
-        handleDelete={handleDelete}
-        processing={processing}
-      />
-    );
-  }
-
   return (
-    <StorageCenterDesktop
-      usedMB={usedMB}
-      limitMB={limitMB}
-      usagePercent={usagePercent}
-      defaultFolders={defaultFolders}
-      defaultFiles={defaultFiles}
-      storageData={storageData}
-      handleCleanup={handleCleanup}
-      handleDelete={handleDelete}
-      processing={processing}
-    />
+    <>
+      {isMobile ? (
+        <StorageCenterMobile
+          usedMB={usedMB}
+          limitMB={limitMB}
+          usagePercent={usagePercent}
+          defaultFolders={defaultFolders}
+          defaultFiles={defaultFiles}
+          handleCleanup={handleCleanup}
+          handleDelete={handleDelete}
+          processing={processing}
+        />
+      ) : (
+        <StorageCenterDesktop
+          usedMB={usedMB}
+          limitMB={limitMB}
+          usagePercent={usagePercent}
+          defaultFolders={defaultFolders}
+          defaultFiles={defaultFiles}
+          storageData={storageData}
+          handleCleanup={handleCleanup}
+          handleDelete={handleDelete}
+          processing={processing}
+        />
+      )}
+
+      <ConfirmDialog
+        isOpen={Boolean(deleteFileItemId)}
+        onClose={() => setDeleteFileItemId(null)}
+        onConfirm={confirmDeleteFile}
+        title="Delete File?"
+        message="Are you sure you want to permanently delete this file? This action cannot be undone."
+        confirmLabel="Delete File"
+        cancelLabel="Cancel"
+        isDanger={true}
+      />
+    </>
   );
 }

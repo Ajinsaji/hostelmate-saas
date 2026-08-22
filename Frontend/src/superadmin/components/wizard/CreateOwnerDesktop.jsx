@@ -5,6 +5,7 @@ import { CheckCircle2, ChevronRight, ChevronLeft, Camera, User, Building2, Shiel
 import DocumentCapture from "../forms/DocumentCapture";
 import OwnerRegistrationReview from "../forms/OwnerRegistrationReview";
 import CameraCapture from "../forms/CameraCapture";
+import toast from "react-hot-toast";
 
 const STEPS = [
   { num: "01", label: "Owner", fullLabel: "Owner Info", icon: User },
@@ -30,6 +31,7 @@ export const CreateOwnerDesktop = ({
   submittedResult,
 }) => {
   const [isSelfieCameraOpen, setIsSelfieCameraOpen] = useState(false);
+  const [isLicenseCameraOpen, setIsLicenseCameraOpen] = useState(false);
   const shouldReduceMotion = useReducedMotion();
   const navigate = useNavigate();
 
@@ -536,6 +538,90 @@ export const CreateOwnerDesktop = ({
                     className="w-full bg-[#0B1220] border border-[#202B45] rounded-xl px-4 py-3.5 text-xs text-white focus:outline-none focus:border-emerald-500 transition-all min-h-[48px]"
                   />
                 </div>
+
+                {/* Hostel License Section */}
+                <div className="space-y-3 md:col-span-2 bg-[#0B1220]/80 border border-[#202B45] rounded-2xl p-5 shadow-lg">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <span className="text-xs font-bold text-slate-200 block">Hostel License / Registration Certificate</span>
+                      <span className="text-xs text-slate-400 block mt-0.5">Upload a clear copy of your hostel license or registration certificate.</span>
+                    </div>
+                    {formData.licensePhoto && formData.licensePhoto !== "default_license.png" && (
+                      <span className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-3 py-1 rounded-full">
+                        <Check size={14} className="stroke-[3]" /> Uploaded
+                      </span>
+                    )}
+                  </div>
+
+                  {formData.licensePhoto && formData.licensePhoto !== "default_license.png" ? (
+                    <div className="relative rounded-xl overflow-hidden border border-white/10 group bg-slate-950 h-44 flex items-center justify-center">
+                      <img src={formData.licensePhoto} alt="Hostel License" className="h-full w-auto object-contain" />
+                      <div className="absolute inset-0 bg-slate-950/70 opacity-0 group-hover:opacity-100 transition duration-200 flex items-center justify-center gap-3">
+                        <button
+                          type="button"
+                          onClick={() => setIsLicenseCameraOpen(true)}
+                          className="px-4 py-2 bg-blue-500 text-white rounded-xl text-xs font-bold hover:bg-blue-600 transition"
+                        >
+                          Retake
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => updateFormData({ licensePhoto: null })}
+                          className="px-4 py-2 bg-red-500 text-white rounded-xl text-xs font-bold hover:bg-red-600 transition"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="border-2 border-dashed border-[#202B45] hover:border-emerald-500/40 rounded-xl p-6 text-center space-y-3 bg-white/[0.01] transition">
+                      <p className="text-xs text-slate-400">JPG, JPEG, PNG, WebP (Maximum size 5 MB)</p>
+                      <div className="flex items-center justify-center gap-3">
+                        <button
+                          type="button"
+                          onClick={() => setIsLicenseCameraOpen(true)}
+                          className="px-4 py-2.5 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20 rounded-xl text-xs font-bold transition flex items-center gap-2 min-h-[44px]"
+                        >
+                          <Camera size={16} /> Capture with Camera
+                        </button>
+                        <label className="px-4 py-2.5 bg-white/5 border border-white/10 text-slate-300 hover:bg-white/10 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-2 min-h-[44px]">
+                          <Upload size={16} /> Upload File
+                          <input
+                            type="file"
+                            accept="image/jpeg,image/jpg,image/png,image/webp"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) {
+                                if (file.size > 5 * 1024 * 1024) {
+                                  toast.error("File size exceeds 5MB limit.");
+                                  return;
+                                }
+                                const reader = new FileReader();
+                                reader.onload = (evt) => {
+                                  if (evt.target?.result) updateFormData({ licensePhoto: evt.target.result });
+                                };
+                                reader.readAsDataURL(file);
+                              }
+                            }}
+                            className="hidden"
+                          />
+                        </label>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <CameraCapture
+                  isOpen={isLicenseCameraOpen}
+                  onClose={() => setIsLicenseCameraOpen(false)}
+                  title="Capture Hostel License"
+                  defaultFacingMode="environment"
+                  isDocument={true}
+                  onConfirm={(imageData) => {
+                    updateFormData({ licensePhoto: imageData });
+                    setIsLicenseCameraOpen(false);
+                  }}
+                />
               </div>
             </motion.div>
           )}
@@ -554,6 +640,7 @@ export const CreateOwnerDesktop = ({
                   { title: "Owner Photo / Live Selfie", doc: formData.selfie || formData.ownerPhoto, desc: "Owner portrait for account avatar and security profile" },
                   { title: "ID Proof Front Side", doc: formData.frontDoc, desc: "Aadhaar / Passport / DL front image" },
                   { title: "ID Proof Back Side", doc: formData.backDoc, desc: "Aadhaar / DL address back side image" },
+                  { title: "Hostel License", doc: formData.licensePhoto && formData.licensePhoto !== "default_license.png" ? formData.licensePhoto : null, desc: "Hostel license or registration document" },
                 ].map((item, idx) => (
                   <div key={idx} className="bg-[#0B1220] border border-[#202B45] rounded-2xl p-5 flex items-center justify-between shadow-lg">
                     <div className="flex items-center gap-4">

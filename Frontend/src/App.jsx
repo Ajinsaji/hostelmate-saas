@@ -251,9 +251,9 @@ function App() {
 
   return (
     <ConnectionProvider>
+      <ConnectionDiagnosticModal />
       <ServerLoadingWrapper>
         <OfflineBanner />
-        <ConnectionDiagnosticModal />
         <ErrorBoundary>
         <BrowserRouter>
         <HostelProvider>

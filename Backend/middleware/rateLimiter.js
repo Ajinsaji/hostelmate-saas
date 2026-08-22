@@ -30,9 +30,10 @@ const authLimiter = rateLimit({
   },
   standardHeaders: true,
   legacyHeaders: false,
+  validate: { keyGeneratorIpFallback: false },
   keyGenerator: (req) => {
     // Limit by user ID if authenticated, fallback to IP
-    return req.user ? req.user._id.toString() : req.ip;
+    return req.user ? String(req.user._id || req.user.id || req.user.userId) : req.ip;
   }
 });
 
@@ -50,8 +51,9 @@ const adminLimiter = rateLimit({
   },
   standardHeaders: true,
   legacyHeaders: false,
+  validate: { keyGeneratorIpFallback: false },
   keyGenerator: (req) => {
-    return req.admin ? req.admin._id.toString() : req.ip;
+    return req.admin ? String(req.admin._id || req.admin.id) : req.ip;
   }
 });
 
@@ -60,3 +62,4 @@ module.exports = {
   authLimiter,
   adminLimiter
 };
+

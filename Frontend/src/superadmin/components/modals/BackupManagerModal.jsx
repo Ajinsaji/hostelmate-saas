@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { api } from "../../../services/api";
+import ConfirmDialog from "./ConfirmDialog";
 import { X, Database, Loader2, Download, CheckCircle2, AlertCircle } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -29,10 +30,13 @@ export default function BackupManagerModal({ isOpen, onClose }) {
     }
   };
 
-  const handleRunBackup = async () => {
-    const confirm = window.confirm("Are you sure you want to generate a new manual backup? This may affect database performance temporarily.");
-    if (!confirm) return;
+  const [isBackupConfirmOpen, setIsBackupConfirmOpen] = useState(false);
 
+  const handleRunBackup = () => {
+    setIsBackupConfirmOpen(true);
+  };
+
+  const confirmRunManualBackup = async () => {
     try {
       setIsBackingUp(true);
       setBackupProgress({ status: "IN_PROGRESS", message: "Connecting to database clusters..." });
@@ -52,6 +56,7 @@ export default function BackupManagerModal({ isOpen, onClose }) {
       setBackupProgress(null);
     } finally {
       setIsBackingUp(false);
+      setIsBackupConfirmOpen(false);
     }
   };
 
@@ -175,6 +180,18 @@ export default function BackupManagerModal({ isOpen, onClose }) {
           )}
         </div>
       </div>
+
+      <ConfirmDialog
+        isOpen={isBackupConfirmOpen}
+        onClose={() => setIsBackupConfirmOpen(false)}
+        onConfirm={confirmRunManualBackup}
+        title="Generate Manual Backup?"
+        message="Are you sure you want to generate a new manual backup? This snapshot process may temporarily affect database performance."
+        confirmLabel="Generate Backup"
+        cancelLabel="Cancel"
+        isDanger={false}
+        loading={isBackingUp}
+      />
     </div>
   );
 }
