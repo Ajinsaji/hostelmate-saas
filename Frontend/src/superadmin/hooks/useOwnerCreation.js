@@ -109,7 +109,7 @@ export function useOwnerCreation(initialMode = "admin") {
     setError(null);
     // Step 0: Owner Info Validation
     if (step === 0) {
-      if (!formData.ownerName.trim()) {
+      if (!formData.ownerName?.trim()) {
         setError("Owner Full Name is required.");
         return;
       }
@@ -118,16 +118,21 @@ export function useOwnerCreation(initialMode = "admin") {
         setError("Enter a valid 10-digit mobile number.");
         return;
       }
-      if (formData.ownerPincode && String(formData.ownerPincode).replace(/\D/g, "").length !== 6) {
-        setError("Enter a valid 6-digit pincode.");
+      const cleanPin = String(formData.ownerPincode || "").replace(/\D/g, "");
+      if (!cleanPin || cleanPin.length !== 6) {
+        setError("Enter a valid 6-digit residential pincode.");
+        return;
+      }
+      if (!formData.ownerAddress?.trim()) {
+        setError("Residential address is required.");
         return;
       }
     }
 
-    // Step 1: Identity & KYC Validation
+    // Step 1: Owner Documents & Identity KYC Validation
     if (step === 1) {
-      if (!formData.idNumber.trim()) {
-        setError("Document ID number is required.");
+      if (!formData.idNumber?.trim()) {
+        setError(`${formData.idType || "Document"} number is required.`);
         return;
       }
       if (formData.idType === "Aadhaar") {
@@ -138,33 +143,41 @@ export function useOwnerCreation(initialMode = "admin") {
         }
       }
       if (!formData.frontDoc) {
-        setError("Upload the Aadhaar front image.");
+        setError(`Upload or capture the ${formData.idType || "document"} front side image.`);
         return;
       }
       if (formData.idType === "Aadhaar" && !formData.backDoc) {
-        setError("Upload the Aadhaar back image.");
+        setError("Upload or capture the Aadhaar back side image.");
         return;
       }
     }
 
     // Step 2: Hostel Details Validation
     if (step === 2) {
-      if (!formData.hostelName.trim()) {
+      if (!formData.hostelName?.trim()) {
         setError("Hostel Name is required.");
         return;
       }
       const cleanPin = String(formData.pincode || "").replace(/\D/g, "");
-      if (cleanPin.length !== 6) {
-        setError("Enter a valid 6-digit pincode.");
+      if (!cleanPin || cleanPin.length !== 6) {
+        setError("Enter a valid 6-digit property pincode.");
         return;
       }
-      if (!formData.hostelAddress.trim()) {
-        setError("Hostel Address is required.");
+      if (!formData.hostelAddress?.trim()) {
+        setError("Hostel property address is required.");
+        return;
+      }
+      if (!formData.roomsCount || Number(formData.roomsCount) < 1) {
+        setError("Total number of rooms must be at least 1.");
+        return;
+      }
+      if (!formData.capacity || Number(formData.capacity) < 1) {
+        setError("Total available beds must be at least 1.");
         return;
       }
     }
 
-    if (step < 4) {
+    if (step < 3) {
       setStep((prev) => prev + 1);
     }
   };
@@ -177,8 +190,7 @@ export function useOwnerCreation(initialMode = "admin") {
   };
 
   const submitRegistration = async (overrideMode) => {
-    // FIX: SyntheticEvent objects passed by React event handlers (e.g. onClick) are truthy objects.
-    // Ensure activeMode is only overriden if passed a valid string mode.
+    // Ensure activeMode is only overridden if passed a valid string mode.
     const activeMode = (typeof overrideMode === "string" ? overrideMode : null) || mode || "admin";
     setLoading(true);
     setError(null);
@@ -187,29 +199,30 @@ export function useOwnerCreation(initialMode = "admin") {
       const payload = {
         ownerName: formData.ownerName,
         phone: formData.phone,
-        altPhone: formData.altPhone,
-        email: formData.email,
+        altPhone: formData.altPhone || "",
+        email: formData.email || "",
         ownerAddress: formData.ownerAddress || formData.hostelAddress,
         ownerPincode: formData.ownerPincode || formData.pincode || "",
         ownerState: formData.ownerState || formData.state || "",
         ownerDistrict: formData.ownerDistrict || formData.district || "",
         ownerCity: formData.ownerCity || formData.city || "",
         hostelName: formData.hostelName,
-        hostelType: formData.hostelType,
+        hostelType: formData.hostelType || "Boys Hostel",
         hostelAddress: formData.hostelAddress || formData.ownerAddress,
         city: formData.city || formData.ownerCity || "New Delhi",
         district: formData.district || formData.ownerDistrict || formData.city || "Delhi",
         state: formData.state || formData.ownerState || "Delhi",
         pincode: formData.pincode || formData.ownerPincode,
-        roomsCount: formData.roomsCount,
-        capacity: formData.capacity,
-        idType: formData.idType,
+        roomsCount: Number(formData.roomsCount) || 1,
+        capacity: Number(formData.capacity) || 1,
+        idType: formData.idType || "Aadhaar",
         idNumber: formData.idNumber,
         aadhaarFile: formData.frontDoc || "default_aadhaar.png",
         aadhaarBack: formData.backDoc || "",
         selfie: formData.selfie || "",
         ownerPhoto: formData.ownerPhoto || formData.selfie || "default_owner.png",
         licensePhoto: formData.licensePhoto || "default_license.png",
+        coverImage: formData.coverImage || formData.hostelPhoto || "",
       };
 
       const endpoint = activeMode === "public" ? "/api/request/register" : "/api/admin/requests";
@@ -223,7 +236,7 @@ export function useOwnerCreation(initialMode = "admin") {
 
       if (response.data?.success) {
         setSubmittedResult(response.data);
-        setStep(5); // Success step
+        setStep(4); // Success step
       } else {
         const is413 = response.data?.code === "FILE_TOO_LARGE";
         const msg = is413
