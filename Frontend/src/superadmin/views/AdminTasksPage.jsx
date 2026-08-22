@@ -166,12 +166,21 @@ export default function AdminTasksPage() {
           reason: "Dismissed by admin from Today's Tasks UI",
         });
         if (res.data?.success) {
-          toast.success("Task removed from Today's Tasks.");
+          // Immediately remove task from visible list and update counts
+          setPendingTasks((prev) => prev.filter((t) => (t.dbId || t.id || t._id) !== taskId && t.id !== taskId && t.dbId !== taskId));
+          setCompletedTasksToday((prev) => prev.filter((t) => (t.dbId || t.id || t._id) !== taskId && t.id !== taskId && t.dbId !== taskId));
           setSelectedTaskIds((prev) => {
             const next = new Set(prev);
             next.delete(taskId);
             return next;
           });
+          if (activeTab === "pending") {
+            setPendingCount((c) => Math.max(0, c - 1));
+          } else {
+            setCompletedCount((c) => Math.max(0, c - 1));
+          }
+          setTotalCount((c) => Math.max(0, c - 1));
+          toast.success("Task removed from Today's Tasks.");
           fetchTasks();
         } else {
           toast.error(res.data?.message || "Failed to remove task");
@@ -192,8 +201,11 @@ export default function AdminTasksPage() {
           reason: "Bulk dismissed by admin from Today's Tasks UI",
         });
         if (res?.data?.success) {
-          toast.success(`Successfully removed ${res.data.dismissedCount || idsArray.length} task(s).`);
+          const idSet = new Set(idsArray);
+          setPendingTasks((prev) => prev.filter((t) => !idSet.has(t.dbId || t.id || t._id) && !idSet.has(t.id) && !idSet.has(t.dbId)));
+          setCompletedTasksToday((prev) => prev.filter((t) => !idSet.has(t.dbId || t.id || t._id) && !idSet.has(t.id) && !idSet.has(t.dbId)));
           setSelectedTaskIds(new Set());
+          toast.success(`Successfully removed ${res.data.dismissedCount || idsArray.length} task(s).`);
           fetchTasks();
         } else {
           toast.error(res?.data?.message || "Failed to remove selected tasks.");

@@ -423,10 +423,18 @@ const getPendingCommunicationTasks = async (req, res) => {
 
     // Build Formatted Pending Tasks List
     const formattedPendingTasks = [];
+    const pushPendingItem = (item) => {
+      const isDismissed =
+        dismissedIdsSet.has(String(item.id)) ||
+        (item.dbId && dismissedIdsSet.has(String(item.dbId)));
+      if (!isDismissed) {
+        formattedPendingTasks.push(item);
+      }
+    };
 
     // 1. Pending Hostel Registrations
     pendingRequests.forEach((reqItem) => {
-      formattedPendingTasks.push({
+      pushPendingItem({
         id: `req_${reqItem._id}`,
         dbId: reqItem._id,
         type: "registration_pending",
@@ -448,7 +456,7 @@ const getPendingCommunicationTasks = async (req, res) => {
 
     // 2. Pending Activations
     pendingActivations.forEach((actItem) => {
-      formattedPendingTasks.push({
+      pushPendingItem({
         id: `act_${actItem._id}`,
         dbId: actItem._id,
         type: "activation_pending",
@@ -495,7 +503,7 @@ const getPendingCommunicationTasks = async (req, res) => {
         badgeColor = "yellow";
       }
 
-      formattedPendingTasks.push({
+      pushPendingItem({
         id: String(commItem._id),
         dbId: commItem._id,
         type: isFailed ? "whatsapp_failed" : "whatsapp_manual",
@@ -523,7 +531,7 @@ const getPendingCommunicationTasks = async (req, res) => {
 
     // 4. Pending Subscription Requests
     pendingSubscriptions.forEach((subItem) => {
-      formattedPendingTasks.push({
+      pushPendingItem({
         id: `sub_${subItem._id}`,
         dbId: subItem._id,
         type: "subscription_pending",
@@ -545,7 +553,7 @@ const getPendingCommunicationTasks = async (req, res) => {
 
     // 5. Pending Payments
     pendingPayments.forEach((payItem) => {
-      formattedPendingTasks.push({
+      pushPendingItem({
         id: `pay_${payItem._id}`,
         dbId: payItem._id,
         type: "payment_pending",

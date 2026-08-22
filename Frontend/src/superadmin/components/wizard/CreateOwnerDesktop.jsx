@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
-import { CheckCircle2, ChevronRight, ChevronLeft, Camera, User, Building2, Shield, FileCheck, Check, Clock, MapPin, Search, Loader2, AlertTriangle, Sparkles } from "lucide-react";
+import { CheckCircle2, ChevronRight, ChevronLeft, Camera, User, Building2, Shield, FileCheck, Check, Clock, MapPin, Search, Loader2, AlertTriangle, Sparkles, Upload } from "lucide-react";
 import DocumentCapture from "../forms/DocumentCapture";
 import OwnerRegistrationReview from "../forms/OwnerRegistrationReview";
 import CameraCapture from "../forms/CameraCapture";
