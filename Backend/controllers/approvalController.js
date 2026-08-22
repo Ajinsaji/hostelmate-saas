@@ -114,16 +114,32 @@ const approveOnboardingRequest = async (req, res) => {
       licensePhoto: requestData.licensePhoto || existingRequest?.licensePhoto || ""
     };
 
-    // Call shared service to create Hostel draft (pendingActivation = true)
-    const result = await approveHostelRegistration(payload);
+    // Check if an unactivated draft hostel already exists for this request or phone
+    let resultHostel = null;
+    if (existingRequest?.hostelId) {
+      resultHostel = await Hostel.findById(existingRequest.hostelId);
+    }
+    if (!resultHostel && payload.phone) {
+      resultHostel = await Hostel.findOne({
+        phone: payload.phone,
+        isDeleted: false,
+        pendingActivation: true,
+      });
+    }
 
-    const hostelId = result.hostel._id;
+    if (!resultHostel) {
+      // Call shared service to create Hostel draft (pendingActivation = true)
+      const result = await approveHostelRegistration(payload);
+      resultHostel = result.hostel;
+    }
+
+    const hostelId = resultHostel._id;
 
     if (id && id !== "new") {
       await HostelRequest.findByIdAndUpdate(id, {
         status: "activation_pending",
         hostelId: hostelId,
-        $push: { timeline: { action: "Approved - Activation Pending", by: "SuperAdmin" } }
+        $push: { timeline: { action: "Approved - Activation Pending", by: req.user?.role || "SuperAdmin" } }
       });
     }
 

@@ -212,7 +212,11 @@ export const ConfirmActionModal = React.memo(({
         if (err.response?.status === 403) {
           errMsg = "403 Forbidden: You do not have permission to execute this administrative action.";
         } else if (err.response?.status === 409) {
-          errMsg = "Conflict: An account or subscription with these details already exists.";
+          if (err.response?.data?.code === "OWNER_ACTIVE_ON_ANOTHER_HOSTEL") {
+            errMsg = "An active owner account with this phone number already exists and is managing another property.";
+          } else {
+            errMsg = "Conflict: An active account with these details already exists.";
+          }
         } else if (err.response?.status === 404) {
           errMsg = "Hostel or registration record not found.";
         } else {

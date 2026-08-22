@@ -215,37 +215,39 @@ const approveHostel = async (req, res) => {
       });
     }
 
-    const existingDraft = await Hostel.findOne({
-      phone: request.phone,
-    }).lean();
-
-    if (existingDraft) {
-      return res.status(200).json({
-        success: false,
-        activationAlreadyStarted: true,
-        hostelId: existingDraft._id,
-        message: "Hostel already exists",
+    let resultHostel = null;
+    if (request.hostelId) {
+      resultHostel = await Hostel.findById(request.hostelId);
+    }
+    if (!resultHostel && request.phone) {
+      resultHostel = await Hostel.findOne({
+        phone: request.phone,
+        isDeleted: false,
+        pendingActivation: true,
       });
     }
 
-    const { approveHostelRegistration } = require("../services/onboardingService");
-    const result = await approveHostelRegistration({
-      hostelName: request.hostelName,
-      ownerName: request.ownerName,
-      email: request.email || "",
-      phone: request.phone,
-      city: request.city || "",
-      address: request.hostelAddress || "",
-      coverImage: request.coverImage || "",
-      logo: request.logo || "",
-      aadhaarFile: request.aadhaarFile || "",
-      licensePhoto: request.licensePhoto || ""
-    });
+    if (!resultHostel) {
+      const { approveHostelRegistration } = require("../services/onboardingService");
+      const result = await approveHostelRegistration({
+        hostelName: request.hostelName,
+        ownerName: request.ownerName,
+        email: request.email || "",
+        phone: request.phone,
+        city: request.city || "",
+        address: request.hostelAddress || "",
+        coverImage: request.coverImage || "",
+        logo: request.logo || "",
+        aadhaarFile: request.aadhaarFile || "",
+        licensePhoto: request.licensePhoto || ""
+      });
+      resultHostel = result.hostel;
+    }
 
     request.status = "activation_pending";
-    request.hostelId = String(result.hostel._id);
+    request.hostelId = String(resultHostel._id);
     if (!request.timeline) request.timeline = [];
-    request.timeline.push({ action: "Approved - Activation Pending", by: "SuperAdmin" });
+    request.timeline.push({ action: "Approved - Activation Pending", by: req.user?.role || "SuperAdmin" });
     await request.save();
 
     await AuditLog.create({
@@ -352,30 +354,29 @@ const finalizeHostelActivation = async (req, res) => {
       });
     }
 
-    // 3. Validate Owner Conflicts
+    // 3. Validate Owner Conflicts & Idempotent Owner Reconciliation
+    let ownerDoc = null;
     const existingOwnerByHostel = await Owner.findOne({ hostelId: hostel._id });
-    if (existingOwnerByHostel) {
-      return res.status(400).json({
-        success: false,
-        code: "HOSTEL_ALREADY_ACTIVATED",
-        message: "Hostel already activated",
-      });
-    }
-
     const existingOwnerByPhone = await Owner.findOne({ phone: hostel.phone });
+
     if (existingOwnerByPhone) {
-      if (String(existingOwnerByPhone.hostelId) === String(hostel._id)) {
-        return res.status(400).json({
-          success: false,
-          code: "HOSTEL_ALREADY_ACTIVATED",
-          message: "Hostel already activated",
-        });
+      // Check if this existing owner is already bound to a separate, legitimately active hostel
+      if (existingOwnerByPhone.hostelId && String(existingOwnerByPhone.hostelId) !== String(hostel._id)) {
+        const otherHostel = await Hostel.findById(existingOwnerByPhone.hostelId).lean();
+        if (otherHostel && otherHostel.isDeleted !== true && otherHostel.pendingActivation === false) {
+          // Genuinely active owner managing another property -> Controlled 409
+          return res.status(409).json({
+            success: false,
+            code: "OWNER_ACTIVE_ON_ANOTHER_HOSTEL",
+            message: `An active owner account with phone number ${hostel.phone} already exists and is managing another property.`,
+          });
+        }
       }
-      return res.status(409).json({
-        success: false,
-        code: "OWNER_PHONE_CONFLICT",
-        message: `An owner account with phone number ${hostel.phone} already exists.`,
-      });
+
+      // Incomplete/orphan owner created previously or associated with this draft -> Reconcile!
+      ownerDoc = existingOwnerByPhone;
+    } else if (existingOwnerByHostel) {
+      ownerDoc = existingOwnerByHostel;
     }
 
     // 4. Ensure Public Code & Canonical URL are present and valid
@@ -450,7 +451,7 @@ const finalizeHostelActivation = async (req, res) => {
       });
     }
 
-    // 6. Generate Temporary Password and Create Owner
+    // 6. Generate Temporary Password and Create or Reconcile Owner
     const tempPassword = `HM${Math.floor(1000 + Math.random() * 9000)}@${String.fromCharCode(65 + Math.floor(Math.random() * 26))}${Math.floor(10 + Math.random() * 90)}`;
     const bcryptjs = require("bcryptjs");
     const hashedPassword = await bcryptjs.hash(tempPassword, 10);
@@ -463,31 +464,49 @@ const finalizeHostelActivation = async (req, res) => {
 
     const ownerEmail = hostel.email || relatedRequest?.email || "";
 
-    const ownerPayload = {
-      hostelId: hostel._id,
-      activeHostelId: hostel._id,
-      ownerName: hostel.ownerName || "Hostel Owner",
-      phone: hostel.phone,
-      email: ownerEmail,
-      username: hostel.phone,
-      password: hashedPassword,
-      mustChangePassword: true,
-      firstLogin: true,
-      onboardingCompleted: false,
-      passwordChanged: false,
-      rulesConfigured: false,
-      roomsConfigured: false,
-      role: "owner",
-      status: "active",
-      profileImage: hostel.ownerPhoto || "",
-      credentialIssuedAt: new Date(),
-      credentialDeliveryStatus: "issued",
-    };
-
-    const createdOwner = await Owner.create(ownerPayload);
+    if (ownerDoc) {
+      // Safely reconcile existing owner record
+      ownerDoc.hostelId = hostel._id;
+      ownerDoc.activeHostelId = hostel._id;
+      ownerDoc.ownerName = hostel.ownerName || ownerDoc.ownerName || "Hostel Owner";
+      ownerDoc.phone = hostel.phone;
+      if (ownerEmail) ownerDoc.email = ownerEmail;
+      ownerDoc.username = hostel.phone;
+      ownerDoc.password = hashedPassword;
+      ownerDoc.mustChangePassword = true;
+      ownerDoc.firstLogin = true;
+      ownerDoc.role = "owner";
+      ownerDoc.status = "active";
+      if (hostel.ownerPhoto) ownerDoc.profileImage = hostel.ownerPhoto;
+      ownerDoc.credentialIssuedAt = new Date();
+      ownerDoc.credentialDeliveryStatus = "issued";
+      await ownerDoc.save();
+    } else {
+      const ownerPayload = {
+        hostelId: hostel._id,
+        activeHostelId: hostel._id,
+        ownerName: hostel.ownerName || "Hostel Owner",
+        phone: hostel.phone,
+        email: ownerEmail,
+        username: hostel.phone,
+        password: hashedPassword,
+        mustChangePassword: true,
+        firstLogin: true,
+        onboardingCompleted: false,
+        passwordChanged: false,
+        rulesConfigured: false,
+        roomsConfigured: false,
+        role: "owner",
+        status: "active",
+        profileImage: hostel.ownerPhoto || "",
+        credentialIssuedAt: new Date(),
+        credentialDeliveryStatus: "issued",
+      };
+      ownerDoc = await Owner.create(ownerPayload);
+    }
 
     // Link owner to subscription
-    subscriptionDoc.ownerId = createdOwner._id;
+    subscriptionDoc.ownerId = ownerDoc._id;
     await subscriptionDoc.save();
 
     // Sync HostelSubscription
@@ -516,7 +535,7 @@ const finalizeHostelActivation = async (req, res) => {
     try {
       await SubscriptionHistory.create({
         hostelId: hostel._id,
-        ownerId: createdOwner._id,
+        ownerId: ownerDoc._id,
         subscriptionId: subscriptionDoc._id,
         action: isTrialMode ? "TRIAL_STARTED" : "CONTINUATION_APPROVED",
         newStartDate: finalStartDate,
@@ -530,8 +549,8 @@ const finalizeHostelActivation = async (req, res) => {
     }
 
     // 7. Update Hostel & Mark Activated
-    hostel.ownerId = createdOwner._id;
-    hostel.owner = createdOwner._id;
+    hostel.ownerId = ownerDoc._id;
+    hostel.owner = ownerDoc._id;
     hostel.pendingActivation = false;
     hostel.subscriptionStatus = subscriptionDoc.subscriptionStatus;
     hostel.planType = subscriptionDoc.planType;
@@ -558,23 +577,23 @@ const finalizeHostelActivation = async (req, res) => {
       const EventBus = require("../services/EventBus");
       EventBus.emit("OWNER_ACCOUNT_ACTIVATED", {
         hostelId: hostel._id,
-        ownerId: createdOwner._id,
-        phone: createdOwner.phone,
-        ownerName: createdOwner.ownerName,
+        ownerId: ownerDoc._id,
+        phone: ownerDoc.phone,
+        ownerName: ownerDoc.ownerName,
         hostelName: hostel.hostelName,
-        username: createdOwner.phone,
+        username: ownerDoc.phone,
         tempPassword,
         planType: "HostelMate Unified Plan",
         expiryDate: formattedExpiryDate,
         loginUrl,
       });
 
-      createdOwner.credentialDeliveryStatus = "sent";
-      await createdOwner.save();
+      ownerDoc.credentialDeliveryStatus = "sent";
+      await ownerDoc.save();
     } catch (eventErr) {
       console.error("[EventBus] OWNER_ACCOUNT_ACTIVATED emission error (non-blocking):", eventErr?.message);
-      createdOwner.credentialDeliveryStatus = "failed";
-      await createdOwner.save().catch(() => {});
+      ownerDoc.credentialDeliveryStatus = "failed";
+      await ownerDoc.save().catch(() => {});
     }
 
     await AuditLog.create({
@@ -598,25 +617,25 @@ const finalizeHostelActivation = async (req, res) => {
       success: true,
       message: "Hostel activated successfully",
       hostelId: hostel._id,
-      ownerId: createdOwner._id,
+      ownerId: ownerDoc._id,
       owner: {
-        id: createdOwner._id,
-        fullName: createdOwner.ownerName,
-        phone: createdOwner.phone,
-        email: createdOwner.email,
+        id: ownerDoc._id,
+        fullName: ownerDoc.ownerName,
+        phone: ownerDoc.phone,
+        email: ownerDoc.email,
       },
       credentials: {
         loginUrl,
         tempPassword,
         temporaryPassword: tempPassword,
         username: hostel.phone,
-        issuedAt: createdOwner.credentialIssuedAt,
+        issuedAt: ownerDoc.credentialIssuedAt,
       },
       credentialDelivery: {
-        status: createdOwner.credentialDeliveryStatus,
+        status: ownerDoc.credentialDeliveryStatus,
       },
       loginUrl,
-      credentialStatus: createdOwner.credentialDeliveryStatus,
+      credentialStatus: ownerDoc.credentialDeliveryStatus,
     });
   } catch (error) {
     console.error("finalizeHostelActivation error:", error?.message || error);
