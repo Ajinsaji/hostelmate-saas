@@ -1,13 +1,28 @@
 require("dotenv").config();
 const { logger, redactOptions } = require("./utils/logger");
 
-// Fail-fast for missing critical environment variables
+// 1. Validate critical environment variables
 const criticalEnvs = ["MONGO_URI", "JWT_SECRET"];
-const missingEnvs = criticalEnvs.filter(env => !process.env[env]);
-if (missingEnvs.length > 0) {
-  logger.error(`\x1b[31m[FATAL] Missing required environment variables: ${missingEnvs.join(", ")}\x1b[0m`);
-  logger.error("Please provide them in your .env file or environment configuration. Exiting...");
+const missingCritical = criticalEnvs.filter(env => !process.env[env]);
+if (missingCritical.length > 0) {
+  logger.error({ missing: missingCritical, component: "Startup" }, `[FATAL] Missing required environment variables: ${missingCritical.join(", ")}`);
+  logger.error("Please provide them in your environment configuration. Exiting...");
   process.exit(1);
+}
+
+// 2. Validate conditional / integration environment variables
+if (process.env.USE_CLOUDINARY === "true") {
+  const cloudinaryEnvs = ["CLOUDINARY_CLOUD_NAME", "CLOUDINARY_API_KEY", "CLOUDINARY_API_SECRET"];
+  const missingCloudinary = cloudinaryEnvs.filter(env => !process.env[env]);
+  if (missingCloudinary.length > 0) {
+    logger.warn({ missing: missingCloudinary, component: "Startup" }, `[WARN] USE_CLOUDINARY is true but missing variables: ${missingCloudinary.join(", ")}. Uploads will use disk storage fallback.`);
+  }
+}
+
+if (process.env.NODE_ENV === "production") {
+  if (!process.env.RAZORPAY_KEY_SECRET || process.env.RAZORPAY_KEY_SECRET.includes("mock")) {
+    logger.warn({ component: "Startup" }, "[WARN] Production environment detected with missing or mock RAZORPAY_KEY_SECRET. Online payments will require valid gateway credentials.");
+  }
 }
 
 const http = require("http");
@@ -133,16 +148,6 @@ app.use(
 
 
 // ==========================
-// DATABASE
-// ==========================
-
-const { seedDefaultFeaturesAndPlans } = require("./services/subscriptionService");
-connectDB().then(() => {
-  seedDefaultFeaturesAndPlans().catch((err) => logger.error("Seed error:", err));
-});
-
-
-// ==========================
 // API ROUTES & MAINTENANCE
 // ==========================
 
@@ -154,7 +159,20 @@ const v2Routes = require("./routes/v2Routes");
 app.use("/api/v2", v2Routes);
 
 // SYSTEM HEALTH & MONITORING ENDPOINTS
-const { getHealthStatus, getDatabaseHealth, getStorageHealth, getCacheHealth } = require("./controllers/healthController");
+const {
+  getLiveHealth,
+  getReadyHealth,
+  getHealthStatus,
+  getDatabaseHealth,
+  getStorageHealth,
+  getCacheHealth,
+} = require("./controllers/healthController");
+
+// Liveness probe (ultra-fast, node alive)
+app.get("/api/health/live", getLiveHealth);
+// Readiness probe (checks DB readiness)
+app.get("/api/health/ready", getReadyHealth);
+// Canonical health endpoint for frontend ConnectionContext & Render
 app.get("/api/health", getHealthStatus);
 app.get("/api/health/database", getDatabaseHealth);
 app.get("/api/health/storage", getStorageHealth);
@@ -430,7 +448,7 @@ app.use((req, res, next) => {
 app.use(require("./middleware/errorHandler"));
 
 // ==========================
-// SERVER
+// SERVER INITIALIZATION & STARTUP
 // ==========================
 
 const PORT = process.env.PORT || 5000;
@@ -438,17 +456,40 @@ const server = http.createServer(app);
 
 setSocketServer(server);
 
-if (!server.listening) {
-  server.listen(PORT, () => {
-    logger.info(`Server Running on Port ${PORT}`);
-    
-    // Start subscription scheduler after server starts
-    startSubscriptionScheduler(60 * 60 * 1000); // Run every hour
-  }).on('error', (err) => {
-    if (err.code === 'EADDRINUSE') {
-      logger.info(`Server port ${PORT} is already in use.`);
-    } else {
-      console.error(err);
+const { seedDefaultFeaturesAndPlans } = require("./services/subscriptionService");
+
+async function startServer() {
+  try {
+    // 1. Connect to Database
+    await connectDB();
+
+    // 2. Initialize subscription defaults (idempotent seeding)
+    try {
+      await seedDefaultFeaturesAndPlans();
+    } catch (seedErr) {
+      logger.warn({ err: seedErr, component: "Startup" }, "Subscription default seeding encountered an issue, will retry on next cycle");
     }
-  });
+
+    // 3. Start Subscription Scheduler
+    startSubscriptionScheduler(60 * 60 * 1000);
+
+    // 4. Start HTTP Server
+    if (!server.listening) {
+      server.listen(PORT, () => {
+        logger.info({ port: PORT, env: process.env.NODE_ENV || "production" }, `✓ Server Running on Port ${PORT}`);
+      }).on("error", (err) => {
+        if (err.code === "EADDRINUSE") {
+          logger.info(`Server port ${PORT} is already in use.`);
+        } else {
+          logger.error({ err, component: "Server" }, "Server listen error");
+        }
+      });
+    }
+  } catch (startupErr) {
+    logger.error({ err: startupErr, component: "Startup" }, "Fatal server startup failure");
+    process.exit(1);
+  }
 }
+
+startServer();
+

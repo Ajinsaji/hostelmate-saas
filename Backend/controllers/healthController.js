@@ -1,6 +1,39 @@
 const mongoose = require("mongoose");
 const os = require("os");
 
+/**
+ * Liveness probe for orchestrators (Render / Kubernetes / Docker)
+ * Extremely lightweight - confirms Node event loop is responsive
+ */
+const getLiveHealth = (req, res) => {
+  res.status(200).json({
+    status: "ok",
+    timestamp: new Date().toISOString(),
+    uptime: Math.round(process.uptime()),
+  });
+};
+
+/**
+ * Readiness probe - confirms database connection is established
+ */
+const getReadyHealth = (req, res) => {
+  const isDbReady = mongoose.connection.readyState === 1;
+  if (!isDbReady) {
+    return res.status(503).json({
+      status: "unhealthy",
+      database: "disconnected",
+      timestamp: new Date().toISOString(),
+    });
+  }
+
+  res.status(200).json({
+    status: "ok",
+    database: "connected",
+    timestamp: new Date().toISOString(),
+    uptime: Math.round(process.uptime()),
+  });
+};
+
 const getHealthStatus = async (req, res) => {
   const dbStatus = mongoose.connection.readyState === 1 ? "Connected" : "Disconnected";
   const memoryUsage = process.memoryUsage();
@@ -14,7 +47,6 @@ const getHealthStatus = async (req, res) => {
     uptimeSeconds: Math.round(process.uptime()),
     database: {
       status: dbStatus,
-      name: mongoose.connection.name || "hostelmate"
     },
     system: {
       platform: process.platform,
@@ -34,8 +66,6 @@ const getDatabaseHealth = async (req, res) => {
     database: {
       status: isConnected ? "Healthy" : "Unhealthy",
       readyState: mongoose.connection.readyState,
-      host: mongoose.connection.host || "localhost",
-      name: mongoose.connection.name || "hostelmate"
     }
   });
 };
@@ -45,7 +75,7 @@ const getStorageHealth = async (req, res) => {
     success: true,
     storage: {
       status: "Healthy",
-      provider: process.env.CLOUDINARY_URL ? "Cloudinary + Local" : "Local Disk",
+      provider: process.env.CLOUDINARY_CLOUD_NAME ? "Cloudinary" : "Local Disk",
       totalAllocatedMB: 5000,
       availableMB: 4958
     }
@@ -64,8 +94,10 @@ const getCacheHealth = async (req, res) => {
 };
 
 module.exports = {
+  getLiveHealth,
+  getReadyHealth,
   getHealthStatus,
   getDatabaseHealth,
   getStorageHealth,
-  getCacheHealth
+  getCacheHealth,
 };

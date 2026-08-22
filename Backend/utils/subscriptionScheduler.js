@@ -1,3 +1,4 @@
+const mongoose = require("mongoose");
 const { logger } = require("./logger");
 const Subscription = require("../models/Subscription");
 const HostelSubscription = require("../models/HostelSubscription");
@@ -5,10 +6,25 @@ const Hostel = require("../models/Hostel");
 const SubscriptionHistory = require("../models/SubscriptionHistory");
 const { processSubscriptionReminders } = require("../services/reminderService");
 
+let isRunning = false;
+let schedulerTimer = null;
+
 /**
  * Executes periodic subscription lifecycle and reminder processing
  */
 async function checkSubscriptionStatus() {
+  if (isRunning) {
+    logger.warn({ operation: "checkSubscriptionStatus", component: "SubscriptionScheduler" }, "Scheduler execution skipped: previous cycle still in progress");
+    return;
+  }
+
+  // Ensure DB is connected before running scheduler queries
+  if (mongoose.connection.readyState !== 1) {
+    logger.warn({ operation: "checkSubscriptionStatus", component: "SubscriptionScheduler", readyState: mongoose.connection.readyState }, "Scheduler execution skipped: MongoDB is not connected");
+    return;
+  }
+
+  isRunning = true;
   try {
     const now = new Date();
 
@@ -28,7 +44,6 @@ async function checkSubscriptionStatus() {
 
       if (now > new Date(targetExpiry)) {
         const prevStatus = sub.status;
-        const newStatus = isTrial ? "expired" : "expired";
         sub.status = "Expired";
         sub.subscriptionStatus = "expired";
         await sub.save();
@@ -36,7 +51,7 @@ async function checkSubscriptionStatus() {
         if (sub.hostelId) {
           await Hostel.findByIdAndUpdate(sub.hostelId, {
             subscriptionStatus: "expired",
-          });
+          }).catch(() => {});
         }
 
         await SubscriptionHistory.create({
@@ -48,9 +63,9 @@ async function checkSubscriptionStatus() {
           newEndDate: targetExpiry,
           changedBy: "Scheduler",
           reason: isTrial ? "Trial period ended automatically" : "Subscription period ended automatically",
-        });
+        }).catch(() => {});
 
-        logger.info(`Subscription ${sub._id} for hostel ${sub.hostelId} transitioned from ${prevStatus} to Expired`);
+        logger.info({ operation: "checkSubscriptionStatus", subscriptionId: sub._id, hostelId: sub.hostelId, prevStatus }, `Subscription ${sub._id} for hostel ${sub.hostelId} transitioned from ${prevStatus} to Expired`);
       }
     }
 
@@ -65,14 +80,16 @@ async function checkSubscriptionStatus() {
 
       if (now > new Date(targetExpiry)) {
         hSub.status = "Expired";
-        await hSub.save();
+        await hSub.save().catch(() => {});
       }
     }
 
     // 3. Process automated notification reminders
     await processSubscriptionReminders();
   } catch (error) {
-    logger.error("Subscription scheduler error:", error?.message || error);
+    logger.error({ err: error, operation: "checkSubscriptionStatus", component: "SubscriptionScheduler" }, "Subscription scheduler execution failed");
+  } finally {
+    isRunning = false;
   }
 }
 
@@ -81,16 +98,40 @@ async function checkSubscriptionStatus() {
  * Runs every 1 hour by default
  */
 function startSubscriptionScheduler(intervalMs = 60 * 60 * 1000) {
-  logger.info("Starting subscription scheduler...");
+  if (schedulerTimer) {
+    logger.info({ component: "SubscriptionScheduler" }, "Subscription scheduler already running");
+    return;
+  }
 
-  // Run immediately on startup
-  checkSubscriptionStatus();
+  logger.info({ component: "SubscriptionScheduler", intervalMs }, "Starting subscription scheduler...");
 
-  // Then run at intervals
-  setInterval(checkSubscriptionStatus, intervalMs);
+  // Run initial cycle safely
+  checkSubscriptionStatus().catch((err) => {
+    logger.error({ err, operation: "initialCheckSubscriptionStatus", component: "SubscriptionScheduler" }, "Initial scheduler cycle failed");
+  });
+
+  // Schedule recurring execution
+  schedulerTimer = setInterval(() => {
+    checkSubscriptionStatus().catch((err) => {
+      logger.error({ err, operation: "recurringCheckSubscriptionStatus", component: "SubscriptionScheduler" }, "Recurring scheduler cycle failed");
+    });
+  }, intervalMs);
+}
+
+/**
+ * Stop subscription scheduler (useful for tests and graceful shutdown)
+ */
+function stopSubscriptionScheduler() {
+  if (schedulerTimer) {
+    clearInterval(schedulerTimer);
+    schedulerTimer = null;
+    logger.info({ component: "SubscriptionScheduler" }, "Subscription scheduler stopped");
+  }
 }
 
 module.exports = {
   checkSubscriptionStatus,
   startSubscriptionScheduler,
+  stopSubscriptionScheduler,
 };
+

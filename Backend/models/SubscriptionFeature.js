@@ -19,7 +19,7 @@ const subscriptionFeatureSchema = new mongoose.Schema(
     },
     category: {
       type: String,
-      enum: ["Core", "Operations", "Communication", "Advanced"],
+      enum: ["Core", "Operations", "Communication", "Finance", "Advanced"],
       default: "Core",
     },
     isPremium: {

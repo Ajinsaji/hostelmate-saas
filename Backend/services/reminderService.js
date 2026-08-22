@@ -78,46 +78,53 @@ async function processSubscriptionReminders() {
       }
 
       if (shouldNotify && targetStage !== "None") {
-        const owner = await Owner.findOne({ hostelId: sub.hostelId._id, role: "owner" });
+        const targetHostelId = sub.hostelId?._id || sub.hostelId;
+        if (!targetHostelId) continue;
+
+        const owner = await Owner.findOne({ hostelId: targetHostelId, role: "owner" });
 
         if (owner?._id) {
-          // 1. Send In-App Notification
-          await publishNotification({
-            userId: owner._id,
-            hostelId: sub.hostelId._id,
-            type: "subscription_reminder",
-            title: notificationTitle,
-            message: notificationMessage,
-            meta: {
-              route: "/settings/subscription",
-              relatedId: sub._id,
+          try {
+            // 1. Send In-App Notification
+            await publishNotification({
+              userId: owner._id,
+              hostelId: targetHostelId,
+              type: "subscription_reminder",
+              title: notificationTitle,
+              message: notificationMessage,
+              meta: {
+                route: "/settings/subscription",
+                relatedId: sub._id,
+                stage: targetStage,
+              },
+            });
+
+            // 2. Log to ReminderLog collection
+            await ReminderLog.create({
+              hostelId: targetHostelId,
+              type: "Subscription",
               stage: targetStage,
-            },
-          });
+              channel: "InApp",
+              sentTime: now,
+              status: "Sent",
+              message: notificationMessage,
+            });
 
-          // 2. Log to ReminderLog collection
-          await ReminderLog.create({
-            hostelId: sub.hostelId._id,
-            type: "Subscription",
-            stage: targetStage,
-            channel: "InApp",
-            sentTime: now,
-            status: "Sent",
-            message: notificationMessage,
-          });
+            sub.reminderStage = targetStage;
+            sub.lastReminderSentAt = now;
+            await sub.save();
 
-          sub.reminderStage = targetStage;
-          sub.lastReminderSentAt = now;
-          await sub.save();
-
-          processedCount++;
+            processedCount++;
+          } catch (itemErr) {
+            logger.warn({ err: itemErr, hostelId: targetHostelId, stage: targetStage }, "Failed to dispatch reminder for single subscription");
+          }
         }
       }
     }
 
-    logger.info(`Reminder engine run complete: ${processedCount} subscription reminders processed`);
+    logger.info({ operation: "processSubscriptionReminders", component: "ReminderService", processedCount }, `Reminder engine run complete: ${processedCount} subscription reminders processed`);
   } catch (error) {
-    logger.error("processSubscriptionReminders error:", error);
+    logger.error({ err: error, operation: "processSubscriptionReminders", component: "ReminderService" }, "processSubscriptionReminders error");
   }
 }
 

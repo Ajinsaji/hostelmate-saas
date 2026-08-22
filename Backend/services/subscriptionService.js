@@ -27,6 +27,31 @@ const DEFAULT_FEATURES = [
   { name: "Plugin Marketplace", code: "marketplace", description: "White-label & plugins", category: "Advanced", isPremium: false },
 ];
 
+async function getBillingSettings() {
+  try {
+    let settings = await BillingSettings.findOne();
+    if (!settings) {
+      settings = await BillingSettings.create({
+        trialDays: 30,
+        gracePeriodDays: 3,
+        reminderDays: [7, 2, 1],
+        dueReminderIntervalHours: 5,
+        residentChargeMode: "Per Active Resident",
+      });
+    }
+    return settings;
+  } catch (err) {
+    logger.error({ err, operation: "getBillingSettings", component: "SubscriptionService" }, "Failed to fetch or seed billing settings");
+    return {
+      trialDays: 30,
+      gracePeriodDays: 3,
+      reminderDays: [7, 2, 1],
+      dueReminderIntervalHours: 5,
+      residentChargeMode: "Per Active Resident",
+    };
+  }
+}
+
 async function seedDefaultFeaturesAndPlans() {
   try {
     const featureDocs = [];
@@ -38,16 +63,7 @@ async function seedDefaultFeaturesAndPlans() {
       featureDocs.push(feat);
     }
 
-    let settings = await BillingSettings.findOne();
-    if (!settings) {
-      settings = await BillingSettings.create({
-        trialDays: 30,
-        gracePeriodDays: 3,
-        reminderDays: [7, 2, 1],
-        dueReminderIntervalHours: 5,
-        residentChargeMode: "Per Active Resident",
-      });
-    }
+    const settings = await getBillingSettings();
 
     let unifiedPlan = await SubscriptionPlan.findOne({ name: "HostelMate Unified" });
     if (!unifiedPlan) {
@@ -64,9 +80,11 @@ async function seedDefaultFeaturesAndPlans() {
       });
     }
 
+    logger.info({ operation: "seedDefaultFeaturesAndPlans", component: "SubscriptionService", featuresCount: featureDocs.length }, "✓ Subscription features & plans initialized");
     return { settings, unifiedPlan };
   } catch (error) {
-    logger.error("Error seeding subscription defaults:", error);
+    logger.error({ err: error, operation: "seedDefaultFeaturesAndPlans", component: "SubscriptionService" }, "Error seeding subscription defaults");
+    throw error;
   }
 }
 
@@ -265,6 +283,7 @@ async function getSuperAdminAnalytics() {
 }
 
 module.exports = {
+  getBillingSettings,
   seedDefaultFeaturesAndPlans,
   getActiveResidentCount,
   initializeTrialSubscription,
