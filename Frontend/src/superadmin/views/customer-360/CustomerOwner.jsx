@@ -27,6 +27,9 @@ export default function CustomerOwner() {
   const [copiedLink, setCopiedLink] = useState(false);
   const [copiedCreds, setCopiedCreds] = useState(false);
 
+  // Restore confirm modal state
+  const [isRestoreConfirmOpen, setIsRestoreConfirmOpen] = useState(false);
+
   const fetchOwnerDetails = async () => {
     if (!id) return;
     try {
@@ -225,8 +228,6 @@ export default function CustomerOwner() {
   const isHostelInTrash = Boolean(hostelData?.isDeleted || ownerData?.isHostelInTrash);
   const trashDaysRemaining = ownerData?.hostelDaysRemaining || 0;
   const deletedAtStr = ownerData?.hostelDeletedAt ? new Date(ownerData.hostelDeletedAt).toLocaleDateString() : (hostelData?.deletedAt ? new Date(hostelData.deletedAt).toLocaleDateString() : "");
-
-  const [isRestoreConfirmOpen, setIsRestoreConfirmOpen] = useState(false);
 
   const handleConfirmRestoreHostel = async () => {
     try {
