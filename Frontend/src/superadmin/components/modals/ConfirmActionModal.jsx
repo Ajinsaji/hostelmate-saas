@@ -153,15 +153,62 @@ export const ConfirmActionModal = React.memo(({
 
         if (res.data?.success) {
           const activeUsername = ownerPhone || res.data?.credentials?.username || requestData.phone || "";
+          const activeTempPassword = res.data?.credentials?.tempPassword || res.data?.credentials?.temporaryPassword || "";
+          const activeLoginUrl = res.data?.loginUrl || `${window.location.origin}/owner/login`;
+          const subInfo = res.data?.subscription || {
+            planName: "HostelMate Unified Plan",
+            trialDays: 30,
+            trialStartDate: new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" }),
+            trialEndDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" }),
+            trialAmount: 0,
+            subscriptionAmount: 10,
+            billingCycle: "Month",
+            expiryDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" }),
+          };
+
+          const fullNotificationText = res.data?.notificationMessage || [
+            "🎉 Welcome to HostelMate",
+            "",
+            `Hello ${ownerName || "Hostel Owner"},`,
+            "",
+            `Your hostel "${hostelName || "-"}" has been successfully activated.`,
+            "",
+            "🔐 Login Details",
+            `Username: ${activeUsername}`,
+            `Temporary Password: ${activeTempPassword}`,
+            "",
+            `📦 Subscription: ${subInfo.planName || "HostelMate Unified Plan"}`,
+            `🎁 Trial Period: ${subInfo.trialDays || 30} Days Free`,
+            "",
+            `📅 Trial Start Date: ${subInfo.trialStartDate}`,
+            `📅 Trial End Date: ${subInfo.trialEndDate}`,
+            "",
+            "💰 Subscription Details",
+            `Trial Amount: ₹${subInfo.trialAmount ?? 0}`,
+            `Subscription Amount: ₹${subInfo.subscriptionAmount ?? 10} / ${subInfo.billingCycle || "Month"}`,
+            "",
+            `📅 Expiry Date: ${subInfo.expiryDate || subInfo.trialEndDate}`,
+            "",
+            "🔗 Login:",
+            `${activeLoginUrl}`,
+            "",
+            "⚠️ Please change your password immediately after login.",
+            "",
+            "Thank you for choosing HostelMate ❤️",
+          ].join("\n");
+
           const resultObj = {
             username: activeUsername,
-            tempPassword: res.data?.credentials?.tempPassword || "",
-            loginUrl: res.data?.loginUrl || `${window.location.origin}/owner/login`,
+            tempPassword: activeTempPassword,
+            loginUrl: activeLoginUrl,
             ownerId: res.data?.ownerId || requestData.ownerId || requestData.owner?._id,
             credentialStatus: res.data?.credentialStatus || "issued",
             fullName: ownerName,
             email: ownerEmail,
             phone: ownerPhone,
+            hostelName: hostelName,
+            subscription: subInfo,
+            notificationMessage: fullNotificationText,
           };
           setActivationResult(resultObj);
           setDeliveryStatus(resultObj.credentialStatus);
@@ -233,12 +280,12 @@ export const ConfirmActionModal = React.memo(({
     <div className="fixed inset-0 z-[7000] flex items-end sm:items-center justify-center p-0 sm:p-4">
       {/* Backdrop */}
       <div 
-        className="absolute inset-0 bg-black/70 backdrop-blur-sm transition-opacity"
-        onClick={!loading ? onClose : undefined}
+        onClick={() => !loading && onClose()}
+        className="fixed inset-0 bg-black/80 backdrop-blur-sm animate-fade-in"
       />
 
       {/* Modal */}
-      <div className="relative w-full max-w-md bg-[#131C2E] border-t sm:border border-[#202B45] rounded-t-3xl sm:rounded-2xl shadow-2xl overflow-hidden text-white z-10">
+      <div className="relative w-full max-w-lg bg-[#131C2E] border-t sm:border border-[#202B45] rounded-t-3xl sm:rounded-2xl shadow-2xl overflow-hidden text-white z-10">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-[#202B45]">
           <div className="flex items-center gap-3">
@@ -282,7 +329,7 @@ export const ConfirmActionModal = React.memo(({
         </div>
 
         {/* Body */}
-        <div className="p-6 space-y-4">
+        <div className="p-6 space-y-4 max-h-[80vh] overflow-y-auto custom-scrollbar">
           {error && (
             <div className="flex items-start gap-3 p-3.5 bg-red-500/10 border border-red-500/20 rounded-xl text-red-300 text-xs font-medium">
               <AlertTriangle size={16} className="text-[#EF4444] shrink-0 mt-0.5" />
@@ -297,34 +344,37 @@ export const ConfirmActionModal = React.memo(({
                 <div>
                   <h4 className="text-sm font-extrabold text-white">Owner Account Activated</h4>
                   <p className="text-xs text-slate-300">
-                    Owner: <strong className="text-white">{activationResult.fullName || ownerName}</strong> | Phone: <strong className="text-white">{activationResult.phone || requestData.phone || activationResult.username}</strong> | Email: <strong className="text-white">{activationResult.email || requestData.email || "Not provided"}</strong>
+                    Owner: <strong className="text-white">{activationResult.fullName || ownerName}</strong> | Phone: <strong className="text-white">{activationResult.phone || requestData.phone || activationResult.username}</strong>
                   </p>
                 </div>
               </div>
 
-              {/* Login Link Card */}
-              <div className="p-3.5 bg-[#0B1220] border border-[#202B45] rounded-xl space-y-2">
+              {/* Login Credentials & Password Card */}
+              <div className="p-3.5 bg-[#0B1220] border border-amber-500/30 rounded-xl space-y-3">
                 <div className="flex items-center justify-between">
-                  <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">Owner Login URL</label>
-                  <span className="text-[10px] bg-blue-500/10 text-blue-400 px-2 py-0.5 rounded font-mono">
-                    Credential Status: {deliveryStatus === "issued" ? "Issued — Awaiting First Login" : deliveryStatus}
+                  <label className="text-[11px] font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1">
+                    <Key size={12} /> Login Credentials
+                  </label>
+                  <span className="text-[10px] bg-amber-500/10 text-amber-400 px-2 py-0.5 rounded-md font-mono">
+                    Temporary Password Active
                   </span>
                 </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                  <div className="bg-[#131C2E] p-2.5 rounded-lg border border-[#202B45]">
+                    <span className="text-[10px] text-slate-400 uppercase font-bold block">Username</span>
+                    <span className="font-mono text-white font-bold">{activationResult.username}</span>
+                  </div>
+                  <div className="bg-[#131C2E] p-2.5 rounded-lg border border-amber-500/30">
+                    <span className="text-[10px] text-amber-400 uppercase font-bold block">Temporary Password</span>
+                    <span className="font-mono text-white font-bold tracking-wider">{activationResult.tempPassword || "-"}</span>
+                  </div>
+                </div>
+
+                {/* Login URL */}
                 <div className="flex items-center justify-between gap-2 bg-[#131C2E] p-2.5 rounded-lg border border-[#202B45]">
                   <span className="text-xs font-mono text-emerald-300 truncate select-all">{activationResult.loginUrl}</span>
                   <div className="flex items-center gap-1 shrink-0">
-                    <button
-                      onClick={() => {
-                        navigator.clipboard.writeText(activationResult.loginUrl);
-                        setCopiedLink(true);
-                        toast.success("Login Link copied!");
-                        setTimeout(() => setCopiedLink(false), 2000);
-                      }}
-                      className="p-1.5 bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white rounded-md text-xs font-semibold flex items-center gap-1 transition cursor-pointer"
-                    >
-                      {copiedLink ? <Check size={14} className="text-emerald-400" /> : <Copy size={14} />}
-                      {copiedLink ? "Copied" : "Copy Login Link"}
-                    </button>
                     <a
                       href={activationResult.loginUrl}
                       target="_blank"
@@ -338,38 +388,56 @@ export const ConfirmActionModal = React.memo(({
                 </div>
               </div>
 
-              {/* One-Time Temporary Password Display */}
-              <div className="p-3.5 bg-[#0B1220] border border-amber-500/30 rounded-xl space-y-2">
+              {/* Complete Subscription & Trial Information */}
+              <div className="p-3.5 bg-[#0B1220] border border-[#202B45] rounded-xl space-y-2 text-xs">
+                <div className="flex items-center justify-between border-b border-[#202B45] pb-1.5">
+                  <span className="text-slate-400 font-medium">Subscription Plan</span>
+                  <span className="text-emerald-400 font-bold">{activationResult.subscription?.planName || "HostelMate Unified Plan"}</span>
+                </div>
+                <div className="flex items-center justify-between border-b border-[#202B45] pb-1.5">
+                  <span className="text-slate-400 font-medium">Trial Period</span>
+                  <span className="text-amber-400 font-bold">{activationResult.subscription?.trialDays || 30} Days Free</span>
+                </div>
+                <div className="flex items-center justify-between border-b border-[#202B45] pb-1.5">
+                  <span className="text-slate-400 font-medium">Trial Start Date</span>
+                  <span className="text-white font-semibold">{activationResult.subscription?.trialStartDate || "-"}</span>
+                </div>
+                <div className="flex items-center justify-between border-b border-[#202B45] pb-1.5">
+                  <span className="text-slate-400 font-medium">Trial End Date</span>
+                  <span className="text-white font-semibold">{activationResult.subscription?.trialEndDate || "-"}</span>
+                </div>
+                <div className="flex items-center justify-between border-b border-[#202B45] pb-1.5">
+                  <span className="text-slate-400 font-medium">Trial Amount</span>
+                  <span className="text-emerald-400 font-bold">₹{activationResult.subscription?.trialAmount ?? 0}</span>
+                </div>
+                <div className="flex items-center justify-between border-b border-[#202B45] pb-1.5">
+                  <span className="text-slate-400 font-medium">Subscription Amount</span>
+                  <span className="text-white font-bold">₹{activationResult.subscription?.subscriptionAmount ?? 10} / {activationResult.subscription?.billingCycle || "Month"}</span>
+                </div>
                 <div className="flex items-center justify-between">
-                  <label className="block text-[11px] font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1">
-                    <Key size={12} /> Temporary Password
-                  </label>
-                  <span className="text-[10px] bg-amber-500/10 text-amber-400 px-2 py-0.5 rounded-md font-mono">
-                    Temporary password is displayed only once.
-                  </span>
+                  <span className="text-slate-400 font-medium">Expiry Date</span>
+                  <span className="text-amber-400 font-bold">{activationResult.subscription?.expiryDate || activationResult.subscription?.trialEndDate || "-"}</span>
                 </div>
+              </div>
 
-                <div className="flex items-center justify-between bg-[#131C2E] p-2.5 rounded-lg border border-[#202B45]">
-                  <div className="text-xs font-mono text-white tracking-widest font-bold">
-                    {activationResult.tempPassword || "••••••••"}
-                  </div>
-                  <button
-                    onClick={() => {
-                      const textToCopy = `Username: ${activationResult.username}\nTemporary Password: ${activationResult.tempPassword}\nLogin URL: ${activationResult.loginUrl}`;
-                      navigator.clipboard.writeText(textToCopy);
-                      setCopiedCreds(true);
-                      toast.success("Credentials copied to clipboard!");
-                      setTimeout(() => setCopiedCreds(false), 2000);
-                    }}
-                    className="p-1.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-md text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer"
-                  >
-                    {copiedCreds ? <Check size={14} /> : <Copy size={14} />}
-                    {copiedCreds ? "Copied!" : "Copy Credentials"}
-                  </button>
+              {/* Copy Login Details Full Notification Button */}
+              <div className="p-3 bg-[#0B1220] border border-[#202B45] rounded-xl flex items-center justify-between gap-3">
+                <div className="text-xs text-slate-300">
+                  <p className="font-semibold text-white">Full Onboarding Notification</p>
+                  <p className="text-[11px] text-slate-400">Copy formatted welcome message with credentials & terms</p>
                 </div>
-                <p className="text-[11px] text-slate-400 italic">
-                  Plaintext temporary password is not stored in DB and will not be viewable after closing this dialog.
-                </p>
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(activationResult.notificationMessage);
+                    setCopiedCreds(true);
+                    toast.success("Login details copied to clipboard!");
+                    setTimeout(() => setCopiedCreds(false), 2000);
+                  }}
+                  className="px-3.5 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition cursor-pointer shadow-md shrink-0"
+                >
+                  {copiedCreds ? <Check size={14} /> : <Copy size={14} />}
+                  {copiedCreds ? "Copied!" : "Copy Login Details"}
+                </button>
               </div>
 
               {/* Send Credentials Button & Delivery Status */}

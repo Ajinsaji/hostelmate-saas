@@ -80,8 +80,22 @@ const TEMPLATES = {
     name: "Owner Account Activation & Credentials",
     category: "announcement",
     defaultText:
-      "✨ Welcome to HostelMate\n\nHello {{ownerName}},\n\nYour hostel \"{{hostelName}}\" has been successfully activated.\n\n🔐 Login Details\nUsername: {{username}}\nTemporary Password: {{tempPassword}}\n\n📦 Subscription: {{planType}}\n⏳ Trial Period: 30 Days Free\n📅 Expiry Date: {{expiryDate}}\n\n🌐 Login:\n{{loginUrl}}\n\n⚠️ Please change your password immediately after login.\n\nThank you for choosing HostelMate ❤️",
-    variables: ["ownerName", "hostelName", "username", "tempPassword", "planType", "expiryDate", "loginUrl"],
+      "🎉 Welcome to HostelMate\n\nHello {{ownerName}},\n\nYour hostel \"{{hostelName}}\" has been successfully activated.\n\n🔐 Login Details\nUsername: {{username}}\nTemporary Password: {{tempPassword}}\n\n📦 Subscription: {{planType}}\n🎁 Trial Period: {{trialDays}} Days Free\n\n📅 Trial Start Date: {{trialStartDate}}\n📅 Trial End Date: {{trialEndDate}}\n\n💰 Subscription Details\nTrial Amount: ₹{{trialAmount}}\nSubscription Amount: ₹{{subscriptionAmount}} / {{billingCycle}}\n\n📅 Expiry Date: {{expiryDate}}\n\n🔗 Login:\n{{loginUrl}}\n\n⚠️ Please change your password immediately after login.\n\nThank you for choosing HostelMate ❤️",
+    variables: [
+      "ownerName",
+      "hostelName",
+      "username",
+      "tempPassword",
+      "planType",
+      "trialDays",
+      "trialStartDate",
+      "trialEndDate",
+      "trialAmount",
+      "subscriptionAmount",
+      "billingCycle",
+      "expiryDate",
+      "loginUrl",
+    ],
   },
   GENERAL_ANNOUNCEMENT: {
     templateCode: "GENERAL_ANNOUNCEMENT",
@@ -121,9 +135,28 @@ const compileTemplate = (templateCode, variablesDict = {}, customText = null) =>
     if (!safeVars.planType || safeVars.planType === "Pro" || safeVars.planType === "Basic" || safeVars.planType === "Enterprise") {
       safeVars.planType = "HostelMate Unified Plan";
     }
+    if (safeVars.trialStartDate) {
+      safeVars.trialStartDate = formatExpiryDate(safeVars.trialStartDate);
+    }
+    if (safeVars.trialEndDate) {
+      safeVars.trialEndDate = formatExpiryDate(safeVars.trialEndDate);
+    }
     if (safeVars.expiryDate) {
       safeVars.expiryDate = formatExpiryDate(safeVars.expiryDate);
     }
+    if (!safeVars.trialStartDate && safeVars.startDate) {
+      safeVars.trialStartDate = formatExpiryDate(safeVars.startDate);
+    }
+    if (!safeVars.trialEndDate && safeVars.endDate) {
+      safeVars.trialEndDate = formatExpiryDate(safeVars.endDate);
+    }
+    if (!safeVars.expiryDate && safeVars.trialEndDate) {
+      safeVars.expiryDate = safeVars.trialEndDate;
+    }
+    safeVars.trialDays = safeVars.trialDays !== undefined && safeVars.trialDays !== null ? safeVars.trialDays : "30";
+    safeVars.trialAmount = safeVars.trialAmount !== undefined && safeVars.trialAmount !== null ? safeVars.trialAmount : "0";
+    safeVars.subscriptionAmount = safeVars.subscriptionAmount !== undefined && safeVars.subscriptionAmount !== null ? safeVars.subscriptionAmount : (safeVars.amount || "10");
+    safeVars.billingCycle = safeVars.billingCycle || "Month";
     if (!safeVars.loginUrl) {
       safeVars.loginUrl = "https://hostelmate-saas.vercel.app/owner/login";
     }

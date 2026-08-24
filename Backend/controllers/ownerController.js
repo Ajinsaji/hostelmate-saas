@@ -225,8 +225,8 @@ const loginOwner = async (req, res) => {
     const needsOnboarding = owner ? (!!owner.firstLogin || !owner.onboardingCompleted) : false;
 
     const sessionId = crypto.randomUUID();
-    const deviceId = req.body?.deviceId || req.headers["x-device-id"] || crypto.randomUUID();
-    const userAgentStr = req.headers["user-agent"] || "";
+    const deviceId = req.body?.deviceId || req.headers?.["x-device-id"] || crypto.randomUUID();
+    const userAgentStr = req.headers?.["user-agent"] || "";
     const uaInfo = parseUserAgent(userAgentStr);
 
     const deviceName = req.body?.deviceName || `${uaInfo.operatingSystem} • ${uaInfo.browser}`;
@@ -243,7 +243,7 @@ const loginOwner = async (req, res) => {
           deviceType: uaInfo.deviceType,
           browser: uaInfo.browser,
           operatingSystem: uaInfo.operatingSystem,
-          ipAddress: req.ip || req.headers["x-forwarded-for"] || "",
+          ipAddress: req.ip || req.headers?.["x-forwarded-for"] || "",
           userAgent: userAgentStr,
           expiresAt,
           isRevoked: false,

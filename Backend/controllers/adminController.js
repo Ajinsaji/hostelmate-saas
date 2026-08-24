@@ -401,7 +401,9 @@ const finalizeHostelActivation = async (req, res) => {
       "January", "February", "March", "April", "May", "June",
       "July", "August", "September", "October", "November", "December"
     ];
-    const formattedExpiryDate = `${finalEndDate.getDate()} ${months[finalEndDate.getMonth()]} ${finalEndDate.getFullYear()}`;
+    const formattedStartDate = `${finalStartDate.getDate()} ${months[finalStartDate.getMonth()]} ${finalStartDate.getFullYear()}`;
+    const formattedEndDate = `${finalEndDate.getDate()} ${months[finalEndDate.getMonth()]} ${finalEndDate.getFullYear()}`;
+    const formattedExpiryDate = formattedEndDate;
 
     let subscriptionDoc = await Subscription.findOne({ hostelId: hostel._id });
     if (subscriptionDoc) {
@@ -462,7 +464,8 @@ const finalizeHostelActivation = async (req, res) => {
       });
     }
 
-    const ownerEmail = hostel.email || relatedRequest?.email || "";
+    const rawOwnerEmail = String(hostel.email || relatedRequest?.email || "").trim();
+    const ownerEmail = rawOwnerEmail ? rawOwnerEmail.toLowerCase() : undefined;
 
     if (ownerDoc) {
       // Safely reconcile existing owner record
@@ -470,7 +473,9 @@ const finalizeHostelActivation = async (req, res) => {
       ownerDoc.activeHostelId = hostel._id;
       ownerDoc.ownerName = hostel.ownerName || ownerDoc.ownerName || "Hostel Owner";
       ownerDoc.phone = hostel.phone;
-      if (ownerEmail) ownerDoc.email = ownerEmail;
+      if (ownerEmail) {
+        ownerDoc.email = ownerEmail;
+      }
       ownerDoc.username = hostel.phone;
       ownerDoc.password = hashedPassword;
       ownerDoc.mustChangePassword = true;
@@ -487,7 +492,7 @@ const finalizeHostelActivation = async (req, res) => {
         activeHostelId: hostel._id,
         ownerName: hostel.ownerName || "Hostel Owner",
         phone: hostel.phone,
-        email: ownerEmail,
+        ...(ownerEmail ? { email: ownerEmail } : {}),
         username: hostel.phone,
         password: hashedPassword,
         mustChangePassword: true,
@@ -571,6 +576,10 @@ const finalizeHostelActivation = async (req, res) => {
 
     // 9. Construct canonical Owner Login URL
     const loginUrl = `${cleanFrontendBase}/owner/login`;
+    const trialDays = 30;
+    const trialAmount = 0;
+    const subscriptionAmount = subscriptionDoc.amount || 10;
+    const billingCycle = "Month";
 
     // 10. Canonical One-Time EventBus Notification & Credential Delivery (Isolated & Non-blocking)
     try {
@@ -580,10 +589,16 @@ const finalizeHostelActivation = async (req, res) => {
         ownerId: ownerDoc._id,
         phone: ownerDoc.phone,
         ownerName: ownerDoc.ownerName,
-        hostelName: hostel.hostelName,
+        hostelName: hostel.hostelName || hostel.name,
         username: ownerDoc.phone,
         tempPassword,
-        planType: "HostelMate Unified Plan",
+        planType: normalizedPlanType,
+        trialDays,
+        trialStartDate: formattedStartDate,
+        trialEndDate: formattedEndDate,
+        trialAmount,
+        subscriptionAmount,
+        billingCycle,
         expiryDate: formattedExpiryDate,
         loginUrl,
       });
@@ -605,12 +620,43 @@ const finalizeHostelActivation = async (req, res) => {
       targetId: hostel._id,
       details: {
         hostelName: hostel.hostelName || hostel.name,
-        planType: "HostelMate Unified Plan",
+        planType: normalizedPlanType,
         amount: amount || 0,
-        message: `Finalized hostel activation for ${hostel.hostelName || hostel.name} with HostelMate Unified Plan`
+        message: `Finalized hostel activation for ${hostel.hostelName || hostel.name} with ${normalizedPlanType}`
       },
       timestamp: new Date()
     }).catch(() => {});
+
+    const notificationMessage = [
+      "🎉 Welcome to HostelMate",
+      "",
+      `Hello ${ownerDoc.ownerName || "Hostel Owner"},`,
+      "",
+      `Your hostel "${hostel.hostelName || hostel.name || "-"}" has been successfully activated.`,
+      "",
+      "🔐 Login Details",
+      `Username: ${ownerDoc.phone}`,
+      `Temporary Password: ${tempPassword}`,
+      "",
+      `📦 Subscription: ${normalizedPlanType}`,
+      `🎁 Trial Period: ${trialDays} Days Free`,
+      "",
+      `📅 Trial Start Date: ${formattedStartDate}`,
+      `📅 Trial End Date: ${formattedEndDate}`,
+      "",
+      "💰 Subscription Details",
+      `Trial Amount: ₹${trialAmount}`,
+      `Subscription Amount: ₹${subscriptionAmount} / ${billingCycle}`,
+      "",
+      `📅 Expiry Date: ${formattedExpiryDate}`,
+      "",
+      "🔗 Login:",
+      `${loginUrl}`,
+      "",
+      "⚠️ Please change your password immediately after login.",
+      "",
+      "Thank you for choosing HostelMate ❤️",
+    ].join("\n");
 
     // 12. Return Controlled HTTP 200 Activation Response
     return res.status(200).json({
@@ -631,6 +677,19 @@ const finalizeHostelActivation = async (req, res) => {
         username: hostel.phone,
         issuedAt: ownerDoc.credentialIssuedAt,
       },
+      subscription: {
+        planName: normalizedPlanType,
+        planType: normalizedPlanType,
+        isTrial: isTrialMode,
+        trialDays,
+        trialStartDate: formattedStartDate,
+        trialEndDate: formattedEndDate,
+        trialAmount,
+        subscriptionAmount,
+        billingCycle,
+        expiryDate: formattedExpiryDate,
+      },
+      notificationMessage,
       credentialDelivery: {
         status: ownerDoc.credentialDeliveryStatus,
       },

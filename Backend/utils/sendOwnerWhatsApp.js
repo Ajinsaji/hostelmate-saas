@@ -217,8 +217,15 @@ const formatMessage = ({
   ownerName,
   hostelName,
   username,
+  phone,
   tempPassword,
   planType,
+  trialDays,
+  trialStartDate,
+  trialEndDate,
+  trialAmount,
+  subscriptionAmount,
+  billingCycle,
   expiryDate,
   loginUrl,
 }) => {
@@ -227,23 +234,41 @@ const formatMessage = ({
       ? "HostelMate Unified Plan"
       : planType;
 
+  const safeUsername = username || phone || "-";
+  const safeTrialDays = trialDays !== undefined && trialDays !== null ? trialDays : 30;
+  const safeTrialStart = trialStartDate || "-";
+  const safeTrialEnd = trialEndDate || expiryDate || "-";
+  const safeTrialAmount = trialAmount !== undefined && trialAmount !== null ? trialAmount : "0";
+  const safeSubAmount = subscriptionAmount !== undefined && subscriptionAmount !== null ? subscriptionAmount : "10";
+  const safeBillingCycle = billingCycle || "Month";
+  const safeExpiry = expiryDate || safeTrialEnd;
+  const safeLoginUrl = loginUrl || "https://hostelmate-saas.vercel.app/owner/login";
+
   return [
-    "✨ Welcome to HostelMate",
+    "🎉 Welcome to HostelMate",
     "",
     `Hello ${ownerName || "Hostel Owner"},`,
     "",
     `Your hostel "${hostelName || "-"}" has been successfully activated.`,
     "",
     "🔐 Login Details",
-    `Username: ${username || "-"}`,
+    `Username: ${safeUsername}`,
     `Temporary Password: ${tempPassword || "-"}`,
     "",
     `📦 Subscription: ${safePlan}`,
-    "⏳ Trial Period: 30 Days Free",
-    `📅 Expiry Date: ${expiryDate || "-"}`,
+    `🎁 Trial Period: ${safeTrialDays} Days Free`,
     "",
-    "🌐 Login:",
-    `${loginUrl || "https://hostelmate-saas.vercel.app/owner/login"}`,
+    `📅 Trial Start Date: ${safeTrialStart}`,
+    `📅 Trial End Date: ${safeTrialEnd}`,
+    "",
+    "💰 Subscription Details",
+    `Trial Amount: ₹${safeTrialAmount}`,
+    `Subscription Amount: ₹${safeSubAmount} / ${safeBillingCycle}`,
+    "",
+    `📅 Expiry Date: ${safeExpiry}`,
+    "",
+    "🔗 Login:",
+    `${safeLoginUrl}`,
     "",
     "⚠️ Please change your password immediately after login.",
     "",
@@ -259,6 +284,12 @@ const sendOwnerWhatsApp = async (payload) => {
     username,
     tempPassword,
     planType,
+    trialDays,
+    trialStartDate,
+    trialEndDate,
+    trialAmount,
+    subscriptionAmount,
+    billingCycle,
     expiryDate,
     loginUrl,
     messageText,
