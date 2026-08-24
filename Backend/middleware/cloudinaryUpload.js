@@ -1,6 +1,7 @@
 const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
+const { getRequestTiming } = require("../utils/performanceTiming");
 
 // Allowed formats and extensions
 const ALLOWED_MIMES = ["image/jpeg", "image/jpg", "image/png", "image/webp", "application/pdf"];
@@ -133,5 +134,17 @@ const upload = multer({
 module.exports = {
   upload,
   uploadSingle: (field) => upload.single(field),
-  uploadFields: (fields) => upload.fields(fields),
+  uploadFields: (fields) => {
+    const middleware = upload.fields(fields);
+    return (req, res, next) => {
+      const timing = getRequestTiming(req);
+      const uploadStartedAt = process.hrtime.bigint();
+      middleware(req, res, (error) => {
+        timing.timings.multipartUploadMs = Number(process.hrtime.bigint() - uploadStartedAt) / 1e6;
+        timing.timings.uploadedFileCount = Object.values(req.files || {}).reduce((count, files) => count + files.length, 0);
+        if (error) return next(error);
+        next();
+      });
+    };
+  },
 };

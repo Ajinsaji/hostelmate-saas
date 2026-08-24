@@ -1,6 +1,7 @@
 const { logger } = require("./logger");
 const { getMessaging } = require("./firebaseAdmin");
 const DeviceToken = require("../models/DeviceToken");
+const { createPerformanceTimer } = require("./performanceTiming");
 
 async function sendPushToUserDevices({
   userId,
@@ -9,10 +10,12 @@ async function sendPushToUserDevices({
   body,
   data = {},
 }) {
+  const timer = createPerformanceTimer("sendPushToUserDevices", logger);
   const messaging = getMessaging();
 
   if (!messaging) {
     console.warn("[fcmService] Firebase Admin SDK not initialized.");
+    timer.finish("FCM performance");
     return {
       success: false,
       reason: "firebase_not_initialized",
@@ -25,6 +28,7 @@ async function sendPushToUserDevices({
     logger.info(
       `[fcmService] No registered device tokens found for user ${userId}`
     );
+    timer.finish("FCM performance");
     return {
       success: true,
       sent: 0,
@@ -130,11 +134,12 @@ async function sendPushToUserDevices({
         `[fcmService] Removing ${invalidTokens.length} invalid token(s)`
       );
 
-      await DeviceToken.deleteMany({
+      await timer.measure("invalidTokenCleanupMs", () => DeviceToken.deleteMany({
         token: { $in: invalidTokens },
-      });
+      }));
     }
 
+    timer.finish("FCM performance");
     return {
       success: response.failureCount === 0,
       successCount: response.successCount,
@@ -149,6 +154,7 @@ async function sendPushToUserDevices({
       error?.message || error
     );
 
+    timer.finish("FCM performance");
     return {
       success: false,
       error: error?.message || String(error),

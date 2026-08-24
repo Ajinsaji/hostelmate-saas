@@ -131,9 +131,7 @@ export const ConfirmActionModal = React.memo(({
     try {
       if (actionType === "approve") {
         const endpoint = `/api/admin/approve/${requestId}`;
-        const res = await api.put(endpoint, requestData).catch(() => 
-          api.post(`/api/auth/approve/${requestId}`, requestData)
-        );
+        const res = await api.put(endpoint, requestData);
         
         if (res.data?.success !== false) {
           onSuccess && onSuccess("activation_pending", res.data?.message || "Registration approved! Draft created and pending activation.");
@@ -223,9 +221,7 @@ export const ConfirmActionModal = React.memo(({
           return;
         }
         
-        const res = await api.put(`/api/admin/reject/${requestId}`, { reason: rejectReason }).catch(() => 
-          api.post(`/api/auth/reject/${requestId}`, { reason: rejectReason })
-        );
+        const res = await api.put(`/api/admin/reject/${requestId}`, { reason: rejectReason });
 
         if (res.data?.success !== false) {
           onSuccess && onSuccess("rejected", "Registration rejected");

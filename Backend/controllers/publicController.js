@@ -2,6 +2,7 @@ const { logger } = require("../utils/logger");
 const Hostel = require("../models/Hostel");
 const Room = require("../models/Room");
 const PublicAdmission = require("../models/PublicAdmission");
+const { createPerformanceTimer } = require("../utils/performanceTiming");
 
 // GET HOSTEL DETAILS PUBLICLY
 const getPublicHostel = async (req, res) => {
@@ -88,6 +89,7 @@ const getPublicHostel = async (req, res) => {
 
 // SUBMIT ADMISSION
 const submitAdmission = async (req, res) => {
+  const timer = createPerformanceTimer("submitAdmission", logger, req);
   try {
     const { uniqueCode } = req.params;
     if (!uniqueCode) {
@@ -95,17 +97,17 @@ const submitAdmission = async (req, res) => {
     }
 
     // 1. Prioritize canonical publicCode lookup
-    let hostel = await Hostel.findOne({
+    let hostel = await timer.measure("hostelLookupMs", () => Hostel.findOne({
       publicCode: uniqueCode,
       isPublic: true,
-    });
+    }));
 
     // 2. Fallback to legacy uniqueCode or slug
     if (!hostel) {
-      hostel = await Hostel.findOne({
+      hostel = await timer.measure("legacyHostelLookupMs", () => Hostel.findOne({
         $or: [{ uniqueCode: uniqueCode }, { slug: uniqueCode }],
         isPublic: true,
-      });
+      }));
     }
 
     if (!hostel) {
@@ -188,7 +190,7 @@ const submitAdmission = async (req, res) => {
 
 
 
-    const admission = await PublicAdmission.create({
+    const admission = await timer.measure("admissionCreationMs", () => PublicAdmission.create({
       hostelId: hostel._id,
       hostelCode: hostel.publicCode || uniqueCode,
       residentName,
@@ -213,15 +215,15 @@ const submitAdmission = async (req, res) => {
 
       paymentStatus: "pending",
       status: "Pending"
-    });
+    }));
 
     // Notification for owner/admin of this hostel
     try {
       const { publishNotification } = require("../utils/notificationPublisher");
       const Owner = require("../models/Owner");
-      const owner = await Owner.findOne({ hostelId: hostel._id, role: "owner" });
+      const owner = await timer.measure("ownerLookupMs", () => Owner.findOne({ hostelId: hostel._id, role: "owner" }));
       if (owner?._id) {
-        await publishNotification({
+        await timer.measure("notificationMs", () => publishNotification({
           userId: owner._id,
           hostelId: hostel._id,
           type: "admission_submitted",
@@ -230,13 +232,14 @@ const submitAdmission = async (req, res) => {
             route: "/admissions",
             admissionId: admission._id,
           },
-        });
+        }));
       }
     } catch (e) {
       // never break admission flow
       logger.error("Admission submit notification failed:", e?.message || e);
     }
 
+    timer.finish("Public admission performance");
     res.status(201).json({ success: true, message: "Admission request submitted", admission });
 
 

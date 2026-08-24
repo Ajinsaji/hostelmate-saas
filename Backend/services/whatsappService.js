@@ -296,10 +296,18 @@ const dispatchWhatsAppMessage = async ({
   referenceId = null,
   createdBy = null,
 }) => {
-  const normalizedPhone = normalizePhoneNumber(recipientPhone);
-  if (!normalizedPhone) {
-    throw new Error("Recipient phone number is invalid for WhatsApp delivery");
-  }
+  const dispatchStartedAt = process.hrtime.bigint();
+  const finishDispatchTiming = () => {
+    logger.info({
+      operation: "dispatchWhatsAppMessage",
+      timings: { totalMs: Number(process.hrtime.bigint() - dispatchStartedAt) / 1e6 },
+    }, "WhatsApp dispatch performance");
+  };
+  try {
+    const normalizedPhone = normalizePhoneNumber(recipientPhone);
+    if (!normalizedPhone) {
+      throw new Error("Recipient phone number is invalid for WhatsApp delivery");
+    }
 
   const tplCategory = (TEMPLATES[templateCode] || TEMPLATES.GENERAL_ANNOUNCEMENT).category;
   const messageText = compileTemplate(templateCode, variables, customMessage);
@@ -457,6 +465,9 @@ const dispatchWhatsAppMessage = async ({
       communicationId: commRecord._id,
       error: commRecord.failureReason,
     };
+    }
+  } finally {
+    finishDispatchTiming();
   }
 };
 

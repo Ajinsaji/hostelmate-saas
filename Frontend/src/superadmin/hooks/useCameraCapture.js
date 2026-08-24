@@ -116,7 +116,7 @@ export function useCameraCapture({ defaultFacingMode = "user" } = {}) {
     }
 
     // Compress image to prevent giant payloads
-    const compressed = await compressImage(rawDataUrl, 1200, 0.8);
+    const compressed = await compressImage(rawDataUrl, { maxDimension: 1000, quality: 0.72 });
     const finalImage = compressed || rawDataUrl;
 
     setCapturedImage(finalImage);

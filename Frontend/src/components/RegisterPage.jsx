@@ -92,7 +92,7 @@ export function RegisterPage() {
       reader.onload = async (evt) => {
         const result = evt.target?.result;
         if (result) {
-          const compressed = await compressImage(result, 1200, 0.8);
+          const compressed = await compressImage(result, { maxDimension: 1000, quality: 0.72 });
           updateFormData({ [fieldName]: compressed || result });
         }
       };

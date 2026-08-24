@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { api } from "../../services/api";
 import { lookupPincode } from "../../utils/pincodeLookup";
+import { compressRegistrationPayload } from "../../utils/imageCompressor";
 
 export function useOwnerCreation(initialMode = "admin") {
   const [mode, setMode] = useState(initialMode);
@@ -195,8 +196,10 @@ export function useOwnerCreation(initialMode = "admin") {
     setLoading(true);
     setError(null);
 
+    const submissionStartedAt = performance.now();
+
     try {
-      const payload = {
+      const rawPayload = {
         ownerName: formData.ownerName,
         phone: formData.phone,
         altPhone: formData.altPhone || "",
@@ -225,14 +228,32 @@ export function useOwnerCreation(initialMode = "admin") {
         coverImage: formData.coverImage || formData.hostelPhoto || "",
       };
 
-      const endpoint = activeMode === "public" ? "/api/request/register" : "/api/admin/requests";
+      // Compress all photographic/document image fields prior to transmission
+      const { compressedPayload, metrics } = await compressRegistrationPayload(rawPayload);
 
-      const response = await api.post(endpoint, payload).catch((err) => {
+      const endpoint = activeMode === "public" ? "/api/request/register" : "/api/admin/requests";
+      const requestStartedAt = performance.now();
+
+      const response = await api.post(endpoint, compressedPayload).catch((err) => {
         if (activeMode === "admin") {
-          return api.post("/api/request/register", payload);
+          return api.post("/api/request/register", compressedPayload);
         }
         throw err;
       });
+
+      const requestDurationMs = Math.round(performance.now() - requestStartedAt);
+      const totalSubmissionMs = Math.round(performance.now() - submissionStartedAt);
+
+      if (process.env.NODE_ENV !== "production") {
+        console.info("[Registration Metrics]", {
+          beforeSizeKb: Math.round(metrics.beforeBytes / 1024),
+          afterSizeKb: Math.round(metrics.afterBytes / 1024),
+          reduction: metrics.reductionPercent,
+          compressionDurationMs: metrics.durationMs,
+          requestDurationMs,
+          totalSubmissionMs,
+        });
+      }
 
       if (response.data?.success) {
         setSubmittedResult(response.data);

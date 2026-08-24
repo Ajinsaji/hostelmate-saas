@@ -1,5 +1,6 @@
 const { logger } = require("../utils/logger");
 const HostelRequest = require("../models/HostelRequest");
+const { createPerformanceTimer } = require("../utils/performanceTiming");
 
 
 // ─── Duplicate-key error helper ───────────────────────────────────────────────
@@ -36,6 +37,7 @@ function parseDuplicateKeyError(err) {
 
 // CREATE REQUEST
 const createRequest = async (req, res) => {
+  const timer = createPerformanceTimer("createRequest", logger, req);
   try {
     const {
       ownerName,
@@ -72,12 +74,12 @@ const createRequest = async (req, res) => {
     }
 
     // CHECK EXISTING REQUEST (duplicate prevention — fast pre-check before DB write)
-    const existingRequest = await HostelRequest.findOne({
+    const existingRequest = await timer.measure("duplicateLookupMs", () => HostelRequest.findOne({
       phone,
       status: {
         $in: ["pending", "approved", "activation_pending", "activated"],
       },
-    });
+    }));
 
     if (existingRequest) {
       return res.status(400).json({
@@ -129,7 +131,7 @@ const createRequest = async (req, res) => {
     const requestSource = isAuthAdmin ? "admin" : "public";
 
     logger.info(`Saving hostel request (source: ${requestSource})...`);
-    const request = await HostelRequest.create({
+    const request = await timer.measure("databaseCreateMs", () => HostelRequest.create({
       ownerName,
       phone,
       email: req.body.email || "",
@@ -167,10 +169,10 @@ const createRequest = async (req, res) => {
           date: new Date()
         }
       ]
-    });
+    }));
 
     if (isAuthAdmin && adminId) {
-      await AuditLog.create({
+      await timer.measure("auditCreationMs", () => AuditLog.create({
         adminId,
         action: "ADMIN_CREATED_REGISTRATION_REQUEST",
         actionType: "CREATE",
@@ -184,11 +186,12 @@ const createRequest = async (req, res) => {
           message: `Admin created hostel registration request for ${request.hostelName} (${request.ownerName})`
         },
         timestamp: new Date()
-      }).catch(() => {});
+      }).catch(() => {}));
     }
 
     logger.info("Hostel request saved successfully");
 
+    timer.finish("Registration performance");
     return res.status(201).json({
       success: true,
       message: isAuthAdmin ? "Manual Owner Registration Request Created" : "Application Submitted",

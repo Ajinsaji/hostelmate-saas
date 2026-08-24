@@ -1,3 +1,4 @@
+const { logger } = require("../utils/logger");
 const HostelRequest = require("../models/HostelRequest");
 
 const Hostel = require("../models/Hostel");
@@ -21,6 +22,7 @@ const HostelSubscription = require("../models/HostelSubscription");
 const { generateQRCode } = require('../utils/qrCodeService');
 const { sendApprovalMessages } = require('../utils/messageService');
 const mongoose = require("mongoose");
+const { createPerformanceTimer } = require("../utils/performanceTiming");
 
 
 
@@ -76,6 +78,7 @@ const getDashboardStats =
 // ==========================
 
 const getAllRequests = async (req, res) => {
+  const timer = createPerformanceTimer("getAllRequests", console, req);
   try {
     const {
       status = "",
@@ -144,6 +147,7 @@ const getAllRequests = async (req, res) => {
       };
     });
 
+    timer.finish("Admin request list performance");
     return res.status(200).json({
       success: true,
       requests: formattedRequests,
@@ -205,8 +209,9 @@ const deleteRequest = async (req, res) => {
 // ==========================
 
 const approveHostel = async (req, res) => {
+  const timer = createPerformanceTimer("approveHostel", logger, req);
   try {
-    const request = await HostelRequest.findById(req.params.id);
+    const request = await timer.measure("requestLookupMs", () => HostelRequest.findById(req.params.id));
 
     if (!request) {
       return res.status(404).json({
@@ -217,19 +222,19 @@ const approveHostel = async (req, res) => {
 
     let resultHostel = null;
     if (request.hostelId) {
-      resultHostel = await Hostel.findById(request.hostelId);
+      resultHostel = await timer.measure("draftLookupByIdMs", () => Hostel.findById(request.hostelId));
     }
     if (!resultHostel && request.phone) {
-      resultHostel = await Hostel.findOne({
+      resultHostel = await timer.measure("draftLookupByPhoneMs", () => Hostel.findOne({
         phone: request.phone,
         isDeleted: false,
         pendingActivation: true,
-      });
+      }));
     }
 
     if (!resultHostel) {
       const { approveHostelRegistration } = require("../services/onboardingService");
-      const result = await approveHostelRegistration({
+      const result = await timer.measure("hostelCreationOrReuseMs", () => approveHostelRegistration({
         hostelName: request.hostelName,
         ownerName: request.ownerName,
         email: request.email || "",
@@ -240,7 +245,7 @@ const approveHostel = async (req, res) => {
         logo: request.logo || "",
         aadhaarFile: request.aadhaarFile || "",
         licensePhoto: request.licensePhoto || ""
-      });
+      }));
       resultHostel = result.hostel;
     }
 
@@ -248,11 +253,11 @@ const approveHostel = async (req, res) => {
     request.hostelId = String(resultHostel._id);
     if (!request.timeline) request.timeline = [];
     request.timeline.push({ action: "Approved - Activation Pending", by: req.user?.role || "SuperAdmin" });
-    await request.save();
+    await timer.measure("requestUpdateMs", () => request.save());
 
-    await AuditLog.create({
+    await timer.measure("auditCreationMs", () => AuditLog.create({
       adminId: req.user?._id || req.admin?._id,
-      hostelId: result.hostel._id,
+      hostelId: resultHostel._id,
       action: "APPROVE_REGISTRATION",
       actionType: "APPROVE",
       entity: "HostelRequest",
@@ -264,38 +269,76 @@ const approveHostel = async (req, res) => {
         message: `Approved hostel registration for ${request.hostelName} (${request.ownerName})`
       },
       timestamp: new Date()
-    }).catch(() => {});
+    }).catch(() => {}));
 
-    // NOTIFICATION: Hostel request approved by admin (Pending Activation)
-    try {
-      const { publishNotification } = require("../utils/notificationPublisher");
-      const Admin = require("../models/Admin");
-      const superAdmins = await Admin.find({ role: { $in: ["super_admin", "admin"] } });
-      
-      for (const admin of superAdmins || []) {
-        await publishNotification({
-          userId: admin._id,
-          type: "system_update",
-          title: "Hostel Request Approved",
-          message: `${result.hostel.name} - Activation Pending (Subscription Setup Required)`,
-          meta: { route: "/admin/hostels", relatedId: result.hostel._id },
-          role: admin.role,
-        });
+    // Record critical path time before notification fan-out
+    timer.mark("approvalCriticalPathMs", req?.performanceTiming?.startedAt || process.hrtime.bigint());
+
+    // NOTIFICATION: Safe asynchronous notification fan-out (non-blocking)
+    const dispatchNotificationsAsync = async () => {
+      const bgStartedAt = process.hrtime.bigint();
+      try {
+        const { publishNotification } = require("../utils/notificationPublisher");
+        const Admin = require("../models/Admin");
+        const superAdmins = await Admin.find({ role: { $in: ["super_admin", "admin"] } }).select("_id role").lean();
+
+        const notificationPromises = (superAdmins || []).map((admin) =>
+          publishNotification({
+            userId: admin._id,
+            type: "system_update",
+            title: "Hostel Request Approved",
+            message: `${resultHostel.name || resultHostel.hostelName} - Activation Pending (Subscription Setup Required)`,
+            meta: { route: "/admin/hostels", relatedId: resultHostel._id },
+            role: admin.role,
+          })
+        );
+
+        const results = await Promise.allSettled(notificationPromises);
+        const approvalNotificationBackgroundMs = Number(process.hrtime.bigint() - bgStartedAt) / 1e6;
+
+        const failures = results.filter((r) => r.status === "rejected");
+        if (failures.length > 0) {
+          logger.warn({
+            operation: "approveHostelNotificationFanout",
+            hostelId: String(resultHostel._id),
+            requestId: String(request._id),
+            totalAdmins: superAdmins.length,
+            failureCount: failures.length,
+            approvalNotificationBackgroundMs,
+            errors: failures.map((f) => f.reason?.message || String(f.reason)),
+          }, "[Background Notification] Some admin approval notifications failed to dispatch");
+        } else {
+          logger.info({
+            operation: "approveHostelNotificationFanout",
+            hostelId: String(resultHostel._id),
+            requestId: String(request._id),
+            totalAdmins: superAdmins.length,
+            approvalNotificationBackgroundMs,
+          }, "[Background Notification] Admin approval notifications dispatched successfully");
+        }
+      } catch (bgErr) {
+        logger.error({
+          operation: "approveHostelNotificationFanout",
+          hostelId: String(resultHostel._id),
+          requestId: String(request._id),
+          error: bgErr?.message || String(bgErr),
+        }, "[Background Notification] Error during admin notification fanout");
       }
-    } catch (e) {
-      console.error("Hostel approval notification failed:", e?.message || e);
-    }
+    };
 
+    setImmediate(dispatchNotificationsAsync);
+
+    timer.finish("Approval performance");
     return res.status(200).json({
       success: true,
-      hostelId: result.hostel._id,
+      hostelId: resultHostel._id,
       status: "activation_pending",
       requiresSubscriptionSetup: true,
       message: "Hostel request approved. Subscription setup required for final activation.",
     });
   } catch (error) {
-    console.log(error);
-    res.status(500).json(error);
+    logger.error({ error: error?.message || error }, "approveHostel error");
+    res.status(500).json({ success: false, message: error?.message || "Internal server error during approval" });
   }
 };
 
@@ -305,6 +348,7 @@ const approveHostel = async (req, res) => {
 // ==========================
 
 const finalizeHostelActivation = async (req, res) => {
+  const timer = createPerformanceTimer("finalizeHostelActivation", logger, req);
   try {
     const rawTargetId = req.params.hostelId || req.params.id;
     const { planType, amount, startDate, endDate, isTrial, isFreeAccess, notes } = req.body || {};
@@ -317,17 +361,8 @@ const finalizeHostelActivation = async (req, res) => {
       });
     }
 
-    // 1. Resolve Target Hostel (gracefully handle both Hostel._id and HostelRequest._id)
-    let hostel = await Hostel.findById(rawTargetId);
-    let relatedRequest = null;
-
-    if (!hostel) {
-      relatedRequest = await HostelRequest.findById(rawTargetId);
-      if (relatedRequest?.hostelId) {
-        hostel = await Hostel.findById(relatedRequest.hostelId);
-      }
-    }
-
+    // 1. Resolve Target Hostel
+    const hostel = await timer.measure("hostelLookupMs", () => Hostel.findById(rawTargetId));
     if (!hostel) {
       return res.status(404).json({
         success: false,
@@ -354,17 +389,34 @@ const finalizeHostelActivation = async (req, res) => {
       });
     }
 
-    // 3. Validate Owner Conflicts & Idempotent Owner Reconciliation
-    let ownerDoc = null;
-    const existingOwnerByHostel = await Owner.findOne({ hostelId: hostel._id });
-    const existingOwnerByPhone = await Owner.findOne({ phone: hostel.phone });
+    // 3. Parallel Independent Reads & Password Hash Preparation
+    const tempPassword = `HM${Math.floor(1000 + Math.random() * 9000)}@${String.fromCharCode(65 + Math.floor(Math.random() * 26))}${Math.floor(10 + Math.random() * 90)}`;
+    const bcryptjs = require("bcryptjs");
 
+    let relatedRequest = await HostelRequest.findOne({ $or: [{ hostelId: String(hostel._id) }, { phone: hostel.phone }] });
+
+    const [
+      existingOwnerByHostel,
+      existingOwnerByPhone,
+      existingSubscriptionDoc,
+      hashedPassword,
+    ] = await timer.measure("activationParallelLookupMs", () =>
+      Promise.all([
+        Owner.findOne({ hostelId: hostel._id }),
+        hostel.phone ? Owner.findOne({ phone: hostel.phone }) : Promise.resolve(null),
+        Subscription.findOne({ hostelId: hostel._id }),
+        bcryptjs.hash(tempPassword, 10),
+      ])
+    );
+
+    // 4. Validate Owner Conflicts & Idempotent Owner Reconciliation
+    let ownerDoc = null;
     if (existingOwnerByPhone) {
-      // Check if this existing owner is already bound to a separate, legitimately active hostel
       if (existingOwnerByPhone.hostelId && String(existingOwnerByPhone.hostelId) !== String(hostel._id)) {
-        const otherHostel = await Hostel.findById(existingOwnerByPhone.hostelId).lean();
+        const otherHostel = await timer.measure("orphanOwnerReconciliationLookupMs", () =>
+          Hostel.findById(existingOwnerByPhone.hostelId).lean()
+        );
         if (otherHostel && otherHostel.isDeleted !== true && otherHostel.pendingActivation === false) {
-          // Genuinely active owner managing another property -> Controlled 409
           return res.status(409).json({
             success: false,
             code: "OWNER_ACTIVE_ON_ANOTHER_HOSTEL",
@@ -372,110 +424,46 @@ const finalizeHostelActivation = async (req, res) => {
           });
         }
       }
-
-      // Incomplete/orphan owner created previously or associated with this draft -> Reconcile!
       ownerDoc = existingOwnerByPhone;
     } else if (existingOwnerByHostel) {
       ownerDoc = existingOwnerByHostel;
     }
 
-    // 4. Ensure Public Code & Canonical URL are present and valid
+    // 5. Ensure Public Code & Canonical URL
     const frontendBase = process.env.FRONTEND_URL || process.env.VITE_APP_URL || process.env.PUBLIC_URL || (req.headers && req.headers.origin ? req.headers.origin : "https://hostelmate-saas.vercel.app");
     const cleanFrontendBase = String(frontendBase).replace(/\/$/, "");
 
     if (!hostel.publicCode || !/^\d{10}$/.test(hostel.publicCode)) {
       const { generateUniquePublicCode } = require("../utils/publicCodeGenerator");
-      hostel.publicCode = await generateUniquePublicCode(Hostel);
+      hostel.publicCode = await timer.measure("publicCodeGenerationMs", () => generateUniquePublicCode(Hostel));
       hostel.uniqueCode = hostel.publicCode;
       hostel.publicUrl = `${cleanFrontendBase}/h/${hostel.publicCode}`;
     }
 
-    // 5. Subscription Preparation (Idempotent reuse or creation)
+    // 6. Subscription Preparation parameters
     const isTrialMode = isTrial !== undefined ? !!isTrial : true;
     const normalizedPlanType = "HostelMate Unified Plan";
     const finalStartDate = startDate ? new Date(startDate) : new Date();
     const finalEndDate = endDate ? new Date(endDate) : new Date(finalStartDate.getTime() + 30 * 24 * 60 * 60 * 1000);
     const subStatus = isTrialMode ? "trial" : "active";
 
-    const months = [
-      "January", "February", "March", "April", "May", "June",
-      "July", "August", "September", "October", "November", "December"
-    ];
+    const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
     const formattedStartDate = `${finalStartDate.getDate()} ${months[finalStartDate.getMonth()]} ${finalStartDate.getFullYear()}`;
     const formattedEndDate = `${finalEndDate.getDate()} ${months[finalEndDate.getMonth()]} ${finalEndDate.getFullYear()}`;
     const formattedExpiryDate = formattedEndDate;
 
-    let subscriptionDoc = await Subscription.findOne({ hostelId: hostel._id });
-    if (subscriptionDoc) {
-      subscriptionDoc.planType = normalizedPlanType;
-      subscriptionDoc.plan = normalizedPlanType;
-      subscriptionDoc.status = subStatus;
-      subscriptionDoc.subscriptionStatus = subStatus;
-      subscriptionDoc.isTrial = isTrialMode;
-      subscriptionDoc.startDate = finalStartDate;
-      subscriptionDoc.endDate = finalEndDate;
-      subscriptionDoc.trialStartDate = finalStartDate;
-      subscriptionDoc.trialEndDate = finalEndDate;
-      subscriptionDoc.subscriptionStartDate = finalStartDate;
-      subscriptionDoc.subscriptionEndDate = finalEndDate;
-      subscriptionDoc.trialDays = 30;
-      subscriptionDoc.isFreeAccess = !!isFreeAccess;
-      subscriptionDoc.amount = Number(amount ?? subscriptionDoc.amount ?? 0);
-      subscriptionDoc.paidAmount = isTrialMode ? 0 : Number(amount ?? subscriptionDoc.amount ?? 0);
-      subscriptionDoc.paid = !isTrialMode && Number(subscriptionDoc.paidAmount) > 0;
-      subscriptionDoc.paymentStatus = isTrialMode ? "Pending" : (subscriptionDoc.paid ? "Paid" : "Pending");
-      subscriptionDoc.monthlyRatePerResident = 10;
-      subscriptionDoc.notes = notes || subscriptionDoc.notes || "";
-      await subscriptionDoc.save();
-    } else {
-      subscriptionDoc = await Subscription.create({
-        hostelId: hostel._id,
-        planType: normalizedPlanType,
-        plan: normalizedPlanType,
-        status: subStatus,
-        subscriptionStatus: subStatus,
-        isTrial: isTrialMode,
-        startDate: finalStartDate,
-        endDate: finalEndDate,
-        trialStartDate: finalStartDate,
-        trialEndDate: finalEndDate,
-        subscriptionStartDate: finalStartDate,
-        subscriptionEndDate: finalEndDate,
-        trialDays: 30,
-        residentLimit: 999999,
-        isFreeAccess: !!isFreeAccess,
-        amount: Number(amount ?? 0),
-        paidAmount: isTrialMode ? 0 : Number(amount ?? 0),
-        paid: !isTrialMode && Number(amount ?? 0) > 0,
-        paymentStatus: isTrialMode ? "Pending" : (Number(amount ?? 0) > 0 ? "Paid" : "Pending"),
-        monthlyRatePerResident: 10,
-        notes: notes || "",
-      });
-    }
-
-    // 6. Generate Temporary Password and Create or Reconcile Owner
-    const tempPassword = `HM${Math.floor(1000 + Math.random() * 9000)}@${String.fromCharCode(65 + Math.floor(Math.random() * 26))}${Math.floor(10 + Math.random() * 90)}`;
-    const bcryptjs = require("bcryptjs");
-    const hashedPassword = await bcryptjs.hash(tempPassword, 10);
-
-    if (!relatedRequest) {
-      relatedRequest = await HostelRequest.findOne({
-        $or: [{ hostelId: String(hostel._id) }, { phone: hostel.phone }]
-      });
-    }
-
     const rawOwnerEmail = String(hostel.email || relatedRequest?.email || "").trim();
     const ownerEmail = rawOwnerEmail ? rawOwnerEmail.toLowerCase() : undefined;
 
+    // 7. Critical Write Path
+    const writeStartedAt = process.hrtime.bigint();
+
     if (ownerDoc) {
-      // Safely reconcile existing owner record
       ownerDoc.hostelId = hostel._id;
       ownerDoc.activeHostelId = hostel._id;
       ownerDoc.ownerName = hostel.ownerName || ownerDoc.ownerName || "Hostel Owner";
       ownerDoc.phone = hostel.phone;
-      if (ownerEmail) {
-        ownerDoc.email = ownerEmail;
-      }
+      if (ownerEmail) ownerDoc.email = ownerEmail;
       ownerDoc.username = hostel.phone;
       ownerDoc.password = hashedPassword;
       ownerDoc.mustChangePassword = true;
@@ -484,10 +472,10 @@ const finalizeHostelActivation = async (req, res) => {
       ownerDoc.status = "active";
       if (hostel.ownerPhoto) ownerDoc.profileImage = hostel.ownerPhoto;
       ownerDoc.credentialIssuedAt = new Date();
-      ownerDoc.credentialDeliveryStatus = "issued";
-      await ownerDoc.save();
+      ownerDoc.credentialDeliveryStatus = "sent";
+      await timer.measure("ownerWriteMs", () => ownerDoc.save());
     } else {
-      const ownerPayload = {
+      ownerDoc = await timer.measure("ownerWriteMs", () => Owner.create({
         hostelId: hostel._id,
         activeHostelId: hostel._id,
         ownerName: hostel.ownerName || "Hostel Owner",
@@ -497,63 +485,42 @@ const finalizeHostelActivation = async (req, res) => {
         password: hashedPassword,
         mustChangePassword: true,
         firstLogin: true,
-        onboardingCompleted: false,
-        passwordChanged: false,
-        rulesConfigured: false,
-        roomsConfigured: false,
         role: "owner",
         status: "active",
         profileImage: hostel.ownerPhoto || "",
         credentialIssuedAt: new Date(),
-        credentialDeliveryStatus: "issued",
-      };
-      ownerDoc = await Owner.create(ownerPayload);
+        credentialDeliveryStatus: "sent",
+      }));
     }
 
-    // Link owner to subscription
-    subscriptionDoc.ownerId = ownerDoc._id;
-    await subscriptionDoc.save();
-
-    // Sync HostelSubscription
-    try {
-      await HostelSubscription.findOneAndUpdate(
-        { hostelId: hostel._id },
-        {
-          hostelId: hostel._id,
-          status: isTrialMode ? "Trial" : "Active",
-          trialStartDate: finalStartDate,
-          trialEndDate: finalEndDate,
-          subscriptionStartDate: finalStartDate,
-          currentCycleStart: finalStartDate,
-          currentCycleEnd: finalEndDate,
-          nextBillingDate: finalEndDate,
-          paymentStatus: isTrialMode ? "Pending" : "Paid",
-          totalAmount: subscriptionDoc.amount,
-        },
-        { upsert: true, new: true }
-      );
-    } catch (hsErr) {
-      console.warn("HostelSubscription sync warning:", hsErr?.message);
-    }
-
-    // Log Subscription History
-    try {
-      await SubscriptionHistory.create({
+    let subscriptionDoc = existingSubscriptionDoc;
+    if (subscriptionDoc) {
+      subscriptionDoc.ownerId = ownerDoc._id;
+      subscriptionDoc.planType = normalizedPlanType;
+      subscriptionDoc.status = subStatus;
+      subscriptionDoc.isTrial = isTrialMode;
+      subscriptionDoc.startDate = finalStartDate;
+      subscriptionDoc.endDate = finalEndDate;
+      subscriptionDoc.paidAmount = isTrialMode ? 0 : Number(amount ?? subscriptionDoc.amount ?? 0);
+      subscriptionDoc.paid = !isTrialMode && Number(subscriptionDoc.paidAmount) > 0;
+      subscriptionDoc.paymentStatus = isTrialMode ? "Pending" : (subscriptionDoc.paid ? "Paid" : "Pending");
+      await timer.measure("subscriptionWriteMs", () => subscriptionDoc.save());
+    } else {
+      subscriptionDoc = await timer.measure("subscriptionWriteMs", () => Subscription.create({
         hostelId: hostel._id,
         ownerId: ownerDoc._id,
-        subscriptionId: subscriptionDoc._id,
-        action: isTrialMode ? "TRIAL_STARTED" : "CONTINUATION_APPROVED",
-        newStartDate: finalStartDate,
-        newEndDate: finalEndDate,
-        newAmount: subscriptionDoc.amount,
-        changedBy: req.user?.name || req.user?.role || "SuperAdmin",
-        reason: isTrialMode ? "30-day Free Trial Started on Activation" : "Active Subscription on Activation",
-      });
-    } catch (histErr) {
-      console.warn("SubscriptionHistory log warning:", histErr?.message);
+        planType: normalizedPlanType,
+        status: subStatus,
+        isTrial: isTrialMode,
+        startDate: finalStartDate,
+        endDate: finalEndDate,
+        amount: Number(amount ?? 0),
+        paidAmount: isTrialMode ? 0 : Number(amount ?? 0),
+        paid: !isTrialMode && Number(amount ?? 0) > 0,
+        paymentStatus: isTrialMode ? "Pending" : (Number(amount ?? 0) > 0 ? "Paid" : "Pending"),
+      }));
     }
 
-    // 7. Update Hostel & Mark Activated
     hostel.ownerId = ownerDoc._id;
     hostel.owner = ownerDoc._id;
     hostel.pendingActivation = false;
@@ -564,68 +531,115 @@ const finalizeHostelActivation = async (req, res) => {
     hostel.isFreeAccess = subscriptionDoc.isFreeAccess;
     hostel.isTrial = subscriptionDoc.isTrial;
 
-    await hostel.save();
-
-    // 8. Update HostelRequest Status (activated)
     if (relatedRequest) {
       relatedRequest.status = "activated";
       if (!relatedRequest.timeline) relatedRequest.timeline = [];
       relatedRequest.timeline.push({ action: "Activated & Credentials Generated", by: req.user?.role || "SuperAdmin" });
-      await relatedRequest.save();
     }
 
-    // 9. Construct canonical Owner Login URL
+    await timer.measure("hostelAndRequestWriteMs", () =>
+      Promise.all([
+        hostel.save(),
+        relatedRequest ? relatedRequest.save() : Promise.resolve(),
+        HostelSubscription.findOneAndUpdate(
+          { hostelId: hostel._id },
+          {
+            hostelId: hostel._id,
+            status: isTrialMode ? "Trial" : "Active",
+            trialStartDate: finalStartDate,
+            trialEndDate: finalEndDate,
+            subscriptionStartDate: finalStartDate,
+            currentCycleStart: finalStartDate,
+            currentCycleEnd: finalEndDate,
+            nextBillingDate: finalEndDate,
+            paymentStatus: isTrialMode ? "Pending" : "Paid",
+            totalAmount: subscriptionDoc.amount,
+          },
+          { upsert: true, new: true }
+        ).catch((err) => {
+          logger.warn({ hostelId: String(hostel._id), error: err?.message }, "HostelSubscription sync warning");
+        }),
+      ])
+    );
+
+    timer.mark("activationCriticalPathMs", req?.performanceTiming?.startedAt || process.hrtime.bigint());
+
+    // 8. Construct canonical Owner Login URL & Notification details
     const loginUrl = `${cleanFrontendBase}/owner/login`;
     const trialDays = 30;
     const trialAmount = 0;
     const subscriptionAmount = subscriptionDoc.amount || 10;
     const billingCycle = "Month";
 
-    // 10. Canonical One-Time EventBus Notification & Credential Delivery (Isolated & Non-blocking)
-    try {
-      const EventBus = require("../services/EventBus");
-      EventBus.emit("OWNER_ACCOUNT_ACTIVATED", {
-        hostelId: hostel._id,
-        ownerId: ownerDoc._id,
-        phone: ownerDoc.phone,
-        ownerName: ownerDoc.ownerName,
-        hostelName: hostel.hostelName || hostel.name,
-        username: ownerDoc.phone,
-        tempPassword,
-        planType: normalizedPlanType,
-        trialDays,
-        trialStartDate: formattedStartDate,
-        trialEndDate: formattedEndDate,
-        trialAmount,
-        subscriptionAmount,
-        billingCycle,
-        expiryDate: formattedExpiryDate,
-        loginUrl,
-      });
+    // 9. Secondary Work (AuditLog, SubscriptionHistory, EventBus)
+    const secondaryWorkAsync = async () => {
+      const secStartedAt = process.hrtime.bigint();
+      try {
+        const p1 = SubscriptionHistory.create({
+          hostelId: hostel._id,
+          ownerId: ownerDoc._id,
+          subscriptionId: subscriptionDoc._id,
+          action: isTrialMode ? "TRIAL_STARTED" : "CONTINUATION_APPROVED",
+          newStartDate: finalStartDate,
+          newEndDate: finalEndDate,
+          newAmount: subscriptionDoc.amount,
+          changedBy: req.user?.name || req.user?.role || "SuperAdmin",
+          reason: isTrialMode ? "30-day Free Trial Started on Activation" : "Active Subscription on Activation",
+        }).catch((err) => {
+          logger.warn({ hostelId: String(hostel._id), error: err?.message }, "SubscriptionHistory log warning");
+        });
 
-      ownerDoc.credentialDeliveryStatus = "sent";
-      await ownerDoc.save();
-    } catch (eventErr) {
-      console.error("[EventBus] OWNER_ACCOUNT_ACTIVATED emission error (non-blocking):", eventErr?.message);
-      ownerDoc.credentialDeliveryStatus = "failed";
-      await ownerDoc.save().catch(() => {});
-    }
 
-    await AuditLog.create({
-      adminId: req.user?._id || req.admin?._id,
-      hostelId: hostel._id,
-      action: "FINALIZE_ACTIVATION",
-      actionType: "ACTIVATE",
-      entity: "Hostel",
-      targetId: hostel._id,
-      details: {
-        hostelName: hostel.hostelName || hostel.name,
-        planType: normalizedPlanType,
-        amount: amount || 0,
-        message: `Finalized hostel activation for ${hostel.hostelName || hostel.name} with ${normalizedPlanType}`
-      },
-      timestamp: new Date()
-    }).catch(() => {});
+        const p3 = AuditLog.create({
+          adminId: req.user?._id || req.admin?._id,
+          hostelId: hostel._id,
+          action: "FINALIZE_ACTIVATION",
+          actionType: "ACTIVATE",
+          entity: "Hostel",
+          targetId: hostel._id,
+          details: {
+            hostelName: hostel.hostelName || hostel.name,
+            planType: normalizedPlanType,
+            amount: amount || 0,
+            message: `Finalized hostel activation for ${hostel.hostelName || hostel.name} with ${normalizedPlanType}`
+          },
+          timestamp: new Date()
+        }).catch((err) => {
+          logger.warn({ hostelId: String(hostel._id), error: err?.message }, "AuditLog activation warning");
+        });
+
+        const EventBus = require("../services/EventBus");
+        EventBus.emit("OWNER_ACCOUNT_ACTIVATED", {
+          hostelId: hostel._id,
+          ownerId: ownerDoc._id,
+          phone: ownerDoc.phone,
+          ownerName: ownerDoc.ownerName,
+          hostelName: hostel.hostelName || hostel.name,
+          username: ownerDoc.phone,
+          tempPassword,
+          planType: normalizedPlanType,
+          trialDays,
+          trialStartDate: formattedStartDate,
+          trialEndDate: formattedEndDate,
+          trialAmount,
+          subscriptionAmount,
+          billingCycle,
+          expiryDate: formattedExpiryDate,
+          loginUrl,
+        });
+
+        await Promise.allSettled([p1, p2, p3]);
+        const activationSecondaryWorkMs = Number(process.hrtime.bigint() - secStartedAt) / 1e6;
+        logger.info({
+          operation: "finalizeHostelActivationSecondary",
+          hostelId: String(hostel._id),
+          activationSecondaryWorkMs,
+        }, "Activation secondary operations completed");
+      } catch (e) {
+        logger.error({ error: e?.message || e, hostelId: String(hostel._id) }, "Error in secondary activation tasks");
+      }
+    };
+    setImmediate(secondaryWorkAsync);
 
     const notificationMessage = [
       "🎉 Welcome to HostelMate",
@@ -658,7 +672,7 @@ const finalizeHostelActivation = async (req, res) => {
       "Thank you for choosing HostelMate ❤️",
     ].join("\n");
 
-    // 12. Return Controlled HTTP 200 Activation Response
+    timer.finish("Activation performance");
     return res.status(200).json({
       success: true,
       message: "Hostel activated successfully",
@@ -697,9 +711,7 @@ const finalizeHostelActivation = async (req, res) => {
       credentialStatus: ownerDoc.credentialDeliveryStatus,
     });
   } catch (error) {
-    console.error("finalizeHostelActivation error:", error?.message || error);
-
-    // Handle Mongo E11000 duplicate key errors cleanly without exposing internals or returning 500
+    logger.error({ error: error?.message || error }, "finalizeHostelActivation error");
     if (error?.code === 11000 || error?.name === "MongoServerError") {
       const duplicateField = Object.keys(error.keyPattern || {})[0] || "field";
       return res.status(409).json({
@@ -709,7 +721,6 @@ const finalizeHostelActivation = async (req, res) => {
         field: duplicateField,
       });
     }
-
     if (error?.name === "ValidationError") {
       return res.status(400).json({
         success: false,
@@ -717,11 +728,10 @@ const finalizeHostelActivation = async (req, res) => {
         message: error.message || "Invalid activation parameters.",
       });
     }
-
     return res.status(500).json({
       success: false,
       code: "ACTIVATION_FAILED",
-      message: "Unable to complete hostel activation. Please try again.",
+      message: error?.message || "Unable to complete hostel activation. Please try again.",
     });
   }
 };

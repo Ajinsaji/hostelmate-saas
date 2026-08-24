@@ -5,6 +5,7 @@ const Owner = require("../models/Owner");
 const Subscription = require("../models/Subscription");
 const bcrypt = require("bcryptjs");
 const crypto = require("crypto");
+const { createPerformanceTimer } = require("../utils/performanceTiming");
 
 /**
  * Shared onboarding service for Hostel and Owner creation.
@@ -22,6 +23,7 @@ const approveHostelRegistration = async ({
   aadhaarFile,
   licensePhoto,
 }) => {
+  const timer = createPerformanceTimer("approveHostelRegistration", logger);
   let session = null;
   const topologyType = mongoose.connection?.client?.topology?.description?.type;
   const isReplicaSet = ["ReplicaSetNoPrimary", "ReplicaSetWithPrimary", "Sharded"].includes(topologyType);
@@ -43,18 +45,20 @@ const approveHostelRegistration = async ({
     let slug = baseSlug || "hostel";
     let counter = 1;
 
-    while (true) {
-      const query = Hostel.findOne({ slug });
-      if (session) query.session(session);
-      const existing = await query;
-      if (!existing) break;
-      counter++;
-      slug = `${baseSlug}-${counter}`;
-    }
+    await timer.measure("slugLookupMs", async () => {
+      while (true) {
+        const query = Hostel.findOne({ slug });
+        if (session) query.session(session);
+        const existing = await query;
+        if (!existing) break;
+        counter++;
+        slug = `${baseSlug}-${counter}`;
+      }
+    });
 
     // 2. Generate canonical 10-digit numeric publicCode
     const { generateUniquePublicCode } = require("../utils/publicCodeGenerator");
-    const publicCode = await generateUniquePublicCode(Hostel);
+    const publicCode = await timer.measure("publicCodeLookupMs", () => generateUniquePublicCode(Hostel));
 
     // 3. Generate Canonical URLs
     const frontendBase = process.env.FRONTEND_URL || process.env.VITE_APP_URL || "https://hostelmate-saas.vercel.app";
@@ -63,11 +67,11 @@ const approveHostelRegistration = async ({
     const publicLink = canonicalPublicUrl;
     const publicRegistrationLink = canonicalPublicUrl;
     
-    // 4. Generate QR Code with canonical publicCode URL
-    const { generateQRCode } = require("../utils/qrCodeService");
+    // 4. Generate QR Code with canonical publicCode URL (Fast local disk generation)
+    const { generateLocalQRCode, uploadQRCodeToCloudinaryAsync } = require("../utils/qrCodeService");
     const qrFilename = `${publicCode}-QR.png`;
-    const qrResult = await generateQRCode(canonicalPublicUrl, qrFilename);
-    const qrCode = qrResult.success ? qrResult.url : `QR_CODE_FOR_${publicCode}`;
+    const qrResult = await timer.measure("qrGenerationMs", () => generateLocalQRCode(canonicalPublicUrl, qrFilename));
+    const qrCode = qrResult.success ? qrResult.localUrl : `QR_CODE_FOR_${publicCode}`;
     const qrCodeUrl = qrCode;
 
     // 5. Create Hostel Draft (pendingActivation = true)
@@ -100,13 +104,21 @@ const approveHostelRegistration = async ({
       }
     });
 
-    await newHostel.save(sessionOption);
+    await timer.measure("hostelSaveMs", () => newHostel.save(sessionOption));
 
     if (session) {
       await session.commitTransaction();
       session.endSession();
     }
 
+    // 6. Asynchronously upload QR Code to Cloudinary & update Hostel in background
+    if (qrResult.qrPath) {
+      setImmediate(() => {
+        uploadQRCodeToCloudinaryAsync(qrResult.qrPath, qrFilename, newHostel._id);
+      });
+    }
+
+    timer.finish("Onboarding hostel creation performance");
     return {
       success: true,
       hostel: newHostel,

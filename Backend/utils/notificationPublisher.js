@@ -4,6 +4,7 @@ const NotificationSetting = require("../models/NotificationSetting");
 const DeviceToken = require("../models/DeviceToken");
 const { sendPushToUserDevices } = require("./fcmService");
 const { emitNotificationToUser } = require("./socketManager");
+const { createPerformanceTimer } = require("./performanceTiming");
 
 const NOTIFICATION_CATEGORY_BY_TYPE = {
   admission_submitted: "admissions",
@@ -64,6 +65,7 @@ async function publishNotification({
   icon,
   actionUrl,
 }) {
+  const timer = createPerformanceTimer("publishNotification", logger);
   const normalizedMeta = meta || {};
   const resolvedCategory = category || NOTIFICATION_CATEGORY_BY_TYPE[type] || "updates";
   const resolvedPriority = priority || NOTIFICATION_PRIORITY_BY_TYPE[type] || "normal";
@@ -72,7 +74,7 @@ async function publishNotification({
   const canonicalPriority = (resolvedPriority && String(resolvedPriority).replace(/\b\w/g, (c) => c.toUpperCase())) || "Medium";
   const validHostelId = hostelId || meta?.relatedId || meta?.hostelId || null;
 
-  const notification = await Notification.create({
+  const notification = await timer.measure("notificationCreationMs", () => Notification.create({
     userId,
     tenantId: validHostelId,
     hostelId: validHostelId,
@@ -85,25 +87,25 @@ async function publishNotification({
     actionUrl: actionUrl || normalizedMeta.route || null,
     receiverRole: role || null,
     meta: normalizedMeta,
-  });
+  }));
 
   try {
-    const settings = await NotificationSetting.findOne({
+    const settings = await timer.measure("notificationSettingsMs", () => NotificationSetting.findOne({
       userId,
       role,
       hostelId: hostelId || null,
-    });
+    }));
 
     const allowPush = settings ? settings.pushNotifications : true;
     const allowCategory = settings ? (settings.categories?.[resolvedCategory] ?? true) : true;
 
     if (allowPush && allowCategory) {
-      const tokens = await DeviceToken.find({
+      const tokens = await timer.measure("deviceTokenLookupMs", () => DeviceToken.find({
         userId,
         isActive: true,
         ...(hostelId ? { hostelId } : {}),
         ...(role ? { role } : {}),
-      }).select("token");
+      }).select("token"));
 
       const tokenList = tokens.map((t) => t.token);
       
@@ -113,7 +115,7 @@ async function publishNotification({
         logger.info(`[publishNotification] No device tokens found for user ${userId} - background notifications won't be sent`);
       }
 
-      await sendPushToUserDevices({
+      await timer.measure("fcmMs", () => sendPushToUserDevices({
         userId,
         hostelId,
         title: title || "HostelMate",
@@ -126,7 +128,7 @@ async function publishNotification({
             route: normalizedMeta.route || "",
           },
         },
-      });
+      }));
     } else {
       logger.info(`[publishNotification] Push disabled for user ${userId} (allowPush: ${allowPush}, allowCategory: ${allowCategory})`);
     }
@@ -135,11 +137,12 @@ async function publishNotification({
   }
 
   try {
-    await emitNotificationToUser({ userId, notification });
+    await timer.measure("socketEmissionMs", () => emitNotificationToUser({ userId, notification }));
   } catch (e) {
     logger.error("publishNotification socket error:", e?.message || e);
   }
 
+  timer.finish("Notification performance");
   return notification;
 }
 
