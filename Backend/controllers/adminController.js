@@ -994,14 +994,16 @@ const sendCredentials = async (req, res) => {
     const frontendBase = process.env.FRONTEND_URL || process.env.VITE_APP_URL || process.env.PUBLIC_URL || (req.headers && req.headers.origin ? req.headers.origin : "https://hostelmate-saas.vercel.app");
     const loginUrl = `${String(frontendBase).replace(/\/$/, "")}/owner/login`;
 
+    const { tempPassword } = req.body || {};
+
     const { sendOwnerOnboarding } = require("../utils/sendOwnerOnboarding");
     const result = await sendOwnerOnboarding({
       ownerName: owner.ownerName,
       hostelName: hostel ? hostel.hostelName : "",
       phone: owner.phone,
       username: owner.username || owner.phone,
-      tempPassword: "[Issued Credentials]",
-      planType: hostel ? hostel.planType : "Pro",
+      tempPassword: tempPassword || "",
+      planType: hostel ? hostel.planType : "HostelMate Unified Plan",
       expiryDate: hostel ? hostel.subscriptionEndDate : null,
       qrUrl: hostel ? hostel.qrCodeUrl : "",
       loginUrl,
