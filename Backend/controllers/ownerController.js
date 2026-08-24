@@ -210,6 +210,7 @@ const loginOwner = async (req, res) => {
         email: owner.email,
         status: owner.status,
         hostelId: hostel._id,
+        hostelName: hostel.hostelName || hostel.name || "",
         username: owner.username,
         profileImage: owner.profileImage || "",
       };
@@ -277,7 +278,10 @@ const loginOwner = async (req, res) => {
     const token = jwt.sign(payload, secret, { expiresIn: "7d" });
 
     if (owner) {
-      const subscription = await Subscription.findOne({ hostelId: hostelId });
+      const [subscription, hostelDoc] = await Promise.all([
+        Subscription.findOne({ hostelId: hostelId }),
+        Hostel.findById(hostelId),
+      ]);
       return res.status(200).json({
         success: true,
         message: "Login Success",
@@ -293,6 +297,18 @@ const loginOwner = async (req, res) => {
           mustChangePassword: !!owner.mustChangePassword,
           onboardingStep: owner?.onboardingStep || 1,
         },
+        hostel: hostelDoc
+          ? {
+              _id: hostelDoc._id,
+              id: hostelDoc._id,
+              name: hostelDoc.hostelName || hostelDoc.name || "",
+              hostelName: hostelDoc.hostelName || hostelDoc.name || "",
+              address: hostelDoc.address || "",
+              phone: hostelDoc.phone || "",
+              qrCodeUrl: hostelDoc.qrCodeUrl || "",
+              planType: hostelDoc.planType || "Unified",
+            }
+          : null,
         subscription,
         mustChangePassword: !!owner.mustChangePassword,
       });
@@ -416,12 +432,20 @@ const getDashboardStats = async (req, res) => {
     const mongoose = require("mongoose");
     const hId = new mongoose.Types.ObjectId(hostelId);
 
+    const startOfDay = new Date();
+    startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date();
+    endOfDay.setHours(23, 59, 59, 999);
+
     const [
       residentsAgg,
       roomsAgg,
       paymentsAgg,
       hostel,
-      owner
+      owner,
+      pendingAdmissionsCount,
+      newAdmissionsTodayCount,
+      todayAgg
     ] = await Promise.all([
       Resident.aggregate([
         { $match: { hostelId: hId, status: "active" } },
@@ -455,20 +479,15 @@ const getDashboardStats = async (req, res) => {
         }
       ]),
       Hostel.findById(hostelId),
-      Owner.findById(ownerId)
-    ]);
-
-    // Calculate today's collection separately as array elements can be complex to match in top-level group
-    const startOfDay = new Date();
-    startOfDay.setHours(0, 0, 0, 0);
-    const endOfDay = new Date();
-    endOfDay.setHours(23, 59, 59, 999);
-    
-    const todayAgg = await Payment.aggregate([
-      { $match: { hostelId: hId } },
-      { $unwind: "$entries" },
-      { $match: { "entries.createdAt": { $gte: startOfDay, $lte: endOfDay } } },
-      { $group: { _id: null, todayCollection: { $sum: "$entries.amount" } } }
+      Owner.findById(ownerId),
+      PublicAdmission.countDocuments({ hostelId: hId, status: "Pending" }),
+      PublicAdmission.countDocuments({ hostelId: hId, createdAt: { $gte: startOfDay, $lte: endOfDay } }),
+      Payment.aggregate([
+        { $match: { hostelId: hId } },
+        { $unwind: "$entries" },
+        { $match: { "entries.createdAt": { $gte: startOfDay, $lte: endOfDay } } },
+        { $group: { _id: null, todayCollection: { $sum: "$entries.amount" } } }
+      ])
     ]);
 
     const residentsCount = residentsAgg[0]?.count || 0;
@@ -497,9 +516,23 @@ const getDashboardStats = async (req, res) => {
         pendingRent: paymentStats.pendingRent,
         todayCollection,
         revenue: paymentStats.totalRevenue,
-        expenses
+        expenses,
+        pendingAdmissions: pendingAdmissionsCount || 0,
+        newAdmissionsToday: newAdmissionsTodayCount || 0,
+        activeComplaints: 0,
       },
-      hostel,
+      hostel: hostel
+        ? {
+            _id: hostel._id,
+            id: hostel._id,
+            name: hostel.hostelName || hostel.name || "",
+            hostelName: hostel.hostelName || hostel.name || "",
+            address: hostel.address || "",
+            phone: hostel.phone || "",
+            qrCodeUrl: hostel.qrCodeUrl || "",
+            planType: hostel.planType || "Unified",
+          }
+        : null,
       owner: owner
         ? {
             _id: owner._id,
@@ -510,6 +543,7 @@ const getDashboardStats = async (req, res) => {
             profileImage: owner.profileImage || "",
             status: owner.status,
             hostelId: owner.hostelId,
+            hostelName: hostel ? (hostel.hostelName || hostel.name || "") : "",
           }
         : null,
     });
@@ -526,9 +560,9 @@ const getPendingCount = async (req, res) => {
   try {
     const { hostelId } = req.owner;
     
-    const pendingAdmissions = await Resident.countDocuments({
+    const pendingAdmissions = await PublicAdmission.countDocuments({
       hostelId,
-      status: "pending"
+      status: "Pending"
     });
 
     res.status(200).json({
@@ -537,7 +571,6 @@ const getPendingCount = async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({
-
       success: false,
       error: error.message
     });
@@ -555,6 +588,20 @@ const getAdmissions = async (req, res) => {
   } catch (error) {
     logger.error("getAdmissions error:", error?.message || error);
     res.status(500).json({ success: false, message: "Failed to load admissions", error: error?.message || String(error) });
+  }
+};
+
+// ==========================
+// OWNER: GET PENDING ADMISSIONS (ALIAS)
+// ==========================
+const getPendingAdmissions = async (req, res) => {
+  try {
+    const { hostelId } = req.owner;
+    const admissions = await PublicAdmission.find({ hostelId, status: "Pending" }).sort({ createdAt: -1 });
+    res.status(200).json({ success: true, admissions });
+  } catch (error) {
+    logger.error("getPendingAdmissions error:", error?.message || error);
+    res.status(500).json({ success: false, message: "Failed to load pending admissions", error: error?.message || String(error) });
   }
 };
 
@@ -1286,6 +1333,7 @@ module.exports = {
   getDashboardStats,
   getPendingCount,
   getAdmissions,
+  getPendingAdmissions,
   approveAdmission,
   rejectAdmission,
   updateHostelSettings,

@@ -11,7 +11,9 @@ import {
   ChevronDown,
   ChevronUp,
   ArrowRight,
-  HardDrive
+  HardDrive,
+  PlusCircle,
+  CheckCircle2,
 } from "lucide-react";
 import { useTheme } from "../design-system/ThemeProvider";
 import {
@@ -23,6 +25,7 @@ import {
   ProgressBar,
   SectionHeader,
 } from "../design-system/components";
+import { useCurrentStorage } from "../contexts/HostelContext";
 import SubscriptionBanner from "../components/SubscriptionBanner";
 import WorkspaceActivity from "./WorkspaceActivity";
 import WorkspaceInsights from "./WorkspaceInsights";
@@ -43,6 +46,22 @@ export const DashboardDesktop = memo(function DashboardDesktop({
   setAiSuggestionsOpen,
 }) {
   const { colors } = useTheme();
+  const { storage } = useCurrentStorage();
+
+  const activeHostelName = hostel?.name || hostel?.hostelName || "";
+  const totalBeds = stats?.totalBeds || 0;
+  const occupiedBeds = stats?.occupiedBeds || 0;
+  const occupancyRate = stats?.occupancyRate || (totalBeds > 0 ? Math.round((occupiedBeds / totalBeds) * 100) : 0);
+  const pendingRentAmount = stats?.pendingRent || 0;
+  const todayAdmissionsCount = stats?.newAdmissionsToday || 0;
+  const effectivePendingCount = stats?.pendingAdmissions ?? pendingCount ?? 0;
+
+  // Storage calculation
+  const usedMB = workspaceData?.storage?.usedMB || storage?.used || 0;
+  const limitMB = workspaceData?.storage?.limitMB || (storage?.limit ? (storage.limit * 1024) : 5120);
+  const usedFormatted = typeof usedMB === "number" ? (usedMB < 1024 ? `${usedMB.toFixed(1)} MB` : `${(usedMB / 1024).toFixed(1)} GB`) : `${usedMB}`;
+  const limitFormatted = typeof limitMB === "number" ? (limitMB < 1024 ? `${limitMB} MB` : `${(limitMB / 1024).toFixed(0)} GB`) : `${limitMB}`;
+  const storagePercent = limitMB > 0 ? Math.min(100, Math.round((usedMB / limitMB) * 100)) : 0;
 
   return (
     <div className="space-y-6">
@@ -58,20 +77,20 @@ export const DashboardDesktop = memo(function DashboardDesktop({
         />
       )}
       
-      {/* 1. Page Header & Compact Summary */}
+      {/* 1. Page Header & Dynamic Summary */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 rounded-2xl border p-4" style={{ background: "rgba(19, 28, 46, 0.8)", borderColor: colors.border.default || "#202B45" }}>
         <div>
           <h1 style={{ fontSize: "28px", fontWeight: 700, color: "#FFFFFF", margin: 0, lineHeight: 1.2 }}>
             Dashboard
           </h1>
           <p style={{ fontSize: "13px", color: colors.text.secondary || "#94A3B8", margin: "4px 0 0" }}>
-            Good day, {ownerName} • {hostel?.name || hostel?.hostelName || "Green Valley Hostel"}
+            Good day, {ownerName || "Hostel Owner"}{activeHostelName ? ` • ${activeHostelName}` : ""}
           </p>
         </div>
         <Badge variant="success">Active Workspace</Badge>
       </div>
 
-      {/* ABOVE THE FOLD — ONLY 3 PRIMARY QUESTIONS */}
+      {/* 2. PRIMARY KPI CARDS */}
       <div>
         <SectionHeader title="How is my hostel today?" subtitle="Key metrics at a glance" />
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-3">
@@ -84,31 +103,93 @@ export const DashboardDesktop = memo(function DashboardDesktop({
           />
           <MetricCard
             title="Occupancy"
-            value={`${stats.occupancyRate || 0}%`}
+            value={`${occupancyRate}%`}
             icon={BedDouble}
-            trend="Occupied Bunk"
+            trend={`${occupiedBeds} / ${totalBeds} Beds Occupied`}
             trendDirection="up"
           />
           <MetricCard
             title="Pending Rent"
-            value={`₹${(stats.pendingRent || 0).toLocaleString()}`}
+            value={`₹${pendingRentAmount.toLocaleString()}`}
             icon={Wallet}
-            trend="Overdue"
-            trendDirection="down"
+            trend={pendingRentAmount > 0 ? "Overdue payments" : "No overdue payments"}
+            trendDirection={pendingRentAmount > 0 ? "down" : "neutral"}
           />
           <MetricCard
             title="Today's Admissions"
-            value={(pendingCount || 0).toString()}
+            value={todayAdmissionsCount.toString()}
             icon={UserPlus}
-            trend="Pending Review"
+            trend={todayAdmissionsCount > 0 ? `${todayAdmissionsCount} New Today` : "Admissions Today"}
             trendDirection="neutral"
           />
         </div>
       </div>
 
-      {/* QUESTION 2: What needs attention? */}
+      {/* 3. DEDICATED ADMISSIONS & ONBOARDING SECTION */}
       <div>
-        <SectionHeader title="What needs attention?" subtitle="Operational alerts requiring immediate action" />
+        <SectionHeader title="Admissions & Applicants" subtitle="Review incoming requests and approvals" />
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-3">
+          <DashboardCard padding="md" className="flex flex-col justify-between">
+            <div>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <UserPlus size={18} style={{ color: colors.accent.primary || "#22C55E" }} />
+                  <span style={{ fontSize: "14px", fontWeight: 700, color: "#FFFFFF" }}>New Admissions</span>
+                </div>
+                <Badge variant={todayAdmissionsCount > 0 ? "success" : "neutral"} size="sm">
+                  {todayAdmissionsCount > 0 ? "New Today" : "0 Today"}
+                </Badge>
+              </div>
+              <div style={{ fontSize: "28px", fontWeight: 700, color: "#FFFFFF", marginTop: "10px" }}>
+                {todayAdmissionsCount}
+              </div>
+              <p style={{ fontSize: "13px", color: colors.text.secondary || "#94A3B8", margin: "4px 0 16px" }}>
+                {todayAdmissionsCount > 0 ? "New requests received today" : "No new admission requests"}
+              </p>
+            </div>
+            <Button
+              variant="secondary"
+              fullWidth
+              icon={UserPlus}
+              onClick={() => navigate("/admissions")}
+            >
+              View New Admissions
+            </Button>
+          </DashboardCard>
+
+          <DashboardCard padding="md" className="flex flex-col justify-between">
+            <div>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 size={18} className={effectivePendingCount > 0 ? "text-amber-400" : "text-emerald-400"} />
+                  <span style={{ fontSize: "14px", fontWeight: 700, color: "#FFFFFF" }}>Pending Admissions</span>
+                </div>
+                <Badge variant={effectivePendingCount > 0 ? "warning" : "success"} size="sm">
+                  {effectivePendingCount > 0 ? `${effectivePendingCount} Awaiting` : "Caught Up"}
+                </Badge>
+              </div>
+              <div style={{ fontSize: "28px", fontWeight: 700, color: "#FFFFFF", marginTop: "10px" }}>
+                {effectivePendingCount}
+              </div>
+              <p style={{ fontSize: "13px", color: colors.text.secondary || "#94A3B8", margin: "4px 0 16px" }}>
+                {effectivePendingCount > 0 ? "Applications awaiting approval" : "No admissions awaiting approval"}
+              </p>
+            </div>
+            <Button
+              variant={effectivePendingCount > 0 ? "primary" : "secondary"}
+              fullWidth
+              icon={ArrowRight}
+              onClick={() => navigate("/admissions")}
+            >
+              View Pending Admissions
+            </Button>
+          </DashboardCard>
+        </div>
+      </div>
+
+      {/* 4. WHAT NEEDS ATTENTION? (DATA-DRIVEN BADGES) */}
+      <div>
+        <SectionHeader title="What needs attention?" subtitle="Operational alerts requiring action" />
         <DashboardCard padding="md" className="mt-3">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             
@@ -118,17 +199,19 @@ export const DashboardDesktop = memo(function DashboardDesktop({
               style={{ borderColor: colors.border.default || "#202B45", background: "rgba(255,255,255,0.02)", minHeight: "44px" }}
             >
               <div className="flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-rose-500/10 text-rose-400 flex-shrink-0">
+                <div className={`p-2 rounded-lg ${pendingRentAmount > 0 ? "bg-rose-500/10 text-rose-400" : "bg-emerald-500/10 text-emerald-400"} flex-shrink-0`}>
                   <AlertTriangle size={22} />
                 </div>
                 <div className="min-w-0">
                   <div style={{ fontSize: "13px", color: colors.text.secondary || "#94A3B8" }}>Overdue Payments</div>
                   <div style={{ fontSize: "16px", fontWeight: 700, color: "#FFFFFF" }}>
-                    ₹{(stats.pendingRent || 0).toLocaleString()}
+                    ₹{pendingRentAmount.toLocaleString()}
                   </div>
                 </div>
               </div>
-              <Badge variant="danger" size="sm">Action</Badge>
+              <Badge variant={pendingRentAmount > 0 ? "danger" : "success"} size="sm">
+                {pendingRentAmount > 0 ? "Action" : "All caught up"}
+              </Badge>
             </div>
 
             <div 
@@ -137,7 +220,7 @@ export const DashboardDesktop = memo(function DashboardDesktop({
               style={{ borderColor: colors.border.default || "#202B45", background: "rgba(255,255,255,0.02)", minHeight: "44px" }}
             >
               <div className="flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-amber-500/10 text-amber-400 flex-shrink-0">
+                <div className="p-2 rounded-lg bg-slate-500/10 text-slate-400 flex-shrink-0">
                   <FileText size={22} />
                 </div>
                 <div className="min-w-0">
@@ -145,7 +228,7 @@ export const DashboardDesktop = memo(function DashboardDesktop({
                   <div style={{ fontSize: "16px", fontWeight: 700, color: "#FFFFFF" }}>0 Active</div>
                 </div>
               </div>
-              <Badge variant="warning" size="sm">Normal</Badge>
+              <Badge variant="neutral" size="sm">No complaints</Badge>
             </div>
 
             <div 
@@ -164,7 +247,9 @@ export const DashboardDesktop = memo(function DashboardDesktop({
                   </div>
                 </div>
               </div>
-              <Badge variant="success" size="sm">Available</Badge>
+              <Badge variant={vacantRoomsCount > 0 ? "success" : "neutral"} size="sm">
+                {vacantRoomsCount > 0 ? "Available" : "Fully occupied"}
+              </Badge>
             </div>
 
           </div>
@@ -176,10 +261,10 @@ export const DashboardDesktop = memo(function DashboardDesktop({
         </div>
       </div>
 
-      {/* QUESTION 3: What should I do next? */}
+      {/* 5. QUICK ACTIONS */}
       <div>
         <SectionHeader title="What should I do next?" subtitle="Common operational tasks" />
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-3">
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 mt-3">
           <Button 
             variant="primary" 
             fullWidth 
@@ -187,6 +272,24 @@ export const DashboardDesktop = memo(function DashboardDesktop({
             onClick={() => navigate("/residents")}
           >
             Add Resident
+          </Button>
+
+          <Button 
+            variant="secondary" 
+            fullWidth 
+            icon={PlusCircle} 
+            onClick={() => navigate("/rooms")}
+          >
+            Add Room
+          </Button>
+
+          <Button 
+            variant="secondary" 
+            fullWidth 
+            icon={UserPlus} 
+            onClick={() => navigate("/admissions")}
+          >
+            New Admission
           </Button>
 
           <Button 
@@ -201,15 +304,6 @@ export const DashboardDesktop = memo(function DashboardDesktop({
           <Button 
             variant="secondary" 
             fullWidth 
-            icon={Receipt} 
-            onClick={() => navigate("/owner/expense-dashboard")}
-          >
-            Add Expense
-          </Button>
-
-          <Button 
-            variant="secondary" 
-            fullWidth 
             icon={FileText} 
             onClick={() => navigate("/reports")}
           >
@@ -218,7 +312,7 @@ export const DashboardDesktop = memo(function DashboardDesktop({
         </div>
       </div>
 
-      {/* BELOW THE FOLD */}
+      {/* 6. BELOW THE FOLD */}
       <div className="pt-6 border-t space-y-6" style={{ borderColor: colors.border.default || "#202B45" }}>
         
         {/* Collapsible AI Insights */}
@@ -259,7 +353,7 @@ export const DashboardDesktop = memo(function DashboardDesktop({
                 </div>
                 <Badge variant="success" size="sm">Active</Badge>
               </div>
-              <ProgressBar value={15.6} max={100} showLabel label="15.6 MB / 100 MB Used" color="primary" height="8px" />
+              <ProgressBar value={storagePercent} max={100} showLabel label={`${usedFormatted} / ${limitFormatted} Used`} color="primary" height="8px" />
               <div className="mt-3 pt-3 border-t flex justify-between items-center" style={{ borderColor: colors.border.default || "#202B45" }}>
                 <span style={{ fontSize: "13px", color: colors.text.secondary || "#94A3B8" }}>Cloud Sync</span>
                 <button 

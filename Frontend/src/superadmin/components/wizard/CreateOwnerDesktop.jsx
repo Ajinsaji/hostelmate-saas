@@ -370,7 +370,7 @@ export const CreateOwnerDesktop = ({
                     name="hostelName"
                     value={formData.hostelName}
                     onChange={handleChange}
-                    placeholder="e.g. Green Valley Luxury PG"
+                    placeholder="e.g. Royal Living PG"
                     className="w-full bg-[#0B1220] border border-[#202B45] rounded-xl px-4 py-3.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition-all min-h-[48px] focus:ring-2 focus:ring-emerald-500/20"
                   />
                 </div>

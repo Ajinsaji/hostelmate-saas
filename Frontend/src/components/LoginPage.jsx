@@ -72,6 +72,22 @@ function LoginPage() {
         setOwnerAuth(response.data.token);
         setStoredOwner(storedUser);
 
+        if (response.data.hostel) {
+          const h = response.data.hostel;
+          const hObj = { id: h._id || h.id, _id: h._id || h.id, name: h.hostelName || h.name, hostelName: h.hostelName || h.name, ...h };
+          localStorage.setItem("activeHostel", JSON.stringify(hObj));
+          localStorage.setItem("activeHostelId", hObj.id);
+          localStorage.setItem("activeHostelName", hObj.name);
+        } else if (userData.hostelName || userData.hostelId) {
+          const hObj = { id: userData.hostelId, _id: userData.hostelId, name: userData.hostelName || "", hostelName: userData.hostelName || "" };
+          localStorage.setItem("activeHostel", JSON.stringify(hObj));
+          localStorage.setItem("activeHostelId", hObj.id);
+          localStorage.setItem("activeHostelName", hObj.name);
+        }
+
+        window.dispatchEvent(new Event('profileUpdated'));
+        window.dispatchEvent(new Event('hostelChanged'));
+
         if (import.meta.env.DEV) {
           console.log("[LoginPage] TOKEN SAVED (ownerToken):", localStorage.getItem("ownerToken"));
           console.log("[LoginPage] OWNER SAVED (ownerUser):", localStorage.getItem("ownerUser"));

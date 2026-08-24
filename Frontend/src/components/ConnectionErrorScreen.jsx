@@ -60,34 +60,24 @@ export default function ConnectionErrorScreen() {
         </p>
 
         {/* Action Buttons */}
-        <div className="w-full flex flex-col gap-3">
-          <div className="w-full flex flex-col sm:flex-row items-center gap-3">
-            <button
-              onClick={() => checkConnection(true)}
-              disabled={isChecking}
-              className="w-full sm:flex-1 min-h-[48px] px-5 py-3 rounded-2xl text-sm font-bold text-slate-950 bg-emerald-500 hover:bg-emerald-400 active:scale-95 transition-all flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(16,185,129,0.3)] disabled:opacity-50 cursor-pointer"
-            >
-              <RefreshCw size={16} className={isChecking ? "animate-spin" : ""} />
-              <span>{isChecking ? "Testing..." : "Try Again"}</span>
-            </button>
-
-            <button
-              onClick={() => {
-                openDiagnostic();
-                checkConnection(true);
-              }}
-              className="w-full sm:flex-1 min-h-[48px] px-5 py-3 rounded-2xl text-sm font-semibold text-slate-200 bg-slate-800/80 hover:bg-slate-800 hover:text-white border border-slate-700/60 active:scale-95 transition-all flex items-center justify-center gap-2 cursor-pointer"
-            >
-              <Activity size={16} className="text-slate-400" />
-              <span>Check Connection</span>
-            </button>
-          </div>
+        <div className="w-full flex flex-col sm:flex-row items-center gap-3">
+          <button
+            onClick={() => {
+              openDiagnostic();
+              checkConnection(true);
+            }}
+            disabled={isChecking}
+            className="w-full sm:flex-1 min-h-[48px] px-5 py-3 rounded-2xl text-sm font-bold text-slate-950 bg-emerald-500 hover:bg-emerald-400 active:scale-95 transition-all flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(16,185,129,0.3)] disabled:opacity-50 cursor-pointer"
+          >
+            <Activity size={18} className={isChecking ? "animate-spin" : "text-slate-950"} />
+            <span>{isChecking ? "Checking..." : "Check Connection"}</span>
+          </button>
 
           <button
             onClick={() => window.location.reload()}
-            className="w-full min-h-[44px] px-5 py-2.5 rounded-2xl text-xs font-bold text-slate-300 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 active:scale-95 transition-all flex items-center justify-center gap-2 cursor-pointer"
+            className="w-full sm:flex-1 min-h-[48px] px-5 py-3 rounded-2xl text-sm font-semibold text-slate-200 bg-slate-800/90 hover:bg-slate-800 hover:text-white border border-slate-700/70 active:scale-95 transition-all flex items-center justify-center gap-2 cursor-pointer"
           >
-            <RefreshCw size={14} className="text-slate-400" />
+            <RefreshCw size={16} className="text-slate-400" />
             <span>Refresh App</span>
           </button>
         </div>

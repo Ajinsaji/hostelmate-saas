@@ -615,6 +615,36 @@ function App() {
           }
         />
         <Route
+          path="/owner/business-intelligence"
+          element={
+            <OwnerProtectedRoute>
+              <DesktopShell
+                variant="owner"
+                title="Business Intelligence & Analytics"
+                breadcrumbs={[{ label: "BI Analytics" }]}
+                backTo={"/owner/dashboard"}
+              >
+                <BusinessIntelligence />
+              </DesktopShell>
+            </OwnerProtectedRoute>
+          }
+        />
+        <Route
+          path="/owner/hostel-settings"
+          element={
+            <OwnerProtectedRoute>
+              <DesktopShell
+                variant="owner"
+                title="Hostel Settings"
+                breadcrumbs={[{ label: "Hostel Settings" }]}
+                backTo={"/owner/dashboard"}
+              >
+                <HostelSettings />
+              </DesktopShell>
+            </OwnerProtectedRoute>
+          }
+        />
+        <Route
           path="/owner/business-analytics"
           element={
             <OwnerProtectedRoute>
@@ -793,6 +823,51 @@ function App() {
         />
         <Route
           path="/admissions"
+          element={
+            <OwnerProtectedRoute>
+              <DesktopShell
+                variant="owner"
+                title="Admissions"
+                breadcrumbs={[{ label: "Admissions" }]}
+                backTo="/owner/dashboard"
+              >
+                <PendingAdmissions />
+              </DesktopShell>
+            </OwnerProtectedRoute>
+          }
+        />
+        <Route
+          path="/owner/pending-admissions"
+          element={
+            <OwnerProtectedRoute>
+              <DesktopShell
+                variant="owner"
+                title="Pending Admissions"
+                breadcrumbs={[{ label: "Admissions", to: "/admissions" }, { label: "Pending" }]}
+                backTo="/owner/dashboard"
+              >
+                <PendingAdmissions />
+              </DesktopShell>
+            </OwnerProtectedRoute>
+          }
+        />
+        <Route
+          path="/owner/admissions"
+          element={
+            <OwnerProtectedRoute>
+              <DesktopShell
+                variant="owner"
+                title="Admissions"
+                breadcrumbs={[{ label: "Admissions" }]}
+                backTo="/owner/dashboard"
+              >
+                <PendingAdmissions />
+              </DesktopShell>
+            </OwnerProtectedRoute>
+          }
+        />
+        <Route
+          path="/pending-admissions"
           element={
             <OwnerProtectedRoute>
               <DesktopShell

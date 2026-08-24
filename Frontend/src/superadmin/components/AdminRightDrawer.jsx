@@ -57,7 +57,7 @@ export const AdminRightDrawer = React.memo(() => {
             <div className="space-y-4">
               <div className="bg-slate-800/50 p-4 rounded-xl border border-slate-700">
                 <p className="text-xs text-slate-400 mb-1">Company / Group</p>
-                <p className="text-sm text-white font-medium">{data?.company || "Green Valley Group"}</p>
+                <p className="text-sm text-white font-medium">{data?.company || data?.hostelName || data?.name || "Hostel"}</p>
               </div>
               
               <div className="grid grid-cols-2 gap-4">

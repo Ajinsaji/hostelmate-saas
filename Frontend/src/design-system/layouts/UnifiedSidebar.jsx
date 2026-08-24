@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { useTheme } from '../ThemeProvider';
 import * as LucideIcons from 'lucide-react';
 import { Search, LogOut, ChevronLeft, ChevronRight, ShieldCheck } from 'lucide-react';
-import { useCurrentUser, useCurrentStorage, useCurrentSubscription } from '../../contexts/HostelContext';
+import { useCurrentUser, useCurrentStorage, useCurrentSubscription, usePendingAdmissions } from '../../contexts/HostelContext';
 import { formatSubscriptionStatus } from '../../utils/subscriptionFormatter';
 import HostelSwitcher from '../components/HostelSwitcher';
 
@@ -32,6 +32,7 @@ export default function UnifiedSidebar({
   const { user } = useCurrentUser();
   const { storage } = useCurrentStorage();
   const { subscription } = useCurrentSubscription();
+  const { pendingAdmissionsCount } = usePendingAdmissions();
 
   // Filter menu items by search
   const filteredSections = useMemo(() => {
@@ -242,23 +243,32 @@ export default function UnifiedSidebar({
                       }}
                     />
                     {!collapsed && <span>{item.label}</span>}
-                    {!collapsed && item.badge !== undefined && (
-                      <span
-                        style={{
-                          marginLeft: 'auto',
-                          fontSize: '11px',
-                          fontWeight: typography.weights.bold,
-                          background: colors.accent.danger,
-                          color: colors.text.primary,
-                          padding: '1px 6px',
-                          borderRadius: radius.full,
-                          minWidth: '18px',
-                          textAlign: 'center',
-                        }}
-                      >
-                        {item.badge}
-                      </span>
-                    )}
+                    {!collapsed && (() => {
+                      const badgeValue = item.badgeKey === 'pendingAdmissions'
+                        ? pendingAdmissionsCount
+                        : item.badge;
+                      const num = Number(badgeValue);
+                      if (badgeValue !== undefined && badgeValue !== null && !isNaN(num) && num > 0) {
+                        return (
+                          <span
+                            style={{
+                              marginLeft: 'auto',
+                              fontSize: '11px',
+                              fontWeight: typography.weights.bold,
+                              background: colors.accent.danger || '#EF4444',
+                              color: '#FFFFFF',
+                              padding: '1px 6px',
+                              borderRadius: radius.full,
+                              minWidth: '18px',
+                              textAlign: 'center',
+                            }}
+                          >
+                            {num}
+                          </span>
+                        );
+                      }
+                      return null;
+                    })()}
                   </button>
                 );
               })}

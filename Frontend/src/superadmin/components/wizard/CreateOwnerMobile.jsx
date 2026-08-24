@@ -348,7 +348,7 @@ export const CreateOwnerMobile = ({
                     name="hostelName"
                     value={formData.hostelName}
                     onChange={handleChange}
-                    placeholder="Green Valley PG"
+                    placeholder="e.g. Royal Living PG"
                     className="w-full bg-[#131C2E] border border-[#202B45] rounded-xl px-4 py-3 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition min-h-[48px]"
                   />
                 </div>

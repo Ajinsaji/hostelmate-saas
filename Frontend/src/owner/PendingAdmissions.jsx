@@ -9,10 +9,12 @@ import buildFileUrl from "../utils/buildFileUrl";
 import { CheckCircle, XCircle, Search, Filter, Sparkles, UserRound, Eye, MapPin, Mail, Home, BadgeCheck, X } from "lucide-react";
 
 import toast from "react-hot-toast";
+import { usePendingAdmissions } from "../contexts/HostelContext";
 
 
 function PendingAdmissions() {
   const { colors } = useTheme();
+  const { updatePendingAdmissionsCount } = usePendingAdmissions();
   const [admissions, setAdmissions] = useState([]);
   const [loading, setLoading] = useState(false);
   const [loadingActionId, setLoadingActionId] = useState(null);
@@ -23,7 +25,10 @@ function PendingAdmissions() {
     setLoading(true);
     try {
       const response = await api.get("/api/owner/admissions");
-      setAdmissions(response.data.admissions || []);
+      const list = response.data.admissions || [];
+      setAdmissions(list);
+      const pending = list.filter((a) => a.status === "Pending").length;
+      updatePendingAdmissionsCount(pending);
     } catch (error) {
       toast.error(error?.response?.data?.message || "Unable to load pending admissions.");
     } finally {

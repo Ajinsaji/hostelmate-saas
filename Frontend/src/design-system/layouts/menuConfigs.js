@@ -7,33 +7,27 @@
 export const ownerMenuItems = [
   { section: 'Dashboard', items: [
     { key: 'dashboard', label: 'Dashboard', icon: 'Home', href: '/owner/dashboard' },
+    { key: 'analytics', label: 'Analytics', icon: 'BarChart3', href: '/owner/business-intelligence' },
   ]},
   { section: 'Operations', items: [
     { key: 'residents', label: 'Residents', icon: 'Users', href: '/residents' },
-    { key: 'rooms', label: 'Rooms', icon: 'BedDouble', href: '/rooms' },
-    { key: 'admissions', label: 'Admissions', icon: 'UserPlus', href: '/owner/pending-admissions' },
-    { key: 'complaints', label: 'Complaints', icon: 'AlertTriangle', href: '/owner/dashboard' },
-  ]},
-  { section: 'Finance', items: [
+    { key: 'rooms', label: 'Rooms & Beds', icon: 'BedDouble', href: '/rooms' },
+    { key: 'admissions', label: 'Admissions', icon: 'UserPlus', href: '/admissions', badgeKey: 'pendingAdmissions' },
     { key: 'payments', label: 'Payments', icon: 'Wallet', href: '/payments' },
     { key: 'expenses', label: 'Expenses', icon: 'Receipt', href: '/owner/expense-dashboard' },
-    { key: 'reports', label: 'Reports', icon: 'FileText', href: '/reports' },
   ]},
-  { section: 'Business', items: [
-    { key: 'analytics', label: 'Analytics', icon: 'BarChart3', href: '/owner/business-intelligence' },
-    { key: 'ai', label: 'AI Insights', icon: 'Sparkles', href: '/owner/ai-insights' },
-    { key: 'storage', label: 'Storage', icon: 'HardDrive', href: '/owner/storage-center' },
-  ]},
-  { section: 'Workspace', items: [
-    { key: 'hostels', label: 'Hostel Settings', icon: 'Building', href: '/owner/hostel-settings' },
+  { section: 'Management', items: [
     { key: 'staff', label: 'Staff Management', icon: 'UserCog', href: '/owner/staff-management' },
-    { key: 'settings', label: 'Settings', icon: 'Settings', href: '/owner/settings' },
+    { key: 'reports', label: 'Reports', icon: 'FileText', href: '/reports' },
+    { key: 'settings', label: 'Hostel Settings', icon: 'Building', href: '/owner/settings' },
+    { key: 'subscription', label: 'Subscription', icon: 'CreditCard', href: '/owner/subscription' },
+    { key: 'profile', label: 'Profile', icon: 'User', href: '/owner/profile' },
   ]},
-  { section: 'Enterprise', items: [
+  { section: 'Advanced', items: [
+    { key: 'ai', label: 'AI Insights', icon: 'Sparkles', href: '/owner/ai-insights' },
+    { key: 'storage', label: 'Cloud Storage', icon: 'HardDrive', href: '/owner/storage-center' },
     { key: 'marketplace', label: 'Marketplace', icon: 'Store', href: '/owner/marketplace' },
     { key: 'developer', label: 'Developer Console', icon: 'Code', href: '/owner/developer-console' },
-    { key: 'audit', label: 'Audit Center', icon: 'ShieldCheck', href: '/owner/audit-center' },
-    { key: 'backup', label: 'Backup Center', icon: 'Database', href: '/owner/backup-center' },
   ]},
 ];
 

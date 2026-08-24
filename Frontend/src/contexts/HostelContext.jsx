@@ -16,20 +16,24 @@ export function HostelProvider({ children }) {
       // ignore
     }
     
-    // Fallback to first user hostel if available
+    // Fallback to first user hostel or owner data if available
     const user = getStoredUser();
     if (user?.hostels && user.hostels.length > 0) {
       return user.hostels[0];
     }
 
-    // Default enterprise fallback
+    const storedName = localStorage.getItem("activeHostelName") || user?.hostelName || user?.hostel?.hostelName || user?.hostel?.name || "";
+    const storedId = localStorage.getItem("activeHostelId") || user?.hostelId || user?.hostel?._id || user?.hostel?.id || "";
+
     return {
-      id: '1',
-      name: 'Green Valley Hostel',
-      code: 'GVH01',
-      residentsCount: 120,
-      memberCount: 120,
-      storage: { used: 1.2, limit: 5 },
+      id: storedId,
+      _id: storedId,
+      name: storedName,
+      hostelName: storedName,
+      code: user?.hostelCode || "",
+      residentsCount: 0,
+      memberCount: 0,
+      storage: user?.storage || { used: 0, limit: 5 },
       logo: null
     };
   });
@@ -71,16 +75,35 @@ export function HostelProvider({ children }) {
     };
   }, [currentHostel, currentUser]);
 
+  // Pending admissions count state
+  const [pendingAdmissionsCount, setPendingAdmissionsCount] = useState(() => {
+    try {
+      return Number(localStorage.getItem("pendingAdmissionsCount")) || 0;
+    } catch {
+      return 0;
+    }
+  });
+
   // Synchronize when local storage changes
   useEffect(() => {
     const syncUser = () => {
       setCurrentUser(getStoredUser());
     };
+    const syncAdmissions = (e) => {
+      if (e?.detail?.count !== undefined) {
+        setPendingAdmissionsCount(e.detail.count);
+      } else {
+        const count = Number(localStorage.getItem("pendingAdmissionsCount")) || 0;
+        setPendingAdmissionsCount(count);
+      }
+    };
     window.addEventListener('profileUpdated', syncUser);
     window.addEventListener('ownerUserUpdated', syncUser);
+    window.addEventListener('admissionsCountUpdated', syncAdmissions);
     return () => {
       window.removeEventListener('profileUpdated', syncUser);
       window.removeEventListener('ownerUserUpdated', syncUser);
+      window.removeEventListener('admissionsCountUpdated', syncAdmissions);
     };
   }, []);
 
@@ -90,6 +113,15 @@ export function HostelProvider({ children }) {
     setStoredUser(updated);
     setCurrentUser(updated);
     window.dispatchEvent(new Event('profileUpdated'));
+  };
+
+  const updatePendingAdmissionsCount = (count) => {
+    const num = Number(count) || 0;
+    try {
+      localStorage.setItem("pendingAdmissionsCount", String(num));
+    } catch {}
+    setPendingAdmissionsCount(num);
+    window.dispatchEvent(new CustomEvent('admissionsCountUpdated', { detail: { count: num } }));
   };
 
   const switchHostel = (hostel) => {
@@ -122,10 +154,12 @@ export function HostelProvider({ children }) {
     currentHostel,
     subscription,
     storage,
+    pendingAdmissionsCount,
     updateCurrentUser,
+    updatePendingAdmissionsCount,
     switchHostel,
     updateSubscription
-  }), [currentUser, currentHostel, subscription, storage]);
+  }), [currentUser, currentHostel, subscription, storage, pendingAdmissionsCount]);
 
   return (
     <HostelContext.Provider value={value}>
@@ -147,8 +181,11 @@ export function useCurrentUser() {
 export function useCurrentHostel() {
   const context = useContext(HostelContext);
   if (!context) {
+    const user = getStoredUser();
+    const storedName = localStorage.getItem("activeHostelName") || user?.hostelName || user?.hostel?.hostelName || user?.hostel?.name || "";
+    const storedId = localStorage.getItem("activeHostelId") || user?.hostelId || user?.hostel?._id || user?.hostel?.id || "";
     return {
-      hostel: { id: '1', name: 'Green Valley Hostel' },
+      hostel: { id: storedId, _id: storedId, name: storedName, hostelName: storedName },
       switchHostel: () => {}
     };
   }
@@ -166,7 +203,19 @@ export function useCurrentSubscription() {
 export function useCurrentStorage() {
   const context = useContext(HostelContext);
   if (!context) {
-    return { storage: { used: 1.2, limit: 5, percentage: 24 } };
+    return { storage: { used: 0, limit: 5, percentage: 0 } };
   }
   return { storage: context.storage };
+}
+
+export function usePendingAdmissions() {
+  const context = useContext(HostelContext);
+  if (!context) {
+    const count = Number(localStorage.getItem("pendingAdmissionsCount")) || 0;
+    return { pendingAdmissionsCount: count, updatePendingAdmissionsCount: () => {} };
+  }
+  return {
+    pendingAdmissionsCount: context.pendingAdmissionsCount,
+    updatePendingAdmissionsCount: context.updatePendingAdmissionsCount,
+  };
 }

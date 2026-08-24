@@ -31,8 +31,8 @@ const drawerSections = [
     title: 'OPERATIONS',
     items: [
       { key: 'residents', label: 'Residents', icon: Users, href: '/residents' },
-      { key: 'rooms', label: 'Rooms', icon: BedDouble, href: '/rooms' },
-      { key: 'admissions', label: 'Admissions', icon: Users, href: '/owner/pending-admissions' }
+      { key: 'rooms', label: 'Rooms & Beds', icon: BedDouble, href: '/rooms' },
+      { key: 'admissions', label: 'Admissions', icon: Users, href: '/admissions' }
     ]
   },
   {
@@ -103,7 +103,7 @@ export const MobileDrawer = memo(function MobileDrawer({
 
   if (!isOpen) return null;
 
-  const activeHostelName = hostel?.name || hostel?.hostelName || 'Green Valley Hostel';
+  const activeHostelName = hostel?.name || hostel?.hostelName || user?.hostelName || 'Hostel';
   const displayUserName = propUserName || user?.ownerName || user?.name || (isAdmin ? 'Admin Console' : 'Owner');
   const displayUserRole = propUserRole || (isAdmin ? 'Administrator' : user?.role === 'owner' ? 'Hostel Owner' : 'Owner');
 

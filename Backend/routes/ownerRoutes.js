@@ -7,10 +7,10 @@ const {
   resetOwnerPassword,
   setOwnerStatus,
   forceLogout,
-  transferOwnership,
   getDashboardStats,
   getPendingCount,
   getAdmissions,
+  getPendingAdmissions,
   approveAdmission,
   rejectAdmission,
   updateHostelSettings,
@@ -37,6 +37,7 @@ router.get("/pending-count", ownerAuth, getPendingCount);
 
 // Public Admissions
 router.get("/admissions", ownerAuth, getAdmissions);
+router.get("/admissions/pending", ownerAuth, getPendingAdmissions);
 router.put("/admissions/:id/approve", ownerAuth, approveAdmission);
 router.put("/admissions/:id/reject", ownerAuth, rejectAdmission);
 

@@ -9,7 +9,6 @@ import useOwnerRealtimeSync, { dispatchOwnerSnapshotUpdated } from "../hooks/use
 import { Save, X, User, Phone, Mail, Image as ImageIcon, Loader2 } from "lucide-react";
 import useGlobalPolling from "../hooks/useGlobalPolling";
 
-
 function OwnerProfileEdit() {
   const { colors } = useTheme();
   const [loading, setLoading] = useState(true);
@@ -78,7 +77,6 @@ function OwnerProfileEdit() {
 
   useEffect(() => {
     fetchOwner();
-     
   }, []);
 
   useGlobalPolling(fetchOwner, { interval: 9000, safeProps: safeRefreshProps });
@@ -135,6 +133,7 @@ function OwnerProfileEdit() {
         next.profileImage = updatedOwner.profileImage;
       }
       localStorage.setItem("ownerUser", JSON.stringify(next));
+      window.dispatchEvent(new Event('profileUpdated'));
       dispatchOwnerSnapshotUpdated({
         ownerName: next.ownerName,
         profileImage: next.profileImage,
@@ -210,4 +209,3 @@ function OwnerProfileEdit() {
 }
 
 export default OwnerProfileEdit;
-

@@ -52,7 +52,7 @@ export function HostelSwitcher() {
       >
         <Building size={16} style={{ color: colors.accent.primary, flexShrink: 0 }} />
         <span style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.semibold, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-          {hostel?.name || 'Green Valley Hostel'}
+          {hostel?.name || hostel?.hostelName || user?.hostelName || 'Hostel'}
         </span>
       </div>
     );
@@ -88,7 +88,7 @@ export function HostelSwitcher() {
         <div style={{ display: 'flex', alignItems: 'center', gap: spacing.sm, minWidth: 0 }}>
           <Building size={16} style={{ color: colors.accent.primary, flexShrink: 0 }} />
           <span style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.semibold, textAlign: 'left', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-            {hostel?.name || 'Green Valley Hostel'}
+            {hostel?.name || hostel?.hostelName || user?.hostelName || 'Hostel'}
           </span>
         </div>
         <ChevronDown size={14} style={{ color: colors.text.muted, flexShrink: 0, transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 200ms ease' }} />

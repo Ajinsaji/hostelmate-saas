@@ -14,10 +14,12 @@ import {
   ChevronUp,
   ArrowRight,
   HardDrive,
-  CheckCircle2
+  CheckCircle2,
+  PlusCircle,
 } from "lucide-react";
 
 import { useTheme } from "../design-system/ThemeProvider";
+import { useCurrentStorage } from "../contexts/HostelContext";
 import SubscriptionBanner from "../components/SubscriptionBanner";
 import WorkspaceActivity from "./WorkspaceActivity";
 import WorkspaceInsights from "./WorkspaceInsights";
@@ -32,6 +34,7 @@ export const DashboardMobile = memo(function DashboardMobile({
   vacantRoomsCount,
 }) {
   const { colors } = useTheme();
+  const { storage } = useCurrentStorage();
   const navigate = useNavigate();
 
   // Accordion toggle state for below-the-fold content
@@ -45,6 +48,20 @@ export const DashboardMobile = memo(function DashboardMobile({
   const toggleSection = (key) => {
     setOpenSections((prev) => ({ ...prev, [key]: !prev[key] }));
   };
+
+  const totalBeds = stats?.totalBeds || 0;
+  const occupiedBeds = stats?.occupiedBeds || 0;
+  const occupancyRate = stats?.occupancyRate || (totalBeds > 0 ? Math.round((occupiedBeds / totalBeds) * 100) : 0);
+  const pendingRentAmount = stats?.pendingRent || 0;
+  const todayAdmissionsCount = stats?.newAdmissionsToday || 0;
+  const effectivePendingCount = stats?.pendingAdmissions ?? pendingCount ?? 0;
+
+  // Storage calculation
+  const usedMB = workspaceData?.storage?.usedMB || storage?.used || 0;
+  const limitMB = workspaceData?.storage?.limitMB || (storage?.limit ? (storage.limit * 1024) : 5120);
+  const usedFormatted = typeof usedMB === "number" ? (usedMB < 1024 ? `${usedMB.toFixed(1)} MB` : `${(usedMB / 1024).toFixed(1)} GB`) : `${usedMB}`;
+  const limitFormatted = typeof limitMB === "number" ? (limitMB < 1024 ? `${limitMB} MB` : `${(limitMB / 1024).toFixed(0)} GB`) : `${limitMB}`;
+  const storagePercent = limitMB > 0 ? Math.min(100, Math.round((usedMB / limitMB) * 100)) : 0;
 
   return (
     <div
@@ -68,11 +85,8 @@ export const DashboardMobile = memo(function DashboardMobile({
           isTrial={subscriptionData.isTrial}
         />
       )}
-      {/* ========================================================================= */}
-      {/* 5-SECOND ANSWER — ABOVE THE FOLD                                          */}
-      {/* ========================================================================= */}
 
-      {/* QUESTION 1: How is my hostel today? (4 KPI Cards Only) */}
+      {/* QUESTION 1: How is my hostel today? (4 KPI Cards) */}
       <section style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
         <div>
           <h2 style={{ fontSize: "20px", fontWeight: 700, color: "#FFFFFF", margin: 0 }}>
@@ -98,7 +112,7 @@ export const DashboardMobile = memo(function DashboardMobile({
           >
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
               <span style={{ fontSize: "13px", color: colors.text.secondary || "#94A3B8" }}>Today's Revenue</span>
-              <div style={{ p: "6px", borderRadius: "8px", background: "rgba(34, 197, 94, 0.12)", color: "#22C55E", display: "flex" }}>
+              <div style={{ padding: "6px", borderRadius: "8px", background: "rgba(34, 197, 94, 0.12)", color: "#22C55E", display: "flex" }}>
                 <IndianRupee size={22} />
               </div>
             </div>
@@ -122,14 +136,16 @@ export const DashboardMobile = memo(function DashboardMobile({
           >
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
               <span style={{ fontSize: "13px", color: colors.text.secondary || "#94A3B8" }}>Occupancy</span>
-              <div style={{ p: "6px", borderRadius: "8px", background: "rgba(34, 197, 94, 0.12)", color: "#22C55E", display: "flex" }}>
+              <div style={{ padding: "6px", borderRadius: "8px", background: "rgba(34, 197, 94, 0.12)", color: "#22C55E", display: "flex" }}>
                 <BedDouble size={22} />
               </div>
             </div>
             <div style={{ fontSize: "20px", fontWeight: 700, color: "#FFFFFF" }}>
-              {stats?.occupancyRate || 0}%
+              {occupancyRate}%
             </div>
-            <div style={{ fontSize: "13px", color: colors.text.secondary || "#94A3B8" }}>Bunks occupied</div>
+            <div style={{ fontSize: "13px", color: colors.text.secondary || "#94A3B8" }}>
+              {occupiedBeds} / {totalBeds} Beds
+            </div>
           </div>
 
           {/* Pending Rent KPI */}
@@ -146,14 +162,16 @@ export const DashboardMobile = memo(function DashboardMobile({
           >
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
               <span style={{ fontSize: "13px", color: colors.text.secondary || "#94A3B8" }}>Pending Rent</span>
-              <div style={{ p: "6px", borderRadius: "8px", background: "rgba(245, 158, 11, 0.12)", color: "#F59E0B", display: "flex" }}>
+              <div style={{ padding: "6px", borderRadius: "8px", background: pendingRentAmount > 0 ? "rgba(245, 158, 11, 0.12)" : "rgba(34, 197, 94, 0.12)", color: pendingRentAmount > 0 ? "#F59E0B" : "#22C55E", display: "flex" }}>
                 <Wallet size={22} />
               </div>
             </div>
             <div style={{ fontSize: "20px", fontWeight: 700, color: "#FFFFFF" }}>
-              ₹{(stats?.pendingRent || 0).toLocaleString()}
+              ₹{pendingRentAmount.toLocaleString()}
             </div>
-            <div style={{ fontSize: "13px", color: colors.text.secondary || "#94A3B8" }}>Overdue balance</div>
+            <div style={{ fontSize: "13px", color: colors.text.secondary || "#94A3B8" }}>
+              {pendingRentAmount > 0 ? "Overdue balance" : "No overdue rent"}
+            </div>
           </div>
 
           {/* Today's Admissions KPI */}
@@ -170,19 +188,133 @@ export const DashboardMobile = memo(function DashboardMobile({
           >
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
               <span style={{ fontSize: "13px", color: colors.text.secondary || "#94A3B8" }}>Admissions</span>
-              <div style={{ p: "6px", borderRadius: "8px", background: "rgba(34, 197, 94, 0.12)", color: "#22C55E", display: "flex" }}>
+              <div style={{ padding: "6px", borderRadius: "8px", background: "rgba(34, 197, 94, 0.12)", color: "#22C55E", display: "flex" }}>
                 <UserPlus size={22} />
               </div>
             </div>
             <div style={{ fontSize: "20px", fontWeight: 700, color: "#FFFFFF" }}>
-              {pendingCount || 0}
+              {todayAdmissionsCount}
             </div>
-            <div style={{ fontSize: "13px", color: colors.text.secondary || "#94A3B8" }}>Pending approval</div>
+            <div style={{ fontSize: "13px", color: colors.text.secondary || "#94A3B8" }}>
+              {todayAdmissionsCount > 0 ? "New today" : "Admissions today"}
+            </div>
           </div>
         </div>
       </section>
 
-      {/* QUESTION 2: What needs attention? (Single Compact Card) */}
+      {/* ADMISSIONS & ONBOARDING SECTION */}
+      <section style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+        <div>
+          <h2 style={{ fontSize: "20px", fontWeight: 700, color: "#FFFFFF", margin: 0 }}>
+            Admissions & Approvals
+          </h2>
+          <p style={{ fontSize: "13px", color: colors.text.secondary || "#94A3B8", margin: "4px 0 0" }}>
+            Review new requests and pending applicants
+          </p>
+        </div>
+
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+          {/* New Admissions Card */}
+          <div
+            style={{
+              background: colors.background.card || "#131C2E",
+              border: `1px solid ${colors.border.default || "#202B45"}`,
+              borderRadius: "16px",
+              padding: "16px",
+              display: "flex",
+              flexDirection: "column",
+              justifyContent: "space-between",
+              gap: "12px",
+            }}
+          >
+            <div>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <span style={{ fontSize: "13px", fontWeight: 700, color: "#FFFFFF" }}>New</span>
+                <span style={{ fontSize: "11px", fontWeight: 700, color: todayAdmissionsCount > 0 ? "#22C55E" : "#94A3B8", background: todayAdmissionsCount > 0 ? "rgba(34, 197, 94, 0.1)" : "rgba(148, 163, 184, 0.1)", padding: "2px 8px", borderRadius: "9999px" }}>
+                  {todayAdmissionsCount > 0 ? "Today" : "0"}
+                </span>
+              </div>
+              <div style={{ fontSize: "24px", fontWeight: 700, color: "#FFFFFF", marginTop: "6px" }}>
+                {todayAdmissionsCount}
+              </div>
+              <div style={{ fontSize: "12px", color: colors.text.secondary || "#94A3B8", marginTop: "2px" }}>
+                New applicants
+              </div>
+            </div>
+            <button
+              onClick={() => navigate("/admissions")}
+              style={{
+                background: "rgba(255, 255, 255, 0.05)",
+                border: `1px solid ${colors.border.default || "#202B45"}`,
+                borderRadius: "10px",
+                color: "#FFFFFF",
+                padding: "8px 12px",
+                fontSize: "12px",
+                fontWeight: 700,
+                cursor: "pointer",
+                minHeight: "40px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "6px",
+              }}
+            >
+              <UserPlus size={16} /> View New
+            </button>
+          </div>
+
+          {/* Pending Admissions Card */}
+          <div
+            style={{
+              background: colors.background.card || "#131C2E",
+              border: `1px solid ${colors.border.default || "#202B45"}`,
+              borderRadius: "16px",
+              padding: "16px",
+              display: "flex",
+              flexDirection: "column",
+              justifyContent: "space-between",
+              gap: "12px",
+            }}
+          >
+            <div>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <span style={{ fontSize: "13px", fontWeight: 700, color: "#FFFFFF" }}>Pending</span>
+                <span style={{ fontSize: "11px", fontWeight: 700, color: effectivePendingCount > 0 ? "#F59E0B" : "#22C55E", background: effectivePendingCount > 0 ? "rgba(245, 158, 11, 0.1)" : "rgba(34, 197, 94, 0.1)", padding: "2px 8px", borderRadius: "9999px" }}>
+                  {effectivePendingCount > 0 ? `${effectivePendingCount} Pending` : "Caught Up"}
+                </span>
+              </div>
+              <div style={{ fontSize: "24px", fontWeight: 700, color: "#FFFFFF", marginTop: "6px" }}>
+                {effectivePendingCount}
+              </div>
+              <div style={{ fontSize: "12px", color: colors.text.secondary || "#94A3B8", marginTop: "2px" }}>
+                Awaiting approval
+              </div>
+            </div>
+            <button
+              onClick={() => navigate("/admissions")}
+              style={{
+                background: effectivePendingCount > 0 ? "#22C55E" : "rgba(255, 255, 255, 0.05)",
+                border: effectivePendingCount > 0 ? "none" : `1px solid ${colors.border.default || "#202B45"}`,
+                borderRadius: "10px",
+                color: "#FFFFFF",
+                padding: "8px 12px",
+                fontSize: "12px",
+                fontWeight: 700,
+                cursor: "pointer",
+                minHeight: "40px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "6px",
+              }}
+            >
+              <ArrowRight size={16} /> View Pending
+            </button>
+          </div>
+        </div>
+      </section>
+
+      {/* QUESTION 2: What needs attention? */}
       <section style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <h2 style={{ fontSize: "20px", fontWeight: 700, color: "#FFFFFF", margin: 0 }}>
@@ -230,18 +362,18 @@ export const DashboardMobile = memo(function DashboardMobile({
             }}
           >
             <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-              <div style={{ padding: "8px", borderRadius: "10px", background: "rgba(239, 68, 68, 0.12)", color: "#EF4444", display: "flex" }}>
+              <div style={{ padding: "8px", borderRadius: "10px", background: pendingRentAmount > 0 ? "rgba(239, 68, 68, 0.12)" : "rgba(34, 197, 94, 0.12)", color: pendingRentAmount > 0 ? "#EF4444" : "#22C55E", display: "flex" }}>
                 <AlertTriangle size={22} />
               </div>
               <div>
                 <div style={{ fontSize: "16px", fontWeight: 700, color: "#FFFFFF" }}>Overdue Rent</div>
                 <div style={{ fontSize: "13px", color: colors.text.secondary || "#94A3B8" }}>
-                  ₹{(stats?.pendingRent || 0).toLocaleString()} pending
+                  ₹{pendingRentAmount.toLocaleString()} pending
                 </div>
               </div>
             </div>
-            <div style={{ fontSize: "13px", fontWeight: 700, color: "#EF4444", background: "rgba(239, 68, 68, 0.1)", padding: "4px 10px", borderRadius: "9999px" }}>
-              Action Required
+            <div style={{ fontSize: "13px", fontWeight: 700, color: pendingRentAmount > 0 ? "#EF4444" : "#22C55E", background: pendingRentAmount > 0 ? "rgba(239, 68, 68, 0.1)" : "rgba(34, 197, 94, 0.1)", padding: "4px 10px", borderRadius: "9999px" }}>
+              {pendingRentAmount > 0 ? "Action Required" : "All caught up"}
             </div>
           </div>
 
@@ -259,12 +391,12 @@ export const DashboardMobile = memo(function DashboardMobile({
             }}
           >
             <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-              <div style={{ padding: "8px", borderRadius: "10px", background: "rgba(245, 158, 11, 0.12)", color: "#F59E0B", display: "flex" }}>
+              <div style={{ padding: "8px", borderRadius: "10px", background: "rgba(148, 163, 184, 0.12)", color: "#94A3B8", display: "flex" }}>
                 <FileText size={22} />
               </div>
               <div>
                 <div style={{ fontSize: "16px", fontWeight: 700, color: "#FFFFFF" }}>Active Complaints</div>
-                <div style={{ fontSize: "13px", color: colors.text.secondary || "#94A3B8" }}>0 pending issues</div>
+                <div style={{ fontSize: "13px", color: colors.text.secondary || "#94A3B8" }}>0 active issues</div>
               </div>
             </div>
             <div style={{ fontSize: "13px", fontWeight: 700, color: "#22C55E", background: "rgba(34, 197, 94, 0.1)", padding: "4px 10px", borderRadius: "9999px" }}>
@@ -297,19 +429,19 @@ export const DashboardMobile = memo(function DashboardMobile({
               </div>
             </div>
             <div style={{ fontSize: "13px", fontWeight: 700, color: "#22C55E", background: "rgba(34, 197, 94, 0.1)", padding: "4px 10px", borderRadius: "9999px" }}>
-              Ready
+              {vacantRoomsCount > 0 ? "Ready" : "Full"}
             </div>
           </div>
         </div>
       </section>
 
-      {/* QUESTION 3: What should I do next? (4 Large Primary Buttons) */}
+      {/* QUESTION 3: What should I do next? (Quick Action Grid) */}
       <section style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
         <h2 style={{ fontSize: "20px", fontWeight: 700, color: "#FFFFFF", margin: 0 }}>
           What should I do next?
         </h2>
 
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
           {/* Action 1: Add Resident */}
           <button
             onClick={() => navigate("/residents?action=add")}
@@ -335,7 +467,55 @@ export const DashboardMobile = memo(function DashboardMobile({
             <span>Add Resident</span>
           </button>
 
-          {/* Action 2: Collect Payment */}
+          {/* Action 2: Add Room */}
+          <button
+            onClick={() => navigate("/rooms")}
+            style={{
+              background: colors.background.card || "#131C2E",
+              color: "#FFFFFF",
+              border: `1px solid ${colors.border.default || "#202B45"}`,
+              borderRadius: "14px",
+              padding: "16px 12px",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: "8px",
+              fontWeight: 700,
+              fontSize: "14px",
+              cursor: "pointer",
+              minHeight: "48px",
+            }}
+          >
+            <PlusCircle size={22} style={{ color: "#22C55E" }} />
+            <span>Add Room</span>
+          </button>
+
+          {/* Action 3: New Admission */}
+          <button
+            onClick={() => navigate("/admissions")}
+            style={{
+              background: colors.background.card || "#131C2E",
+              color: "#FFFFFF",
+              border: `1px solid ${colors.border.default || "#202B45"}`,
+              borderRadius: "14px",
+              padding: "16px 12px",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: "8px",
+              fontWeight: 700,
+              fontSize: "14px",
+              cursor: "pointer",
+              minHeight: "48px",
+            }}
+          >
+            <UserPlus size={22} style={{ color: "#38BDF8" }} />
+            <span>Admissions</span>
+          </button>
+
+          {/* Action 4: Collect Payment */}
           <button
             onClick={() => navigate("/payments?action=collect")}
             style={{
@@ -359,31 +539,7 @@ export const DashboardMobile = memo(function DashboardMobile({
             <span>Collect Payment</span>
           </button>
 
-          {/* Action 3: Add Expense */}
-          <button
-            onClick={() => navigate("/owner/expense-dashboard?action=add")}
-            style={{
-              background: colors.background.card || "#131C2E",
-              color: "#FFFFFF",
-              border: `1px solid ${colors.border.default || "#202B45"}`,
-              borderRadius: "14px",
-              padding: "16px 12px",
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: "8px",
-              fontWeight: 700,
-              fontSize: "14px",
-              cursor: "pointer",
-              minHeight: "48px",
-            }}
-          >
-            <Receipt size={22} style={{ color: "#F59E0B" }} />
-            <span>Add Expense</span>
-          </button>
-
-          {/* Action 4: Reports */}
+          {/* Action 5: Reports */}
           <button
             onClick={() => navigate("/reports")}
             style={{
@@ -401,6 +557,7 @@ export const DashboardMobile = memo(function DashboardMobile({
               fontSize: "14px",
               cursor: "pointer",
               minHeight: "48px",
+              gridColumn: "span 2",
             }}
           >
             <FileText size={22} style={{ color: "#94A3B8" }} />
@@ -535,10 +692,10 @@ export const DashboardMobile = memo(function DashboardMobile({
             <div style={{ padding: "16px 20px 20px", borderTop: `1px solid ${colors.border.default || "#202B45"}`, display: "flex", flexDirection: "column", gap: "12px" }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                 <span style={{ fontSize: "13px", color: colors.text.secondary || "#94A3B8" }}>Storage Used</span>
-                <span style={{ fontSize: "13px", fontWeight: 700, color: "#FFFFFF" }}>15.6 MB / 100 MB</span>
+                <span style={{ fontSize: "13px", fontWeight: 700, color: "#FFFFFF" }}>{usedFormatted} / {limitFormatted}</span>
               </div>
               <div style={{ width: "100%", height: "8px", borderRadius: "9999px", background: "rgba(255, 255, 255, 0.1)", overflow: "hidden" }}>
-                <div style={{ width: "15.6%", height: "100%", background: "#22C55E" }} />
+                <div style={{ width: `${storagePercent}%`, height: "100%", background: "#22C55E", transition: "width 300ms ease" }} />
               </div>
               <button
                 onClick={() => navigate("/owner/storage-center")}
