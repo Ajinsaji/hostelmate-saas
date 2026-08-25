@@ -40,6 +40,8 @@ import Reports from "./owner/Reports";
 import Profile from "./owner/Profile";
 import PendingAdmissions from "./owner/PendingAdmissions";
 import HostelSettings from "./owner/HostelSettings";
+import NotificationSettings from "./owner/NotificationSettings";
+import AddHostelForm from "./owner/AddHostelForm";
 import OwnerProfileEdit from "./owner/OwnerProfileEdit";
 import UpdatePassword from "./owner/UpdatePassword";
 import SecurityDevices from "./owner/SecurityDevices";
@@ -479,6 +481,36 @@ function App() {
           }
         />
         <Route
+          path="/owner/notification-settings"
+          element={
+            <OwnerProtectedRoute>
+              <DesktopShell
+                variant="owner"
+                title="Notification Settings"
+                breadcrumbs={[{ label: "Settings", href: "/owner/settings" }, { label: "Notifications" }]}
+                backTo={"/owner/settings"}
+              >
+                <NotificationSettings />
+              </DesktopShell>
+            </OwnerProtectedRoute>
+          }
+        />
+        <Route
+          path="/settings/notifications"
+          element={
+            <OwnerProtectedRoute>
+              <DesktopShell
+                variant="owner"
+                title="Notification Settings"
+                breadcrumbs={[{ label: "Settings", href: "/owner/settings" }, { label: "Notifications" }]}
+                backTo={"/owner/settings"}
+              >
+                <NotificationSettings />
+              </DesktopShell>
+            </OwnerProtectedRoute>
+          }
+        />
+        <Route
           path="/owner/whatsapp"
           element={
             <OwnerProtectedRoute>
@@ -892,6 +924,36 @@ function App() {
                 backTo="/owner/dashboard"
               >
                 <PendingAdmissions />
+              </DesktopShell>
+            </OwnerProtectedRoute>
+          }
+        />
+        <Route
+          path="/owner/add-hostel"
+          element={
+            <OwnerProtectedRoute>
+              <DesktopShell
+                variant="owner"
+                title="Register Additional Hostel"
+                breadcrumbs={[{ label: "Add Hostel" }]}
+                backTo="/owner/dashboard"
+              >
+                <AddHostelForm />
+              </DesktopShell>
+            </OwnerProtectedRoute>
+          }
+        />
+        <Route
+          path="/add-hostel"
+          element={
+            <OwnerProtectedRoute>
+              <DesktopShell
+                variant="owner"
+                title="Register Additional Hostel"
+                breadcrumbs={[{ label: "Add Hostel" }]}
+                backTo="/owner/dashboard"
+              >
+                <AddHostelForm />
               </DesktopShell>
             </OwnerProtectedRoute>
           }

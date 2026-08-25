@@ -63,6 +63,93 @@ class EventBus extends EventEmitter {
     });
 
     // 2. Notification Pipeline & WhatsApp Communication Engine Listener hooks
+    this.on("ADMISSION_SUBMITTED", async (data) => {
+      if (data.phone) {
+        try {
+          const { dispatchWhatsAppMessage } = require("./whatsappService");
+          await dispatchWhatsAppMessage({
+            hostelId: data.hostelId,
+            recipientPhone: data.phone,
+            recipientName: data.applicantName || "Applicant",
+            recipientType: "Resident",
+            templateCode: "ADMISSION_SUBMITTED",
+            variables: {
+              applicantName: data.applicantName || "Applicant",
+              hostelName: data.hostelName || "HostelMate",
+              referenceId: String(data.referenceId || data.admissionId || "-"),
+              submissionDate: data.submissionDate || new Date().toLocaleDateString(),
+              status: data.status || "Pending",
+            },
+            businessEvent: "ADMISSION_SUBMITTED",
+            referenceId: `ADM_SUB_${data.admissionId || data.referenceId}`,
+          });
+        } catch (err) {
+          logger.error({ err }, "[EventBus] WhatsApp trigger for ADMISSION_SUBMITTED failed");
+        }
+      }
+    });
+
+    this.on("ADMISSION_REJECTED", async (data) => {
+      if (data.phone) {
+        try {
+          const { dispatchWhatsAppMessage } = require("./whatsappService");
+          await dispatchWhatsAppMessage({
+            hostelId: data.hostelId,
+            recipientPhone: data.phone,
+            recipientName: data.applicantName || "Applicant",
+            recipientType: "Resident",
+            templateCode: "ADMISSION_REJECTED",
+            variables: {
+              applicantName: data.applicantName || "Applicant",
+              hostelName: data.hostelName || "HostelMate",
+              referenceId: String(data.referenceId || data.admissionId || "-"),
+              rejectionReason: data.rejectionReason || "Not specified",
+            },
+            businessEvent: "ADMISSION_REJECTED",
+            referenceId: `ADM_REJ_${data.admissionId || data.referenceId}`,
+          });
+        } catch (err) {
+          logger.error({ err }, "[EventBus] WhatsApp trigger for ADMISSION_REJECTED failed");
+        }
+      }
+    });
+
+    this.on("ROOM_TRANSFERRED", async (data) => {
+      const NotificationPipelineService = require("./NotificationPipelineService");
+      NotificationPipelineService.routeNotification({
+        workspaceId: data.workspaceId,
+        hostelId: data.hostelId,
+        category: "Rooms",
+        title: "Resident Room Transferred",
+        body: `Resident ${data.residentName || "Resident"} has been transferred to Room ${data.newRoom || ""}, Bed ${data.newBed || ""}.`,
+      });
+
+      if (data.phone) {
+        try {
+          const { dispatchWhatsAppMessage } = require("./whatsappService");
+          await dispatchWhatsAppMessage({
+            hostelId: data.hostelId,
+            residentId: data.residentId,
+            recipientPhone: data.phone,
+            recipientName: data.residentName || "Resident",
+            templateCode: "ROOM_TRANSFERRED",
+            variables: {
+              residentName: data.residentName || "Resident",
+              hostelName: data.hostelName || "HostelMate",
+              oldRoom: data.oldRoom || "—",
+              oldBed: data.oldBed || "—",
+              newRoom: data.newRoom || "—",
+              newBed: data.newBed || "—",
+            },
+            businessEvent: "ROOM_TRANSFERRED",
+            referenceId: data.referenceId || `TRANSFER_${data.residentId}_${Date.now()}`,
+          });
+        } catch (err) {
+          logger.error({ err }, "[EventBus] WhatsApp trigger for ROOM_TRANSFERRED failed");
+        }
+      }
+    });
+
     this.on("RESIDENT_CREATED", async (data) => {
       const NotificationPipelineService = require("./NotificationPipelineService");
       NotificationPipelineService.routeNotification({
@@ -184,6 +271,28 @@ class EventBus extends EventEmitter {
     });
 
     this.on("OWNER_ACCOUNT_ACTIVATED", async (data) => {
+      try {
+        const { publishNotification } = require("../utils/notificationPublisher");
+        await publishNotification({
+          userId: data.ownerId,
+          hostelId: data.hostelId,
+          role: "owner",
+          type: "account_activated",
+          category: "system",
+          priority: "critical",
+          title: "HostelMate Account Activated",
+          message: `Welcome to HostelMate! Your account for ${data.hostelName || "your hostel"} is now active.`,
+          actionUrl: "/dashboard",
+          meta: {
+            route: "/dashboard",
+            deepLink: "/dashboard",
+            hostelId: String(data.hostelId),
+          },
+        });
+      } catch (e) {
+        logger.error({ err: e }, "[EventBus] Push notification for OWNER_ACCOUNT_ACTIVATED failed");
+      }
+
       if (data.phone) {
         try {
           const { dispatchWhatsAppMessage } = require("./whatsappService");
@@ -214,6 +323,57 @@ class EventBus extends EventEmitter {
           });
         } catch (err) {
           logger.error({ err }, "[EventBus] WhatsApp trigger for OWNER_ACCOUNT_ACTIVATED failed");
+        }
+      }
+    });
+
+    this.on("HOSTEL_ACTIVATED_FOR_EXISTING_OWNER", async (data) => {
+      try {
+        const { publishNotification } = require("../utils/notificationPublisher");
+        await publishNotification({
+          userId: data.ownerId,
+          hostelId: data.hostelId,
+          role: "owner",
+          type: "hostel_activated",
+          category: "system",
+          priority: "high",
+          title: "New Hostel Activated",
+          message: `Your new hostel "${data.hostelName || "New Property"}" has been approved and activated.`,
+          actionUrl: "/dashboard",
+          meta: {
+            route: "/dashboard",
+            deepLink: "/dashboard",
+            hostelId: String(data.hostelId),
+          },
+        });
+      } catch (e) {
+        logger.error({ err: e }, "[EventBus] Push notification for HOSTEL_ACTIVATED_FOR_EXISTING_OWNER failed");
+      }
+
+      if (data.phone) {
+        try {
+          const { dispatchWhatsAppMessage } = require("./whatsappService");
+          await dispatchWhatsAppMessage({
+            hostelId: data.hostelId,
+            ownerId: data.ownerId,
+            recipientPhone: data.phone,
+            recipientName: data.ownerName || "Hostel Owner",
+            recipientType: "Owner",
+            templateCode: "HOSTEL_ACTIVATED_FOR_EXISTING_OWNER",
+            variables: {
+              ownerName: data.ownerName || "Hostel Owner",
+              hostelName: data.hostelName || "HostelMate",
+              location: data.city ? `${data.city}, ${data.district || ""}`.trim() : (data.location || "Hostel Location"),
+              rooms: String(data.rooms || 0),
+              beds: String(data.beds || 0),
+              activationDate: data.activationDate || new Date().toLocaleDateString(),
+              loginUrl: data.loginUrl || "https://hostelmate-saas.vercel.app/owner/login",
+            },
+            businessEvent: "HOSTEL_ACTIVATED_FOR_EXISTING_OWNER",
+            referenceId: `HOSTEL_ACT_${data.hostelId}`,
+          });
+        } catch (err) {
+          logger.error({ err }, "[EventBus] WhatsApp trigger for HOSTEL_ACTIVATED_FOR_EXISTING_OWNER failed");
         }
       }
     });

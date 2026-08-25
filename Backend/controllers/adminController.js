@@ -137,6 +137,7 @@ const getAllRequests = async (req, res) => {
       const docs = resolveOwnerDocuments(reqItem);
       return {
         ...reqItem,
+        isExistingOwner: Boolean(reqItem.isExistingOwner || reqItem.source === "existing_owner"),
         ownerPhoto: docs.ownerPhotoUrl || normalizeAssetUrl(reqItem.ownerPhoto) || "",
         ownerPhotoUrl: docs.ownerPhotoUrl || "",
         aadhaarFile: docs.aadhaarUrl || normalizeAssetUrl(reqItem.aadhaarFile) || "",
@@ -457,22 +458,25 @@ const finalizeHostelActivation = async (req, res) => {
 
     // 7. Critical Write Path
     const writeStartedAt = process.hrtime.bigint();
+    const isExistingAccount = Boolean(ownerDoc && ownerDoc.password && !ownerDoc.firstLogin);
 
     if (ownerDoc) {
+      if (!isExistingAccount) {
+        ownerDoc.password = hashedPassword;
+        ownerDoc.mustChangePassword = true;
+        ownerDoc.firstLogin = true;
+        ownerDoc.credentialIssuedAt = new Date();
+        ownerDoc.credentialDeliveryStatus = "sent";
+      }
       ownerDoc.hostelId = hostel._id;
       ownerDoc.activeHostelId = hostel._id;
       ownerDoc.ownerName = hostel.ownerName || ownerDoc.ownerName || "Hostel Owner";
       ownerDoc.phone = hostel.phone;
       if (ownerEmail) ownerDoc.email = ownerEmail;
       ownerDoc.username = hostel.phone;
-      ownerDoc.password = hashedPassword;
-      ownerDoc.mustChangePassword = true;
-      ownerDoc.firstLogin = true;
       ownerDoc.role = "owner";
       ownerDoc.status = "active";
       if (hostel.ownerPhoto) ownerDoc.profileImage = hostel.ownerPhoto;
-      ownerDoc.credentialIssuedAt = new Date();
-      ownerDoc.credentialDeliveryStatus = "sent";
       await timer.measure("ownerWriteMs", () => ownerDoc.save());
     } else {
       ownerDoc = await timer.measure("ownerWriteMs", () => Owner.create({
@@ -609,24 +613,40 @@ const finalizeHostelActivation = async (req, res) => {
         });
 
         const EventBus = require("../services/EventBus");
-        EventBus.emit("OWNER_ACCOUNT_ACTIVATED", {
-          hostelId: hostel._id,
-          ownerId: ownerDoc._id,
-          phone: ownerDoc.phone,
-          ownerName: ownerDoc.ownerName,
-          hostelName: hostel.hostelName || hostel.name,
-          username: ownerDoc.phone,
-          tempPassword,
-          planType: normalizedPlanType,
-          trialDays,
-          trialStartDate: formattedStartDate,
-          trialEndDate: formattedEndDate,
-          trialAmount,
-          subscriptionAmount,
-          billingCycle,
-          expiryDate: formattedExpiryDate,
-          loginUrl,
-        });
+        if (isExistingAccount) {
+          EventBus.emit("HOSTEL_ACTIVATED_FOR_EXISTING_OWNER", {
+            hostelId: hostel._id,
+            ownerId: ownerDoc._id,
+            phone: ownerDoc.phone,
+            ownerName: ownerDoc.ownerName,
+            hostelName: hostel.hostelName || hostel.name,
+            city: hostel.city || relatedRequest?.city || "",
+            district: hostel.district || relatedRequest?.district || "",
+            rooms: hostel.totalRooms || relatedRequest?.roomsCount || 0,
+            beds: hostel.totalBeds || hostel.capacity || relatedRequest?.capacity || 0,
+            activationDate: new Date().toLocaleDateString(),
+            loginUrl,
+          });
+        } else {
+          EventBus.emit("OWNER_ACCOUNT_ACTIVATED", {
+            hostelId: hostel._id,
+            ownerId: ownerDoc._id,
+            phone: ownerDoc.phone,
+            ownerName: ownerDoc.ownerName,
+            hostelName: hostel.hostelName || hostel.name,
+            username: ownerDoc.phone,
+            tempPassword,
+            planType: normalizedPlanType,
+            trialDays,
+            trialStartDate: formattedStartDate,
+            trialEndDate: formattedEndDate,
+            trialAmount,
+            subscriptionAmount,
+            billingCycle,
+            expiryDate: formattedExpiryDate,
+            loginUrl,
+          });
+        }
 
         await Promise.allSettled([p1, p2, p3]);
         const activationSecondaryWorkMs = Number(process.hrtime.bigint() - secStartedAt) / 1e6;

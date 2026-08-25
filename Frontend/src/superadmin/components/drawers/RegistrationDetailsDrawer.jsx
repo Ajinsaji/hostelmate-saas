@@ -160,9 +160,16 @@ export const RegistrationDetailsDrawer = React.memo(({
 
             {/* SECTION 1 — Owner Information */}
             <div className="bg-[#131C2E] border border-[#202B45] rounded-2xl p-5 space-y-4">
-              <div className="flex items-center gap-2 border-b border-[#202B45] pb-3">
-                <User size={16} className="text-emerald-400" />
-                <h4 className="text-xs font-bold text-white uppercase tracking-wider">Section 1 — Owner Profile</h4>
+              <div className="flex items-center justify-between border-b border-[#202B45] pb-3">
+                <div className="flex items-center gap-2">
+                  <User size={16} className="text-emerald-400" />
+                  <h4 className="text-xs font-bold text-white uppercase tracking-wider">Section 1 — Owner Profile</h4>
+                </div>
+                {requestData.isExistingOwner && (
+                  <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/30">
+                    Existing Verified Owner
+                  </span>
+                )}
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
@@ -198,22 +205,32 @@ export const RegistrationDetailsDrawer = React.memo(({
                 <h4 className="text-xs font-bold text-white uppercase tracking-wider">Section 2 — Identity Documents</h4>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <DocumentPreviewCard
-                  title="Aadhaar / ID Proof"
-                  url={requestData.aadhaarUrl || requestData.aadhaarFile}
-                  idNumber={requestData.idNumber ? maskDocNumber(requestData.idNumber) : null}
-                  onPreview={() => setPreviewDoc({ url: requestData.aadhaarUrl || requestData.aadhaarFile, title: "Aadhaar / ID Proof" })}
-                  badge="Govt ID"
-                />
+              {requestData.isExistingOwner && !requestData.aadhaarUrl && !requestData.aadhaarFile ? (
+                <div className="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-300 flex items-center gap-2.5">
+                  <CheckCircle2 size={18} className="text-emerald-400 shrink-0" />
+                  <div>
+                    <span className="font-bold text-white block">Identity Already Verified</span>
+                    <span className="text-slate-300 text-[11px]">Owner identity verified under primary account. KYC reuse active.</span>
+                  </div>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <DocumentPreviewCard
+                    title="Aadhaar / ID Proof"
+                    url={requestData.aadhaarUrl || requestData.aadhaarFile}
+                    idNumber={requestData.idNumber ? maskDocNumber(requestData.idNumber) : null}
+                    onPreview={() => setPreviewDoc({ url: requestData.aadhaarUrl || requestData.aadhaarFile, title: "Aadhaar / ID Proof" })}
+                    badge="Govt ID"
+                  />
 
-                <DocumentPreviewCard
-                  title="Owner Photo"
-                  url={requestData.ownerPhotoUrl || requestData.ownerPhoto}
-                  onPreview={() => setPreviewDoc({ url: requestData.ownerPhotoUrl || requestData.ownerPhoto, title: "Owner Photo" })}
-                  badge="Profile"
-                />
-              </div>
+                  <DocumentPreviewCard
+                    title="Owner Photo"
+                    url={requestData.ownerPhotoUrl || requestData.ownerPhoto}
+                    onPreview={() => setPreviewDoc({ url: requestData.ownerPhotoUrl || requestData.ownerPhoto, title: "Owner Photo" })}
+                    badge="Profile"
+                  />
+                </div>
+              )}
             </div>
 
             {/* SECTION 3 — Hostel Information */}

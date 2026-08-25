@@ -57,8 +57,16 @@ export default function ResidentProfile() {
   // Modals State
   const [showEditModal, setShowEditModal] = useState(false);
   const [showCheckoutModal, setShowCheckoutModal] = useState(false);
+  const [showTransferModal, setShowTransferModal] = useState(false);
   const [showRulesModal, setShowRulesModal] = useState(false);
   const [showSignatureModal, setShowSignatureModal] = useState(false);
+  const [roomsList, setRoomsList] = useState([]);
+  const [transferForm, setTransferForm] = useState({
+    newRoomId: "",
+    newBedId: "",
+    reason: ""
+  });
+  const [submittingTransfer, setSubmittingTransfer] = useState(false);
 
   // Edit Form State (Excludes immutable rules & signature)
   const [editForm, setEditForm] = useState({
@@ -210,6 +218,52 @@ export default function ResidentProfile() {
     }
   };
 
+  // Open Transfer Room / Bed Modal
+  const handleOpenTransfer = async () => {
+    try {
+      const res = await api.get("/api/rooms");
+      if (res.data?.rooms) {
+        setRoomsList(res.data.rooms);
+      }
+      setTransferForm({
+        newRoomId: "",
+        newBedId: "",
+        reason: ""
+      });
+      setShowTransferModal(true);
+    } catch (err) {
+      toast.error("Failed to load rooms for transfer.");
+    }
+  };
+
+  // Submit Room / Bed Transfer
+  const handleTransferSubmit = async (e) => {
+    if (e && e.preventDefault) e.preventDefault();
+    if (!transferForm.newRoomId || !transferForm.newBedId) {
+      return toast.error("Please select a target room and bed.");
+    }
+    try {
+      setSubmittingTransfer(true);
+      const res = await api.patch("/api/residents/transfer-room", {
+        residentId: id,
+        newRoomId: transferForm.newRoomId,
+        newBedId: transferForm.newBedId,
+        reason: transferForm.reason
+      });
+      if (res.data?.success) {
+        toast.success("Resident transferred successfully!");
+        setShowTransferModal(false);
+        fetchProfile();
+      } else {
+        toast.error(res.data?.message || "Transfer failed.");
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Transfer operation failed.");
+    } finally {
+      setSubmittingTransfer(false);
+    }
+  };
+
   // WhatsApp Action Handler
   const handleSendWhatsApp = () => {
     if (!profile?.resident?.phone) {
@@ -337,9 +391,14 @@ export default function ResidentProfile() {
               Edit Profile
             </Button>
             {res.status !== "Checked Out" && res.status !== "checked_out" && (
-              <Button variant="danger" size="sm" icon={LogOut} onClick={() => setShowCheckoutModal(true)}>
-                Check Out
-              </Button>
+              <>
+                <Button variant="secondary" size="sm" icon={BedDouble} onClick={handleOpenTransfer}>
+                  Transfer Room
+                </Button>
+                <Button variant="danger" size="sm" icon={LogOut} onClick={() => setShowCheckoutModal(true)}>
+                  Check Out
+                </Button>
+              </>
             )}
           </div>
         </div>
@@ -1057,6 +1116,87 @@ export default function ResidentProfile() {
             </Button>
             <Button type="submit" variant="danger" disabled={submittingCheckout}>
               {submittingCheckout ? "Processing Check-Out..." : "Confirm Check-Out"}
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* ========================================================================= */}
+      {/* MODAL 2.5: ROOM / BED TRANSFER MODAL                                      */}
+      {/* ========================================================================= */}
+      <Modal
+        isOpen={showTransferModal}
+        onClose={() => setShowTransferModal(false)}
+        title="Transfer Resident Room / Bed"
+        size="md"
+      >
+        <form onSubmit={handleTransferSubmit} className="space-y-4 text-left">
+          <div className="p-3 rounded-xl bg-blue-500/10 border border-blue-500/20 text-xs text-blue-300">
+            Current Placement: <strong>Room {roomNumber}, Bed {bedNumber}</strong>. Transferring will atomically release the old bed and assign the selected bed.
+          </div>
+
+          <div className="space-y-1">
+            <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider">
+              Target Room <span className="text-rose-400">*</span>
+            </label>
+            <select
+              value={transferForm.newRoomId}
+              onChange={(e) => setTransferForm({ ...transferForm, newRoomId: e.target.value, newBedId: "" })}
+              required
+              className="w-full p-3 rounded-xl border text-sm font-medium bg-[#1A2438] text-white border-slate-700 outline-none"
+            >
+              <option value="">Select Target Room...</option>
+              {roomsList.map((rm) => (
+                <option key={rm._id} value={rm._id}>
+                  Room {rm.roomNumber} ({rm.roomType || "Standard"} — {rm.vacantBeds || 0} Vacant Beds)
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="space-y-1">
+            <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider">
+              Target Bed <span className="text-rose-400">*</span>
+            </label>
+            <select
+              value={transferForm.newBedId}
+              onChange={(e) => setTransferForm({ ...transferForm, newBedId: e.target.value })}
+              required
+              disabled={!transferForm.newRoomId}
+              className="w-full p-3 rounded-xl border text-sm font-medium bg-[#1A2438] text-white border-slate-700 outline-none disabled:opacity-50"
+            >
+              <option value="">Select Target Bed...</option>
+              {(
+                roomsList.find((rm) => rm._id === transferForm.newRoomId)?.beds || []
+              )
+                .filter((b) => b.status === "Vacant" || b.status === "vacant" || !b.residentId)
+                .map((bd) => (
+                  <option key={bd._id} value={bd._id}>
+                    Bed {bd.bedNumber} ({bd.bedType || "Normal"})
+                  </option>
+                ))}
+            </select>
+          </div>
+
+          <div className="space-y-1">
+            <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider">
+              Transfer Reason (Optional)
+            </label>
+            <input
+              type="text"
+              placeholder="e.g. Upgraded to Single Room / Resident Request"
+              value={transferForm.reason}
+              onChange={(e) => setTransferForm({ ...transferForm, reason: e.target.value })}
+              className="w-full p-3 rounded-xl border text-sm font-medium bg-[#1A2438] text-white border-slate-700 outline-none"
+            />
+          </div>
+
+          <div className="pt-3 flex justify-end gap-2 border-t border-slate-800">
+            <Button type="button" variant="secondary" onClick={() => setShowTransferModal(false)}>
+              Cancel
+            </Button>
+            <Button type="submit" variant="primary" disabled={submittingTransfer}>
+              {submittingTransfer ? "Transferring Resident..." : "Confirm Transfer"}
             </Button>
           </div>
         </form>

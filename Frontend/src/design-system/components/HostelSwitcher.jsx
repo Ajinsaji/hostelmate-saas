@@ -13,19 +13,24 @@ export function HostelSwitcher() {
   const [hostelsList, setHostelsList] = useState([]);
 
   const plan = user?.plan?.name || user?.subscription?.planName || 'Trial';
-  // If plan is base or trial (and has <=1 hostels), it is basic.
-  const isPro = ["pro", "enterprise"].includes(plan.toLowerCase()) || hostelsList.length > 1;
+  // Allow multi-hostel switching if owner has multiple hostels or wants to add another
+  const isMultiHostel = hostelsList.length > 1 || ["pro", "enterprise"].includes(plan.toLowerCase());
 
   useEffect(() => {
     let isMounted = true;
     const fetchHostels = async () => {
       try {
-        const response = await api.get("/api/v2/workspaces/hostels");
-        if (response.data && response.data.success && isMounted) {
-          setHostelsList(response.data.hostels || []);
+        const res = await api.get("/api/owner/hostels");
+        if (res.data && res.data.success && isMounted && Array.isArray(res.data.hostels)) {
+          setHostelsList(res.data.hostels);
+          return;
+        }
+        const wsRes = await api.get("/api/v2/workspaces/hostels");
+        if (wsRes.data && wsRes.data.success && isMounted) {
+          setHostelsList(wsRes.data.hostels || []);
         }
       } catch (err) {
-        console.warn("Failed to load workspace hostels list", err);
+        console.warn("Failed to load hostels list", err);
       }
     };
 
@@ -35,7 +40,7 @@ export function HostelSwitcher() {
     };
   }, []);
 
-  if (!isPro) {
+  if (!isMultiHostel && hostelsList.length <= 1) {
     return (
       <div 
         style={{
@@ -162,8 +167,7 @@ export function HostelSwitcher() {
 
           <button
             onClick={() => {
-              // Redirect to Dashboard Workspace Overview where adding hostel modal lives
-              window.location.href = "/dashboard";
+              window.location.href = "/owner/add-hostel";
               setOpen(false);
             }}
             style={{

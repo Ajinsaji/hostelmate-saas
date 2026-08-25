@@ -432,10 +432,11 @@ const getDashboardStats = async (req, res) => {
     const mongoose = require("mongoose");
     const hId = new mongoose.Types.ObjectId(hostelId);
 
-    const startOfDay = new Date();
-    startOfDay.setHours(0, 0, 0, 0);
-    const endOfDay = new Date();
-    endOfDay.setHours(23, 59, 59, 999);
+    const now = new Date();
+    const istOffsetMs = 5.5 * 60 * 60 * 1000;
+    const istNow = new Date(now.getTime() + istOffsetMs);
+    const startOfDay = new Date(Date.UTC(istNow.getUTCFullYear(), istNow.getUTCMonth(), istNow.getUTCDate(), 0, 0, 0, 0) - istOffsetMs);
+    const endOfDay = new Date(Date.UTC(istNow.getUTCFullYear(), istNow.getUTCMonth(), istNow.getUTCDate(), 23, 59, 59, 999) - istOffsetMs);
 
     const [
       residentsAgg,
@@ -612,69 +613,106 @@ const approveAdmission = async (req, res) => {
   try {
     const { id } = req.params;
     const { hostelId } = req.owner;
+    const mongoose = require("mongoose");
     
     const admission = await PublicAdmission.findOne({ _id: id, hostelId });
-    if (!admission) return res.status(404).json({ success: false, message: "Not found" });
+    if (!admission) return res.status(404).json({ success: false, message: "Admission request not found" });
 
-    // Validate room preference (frontend should send a roomId or bed/room selection)
-    const roomId = admission.roomPreference;
-    if (!roomId) {
-      return res.status(400).json({ success: false, message: "Missing room preference" });
+    // 1. Idempotency & Status verification
+    if (admission.status === "Approved") {
+      return res.status(400).json({ success: false, message: "Admission has already been approved." });
+    }
+    if (admission.status === "Rejected") {
+      return res.status(400).json({ success: false, message: "Cannot approve a rejected admission." });
     }
 
-    // Assign a Bed in the preferred room
-    const bed = await Bed.findOne({ roomId, status: "vacant" });
+    // 2. Resolve room preference with tenant scoping
+    const targetRoomId = req.body.roomId || admission.roomPreference;
+    let room = null;
+
+    if (targetRoomId && mongoose.Types.ObjectId.isValid(targetRoomId)) {
+      room = await Room.findOne({ _id: targetRoomId, hostelId });
+    }
+
+    // If preferred room is not an ObjectId or room not found, find first room in hostel with vacant beds
+    if (!room || (room.occupiedBeds || 0) >= (room.totalBeds || 0)) {
+      const availableRooms = await Room.find({ hostelId });
+      room = availableRooms.find((r) => (r.occupiedBeds || 0) < (r.totalBeds || 0));
+    }
+
+    if (!room) {
+      return res.status(400).json({
+        success: false,
+        message: "No vacant room or bed available in this hostel. Please create or free a bed first."
+      });
+    }
+
+    // 3. Assign a vacant bed in the selected room (case-insensitive status)
+    let bed = await Bed.findOne({ roomId: room._id, hostelId, status: { $in: ["Vacant", "vacant"] }, isDeleted: false });
     if (!bed) {
-      return res.status(400).json({ success: false, message: "No vacant beds available in the preferred room" });
+      bed = await Bed.findOne({ hostelId, status: { $in: ["Vacant", "vacant"] }, isDeleted: false });
     }
 
-    // Generate a Resident ID (using MongoDB ObjectId, as no custom field exists in Schema)
-    // Or we can just let mongoose create the _id.
-    const room = await Room.findById(roomId);
-    if (!room || room.occupiedBeds >= room.totalBeds) {
-      return res.status(400).json({ success: false, message: "Room is already full" });
-    }
+    // 4. Generate sequential admission number & parse names
+    const now = new Date();
+    const yearMonth = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}`;
+    const count = await Resident.countDocuments({ hostelId });
+    const admissionNumber = `ADM-${yearMonth}-${String(count + 1).padStart(4, "0")}`;
 
-    // Create resident (bed assignment/occupancy is handled by Bed model rules)
+    const fullName = (admission.residentName || "Resident").trim();
+    const nameParts = fullName.split(" ");
+    const firstName = nameParts[0] || "Resident";
+    const lastName = nameParts.slice(1).join(" ") || "";
+
+    // 5. Create Resident document
     const resident = await Resident.create({
+      tenantId: hostelId,
       hostelId,
-      name: admission.residentName,
+      admissionNumber,
+      firstName,
+      lastName,
+      fullName,
+      name: fullName,
       phone: admission.phone,
-      email: admission.email,
-      emergencyContact: admission.emergencyContact,
-      address: admission.address,
-      roomId,
-      bedId: bed._id,
+      email: admission.email || "",
+      emergencyContact: admission.emergencyContact || "",
+      address: admission.address || "",
+      roomId: room._id,
+      bedId: bed?._id || null,
       monthlyRent: room.rentPerBed || 0,
       depositAmount: 0,
+      joiningDate: new Date(),
       joinDate: new Date(),
       status: "active",
-      idProof: admission.idProofFile,
-      photo: admission.photoFile,
+      idProof: admission.idProofFile || "",
+      photo: admission.photoFile || "",
+      createdBy: req.owner?.ownerId || null,
 
       // Immutable consent snapshot copied from PublicAdmission at approval time
-      rulesVersionId: admission.rulesVersionId,
-      rulesVersionNumber: admission.rulesVersionNumber,
-      acceptedRulesTextSnapshot: admission.acceptedRulesTextSnapshot,
-      signatureImage: admission.signatureImage,
-      signedAt: admission.signedAt,
-      agreementChecked: admission.agreementChecked,
+      rulesVersionId: admission.rulesVersionId || "",
+      rulesVersionNumber: admission.rulesVersionNumber || "",
+      acceptedRulesTextSnapshot: admission.acceptedRulesTextSnapshot || "",
+      signatureImage: admission.signatureImage || "",
+      signedAt: admission.signedAt || new Date(),
+      agreementChecked: Boolean(admission.agreementChecked),
     });
 
+    // 6. Update admission status
     admission.status = "Approved";
     await admission.save();
 
-    // Update Bed
-    bed.status = "occupied";
-    bed.residentId = resident._id;
-    await bed.save();
+    // 7. Update Bed & Room occupancy
+    if (bed) {
+      await Bed.findByIdAndUpdate(bed._id, {
+        $set: { status: "Occupied", residentId: resident._id }
+      });
+    }
 
-    // Update Room
-    await Room.findByIdAndUpdate(roomId, {
+    await Room.findByIdAndUpdate(room._id, {
       $inc: { occupiedBeds: 1 }
     });
 
-    // Notification for this approval
+    // 8. Publish notification
     try {
       const { publishNotification } = require("../utils/notificationPublisher");
       await publishNotification({
@@ -682,7 +720,7 @@ const approveAdmission = async (req, res) => {
         hostelId,
         type: "resident_approved",
         title: "Resident Approved",
-        message: `Resident ${resident.name} approved and assigned to room ${room.roomNumber}`,
+        message: `Resident ${resident.fullName} approved and assigned to room ${room.roomNumber}`,
         meta: {
           route: "/admissions",
           residentId: resident?._id || null,
@@ -693,7 +731,12 @@ const approveAdmission = async (req, res) => {
       logger.error("Resident approval notification failed:", e?.message || e);
     }
 
-    res.status(200).json({ success: true, message: "Admission approved & Resident created", resident });
+    res.status(200).json({
+      success: true,
+      message: "Admission approved & Resident created successfully",
+      resident,
+      admission
+    });
   } catch (error) {
     logger.error("approveAdmission error:", error?.message || error);
     res.status(500).json({ success: false, message: "Failed to approve admission", error: error?.message || String(error) });
@@ -710,9 +753,20 @@ const rejectAdmission = async (req, res) => {
     const { hostelId } = req.owner;
     
     const admission = await PublicAdmission.findOne({ _id: id, hostelId });
-    if (!admission) return res.status(404).json({ success: false, message: "Not found" });
+    if (!admission) return res.status(404).json({ success: false, message: "Admission request not found" });
+
+    // Idempotency & status check
+    if (admission.status === "Rejected") {
+      return res.status(400).json({ success: false, message: "Admission has already been rejected." });
+    }
+    if (admission.status === "Approved") {
+      return res.status(400).json({ success: false, message: "Cannot reject an already approved admission." });
+    }
 
     admission.status = "Rejected";
+    if (req.body.reason) {
+      admission.rejectionReason = String(req.body.reason).trim();
+    }
     await admission.save();
 
     // Notification for rejection
@@ -722,17 +776,33 @@ const rejectAdmission = async (req, res) => {
         userId: req.owner?.ownerId,
         hostelId,
         type: "resident_rejected",
-        message: "Resident rejected",
+        title: "Admission Rejected",
+        message: `Admission for ${admission.residentName} was rejected.`,
         meta: {
           route: "/admissions",
           admissionId: admission?._id || null,
         },
       });
+
+      // EventBus dispatch for WhatsApp applicant rejection update
+      const EventBus = require("../services/EventBus");
+      const Hostel = require("../models/Hostel");
+      const hostelDoc = await Hostel.findById(hostelId).select("hostelName name").lean();
+      EventBus.emit("ADMISSION_REJECTED", {
+        admissionId: admission._id,
+        hostelId,
+        hostelName: hostelDoc?.hostelName || hostelDoc?.name || "HostelMate",
+        applicantName: admission.residentName || admission.fullName || "Applicant",
+        phone: admission.phone,
+        referenceId: String(admission._id),
+        rejectionReason: admission.rejectionReason || "Not specified",
+        status: "Rejected",
+      });
     } catch (e) {
       logger.error("Resident rejection notification failed:", e?.message || e);
     }
 
-    res.status(200).json({ success: true, message: "Admission rejected" });
+    res.status(200).json({ success: true, message: "Admission rejected successfully", admission });
 
   } catch (error) {
     logger.error("rejectAdmission error:", error?.message || error);
@@ -1324,6 +1394,205 @@ const resetPasswordWithToken = async (req, res) => {
   }
 };
 
+/**
+ * GET /api/owner/profile
+ * Returns authenticated owner's details and active hostels list
+ */
+const getOwnerProfile = async (req, res) => {
+  try {
+    const ownerId = req.owner?.ownerId || req.user?.userId;
+    if (!ownerId) {
+      return res.status(401).json({ success: false, message: "Unauthorized" });
+    }
+
+    const owner = await Owner.findById(ownerId).select("-password -resetPasswordToken -resetPasswordExpires").lean();
+    if (!owner) {
+      return res.status(404).json({ success: false, message: "Owner profile not found" });
+    }
+
+    const hostels = await Hostel.find({
+      $or: [{ ownerId: owner._id }, { _id: owner.hostelId }],
+      isDeleted: { $ne: true }
+    }).select("hostelName name address city state pincode capacity status publicCode uniqueCode isPublic").lean();
+
+    return res.status(200).json({
+      success: true,
+      owner,
+      hostels,
+      existingHostelsCount: hostels.length
+    });
+  } catch (error) {
+    logger.error("getOwnerProfile error:", error);
+    return res.status(500).json({ success: false, message: "Server error fetching owner profile" });
+  }
+};
+
+/**
+ * GET /api/owner/hostels
+ * Returns list of all hostels owned by this authenticated owner
+ */
+const getOwnerHostels = async (req, res) => {
+  try {
+    const ownerId = req.owner?.ownerId || req.user?.userId;
+    if (!ownerId) {
+      return res.status(401).json({ success: false, message: "Unauthorized" });
+    }
+
+    const owner = await Owner.findById(ownerId).lean();
+    const hostels = await Hostel.find({
+      $or: [{ ownerId }, { _id: owner?.hostelId }],
+      isDeleted: { $ne: true }
+    }).select("hostelName name address city state pincode capacity status publicCode uniqueCode isPublic isTrial subscriptionStatus").lean();
+
+    return res.status(200).json({
+      success: true,
+      hostels,
+      count: hostels.length
+    });
+  } catch (error) {
+    logger.error("getOwnerHostels error:", error);
+    return res.status(500).json({ success: false, message: "Server error fetching owner hostels" });
+  }
+};
+
+/**
+ * POST /api/owner/hostels/add
+ * Dedicated workflow for existing owner to register an additional hostel
+ */
+const submitAdditionalHostelRequest = async (req, res) => {
+  try {
+    const ownerId = req.owner?.ownerId || req.user?.userId;
+    if (!ownerId) {
+      return res.status(401).json({ success: false, message: "Unauthorized" });
+    }
+
+    const owner = await Owner.findById(ownerId);
+    if (!owner) {
+      return res.status(404).json({ success: false, message: "Owner profile not found" });
+    }
+
+    const {
+      hostelName,
+      hostelAddress,
+      pincode,
+      state,
+      district,
+      city,
+      hostelType = "Co-Living",
+      capacity = 0,
+      roomsCount = 0,
+      amenities = []
+    } = req.body;
+
+    // 1. Mandatory Field Validations
+    if (!hostelName || !hostelName.trim()) {
+      return res.status(400).json({ success: false, message: "Hostel Name is required" });
+    }
+    if (!hostelAddress || !hostelAddress.trim()) {
+      return res.status(400).json({ success: false, message: "Hostel Address is required" });
+    }
+    if (!pincode || !/^\d{6}$/.test(String(pincode).trim())) {
+      return res.status(400).json({ success: false, message: "Please provide a valid 6-digit Indian PIN code" });
+    }
+
+    // 2. License Document Requirement
+    let licensePhoto = req.body.licensePhoto || "";
+    if (req.file) {
+      licensePhoto = req.file.path || req.file.url || req.file.filename || "";
+    } else if (req.files?.licensePhoto?.[0]) {
+      const f = req.files.licensePhoto[0];
+      licensePhoto = f.path || f.url || f.filename || "";
+    }
+
+    if (!licensePhoto) {
+      return res.status(400).json({
+        success: false,
+        message: "New Hostel License document is required. Please upload the license document for this specific hostel."
+      });
+    }
+
+    const cleanHostelName = hostelName.trim();
+    const cleanHostelAddress = hostelAddress.trim();
+
+    // 3. Duplicate Prevention: Check active hostels
+    const existingActiveHostel = await Hostel.findOne({
+      $or: [{ ownerId: owner._id }, { _id: owner.hostelId }],
+      hostelName: { $regex: new RegExp(`^${cleanHostelName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, "i") },
+      isDeleted: { $ne: true }
+    });
+
+    if (existingActiveHostel) {
+      return res.status(400).json({
+        success: false,
+        message: `You already have an active hostel named "${cleanHostelName}". Please use a distinct name.`
+      });
+    }
+
+    // Duplicate Prevention: Check pending requests
+    const existingPendingRequest = await HostelRequest.findOne({
+      ownerId: owner._id,
+      hostelName: { $regex: new RegExp(`^${cleanHostelName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, "i") },
+      status: { $in: ["pending", "activation_pending", "approved"] }
+    });
+
+    if (existingPendingRequest) {
+      return res.status(400).json({
+        success: false,
+        message: `You already have a pending registration request for "${cleanHostelName}".`
+      });
+    }
+
+    const HostelRequest = require("../models/HostelRequest");
+
+    // 4. Create HostelRequest with Existing Owner linkage
+    const newRequest = await HostelRequest.create({
+      ownerName: owner.ownerName,
+      phone: owner.phone,
+      email: owner.email || "",
+      ownerAddress: owner.address || owner.ownerAddress || cleanHostelAddress,
+      ownerId: owner._id,
+      isExistingOwner: true,
+      source: "existing_owner",
+      hostelName: cleanHostelName,
+      hostelAddress: cleanHostelAddress,
+      state: state || "",
+      district: district || "",
+      city: city || "",
+      pincode: String(pincode).trim(),
+      hostelType,
+      capacity: Number(capacity) || 0,
+      roomsCount: Number(roomsCount) || 0,
+      amenities: Array.isArray(amenities) ? amenities : [],
+      licensePhoto,
+      status: "pending",
+      timeline: [
+        {
+          action: `Submitted additional hostel application for "${cleanHostelName}" by existing owner`,
+          by: owner.ownerName,
+          date: new Date()
+        }
+      ]
+    });
+
+    logger.info({
+      operation: "submitAdditionalHostelRequest",
+      ownerId: String(owner._id),
+      requestId: String(newRequest._id),
+      hostelName: cleanHostelName
+    }, "Additional hostel registration request submitted");
+
+    return res.status(201).json({
+      success: true,
+      message: "New hostel application submitted successfully. It will be reviewed by our team shortly.",
+      requestId: newRequest._id,
+      request: newRequest
+    });
+  } catch (error) {
+    logger.error("submitAdditionalHostelRequest error:", error);
+    return res.status(500).json({ success: false, message: error.message || "Failed to submit hostel application" });
+  }
+};
+
 module.exports = {
   loginOwner,
   resetOwnerPassword,
@@ -1344,6 +1613,9 @@ module.exports = {
   completeOnboarding,
   forgotPassword,
   resetPasswordWithToken,
+  getOwnerProfile,
+  getOwnerHostels,
+  submitAdditionalHostelRequest,
 };
 
 

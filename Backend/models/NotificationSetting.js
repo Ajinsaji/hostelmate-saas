@@ -18,6 +18,7 @@ const notificationSettingSchema = new mongoose.Schema(
     },
     browserNotifications: { type: Boolean, default: true },
     pushNotifications: { type: Boolean, default: true },
+    whatsappNotifications: { type: Boolean, default: true },
     emailNotifications: { type: Boolean, default: false },
     smsNotifications: { type: Boolean, default: false },
   },

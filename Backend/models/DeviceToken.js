@@ -12,6 +12,16 @@ const deviceTokenSchema = new mongoose.Schema(
 
     platform: { type: String, default: "web" },
 
+    deviceType: { type: String, default: "mobile" }, // mobile | tablet | desktop
+
+    deviceName: { type: String, default: "Android / Mobile Device" },
+
+    browser: { type: String, default: "Chrome" },
+
+    os: { type: String, default: "Android" },
+
+    ipAddress: { type: String, default: "" },
+
     isActive: { type: Boolean, default: true },
 
     lastSeenAt: { type: Date, default: Date.now },

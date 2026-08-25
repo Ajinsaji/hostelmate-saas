@@ -221,21 +221,39 @@ async function checkInResident({ residentId, roomId, bedId, checkInDate = new Da
   const room = await Room.findById(roomId);
   if (!room) throw new Error("Target room not found");
 
+  // Strict tenant isolation
+  if (room.hostelId.toString() !== resident.hostelId.toString()) {
+    throw new Error("Cannot check in resident to a room in a different hostel");
+  }
+
   const bed = await Bed.findById(bedId);
   if (!bed) throw new Error("Target bed not found");
 
-  if (bed.status === "occupied" && bed.residentId && bed.residentId.toString() !== residentId.toString()) {
+  if (bed.hostelId.toString() !== resident.hostelId.toString() || bed.roomId.toString() !== room._id.toString()) {
+    throw new Error("Selected bed does not belong to this room and hostel");
+  }
+
+  // Atomic bed claim to prevent race conditions
+  const claimedBed = await Bed.findOneAndUpdate(
+    {
+      _id: bedId,
+      roomId,
+      hostelId: resident.hostelId,
+      $or: [{ status: { $in: ["Vacant", "vacant"] } }, { residentId: resident._id }]
+    },
+    { $set: { status: "Occupied", residentId: resident._id } },
+    { returnDocument: "after" }
+  );
+
+  if (!claimedBed) {
     throw new Error(`Bed ${bed.bedNumber || "selected"} is already occupied by another resident`);
   }
 
   // Release previous bed if resident was in another bed
   if (resident.bedId && resident.bedId.toString() !== bedId.toString()) {
-    const prevBed = await Bed.findById(resident.bedId);
-    if (prevBed) {
-      prevBed.status = "vacant";
-      prevBed.residentId = null;
-      await prevBed.save();
-    }
+    await Bed.findByIdAndUpdate(resident.bedId, {
+      $set: { status: "Vacant", residentId: null }
+    });
     if (resident.roomId && resident.roomId.toString() !== roomId.toString()) {
       const prevRoom = await Room.findById(resident.roomId);
       if (prevRoom && prevRoom.occupiedBeds > 0) {
@@ -244,11 +262,6 @@ async function checkInResident({ residentId, roomId, bedId, checkInDate = new Da
       }
     }
   }
-
-  // Claim new bed
-  bed.status = "occupied";
-  bed.residentId = resident._id;
-  await bed.save();
 
   // Update new room occupancy
   if (!resident.bedId || resident.roomId?.toString() !== roomId.toString()) {
@@ -306,12 +319,9 @@ async function checkOutResident({ residentId, actualCheckoutDate = new Date(), r
 
   // Free assigned bed
   if (resident.bedId) {
-    const bed = await Bed.findById(resident.bedId);
-    if (bed) {
-      bed.status = "vacant";
-      bed.residentId = null;
-      await bed.save();
-    }
+    await Bed.findByIdAndUpdate(resident.bedId, {
+      $set: { status: "Vacant", residentId: null }
+    });
   }
 
   // Decrement room occupancy
@@ -368,42 +378,54 @@ async function transferRoomOrBed({ residentId, newRoomId, newBedId, reason = "" 
   const newRoom = await Room.findById(newRoomId);
   if (!newRoom) throw new Error("New room not found");
 
+  // Strict tenant isolation
+  if (newRoom.hostelId.toString() !== resident.hostelId.toString()) {
+    throw new Error("Cannot transfer resident to a room in a different hostel");
+  }
+
   const newBed = await Bed.findById(newBedId);
   if (!newBed) throw new Error("New bed not found");
 
-  if (newBed.status === "occupied" && newBed.residentId && newBed.residentId.toString() !== residentId.toString()) {
+  if (newBed.hostelId.toString() !== resident.hostelId.toString() || newBed.roomId.toString() !== newRoom._id.toString()) {
+    throw new Error("Selected bed does not belong to the target room and hostel");
+  }
+
+  // Atomic claim on new bed
+  const claimedBed = await Bed.findOneAndUpdate(
+    {
+      _id: newBedId,
+      roomId: newRoomId,
+      hostelId: resident.hostelId,
+      $or: [{ status: { $in: ["Vacant", "vacant"] } }, { residentId: resident._id }]
+    },
+    { $set: { status: "Occupied", residentId: resident._id } },
+    { returnDocument: "after" }
+  );
+
+  if (!claimedBed) {
     throw new Error(`Target bed ${newBed.bedNumber || ""} is already occupied`);
   }
 
   const oldRoomId = resident.roomId;
   const oldBedId = resident.bedId;
 
-  // 1. Release old bed
-  if (oldBedId) {
-    const oldBed = await Bed.findById(oldBedId);
-    if (oldBed) {
-      oldBed.status = "vacant";
-      oldBed.residentId = null;
-      await oldBed.save();
-    }
+  // 1. Release old bed if changing beds
+  if (oldBedId && oldBedId.toString() !== newBedId.toString()) {
+    await Bed.findByIdAndUpdate(oldBedId, {
+      $set: { status: "Vacant", residentId: null }
+    });
   }
 
-  // 2. Decrement old room count
+  // 2. Decrement old room count & increment new room count
   if (oldRoomId && oldRoomId.toString() !== newRoomId.toString()) {
     const oldRoom = await Room.findById(oldRoomId);
     if (oldRoom && oldRoom.occupiedBeds > 0) {
       oldRoom.occupiedBeds -= 1;
       await oldRoom.save();
     }
-    // Increment new room count
     newRoom.occupiedBeds = (newRoom.occupiedBeds || 0) + 1;
     await newRoom.save();
   }
-
-  // 3. Claim new bed
-  newBed.status = "occupied";
-  newBed.residentId = resident._id;
-  await newBed.save();
 
   resident.roomId = newRoomId;
   resident.bedId = newBedId;
@@ -420,6 +442,28 @@ async function transferRoomOrBed({ residentId, newRoomId, newBedId, reason = "" 
     newValue: { roomId: newRoomId, bedId: newBedId, reason },
     ipAddress: userContext.ip,
   });
+
+  try {
+    const oldRoomDoc = oldRoomId ? await Room.findById(oldRoomId).select("roomNumber").lean() : null;
+    const oldBedDoc = oldBedId ? await Bed.findById(oldBedId).select("bedNumber").lean() : null;
+    const hostelDoc = await Hostel.findById(resident.hostelId).select("hostelName name").lean();
+
+    EventBus.emit("ROOM_TRANSFERRED", {
+      residentId: resident._id,
+      hostelId: resident.hostelId,
+      hostelName: hostelDoc?.hostelName || hostelDoc?.name || "HostelMate",
+      residentName: resident.fullName || `${resident.firstName || ""} ${resident.lastName || ""}`.trim(),
+      phone: resident.phone,
+      oldRoom: oldRoomDoc?.roomNumber || "—",
+      oldBed: oldBedDoc?.bedNumber || "—",
+      newRoom: newRoom.roomNumber || "—",
+      newBed: newBed.bedNumber || "—",
+      effectiveDate: new Date(),
+      referenceId: `TRANSFER_${resident._id}_${Date.now()}`,
+    });
+  } catch (emitErr) {
+    // Non-blocking notification emission
+  }
 
   return resident;
 }

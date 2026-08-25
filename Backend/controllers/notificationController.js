@@ -79,20 +79,113 @@ const markAllAsRead = async (req, res) => {
   }
 };
 
+const getNotificationSettings = async (req, res) => {
+  try {
+    const userCtx = getUserContext(req);
+    const NotificationSetting = require("../models/NotificationSetting");
+    let settings = await NotificationSetting.findOne({ userId: userCtx.userId });
+
+    if (!settings) {
+      settings = await NotificationSetting.create({
+        userId: userCtx.userId,
+        hostelId: userCtx.hostelId || null,
+        role: req.owner ? "owner" : req.user?.role || "user",
+        pushNotifications: true,
+        whatsappNotifications: true,
+        browserNotifications: true,
+        emailNotifications: false,
+        smsNotifications: false,
+        categories: {
+          payments: true,
+          admissions: true,
+          residents: true,
+          rooms: true,
+          staff: true,
+          subscription: true,
+          complaints: true,
+          reminders: true,
+          system: true,
+        },
+      });
+    }
+
+    return res.status(200).json({ success: true, settings });
+  } catch (err) {
+    logger.error("getNotificationSettings error:", err);
+    return res.status(500).json({ success: false, message: err.message || "Failed to load notification settings" });
+  }
+};
+
+const updateNotificationSettings = async (req, res) => {
+  try {
+    const userCtx = getUserContext(req);
+    const NotificationSetting = require("../models/NotificationSetting");
+    const {
+      pushNotifications,
+      whatsappNotifications,
+      browserNotifications,
+      categories = {},
+    } = req.body;
+
+    const updateDoc = {};
+    if (typeof pushNotifications === "boolean") updateDoc.pushNotifications = pushNotifications;
+    if (typeof whatsappNotifications === "boolean") updateDoc.whatsappNotifications = whatsappNotifications;
+    if (typeof browserNotifications === "boolean") updateDoc.browserNotifications = browserNotifications;
+
+    if (categories && typeof categories === "object") {
+      Object.entries(categories).forEach(([catKey, catVal]) => {
+        if (typeof catVal === "boolean") {
+          updateDoc[`categories.${catKey}`] = catVal;
+        }
+      });
+    }
+
+    const settings = await NotificationSetting.findOneAndUpdate(
+      { userId: userCtx.userId },
+      { $set: updateDoc },
+      { upsert: true, returnDocument: "after" }
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Notification settings updated successfully",
+      settings,
+    });
+  } catch (err) {
+    logger.error("updateNotificationSettings error:", err);
+    return res.status(500).json({ success: false, message: err.message || "Failed to update settings" });
+  }
+};
+
 const registerDeviceToken = async (req, res) => {
   try {
     const userCtx = getUserContext(req);
-    const { token, platform = "web" } = req.body;
+    const {
+      token,
+      platform = "web",
+      deviceType = "mobile",
+      deviceName = "Android / Mobile Device",
+      browser = "Chrome",
+      os = "Android",
+    } = req.body;
+
     if (!token) {
       return res.status(400).json({ success: false, message: "Device token is required" });
     }
+
     const DeviceToken = require("../models/DeviceToken");
     const deviceToken = await DeviceToken.findOneAndUpdate(
       { token },
       {
         userId: userCtx.userId,
         hostelId: userCtx.hostelId,
+        role: req.owner ? "owner" : req.user?.role || "user",
         platform,
+        deviceType,
+        deviceName,
+        browser,
+        os,
+        ipAddress: userCtx.ip,
         isActive: true,
         lastSeenAt: new Date(),
       },
@@ -105,11 +198,124 @@ const registerDeviceToken = async (req, res) => {
   }
 };
 
+const getUserDevices = async (req, res) => {
+  try {
+    const userCtx = getUserContext(req);
+    const DeviceToken = require("../models/DeviceToken");
+    const devices = await DeviceToken.find({ userId: userCtx.userId, isActive: true })
+      .select("_id platform deviceType deviceName browser os lastSeenAt createdAt")
+      .sort({ lastSeenAt: -1 })
+      .lean();
+
+    return res.status(200).json({ success: true, devices });
+  } catch (err) {
+    logger.error("getUserDevices error:", err);
+    return res.status(500).json({ success: false, message: err.message || "Failed to fetch devices" });
+  }
+};
+
+const deleteDeviceToken = async (req, res) => {
+  try {
+    const userCtx = getUserContext(req);
+    const DeviceToken = require("../models/DeviceToken");
+    const { id } = req.params;
+    const { token } = req.body || {};
+
+    const query = { userId: userCtx.userId };
+    if (id && id !== "current") {
+      query._id = id;
+    } else if (token) {
+      query.token = token;
+    }
+
+    const result = await DeviceToken.findOneAndDelete(query);
+    return res.status(200).json({
+      success: true,
+      message: result ? "Device removed successfully" : "Device not found or already removed",
+    });
+  } catch (err) {
+    logger.error("deleteDeviceToken error:", err);
+    return res.status(500).json({ success: false, message: err.message || "Failed to remove device" });
+  }
+};
+
+// In-memory rate limiting for test notifications (1 test per 30s per user)
+const testNotificationTimers = new Map();
+
+const sendTestNotification = async (req, res) => {
+  try {
+    const userCtx = getUserContext(req);
+    const { token } = req.body;
+    const userIdStr = String(userCtx.userId || "anonymous");
+
+    const now = Date.now();
+    const lastSent = testNotificationTimers.get(userIdStr) || 0;
+    if (now - lastSent < 30000) {
+      const waitSec = Math.ceil((30000 - (now - lastSent)) / 1000);
+      return res.status(429).json({
+        success: false,
+        message: `Please wait ${waitSec}s before sending another test notification.`,
+      });
+    }
+
+    const DeviceToken = require("../models/DeviceToken");
+    let targetTokens = [];
+
+    if (token) {
+      targetTokens = [token];
+    } else {
+      const devTokens = await DeviceToken.find({ userId: userCtx.userId, isActive: true })
+        .select("token")
+        .limit(1);
+      targetTokens = devTokens.map((t) => t.token);
+    }
+
+    if (!targetTokens.length) {
+      return res.status(400).json({
+        success: false,
+        message: "No registered push device token found for this device. Please enable notifications first.",
+      });
+    }
+
+    testNotificationTimers.set(userIdStr, now);
+
+    const { sendPushToUserDevices } = require("../utils/fcmService");
+    const pushResult = await sendPushToUserDevices({
+      userId: userCtx.userId,
+      hostelId: userCtx.hostelId,
+      title: "HostelMate Notifications",
+      body: "Push notifications are working on this device.",
+      data: {
+        tokens: targetTokens,
+        payload: {
+          type: "test_notification",
+          route: "/notifications",
+        },
+      },
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Test notification sent to this device.",
+      pushResult,
+    });
+  } catch (err) {
+    logger.error("sendTestNotification error:", err);
+    return res.status(500).json({ success: false, message: err.message || "Failed to send test notification" });
+  }
+};
+
 module.exports = {
   dispatchNotification,
   getNotifications,
   getUnreadCount,
   markAsRead,
   markAllAsRead,
+  getNotificationSettings,
+  updateNotificationSettings,
   registerDeviceToken,
+  getUserDevices,
+  deleteDeviceToken,
+  sendTestNotification,
 };
+

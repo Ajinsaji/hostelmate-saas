@@ -1,5 +1,6 @@
 import { memo } from "react";
-import { Save, Building, MapPin } from "lucide-react";
+import { Save, Building, MapPin, Bell } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { useTheme } from "../design-system/ThemeProvider";
 
 export const HostelSettingsMobile = memo(function HostelSettingsMobile({
@@ -10,6 +11,7 @@ export const HostelSettingsMobile = memo(function HostelSettingsMobile({
   saving,
 }) {
   const { colors } = useTheme();
+  const navigate = useNavigate();
 
   return (
     <div
@@ -55,6 +57,32 @@ export const HostelSettingsMobile = memo(function HostelSettingsMobile({
           <Save size={18} />
           <span>{saving ? "Saving..." : "Save"}</span>
         </button>
+      </div>
+
+      {/* Quick Notification Settings Link */}
+      <div
+        onClick={() => navigate("/owner/notification-settings")}
+        style={{
+          background: "#131C2E",
+          border: "1px solid #202B45",
+          borderRadius: "16px",
+          padding: "16px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          cursor: "pointer",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+          <div style={{ width: "36px", height: "36px", borderRadius: "10px", background: "rgba(16, 185, 129, 0.1)", color: "#10B981", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <Bell size={18} />
+          </div>
+          <div>
+            <div style={{ color: "#FFF", fontSize: "14px", fontWeight: 700 }}>Notification & Push Alerts</div>
+            <div style={{ color: "#94A3B8", fontSize: "11px" }}>Configure Android taskbar & WhatsApp alerts</div>
+          </div>
+        </div>
+        <div style={{ color: "#10B981", fontSize: "12px", fontWeight: 700 }}>Configure →</div>
       </div>
 
       {loading ? (

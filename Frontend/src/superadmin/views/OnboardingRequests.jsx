@@ -260,7 +260,12 @@ export const OnboardingRequests = React.memo(() => {
                       onClick={() => openDrawer(row)}
                       className="px-6 py-4 text-xs text-slate-300 cursor-pointer"
                     >
-                      {row.ownerName || "Not provided"}
+                      <div className="font-semibold text-white">{row.ownerName || "Not provided"}</div>
+                      {row.isExistingOwner && (
+                        <span className="inline-flex items-center gap-1 mt-0.5 px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-300 text-[10px] font-bold border border-blue-500/30">
+                          Existing Owner
+                        </span>
+                      )}
                     </td>
 
                     <td 

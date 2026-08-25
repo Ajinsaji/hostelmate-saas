@@ -51,6 +51,14 @@ const TEMPLATES = {
       "Hi {{residentName}},\n\nWe have received your rent payment of INR {{amount}} for {{month}}.\nRemaining Balance: INR {{balance}}.\n\nHostel: {{hostelName}}\nReceipt #: {{receiptNo}}.\n\nThank you!",
     variables: ["residentName", "amount", "month", "balance", "hostelName", "receiptNo"],
   },
+  ADMISSION_SUBMITTED: {
+    templateCode: "ADMISSION_SUBMITTED",
+    name: "Admission Application Received",
+    category: "admission",
+    defaultText:
+      "Hello {{applicantName}},\n\nYour admission application for \"{{hostelName}}\" has been received successfully.\n\nApplication ID: {{referenceId}}\nDate: {{submissionDate}}\nStatus: {{status}}\n\nThe hostel management will review your application shortly.\n\nThank you,\nHostelMate",
+    variables: ["applicantName", "hostelName", "referenceId", "submissionDate", "status"],
+  },
   ADMISSION_APPROVED: {
     templateCode: "ADMISSION_APPROVED",
     name: "Admission Approval & Welcome",
@@ -58,6 +66,22 @@ const TEMPLATES = {
     defaultText:
       "Dear {{residentName}},\n\nYour admission request for {{hostelName}} has been APPROVED! 🎉\n\nRoom Allocated: {{roomNumber}}\nBed: {{bedNumber}}\n\nWelcome to {{hostelName}}!",
     variables: ["residentName", "hostelName", "roomNumber", "bedNumber"],
+  },
+  ADMISSION_REJECTED: {
+    templateCode: "ADMISSION_REJECTED",
+    name: "Admission Application Status Update",
+    category: "admission",
+    defaultText:
+      "Hello {{applicantName}},\n\nYour admission application for \"{{hostelName}}\" has been reviewed.\n\nApplication ID: {{referenceId}}\nStatus: Rejected\nReason: {{rejectionReason}}\n\nFor further clarification, please contact the hostel.\n\nThank you,\nHostelMate",
+    variables: ["applicantName", "hostelName", "referenceId", "rejectionReason"],
+  },
+  ROOM_TRANSFERRED: {
+    templateCode: "ROOM_TRANSFERRED",
+    name: "Room Transfer Notice",
+    category: "admission",
+    defaultText:
+      "Hello {{residentName}},\n\nYour room has been changed at {{hostelName}}.\n\nPrevious:\nRoom {{oldRoom}}, Bed {{oldBed}}\n\nNew:\nRoom {{newRoom}}, Bed {{newBed}}\n\nThank you,\nHostelMate",
+    variables: ["residentName", "hostelName", "oldRoom", "oldBed", "newRoom", "newBed"],
   },
   ROOM_ASSIGNED: {
     templateCode: "ROOM_ASSIGNED",
@@ -96,6 +120,14 @@ const TEMPLATES = {
       "expiryDate",
       "loginUrl",
     ],
+  },
+  HOSTEL_ACTIVATED_FOR_EXISTING_OWNER: {
+    templateCode: "HOSTEL_ACTIVATED_FOR_EXISTING_OWNER",
+    name: "New Hostel Approved (Existing Owner)",
+    category: "announcement",
+    defaultText:
+      "🎉 New Hostel Approved\n\nHello {{ownerName}},\n\nYour new hostel \"{{hostelName}}\" has been approved and activated on HostelMate.\n\n🏠 Hostel: {{hostelName}}\n📍 Location: {{location}}\n🛏 Rooms: {{rooms}}\n🛏 Beds: {{beds}}\n📅 Activated: {{activationDate}}\n\nYou can switch to your new hostel from the HostelMate dashboard.\n\n🔗 Login:\n{{loginUrl}}\n\nYour existing owner account remains unchanged.\n\nThank you,\nHostelMate ❤️",
+    variables: ["ownerName", "hostelName", "location", "rooms", "beds", "activationDate", "loginUrl"],
   },
   GENERAL_ANNOUNCEMENT: {
     templateCode: "GENERAL_ANNOUNCEMENT",
@@ -174,11 +206,29 @@ const compileTemplate = (templateCode, variablesDict = {}, customText = null) =>
     safeVars.balance = safeVars.balance || "0";
     safeVars.hostelName = safeVars.hostelName || "Hostel";
     safeVars.receiptNo = safeVars.receiptNo || "REC-001";
+  } else if (templateCode === "ADMISSION_SUBMITTED") {
+    safeVars.applicantName = safeVars.applicantName || "Applicant";
+    safeVars.hostelName = safeVars.hostelName || "Hostel";
+    safeVars.referenceId = safeVars.referenceId || safeVars.admissionId || "-";
+    safeVars.submissionDate = safeVars.submissionDate || new Date().toLocaleDateString();
+    safeVars.status = safeVars.status || "Pending";
   } else if (templateCode === "ADMISSION_APPROVED") {
     safeVars.residentName = safeVars.residentName || "Resident";
     safeVars.hostelName = safeVars.hostelName || "Hostel";
     safeVars.roomNumber = safeVars.roomNumber || "-";
     safeVars.bedNumber = safeVars.bedNumber || "-";
+  } else if (templateCode === "ADMISSION_REJECTED") {
+    safeVars.applicantName = safeVars.applicantName || "Applicant";
+    safeVars.hostelName = safeVars.hostelName || "Hostel";
+    safeVars.referenceId = safeVars.referenceId || safeVars.admissionId || "-";
+    safeVars.rejectionReason = safeVars.rejectionReason || "Not specified";
+  } else if (templateCode === "ROOM_TRANSFERRED") {
+    safeVars.residentName = safeVars.residentName || "Resident";
+    safeVars.hostelName = safeVars.hostelName || "Hostel";
+    safeVars.oldRoom = safeVars.oldRoom || "—";
+    safeVars.oldBed = safeVars.oldBed || "—";
+    safeVars.newRoom = safeVars.newRoom || "—";
+    safeVars.newBed = safeVars.newBed || "—";
   } else if (templateCode === "ROOM_ASSIGNED") {
     safeVars.residentName = safeVars.residentName || "Resident";
     safeVars.roomNumber = safeVars.roomNumber || "-";
@@ -189,6 +239,14 @@ const compileTemplate = (templateCode, variablesDict = {}, customText = null) =>
     safeVars.residentName = safeVars.residentName || "Resident";
     safeVars.hostelName = safeVars.hostelName || "Hostel";
     safeVars.actualCheckoutDate = safeVars.actualCheckoutDate || "Today";
+  } else if (templateCode === "HOSTEL_ACTIVATED_FOR_EXISTING_OWNER") {
+    safeVars.ownerName = safeVars.ownerName || "Owner";
+    safeVars.hostelName = safeVars.hostelName || "Hostel";
+    safeVars.location = safeVars.location || (safeVars.city ? `${safeVars.city}, ${safeVars.district || ""}`.trim() : "Property Location");
+    safeVars.rooms = safeVars.rooms || "0";
+    safeVars.beds = safeVars.beds || "0";
+    safeVars.activationDate = safeVars.activationDate || new Date().toLocaleDateString();
+    safeVars.loginUrl = safeVars.loginUrl || "https://hostelmate-saas.vercel.app/owner/login";
   } else if (templateCode === "GENERAL_ANNOUNCEMENT") {
     safeVars.hostelName = safeVars.hostelName || "Hostel";
     safeVars.customMessage = safeVars.customMessage || safeVars.message || "Important Announcement";
@@ -213,17 +271,26 @@ const compileTemplate = (templateCode, variablesDict = {}, customText = null) =>
 /**
  * Precedence Engine:
  * Global OFF -> Manual Mode
+ * User WhatsApp Preference OFF -> Manual Mode
  * Global ON + Hostel OFF -> Manual Mode
  * Global ON + Hostel ON + Message Type OFF -> Manual Mode
  * Global ON + Hostel ON + Message Type ON -> Automatic Mode
  */
-const resolveAutomationMode = async (hostelId = null, category = "rent") => {
+const resolveAutomationMode = async (hostelId = null, category = "rent", recipientUserId = null) => {
   try {
     const systemSettings = await SystemSetting.findOne().lean();
     const globalEnabled = Boolean(systemSettings?.whatsappAutomationEnabled);
 
     if (!globalEnabled) {
       return { mode: "manual_wame", isAutomatic: false, reason: "Global WhatsApp Automation is OFF" };
+    }
+
+    if (recipientUserId) {
+      const NotificationSetting = require("../models/NotificationSetting");
+      const userSettings = await NotificationSetting.findOne({ userId: recipientUserId }).lean();
+      if (userSettings && userSettings.whatsappNotifications === false) {
+        return { mode: "manual_wame", isAutomatic: false, reason: "User has disabled WhatsApp notifications" };
+      }
     }
 
     if (!hostelId) {
@@ -321,7 +388,8 @@ const dispatchWhatsAppMessage = async ({
   const sanitizedWaMeUrl = buildWaMeUrl(normalizedPhone, sanitizedMessageText);
 
   // 1. Resolve Automation Mode via Precedence Engine
-  const { mode, isAutomatic, reason } = await resolveAutomationMode(hostelId, tplCategory);
+  const recipientUserId = ownerId || residentId;
+  const { mode, isAutomatic, reason } = await resolveAutomationMode(hostelId, tplCategory, recipientUserId);
 
   // 2. Check Idempotency for all dispatches with a referenceId
   if (referenceId) {
@@ -371,7 +439,7 @@ const dispatchWhatsAppMessage = async ({
     };
   }
 
-  // 4. AUTOMATIC MODE HANDLING (Meta API)
+  // 4. AUTOMATIC MODE HANDLING (Meta API with Bounded Retry)
   const metaConfig = validateWhatsAppConfig();
 
   // Create initial queued record with sanitized password
@@ -411,61 +479,66 @@ const dispatchWhatsAppMessage = async ({
   commRecord.status = "sending";
   await commRecord.save();
 
-  try {
-    const result = await sendOwnerWhatsApp({
-      phone: normalizedPhone,
-      ownerName: recipientName,
-      hostelName: variables.hostelName || "",
-      username: variables.username || "",
-      tempPassword: variables.tempPassword || "",
-      planType: variables.planType || "HostelMate Unified Plan",
-      expiryDate: variables.expiryDate || "",
-      loginUrl: variables.loginUrl || "",
-      messageText,
-    });
+  const maxAttempts = 2;
+  let lastError = null;
 
-    if (result?.success) {
-      commRecord.status = "sent";
-      commRecord.sentAt = new Date();
-      commRecord.providerMessageId = result.messageId || "accepted";
-      await commRecord.save();
-
-      return {
-        success: true,
-        mode: "meta_api",
-        status: "sent",
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    commRecord.attemptCount = attempt;
+    try {
+      const result = await sendOwnerWhatsApp({
+        phone: normalizedPhone,
+        ownerName: recipientName,
+        hostelName: variables.hostelName || "",
+        username: variables.username || "",
+        tempPassword: variables.tempPassword || "",
+        planType: variables.planType || "HostelMate Unified Plan",
+        expiryDate: variables.expiryDate || "",
+        loginUrl: variables.loginUrl || "",
         messageText,
-        communicationId: commRecord._id,
-        messageId: commRecord.providerMessageId,
-      };
-    } else {
-      commRecord.status = "failed";
-      commRecord.failureReason = result?.message || "Meta API send failed";
-      await commRecord.save();
+      });
 
-      return {
-        success: false,
-        mode: "meta_api",
-        status: "failed",
-        messageText,
-        communicationId: commRecord._id,
-        error: commRecord.failureReason,
-      };
-    }
-  } catch (err) {
-    commRecord.status = "failed";
-    commRecord.failureReason = err.safeMessage || err.message || "Meta delivery failed";
-    await commRecord.save();
+      if (result?.success) {
+        commRecord.status = "sent";
+        commRecord.sentAt = new Date();
+        commRecord.providerMessageId = result.messageId || "accepted";
+        commRecord.failureReason = "";
+        await commRecord.save();
 
-    return {
-      success: false,
-      mode: "meta_api",
-      status: "failed",
-      messageText,
-      communicationId: commRecord._id,
-      error: commRecord.failureReason,
-    };
+        return {
+          success: true,
+          mode: "meta_api",
+          status: "sent",
+          messageText,
+          communicationId: commRecord._id,
+          messageId: commRecord.providerMessageId,
+        };
+      } else {
+        lastError = new Error(result?.message || "Meta API send failed");
+      }
+    } catch (err) {
+      lastError = err;
+      // Do not retry on permanent errors (400, 401, 403, invalid config)
+      const isTransient = err.statusCode === 502 || err.statusCode === 503 || err.statusCode === 504 || err.originalStatus === 429 || err.code === "ECONNABORTED" || err.code === "ETIMEDOUT";
+      if (!isTransient || attempt >= maxAttempts) {
+        break;
+      }
+      // Brief backoff before retry attempt 2
+      await new Promise((res) => setTimeout(res, 500));
     }
+  }
+
+  commRecord.status = "failed";
+  commRecord.failureReason = lastError?.safeMessage || lastError?.message || "Meta delivery failed";
+  await commRecord.save();
+
+  return {
+    success: false,
+    mode: "meta_api",
+    status: "failed",
+    messageText,
+    communicationId: commRecord._id,
+    error: commRecord.failureReason,
+  };
   } finally {
     finishDispatchTiming();
   }

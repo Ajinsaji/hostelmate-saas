@@ -7,11 +7,21 @@ const {
   getUnreadCount,
   markAsRead,
   markAllAsRead,
+  getNotificationSettings,
+  updateNotificationSettings,
   registerDeviceToken,
+  getUserDevices,
+  deleteDeviceToken,
+  sendTestNotification,
 } = require("../controllers/notificationController");
 
 router.use(ownerAuth);
 
+router.get("/settings", getNotificationSettings);
+router.put("/settings", updateNotificationSettings);
+router.get("/devices", getUserDevices);
+router.delete("/devices/:id", deleteDeviceToken);
+router.post("/test", sendTestNotification);
 router.post("/device-token", registerDeviceToken);
 router.post("/dispatch", dispatchNotification);
 router.get("/", getNotifications);

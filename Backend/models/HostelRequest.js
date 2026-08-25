@@ -6,7 +6,19 @@ const hostelRequestSchema = new mongoose.Schema(
 
     phone: {
       type: String,
-      unique: true,
+      index: true,
+    },
+
+    ownerId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Owner",
+      default: null,
+      index: true,
+    },
+
+    isExistingOwner: {
+      type: Boolean,
+      default: false,
     },
 
     hostelId: {
@@ -65,7 +77,7 @@ const hostelRequestSchema = new mongoose.Schema(
     assignedBy: { type: String, default: "" },
     source: {
       type: String,
-      enum: ["public", "admin"],
+      enum: ["public", "admin", "existing_owner"],
       default: "public",
     },
     createdBy: {

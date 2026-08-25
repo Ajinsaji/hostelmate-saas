@@ -1,5 +1,6 @@
 import { memo } from "react";
-import { Save } from "lucide-react";
+import { Save, Bell } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { useTheme } from "../design-system/ThemeProvider";
 import {
   DashboardCard,
@@ -17,6 +18,7 @@ export const HostelSettingsDesktop = memo(function HostelSettingsDesktop({
   saving,
 }) {
   const { colors, typography } = useTheme();
+  const navigate = useNavigate();
 
   return (
     <div className="space-y-6 max-w-3xl mx-auto">
@@ -34,6 +36,22 @@ export const HostelSettingsDesktop = memo(function HostelSettingsDesktop({
 
         <Button variant="primary" icon={Save} onClick={handleSubmit} disabled={saving}>
           {saving ? "Saving..." : "Save Settings"}
+        </Button>
+      </div>
+
+      {/* Notification Preferences Quick Action Card */}
+      <div className="p-4 rounded-2xl bg-[#131C2E] border border-slate-800 flex items-center justify-between shadow-md">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center">
+            <Bell size={20} />
+          </div>
+          <div>
+            <h4 className="font-bold text-white text-sm">Notification & Android Alert Settings</h4>
+            <p className="text-xs text-slate-400">Configure Android push, WhatsApp alerts, and in-app feeds</p>
+          </div>
+        </div>
+        <Button variant="secondary" size="sm" onClick={() => navigate("/owner/notification-settings")}>
+          Configure Alerts
         </Button>
       </div>
 

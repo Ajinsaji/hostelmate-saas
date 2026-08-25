@@ -226,14 +226,33 @@ const submitAdmission = async (req, res) => {
         await timer.measure("notificationMs", () => publishNotification({
           userId: owner._id,
           hostelId: hostel._id,
+          role: "owner",
           type: "admission_submitted",
-          message: "New resident admission submitted",
+          category: "admissions",
+          priority: "high",
+          title: "New Admission Request",
+          message: `${fullName || firstName || "An applicant"} submitted a new admission request for ${hostel.hostelName || hostel.name || "your hostel"}.`,
+          actionUrl: "/owner/pending-admissions",
           meta: {
-            route: "/admissions",
-            admissionId: admission._id,
+            route: "/owner/pending-admissions",
+            deepLink: "/owner/pending-admissions",
+            admissionId: String(admission._id),
           },
         }));
       }
+
+      // EventBus dispatch for WhatsApp applicant confirmation
+      const EventBus = require("../services/EventBus");
+      EventBus.emit("ADMISSION_SUBMITTED", {
+        admissionId: admission._id,
+        hostelId: hostel._id,
+        hostelName: hostel.hostelName || hostel.name || "HostelMate",
+        applicantName: fullName || firstName || "Applicant",
+        phone,
+        referenceId: String(admission._id),
+        submissionDate: new Date().toLocaleDateString(),
+        status: "Pending",
+      });
     } catch (e) {
       // never break admission flow
       logger.error("Admission submit notification failed:", e?.message || e);

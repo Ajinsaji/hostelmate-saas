@@ -368,7 +368,7 @@ const sendOwnerWhatsApp = async (payload) => {
         Authorization: `Bearer ${config.token}`,
         "Content-Type": "application/json",
       },
-      timeout: 8000,
+      timeout: 5000,
     });
 
     logger.info("WHATSAPP SENT SUCCESS", {

@@ -21,6 +21,9 @@ const {
   completeOnboarding,
   forgotPassword,
   resetPasswordWithToken,
+  getOwnerProfile,
+  getOwnerHostels,
+  submitAdditionalHostelRequest,
 } = require("../controllers/ownerController");
 
 const ownerAuth = require("../middleware/ownerAuth");
@@ -30,6 +33,22 @@ const { uploadSingle } = require("../middleware/cloudinaryUpload");
 router.post("/login", loginOwner);
 router.post("/forgot-password", forgotPassword);
 router.post("/reset-password", resetPasswordWithToken);
+
+// Owner Profile & Multi-Hostels
+router.get("/profile", ownerAuth, getOwnerProfile);
+router.get("/hostels", ownerAuth, getOwnerHostels);
+router.post(
+  "/hostels/add",
+  ownerAuth,
+  uploadSingle("licensePhoto"),
+  submitAdditionalHostelRequest
+);
+router.post(
+  "/add-hostel",
+  ownerAuth,
+  uploadSingle("licensePhoto"),
+  submitAdditionalHostelRequest
+); // Alias
 
 // Owner Dashboard
 router.get("/dashboard", ownerAuth, getDashboardStats);
