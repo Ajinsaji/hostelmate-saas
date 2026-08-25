@@ -7,6 +7,7 @@ const {
   resetOwnerPassword,
   setOwnerStatus,
   forceLogout,
+  transferOwnership,
   getDashboardStats,
   getPendingCount,
   getAdmissions,
