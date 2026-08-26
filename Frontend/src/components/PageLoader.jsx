@@ -1,6 +1,6 @@
 import { Loader2 } from "lucide-react";
 
-export default function PageLoader() {
+export default function PageLoader({ message = "Preparing your workspace..." }) {
   return (
     <div className="min-h-screen w-full bg-[#0B1120] flex flex-col items-center justify-center gap-4 text-white font-sans">
       <div className="relative flex items-center justify-center">
@@ -9,7 +9,7 @@ export default function PageLoader() {
         <Loader2 className="h-10 w-10 animate-spin text-[#16A34A] relative z-10" />
       </div>
       <p className="text-[#CBD5E1] text-sm font-medium tracking-wide animate-pulse">
-        Verifying session...
+        {message}
       </p>
     </div>
   );

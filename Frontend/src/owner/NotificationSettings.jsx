@@ -139,13 +139,13 @@ export default function NotificationSettings() {
         toast.success("Notification permission granted! Registering device...");
 
         const token = await requestFcmPermissionAndToken();
-        if (token) {
+        if (token && typeof token === "string" && token.trim()) {
           setCurrentToken(token);
           const isAndroid = /Android/i.test(navigator.userAgent);
           const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 
           await api.post("/api/notifications/device-token", {
-            token,
+            token: token.trim(),
             platform: "web",
             deviceType: isAndroid ? "mobile" : isMobile ? "mobile" : "desktop",
             deviceName: isAndroid ? "Android Device" : isMobile ? "Mobile Browser" : "Desktop Browser",
@@ -155,6 +155,8 @@ export default function NotificationSettings() {
 
           toast.success("Device registered for Android push notifications!");
           fetchSettingsAndDevices();
+        } else {
+          toast.error("Push notification token unavailable for this device.");
         }
       } else if (permission === "denied") {
         setPushStatus("denied");
@@ -213,6 +215,11 @@ export default function NotificationSettings() {
   const handleSendTest = async () => {
     if (pushStatus !== "granted") {
       toast.error("Please enable push notifications on this device first.");
+      return;
+    }
+
+    if (!currentToken) {
+      toast.error("This device is not registered for push notifications. Please enable notifications first.");
       return;
     }
 

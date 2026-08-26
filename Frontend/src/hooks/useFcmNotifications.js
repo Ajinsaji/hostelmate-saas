@@ -33,8 +33,10 @@ export default function useFcmNotifications({ enabled = true, onIncoming } = {})
         }
 
         const token = await requestFcmPermissionAndToken();
-        if (!token) {
-          console.warn("[useFcmNotifications] FCM token unavailable - background notifications disabled");
+        if (!token || typeof token !== "string" || !token.trim()) {
+          if (import.meta.env.DEV) {
+            console.warn("[useFcmNotifications] FCM token unavailable - background notifications disabled");
+          }
           return;
         }
 

@@ -16,6 +16,8 @@ import {
 } from "lucide-react";
 import { useTheme } from "../design-system/ThemeProvider";
 
+import buildFileUrl from "../utils/buildFileUrl";
+
 export const ProfileMobile = memo(function ProfileMobile({
   ownerData,
   hostelData,
@@ -30,6 +32,8 @@ export const ProfileMobile = memo(function ProfileMobile({
   const [pushEnabled, setPushEnabled] = useState(true);
 
   const qrUrl = hostelData?.slug ? buildQrUrl(`/public/register/${hostelData.slug}`) : "";
+
+  const avatarUrl = buildFileUrl(ownerData.profileImage);
 
   return (
     <div
@@ -57,9 +61,15 @@ export const ProfileMobile = memo(function ProfileMobile({
             color: "#22C55E",
             fontSize: "24px",
             fontWeight: 700,
+            overflow: "hidden",
+            flexShrink: 0,
           }}
         >
-          {ownerData.ownerName?.slice(0, 1).toUpperCase() || "O"}
+          {avatarUrl ? (
+            <img src={avatarUrl} alt={ownerData.ownerName} style={{ width: "100%", height: "100%", objectFit: "cover" }} onError={(e) => { e.currentTarget.style.display = "none"; }} />
+          ) : (
+            ownerData.ownerName?.slice(0, 1).toUpperCase() || "O"
+          )}
         </div>
         <div>
           <h1 style={{ fontSize: "22px", fontWeight: 700, color: "#FFFFFF", margin: 0 }}>

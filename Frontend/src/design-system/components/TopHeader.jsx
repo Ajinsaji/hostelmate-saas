@@ -8,6 +8,8 @@ import { useNavigate, useLocation } from "react-router-dom";
 
 import ConnectionStatus from "../../components/ConnectionStatus";
 
+import buildFileUrl from "../../utils/buildFileUrl";
+
 export function TopHeader({ role, userName, userRole, userAvatar, onLogout, onMenuClick }) {
   const { colors, typography } = useTheme();
   const { user } = useCurrentUser();
@@ -16,6 +18,7 @@ export function TopHeader({ role, userName, userRole, userAvatar, onLogout, onMe
 
   const isAdmin = role === 'admin' || role === 'superadmin' || location.pathname.startsWith('/admin');
   const displayName = userName || user?.ownerName || user?.name || (isAdmin ? "Admin Console" : "Owner");
+  const avatarSrc = buildFileUrl(userAvatar || user?.profileImage || user?.photo);
 
   return (
     <header 
@@ -101,8 +104,8 @@ export function TopHeader({ role, userName, userRole, userAvatar, onLogout, onMe
             padding: 0,
           }}
         >
-          {userAvatar || user?.profileImage || user?.photo ? (
-            <img src={userAvatar || user?.profileImage || user?.photo} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          {avatarSrc ? (
+            <img src={avatarSrc} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={(e) => { e.currentTarget.style.display = "none"; }} />
           ) : (
             <div style={{ color: colors.text.primary || "#FFFFFF", fontSize: '14px', fontWeight: 700, fontFamily: typography.fontFamily }}>
               {displayName.slice(0, 1).toUpperCase()}

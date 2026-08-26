@@ -18,26 +18,47 @@ export default function Profile() {
   const [pushEnabled, setPushEnabled] = useState(true);
 
   useEffect(() => {
-    const user = JSON.parse(localStorage.getItem("ownerUser") || localStorage.getItem("user") || "{}");
-    if (user) {
-      setOwnerData({
-        ownerName: user.ownerName || "Hostel Owner",
-        phone: user.phone || "N/A",
-        email: user.email || "owner@hostelmate.com"
-      });
-    }
+    const loadOwnerUser = () => {
+      const user = JSON.parse(localStorage.getItem("ownerUser") || localStorage.getItem("user") || "{}");
+      if (user) {
+        setOwnerData({
+          ownerName: user.ownerName || user.name || "Hostel Owner",
+          phone: user.phone || "N/A",
+          email: user.email || "owner@hostelmate.com",
+          profileImage: user.profileImage || "",
+        });
+      }
+    };
+
+    loadOwnerUser();
 
     const fetchHostelData = async () => {
       try {
         const response = await api.get("/api/owner/dashboard");
-        if (response.data?.success && response.data.hostel) {
-          setHostelData(response.data.hostel);
+        if (response.data?.success) {
+          if (response.data.hostel) {
+            setHostelData(response.data.hostel);
+          }
+          if (response.data.owner) {
+            const o = response.data.owner;
+            setOwnerData({
+              ownerName: o.ownerName || "Hostel Owner",
+              phone: o.phone || "N/A",
+              email: o.email || "owner@hostelmate.com",
+              profileImage: o.profileImage || "",
+            });
+          }
         }
       } catch (error) {
         console.warn("Unable to load hostel details.", error);
       }
     };
     fetchHostelData();
+
+    window.addEventListener("profileUpdated", loadOwnerUser);
+    return () => {
+      window.removeEventListener("profileUpdated", loadOwnerUser);
+    };
   }, []);
 
   const handleLogout = () => {

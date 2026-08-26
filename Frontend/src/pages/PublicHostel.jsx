@@ -18,7 +18,7 @@ export default function PublicHostel() {
   useEffect(() => {
     const fetchHostel = async () => {
       try {
-        const url = import.meta.env.VITE_API_URL || 'https://hostelmate-saas-1.onrender.com';
+        const url = import.meta.env.VITE_API_URL || (typeof window !== "undefined" ? window.location.origin : "");
         const response = await axios.get(`${url}/api/public/hostel/${slug}`);
         if (response.data.success) {
           setHostel(response.data.data);

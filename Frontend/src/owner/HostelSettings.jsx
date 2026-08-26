@@ -59,7 +59,22 @@ export default function HostelSettings() {
 
     try {
       setSaving(true);
-      await api.put("/api/owner/hostel", form);
+      const res = await api.put("/api/owner/hostel", form);
+      if (res.data?.success && res.data.hostel) {
+        const updated = res.data.hostel;
+        const currentActive = JSON.parse(localStorage.getItem("activeHostel") || "{}");
+        const nextActive = {
+          ...currentActive,
+          ...updated,
+          id: updated._id || updated.id || currentActive.id,
+          _id: updated._id || updated.id || currentActive._id,
+          name: updated.hostelName || updated.name || currentActive.name,
+          hostelName: updated.hostelName || updated.name || currentActive.hostelName,
+        };
+        localStorage.setItem("activeHostel", JSON.stringify(nextActive));
+        localStorage.setItem("activeHostelName", nextActive.name);
+        window.dispatchEvent(new Event("hostelChanged"));
+      }
       toast.success("Hostel details saved successfully!");
       fetchHostel();
     } catch (err) {

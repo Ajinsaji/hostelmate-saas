@@ -63,6 +63,7 @@ router.put("/admissions/:id/reject", ownerAuth, rejectAdmission);
 
 // Owner Settings
 router.put("/hostel/settings", ownerAuth, updateHostelSettings);
+router.put("/hostel", ownerAuth, updateHostelSettings); // Alias for frontend compatibility
 
 // Owner profile update (Cloudinary opt-in)
 router.put(

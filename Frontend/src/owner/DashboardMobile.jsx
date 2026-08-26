@@ -202,7 +202,7 @@ export const DashboardMobile = memo(function DashboardMobile({
         </div>
       </section>
 
-      {/* ADMISSIONS & ONBOARDING SECTION */}
+      {/* UNIFIED ADMISSIONS SUMMARY SECTION */}
       <section style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
         <div>
           <h2 style={{ fontSize: "20px", fontWeight: 700, color: "#FFFFFF", margin: 0 }}>
@@ -213,104 +213,64 @@ export const DashboardMobile = memo(function DashboardMobile({
           </p>
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
-          {/* New Admissions Card */}
-          <div
-            style={{
-              background: colors.background.card || "#131C2E",
-              border: `1px solid ${colors.border.default || "#202B45"}`,
-              borderRadius: "16px",
-              padding: "16px",
-              display: "flex",
-              flexDirection: "column",
-              justifyContent: "space-between",
-              gap: "12px",
-            }}
-          >
-            <div>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                <span style={{ fontSize: "13px", fontWeight: 700, color: "#FFFFFF" }}>New</span>
-                <span style={{ fontSize: "11px", fontWeight: 700, color: todayAdmissionsCount > 0 ? "#22C55E" : "#94A3B8", background: todayAdmissionsCount > 0 ? "rgba(34, 197, 94, 0.1)" : "rgba(148, 163, 184, 0.1)", padding: "2px 8px", borderRadius: "9999px" }}>
-                  {todayAdmissionsCount > 0 ? "Today" : "0"}
-                </span>
-              </div>
-              <div style={{ fontSize: "24px", fontWeight: 700, color: "#FFFFFF", marginTop: "6px" }}>
-                {todayAdmissionsCount}
-              </div>
-              <div style={{ fontSize: "12px", color: colors.text.secondary || "#94A3B8", marginTop: "2px" }}>
-                New applicants
-              </div>
-            </div>
-            <button
-              onClick={() => navigate("/admissions")}
+        <div
+          style={{
+            background: colors.background.card || "#131C2E",
+            border: `1px solid ${colors.border.default || "#202B45"}`,
+            borderRadius: "16px",
+            padding: "16px",
+            display: "flex",
+            flexDirection: "column",
+            gap: "16px",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+            <div
               style={{
-                background: "rgba(255, 255, 255, 0.05)",
-                border: `1px solid ${colors.border.default || "#202B45"}`,
-                borderRadius: "10px",
-                color: "#FFFFFF",
-                padding: "8px 12px",
-                fontSize: "12px",
-                fontWeight: 700,
-                cursor: "pointer",
-                minHeight: "40px",
+                padding: "10px",
+                borderRadius: "12px",
+                background: "rgba(34, 197, 94, 0.12)",
+                color: "#22C55E",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                gap: "6px",
+                flexShrink: 0,
               }}
             >
-              <UserPlus size={16} /> View New
-            </button>
+              <UserPlus size={22} />
+            </div>
+            <div>
+              <div style={{ fontSize: "16px", fontWeight: 700, color: "#FFFFFF" }}>Admissions</div>
+              <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "8px", marginTop: "4px", fontSize: "13px" }}>
+                <span style={{ color: "#F59E0B", fontWeight: 600 }}>{effectivePendingCount} Awaiting Approval</span>
+                <span style={{ color: "#64748B" }}>•</span>
+                <span style={{ color: "#22C55E", fontWeight: 600 }}>{todayAdmissionsCount} New Today</span>
+              </div>
+            </div>
           </div>
 
-          {/* Pending Admissions Card */}
-          <div
+          <button
+            onClick={() => navigate("/admissions")}
             style={{
-              background: colors.background.card || "#131C2E",
-              border: `1px solid ${colors.border.default || "#202B45"}`,
-              borderRadius: "16px",
-              padding: "16px",
+              background: effectivePendingCount > 0 ? "#22C55E" : "rgba(255, 255, 255, 0.05)",
+              border: effectivePendingCount > 0 ? "none" : `1px solid ${colors.border.default || "#202B45"}`,
+              borderRadius: "12px",
+              color: "#FFFFFF",
+              padding: "10px 16px",
+              fontSize: "13px",
+              fontWeight: 700,
+              cursor: "pointer",
+              minHeight: "44px",
               display: "flex",
-              flexDirection: "column",
-              justifyContent: "space-between",
-              gap: "12px",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: "8px",
+              width: "100%",
             }}
           >
-            <div>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                <span style={{ fontSize: "13px", fontWeight: 700, color: "#FFFFFF" }}>Pending</span>
-                <span style={{ fontSize: "11px", fontWeight: 700, color: effectivePendingCount > 0 ? "#F59E0B" : "#22C55E", background: effectivePendingCount > 0 ? "rgba(245, 158, 11, 0.1)" : "rgba(34, 197, 94, 0.1)", padding: "2px 8px", borderRadius: "9999px" }}>
-                  {effectivePendingCount > 0 ? `${effectivePendingCount} Pending` : "Caught Up"}
-                </span>
-              </div>
-              <div style={{ fontSize: "24px", fontWeight: 700, color: "#FFFFFF", marginTop: "6px" }}>
-                {effectivePendingCount}
-              </div>
-              <div style={{ fontSize: "12px", color: colors.text.secondary || "#94A3B8", marginTop: "2px" }}>
-                Awaiting approval
-              </div>
-            </div>
-            <button
-              onClick={() => navigate("/admissions")}
-              style={{
-                background: effectivePendingCount > 0 ? "#22C55E" : "rgba(255, 255, 255, 0.05)",
-                border: effectivePendingCount > 0 ? "none" : `1px solid ${colors.border.default || "#202B45"}`,
-                borderRadius: "10px",
-                color: "#FFFFFF",
-                padding: "8px 12px",
-                fontSize: "12px",
-                fontWeight: 700,
-                cursor: "pointer",
-                minHeight: "40px",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: "6px",
-              }}
-            >
-              <ArrowRight size={16} /> View Pending
-            </button>
-          </div>
+            <span>View Admissions</span>
+            <ArrowRight size={16} />
+          </button>
         </div>
       </section>
 

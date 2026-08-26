@@ -22,6 +22,8 @@ import {
   SectionHeader
 } from "../design-system/components";
 
+import buildFileUrl from "../utils/buildFileUrl";
+
 export const ProfileDesktop = memo(function ProfileDesktop({
   ownerData,
   hostelData,
@@ -41,7 +43,7 @@ export const ProfileDesktop = memo(function ProfileDesktop({
       
       {/* 1. Header & Profile Banner */}
       <div className="flex items-center gap-4">
-        <Avatar name={ownerData.ownerName} size="xl" />
+        <Avatar name={ownerData.ownerName} src={buildFileUrl(ownerData.profileImage)} size="xl" />
         <div>
           <h1 style={{ fontSize: typography.sizes["2xl"] || "24px", fontWeight: typography.weights.bold, color: colors.text.primary || "#FFFFFF", margin: 0 }}>
             {ownerData.ownerName}

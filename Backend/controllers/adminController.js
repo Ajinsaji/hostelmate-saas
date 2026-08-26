@@ -648,7 +648,7 @@ const finalizeHostelActivation = async (req, res) => {
           });
         }
 
-        await Promise.allSettled([p1, p2, p3]);
+        await Promise.allSettled([p1, p3]);
         const activationSecondaryWorkMs = Number(process.hrtime.bigint() - secStartedAt) / 1e6;
         logger.info({
           operation: "finalizeHostelActivationSecondary",
@@ -994,35 +994,74 @@ const sendCredentials = async (req, res) => {
 
     const hostel = owner.hostelId ? await Hostel.findById(owner.hostelId) : null;
 
-    // Check if delivery infrastructure (Meta Cloud WhatsApp API) is configured
-    const { validateWhatsAppConfig } = require("../utils/sendOwnerWhatsApp");
+    // Verify Meta Cloud WhatsApp API configuration
+    const { validateWhatsAppConfig, sendOwnerWhatsApp } = require("../utils/sendOwnerWhatsApp");
     const config = validateWhatsAppConfig();
+
+    // Secure backend temporary password generation (never trust frontend req.body passwords)
+    let runtimeTempPassword = null;
+    if (owner.mustChangePassword !== false) {
+      runtimeTempPassword = `HM${Math.floor(1000 + Math.random() * 9000)}@${String.fromCharCode(65 + Math.floor(Math.random() * 26))}${Math.floor(10 + Math.random() * 90)}`;
+      const bcryptjs = require("bcryptjs");
+      owner.password = await bcryptjs.hash(runtimeTempPassword, 10);
+      owner.mustChangePassword = true;
+      owner.firstLogin = true;
+      owner.credentialIssuedAt = new Date();
+    }
+
+    const frontendBase = process.env.FRONTEND_URL || process.env.VITE_APP_URL || process.env.PUBLIC_URL || (req.headers && req.headers.origin ? req.headers.origin : "https://hostelmate-saas.vercel.app");
+    const loginUrl = `${String(frontendBase).replace(/\/$/, "")}/owner/login`;
 
     if (!config.isConfigured) {
       owner.credentialDeliveryStatus = "unconfigured";
       owner.lastDeliveryError = config.reason || "WhatsApp credential delivery service is not configured.";
       await owner.save();
+
+      // Return manual waMeUrl containing runtime password if generated
+      const { buildWaMeUrl } = require("../services/whatsappService");
+      const messageText = [
+        "🎉 Welcome to HostelMate",
+        "",
+        `Hello ${owner.ownerName || "Hostel Owner"},`,
+        "",
+        `Your hostel "${hostel ? (hostel.hostelName || hostel.name) : "-"}" has been successfully activated.`,
+        "",
+        "🔐 Login Details",
+        `Username: ${owner.phone}`,
+        ...(runtimeTempPassword ? [`Temporary Password: ${runtimeTempPassword}`] : []),
+        "",
+        "🔗 Login:",
+        `${loginUrl}`,
+        "",
+        "⚠️ Please change your password immediately after login.",
+        "",
+        "Thank you for choosing HostelMate ❤️",
+      ].join("\n");
+
+      const waMeUrl = buildWaMeUrl(owner.phone, messageText);
+
       return res.status(200).json({
         success: false,
         unconfigured: true,
         deliveryStatus: "unconfigured",
-        message: "WhatsApp credential delivery service is not configured.",
+        message: "WhatsApp credential delivery service is not configured. Use manual WhatsApp link.",
+        waMeUrl,
+        credentials: runtimeTempPassword ? {
+          username: owner.phone,
+          tempPassword: runtimeTempPassword,
+          temporaryPassword: runtimeTempPassword,
+          loginUrl,
+        } : null,
       });
     }
-
-    // Call real WhatsApp delivery
-    const frontendBase = process.env.FRONTEND_URL || process.env.VITE_APP_URL || process.env.PUBLIC_URL || (req.headers && req.headers.origin ? req.headers.origin : "https://hostelmate-saas.vercel.app");
-    const loginUrl = `${String(frontendBase).replace(/\/$/, "")}/owner/login`;
-
-    const { tempPassword } = req.body || {};
 
     const { sendOwnerOnboarding } = require("../utils/sendOwnerOnboarding");
     const result = await sendOwnerOnboarding({
       ownerName: owner.ownerName,
-      hostelName: hostel ? hostel.hostelName : "",
+      hostelName: hostel ? (hostel.hostelName || hostel.name) : "",
       phone: owner.phone,
-      username: owner.username || owner.phone,
-      tempPassword: tempPassword || "",
+      username: owner.phone,
+      tempPassword: runtimeTempPassword || "",
       planType: hostel ? hostel.planType : "HostelMate Unified Plan",
       expiryDate: hostel ? hostel.subscriptionEndDate : null,
       qrUrl: hostel ? hostel.qrCodeUrl : "",

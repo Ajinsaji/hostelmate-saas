@@ -125,66 +125,41 @@ export const DashboardDesktop = memo(function DashboardDesktop({
         </div>
       </div>
 
-      {/* 3. DEDICATED ADMISSIONS & ONBOARDING SECTION */}
+      {/* 3. UNIFIED ADMISSIONS SUMMARY SECTION */}
       <div>
         <SectionHeader title="Admissions & Applicants" subtitle="Review incoming requests and approvals" />
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-3">
-          <DashboardCard padding="md" className="flex flex-col justify-between">
-            <div>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <UserPlus size={18} style={{ color: colors.accent.primary || "#22C55E" }} />
-                  <span style={{ fontSize: "14px", fontWeight: 700, color: "#FFFFFF" }}>New Admissions</span>
+        <DashboardCard padding="md" className="mt-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="p-3 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center flex-shrink-0">
+                <UserPlus size={24} />
+              </div>
+              <div>
+                <h3 className="font-bold text-white text-base">Admissions</h3>
+                <div className="flex flex-wrap items-center gap-3 mt-1 text-sm text-slate-300">
+                  <span className="inline-flex items-center gap-1 font-semibold text-amber-300">
+                    <span className="h-2 w-2 rounded-full bg-amber-400" />
+                    {effectivePendingCount} Awaiting Approval
+                  </span>
+                  <span className="text-slate-600">•</span>
+                  <span className="inline-flex items-center gap-1 font-semibold text-emerald-300">
+                    <span className="h-2 w-2 rounded-full bg-emerald-400" />
+                    {todayAdmissionsCount} New Today
+                  </span>
                 </div>
-                <Badge variant={todayAdmissionsCount > 0 ? "success" : "neutral"} size="sm">
-                  {todayAdmissionsCount > 0 ? "New Today" : "0 Today"}
-                </Badge>
               </div>
-              <div style={{ fontSize: "28px", fontWeight: 700, color: "#FFFFFF", marginTop: "10px" }}>
-                {todayAdmissionsCount}
-              </div>
-              <p style={{ fontSize: "13px", color: colors.text.secondary || "#94A3B8", margin: "4px 0 16px" }}>
-                {todayAdmissionsCount > 0 ? "New requests received today" : "No new admission requests"}
-              </p>
             </div>
-            <Button
-              variant="secondary"
-              fullWidth
-              icon={UserPlus}
-              onClick={() => navigate("/admissions")}
-            >
-              View New Admissions
-            </Button>
-          </DashboardCard>
 
-          <DashboardCard padding="md" className="flex flex-col justify-between">
-            <div>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <CheckCircle2 size={18} className={effectivePendingCount > 0 ? "text-amber-400" : "text-emerald-400"} />
-                  <span style={{ fontSize: "14px", fontWeight: 700, color: "#FFFFFF" }}>Pending Admissions</span>
-                </div>
-                <Badge variant={effectivePendingCount > 0 ? "warning" : "success"} size="sm">
-                  {effectivePendingCount > 0 ? `${effectivePendingCount} Awaiting` : "Caught Up"}
-                </Badge>
-              </div>
-              <div style={{ fontSize: "28px", fontWeight: 700, color: "#FFFFFF", marginTop: "10px" }}>
-                {effectivePendingCount}
-              </div>
-              <p style={{ fontSize: "13px", color: colors.text.secondary || "#94A3B8", margin: "4px 0 16px" }}>
-                {effectivePendingCount > 0 ? "Applications awaiting approval" : "No admissions awaiting approval"}
-              </p>
-            </div>
             <Button
               variant={effectivePendingCount > 0 ? "primary" : "secondary"}
-              fullWidth
               icon={ArrowRight}
               onClick={() => navigate("/admissions")}
+              className="self-start sm:self-auto"
             >
-              View Pending Admissions
+              View Admissions
             </Button>
-          </DashboardCard>
-        </div>
+          </div>
+        </DashboardCard>
       </div>
 
       {/* 4. WHAT NEEDS ATTENTION? (DATA-DRIVEN BADGES) */}

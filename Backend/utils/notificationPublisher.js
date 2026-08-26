@@ -103,8 +103,6 @@ async function publishNotification({
       const tokens = await timer.measure("deviceTokenLookupMs", () => DeviceToken.find({
         userId,
         isActive: true,
-        ...(hostelId ? { hostelId } : {}),
-        ...(role ? { role } : {}),
       }).select("token"));
 
       const tokenList = tokens.map((t) => t.token);

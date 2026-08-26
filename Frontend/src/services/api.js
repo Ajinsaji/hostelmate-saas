@@ -1,7 +1,7 @@
 import axios from "axios";
 import toast from "react-hot-toast";
 
-const apiBaseURL = import.meta.env.VITE_API_URL || "https://hostelmate-saas-1.onrender.com";
+const apiBaseURL = import.meta.env.VITE_API_URL || (typeof window !== "undefined" ? window.location.origin : "");
 
 export const api = axios.create({
   baseURL: apiBaseURL,

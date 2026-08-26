@@ -33,7 +33,7 @@ function createSocket() {
   socketUrl = resolveSocketUrl();
   currentToken = getAuthToken();
   socket = io(socketUrl, {
-    transports: ["websocket"],
+    transports: ["websocket", "polling"],
     auth: {
       token: currentToken,
     },

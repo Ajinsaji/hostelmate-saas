@@ -52,7 +52,7 @@ export default function PublicHostelRegister() {
       if (files.idProofFile) data.append('idProofFile', files.idProofFile);
       if (files.signatureFile) data.append('signatureFile', files.signatureFile);
       
-      const url = import.meta.env.VITE_API_URL || 'https://hostelmate-saas-1.onrender.com';
+      const url = import.meta.env.VITE_API_URL || (typeof window !== "undefined" ? window.location.origin : "");
       const response = await axios.post(`${url}/api/public/hostel/${slug}/admission`, data, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });

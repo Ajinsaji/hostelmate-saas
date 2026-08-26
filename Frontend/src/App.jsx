@@ -142,11 +142,11 @@ function NotificationBellHost() {
 }
 
 
-import useSessionVerification from "./hooks/useSessionVerification";
+import PageLoader from "./components/PageLoader";
 
 function SessionGateWrapper() {
   const { verifying } = useSessionVerification();
-  return verifying ? <div style={{ minHeight: "100vh" }} /> : null;
+  return verifying ? <PageLoader message="Preparing your workspace..." /> : null;
 }
 
 function RequestAutoRedirect() {

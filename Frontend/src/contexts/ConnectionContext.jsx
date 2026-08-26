@@ -27,7 +27,7 @@ export function ConnectionProvider({ children }) {
   const isCheckingRef = useRef(false);
 
   const getApiUrl = () => {
-    return import.meta.env.VITE_API_URL || "https://hostelmate-saas-1.onrender.com";
+    return import.meta.env.VITE_API_URL || (typeof window !== "undefined" ? window.location.origin : "");
   };
 
   /**
