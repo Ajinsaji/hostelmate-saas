@@ -143,6 +143,7 @@ function NotificationBellHost() {
 
 
 import PageLoader from "./components/PageLoader";
+import useSessionVerification from "./hooks/useSessionVerification";
 
 function SessionGateWrapper() {
   const { verifying } = useSessionVerification();
