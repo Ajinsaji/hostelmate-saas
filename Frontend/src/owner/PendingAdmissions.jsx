@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { usePendingAdmissions } from "../contexts/HostelContext";
+import DocumentViewerModal from "../components/DocumentViewerModal";
 
 function isTodayIST(dateString) {
   if (!dateString) return false;
@@ -50,6 +51,26 @@ function PendingAdmissions() {
   const [confirmApproveItem, setConfirmApproveItem] = useState(null);
   const [confirmRejectItem, setConfirmRejectItem] = useState(null);
   const [rejectReason, setRejectReason] = useState("");
+
+  // Document Viewer Modal State
+  const [docViewer, setDocViewer] = useState({ isOpen: false, url: "", title: "" });
+
+  // Room & Bed Assignment State for Approval
+  const [availableRooms, setAvailableRooms] = useState([]);
+  const [selectedRoomId, setSelectedRoomId] = useState("");
+  const [availableBeds, setAvailableBeds] = useState([]);
+  const [selectedBedId, setSelectedBedId] = useState("");
+
+  const fetchAvailableRooms = async () => {
+    try {
+      const res = await api.get("/api/rooms");
+      if (res.data?.rooms) {
+        setAvailableRooms(res.data.rooms);
+      }
+    } catch (e) {
+      console.warn("Unable to load rooms for assignment:", e);
+    }
+  };
 
   const fetchAdmissions = async () => {
     setLoading(true);
@@ -482,41 +503,50 @@ function PendingAdmissions() {
 
             <Card className="mt-3 p-3">
               <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-400">
-                <BadgeCheck size={13} /> Documents & Agreement
+                <BadgeCheck size={13} /> Documents & Agreement Snapshot
               </div>
               <div className="mt-3 flex flex-wrap gap-2">
                 {selectedAdmission.idProofFile && (
-                  <a
-                    href={buildFileUrl(selectedAdmission.idProofFile)}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="rounded-lg border px-3 py-1 text-xs font-semibold underline"
+                  <button
+                    type="button"
+                    onClick={() => setDocViewer({
+                      isOpen: true,
+                      url: selectedAdmission.idProofFile,
+                      title: `${selectedAdmission.residentName} - ID Proof`
+                    })}
+                    className="rounded-lg border px-3 py-1.5 text-xs font-semibold flex items-center gap-1.5 transition hover:bg-emerald-500/10"
                     style={{ borderColor: colors.border.default, color: colors.accent.info }}
                   >
-                    View ID Proof Document
-                  </a>
+                    <Eye size={14} /> View ID Proof
+                  </button>
                 )}
                 {selectedAdmission.photoFile && (
-                  <a
-                    href={buildFileUrl(selectedAdmission.photoFile)}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="rounded-lg border px-3 py-1 text-xs font-semibold underline"
+                  <button
+                    type="button"
+                    onClick={() => setDocViewer({
+                      isOpen: true,
+                      url: selectedAdmission.photoFile,
+                      title: `${selectedAdmission.residentName} - Applicant Photo`
+                    })}
+                    className="rounded-lg border px-3 py-1.5 text-xs font-semibold flex items-center gap-1.5 transition hover:bg-emerald-500/10"
                     style={{ borderColor: colors.border.default, color: colors.accent.info }}
                   >
-                    View Photo
-                  </a>
+                    <Eye size={14} /> View Photo
+                  </button>
                 )}
                 {(selectedAdmission.signatureFile || selectedAdmission.signatureImage) && (
-                  <a
-                    href={buildFileUrl(selectedAdmission.signatureFile || selectedAdmission.signatureImage)}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="rounded-lg border px-3 py-1 text-xs font-semibold underline"
+                  <button
+                    type="button"
+                    onClick={() => setDocViewer({
+                      isOpen: true,
+                      url: selectedAdmission.signatureFile || selectedAdmission.signatureImage,
+                      title: `${selectedAdmission.residentName} - Applicant Signature`
+                    })}
+                    className="rounded-lg border px-3 py-1.5 text-xs font-semibold flex items-center gap-1.5 transition hover:bg-emerald-500/10"
                     style={{ borderColor: colors.border.default, color: colors.accent.info }}
                   >
-                    View Signature
-                  </a>
+                    <Eye size={14} /> View Signature
+                  </button>
                 )}
               </div>
               <div className="mt-3 pt-3 border-t text-xs text-slate-400" style={{ borderColor: colors.border.default }}>
@@ -545,6 +575,7 @@ function PendingAdmissions() {
                     const item = selectedAdmission;
                     closeDetail();
                     setConfirmApproveItem(item);
+                    fetchAvailableRooms();
                   }}
                   className="rounded-full px-4 py-2 text-xs font-semibold"
                   style={{ background: colors.accent.primary, color: "#031018" }}
@@ -579,6 +610,31 @@ function PendingAdmissions() {
               <p><span className="text-slate-400">Phone:</span> <span className="text-white">{confirmApproveItem.phone}</span></p>
               <p><span className="text-slate-400">Preferred Room:</span> <span className="text-white">{confirmApproveItem.roomPreference || confirmApproveItem.preferredRoom || "First Available"}</span></p>
             </div>
+
+            {/* Room Assignment Dropdown */}
+            {availableRooms.length > 0 && (
+              <div className="mt-3 space-y-1">
+                <label className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+                  Select Room for Allocation
+                </label>
+                <select
+                  value={selectedRoomId}
+                  onChange={(e) => setSelectedRoomId(e.target.value)}
+                  className="w-full rounded-xl border bg-[#0B1220] px-3 py-2 text-xs text-white outline-none focus:border-emerald-500"
+                  style={{ borderColor: colors.border.default }}
+                >
+                  <option value="">Auto-Assign First Vacant Room</option>
+                  {availableRooms.map((r) => {
+                    const vacant = (r.totalBeds || 0) - (r.occupiedBeds || 0);
+                    return (
+                      <option key={r._id} value={r._id} disabled={vacant <= 0}>
+                        Room {r.roomNumber} ({vacant > 0 ? `${vacant} vacant bed(s)` : "FULL"})
+                      </option>
+                    );
+                  })}
+                </select>
+              </div>
+            )}
 
             <p className="mt-3 text-xs text-slate-400">
               Approving will automatically create an active resident profile, allocate an available bed in the room, and update hostel occupancy.
@@ -663,6 +719,14 @@ function PendingAdmissions() {
           </div>
         </div>
       )}
+
+      {/* Document Viewer Modal */}
+      <DocumentViewerModal
+        isOpen={docViewer.isOpen}
+        onClose={() => setDocViewer({ isOpen: false, url: "", title: "" })}
+        documentUrl={docViewer.url}
+        title={docViewer.title}
+      />
     </PageContainer>
   );
 }

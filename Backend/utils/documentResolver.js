@@ -23,6 +23,12 @@ function normalizeAssetUrl(rawVal) {
     return clean;
   }
 
+  // Detect internal server paths (/opt/render/..., C:\..., Backend/uploads/..., \uploads\...)
+  if (clean.includes("/opt/render/") || clean.includes("Backend/uploads") || clean.includes("Backend\\uploads") || clean.includes("\\uploads\\") || clean.includes("c:\\") || clean.includes("C:\\")) {
+    const filename = clean.split(/[/\\]/).pop();
+    return filename ? `/uploads/${filename}` : null;
+  }
+
   // Already starts with /uploads/
   if (clean.startsWith("/uploads/")) {
     return clean;
@@ -33,9 +39,10 @@ function normalizeAssetUrl(rawVal) {
     return "/" + clean;
   }
 
-  // Plain filename like "172387123-photo.jpg"
-  if (/^[a-zA-Z0-9_.-]+\.[a-zA-Z0-9]+$/.test(clean)) {
-    return `/uploads/${clean}`;
+  // Plain filename like "172387123-photo.jpg" or path ending in filename
+  const filename = clean.split(/[/\\]/).pop();
+  if (filename && /^[a-zA-Z0-9_.-]+\.[a-zA-Z0-9]+$/.test(filename)) {
+    return `/uploads/${filename}`;
   }
 
   return clean;
