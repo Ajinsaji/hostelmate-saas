@@ -84,7 +84,7 @@ export const SubscriptionCenter = React.memo(() => {
       setLoading(true);
       setFetchError(null);
 
-      const [dashRes, requestsRes, hostelsRes, logsRes] = await Promise.all([
+      const [dashResult, requestsResult, hostelsResult, logsResult] = await Promise.allSettled([
         api.get("/api/admin/subscriptions/dashboard"),
         api.get("/api/admin/subscriptions/requests", {
           params: { status: requestStatusFilter },
@@ -95,21 +95,30 @@ export const SubscriptionCenter = React.memo(() => {
         api.get("/api/admin/subscriptions/reminder-logs"),
       ]);
 
-      const dashData = dashRes?.data || {};
-      const requestsData = requestsRes?.data || {};
-      const hostelsData = hostelsRes?.data || {};
-      const logsData = logsRes?.data || {};
+      const dashData = dashResult.status === "fulfilled" ? dashResult.value?.data : null;
+      const requestsData = requestsResult.status === "fulfilled" ? requestsResult.value?.data : null;
+      const hostelsData = hostelsResult.status === "fulfilled" ? hostelsResult.value?.data : null;
+      const logsData = logsResult.status === "fulfilled" ? logsResult.value?.data : null;
 
-      if (dashData.success) setAnalytics(dashData.analytics);
-      if (requestsData.success) setRequests(requestsData.requests || []);
-      if (hostelsData.success) {
+      if (dashData?.success) setAnalytics(dashData.analytics);
+      if (requestsData?.success) setRequests(requestsData.requests || []);
+      if (hostelsData?.success) {
         const subs = hostelsData.subscriptions || [];
         setHostels(subs);
         if (!calcHostelId && subs.length > 0) {
           setCalcHostelId(subs[0].hostelId);
         }
       }
-      if (logsData.success) setReminderLogs(logsData.logs || []);
+      if (logsData?.success) setReminderLogs(logsData.logs || []);
+
+      const rejected = [dashResult, requestsResult, hostelsResult, logsResult].filter(
+        (r) => r.status === "rejected"
+      );
+      if (rejected.length > 0) {
+        const firstErr = rejected[0].reason;
+        const msg = firstErr?.response?.data?.message || firstErr?.message || "Failed to load some subscription data.";
+        setFetchError(msg);
+      }
     } catch (err) {
       console.error("[SubscriptionCenter] Error loading data:", err);
       const friendlyMsg =

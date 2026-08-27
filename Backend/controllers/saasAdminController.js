@@ -475,13 +475,16 @@ const listHostelSubscriptions = async (req, res) => {
     const formatted = await Promise.all(
       hostels.map(async (h) => {
         let sub = await Subscription.findOne({ hostelId: h._id });
+        const hCreatedAt = h.createdAt ? new Date(h.createdAt) : now;
+
         if (!sub) {
+          const fallbackEnd = h.subscriptionEndDate ? new Date(h.subscriptionEndDate) : new Date(hCreatedAt.getTime() + 30 * 24 * 60 * 60 * 1000);
           sub = {
             status: h.subscriptionStatus || "trial",
             isTrial: h.isTrial !== false,
-            startDate: h.subscriptionStartDate || h.createdAt,
-            endDate: h.subscriptionEndDate || new Date(h.createdAt.getTime() + 30 * 24 * 60 * 60 * 1000),
-            trialEndDate: h.subscriptionEndDate || new Date(h.createdAt.getTime() + 30 * 24 * 60 * 60 * 1000),
+            startDate: h.subscriptionStartDate || hCreatedAt,
+            endDate: fallbackEnd,
+            trialEndDate: fallbackEnd,
             amount: 0,
             paidAmount: 0,
             paymentStatus: "Pending",
@@ -492,9 +495,9 @@ const listHostelSubscriptions = async (req, res) => {
         const activeResidents = await subscriptionService.getActiveResidentCount(h._id);
         const estimatedAmount = activeResidents * 10;
 
-        const isTrial = sub.isTrial === true || (sub.status && sub.status.toLowerCase() === "trial");
-        const targetExpiry = lifecycle.expiryDate || (isTrial ? sub.trialEndDate : sub.endDate);
-        const daysLeft = typeof lifecycle.daysLeft === "number" ? lifecycle.daysLeft : 0;
+        const isTrial = sub.isTrial === true || (sub.status && String(sub.status).toLowerCase() === "trial");
+        const targetExpiry = lifecycle?.expiryDate || (isTrial ? sub.trialEndDate : sub.endDate) || h.subscriptionEndDate || new Date(hCreatedAt.getTime() + 30 * 24 * 60 * 60 * 1000);
+        const daysLeft = typeof lifecycle?.daysLeft === "number" ? lifecycle.daysLeft : 0;
 
         return {
           subscriptionId: sub._id || h._id,
@@ -503,8 +506,8 @@ const listHostelSubscriptions = async (req, res) => {
           ownerName: h.ownerName || h.ownerId?.ownerName || "Owner",
           phone: h.phone || h.ownerId?.phone || "-",
           plan: "HostelMate Unified",
-          status: lifecycle.status,
-          startDate: sub.startDate || sub.trialStartDate,
+          status: lifecycle?.status || (isTrial ? "Trial" : "Active"),
+          startDate: sub.startDate || sub.trialStartDate || hCreatedAt,
           expiryDate: targetExpiry,
           nextBillingDate: targetExpiry,
           daysRemaining: daysLeft,
