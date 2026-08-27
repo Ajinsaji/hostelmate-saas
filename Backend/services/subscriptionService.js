@@ -238,14 +238,22 @@ async function getOwnerSubscriptionDetails(hostelId) {
 async function getSuperAdminAnalytics() {
   const now = new Date();
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+  const in7Days = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+  const in30Days = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
 
   const [
+    totalHostels,
     trialCount,
     activeCount,
     expiredCount,
+    suspendedCount,
     pendingRequestsCount,
     totalActiveResidents,
+    expiring7Count,
+    expiring30Count,
+    failedPaymentsCount,
   ] = await Promise.all([
+    Hostel.countDocuments({ isDeleted: { $ne: true } }),
     Subscription.countDocuments({
       $or: [{ status: { $in: ["trial", "Trial"] } }, { isTrial: true }],
     }),
@@ -256,8 +264,28 @@ async function getSuperAdminAnalytics() {
     Subscription.countDocuments({
       status: { $in: ["expired", "Expired"] },
     }),
+    Subscription.countDocuments({
+      status: { $in: ["suspended", "Suspended"] },
+    }),
     SubscriptionRequest.countDocuments({ status: "pending" }),
     Resident.countDocuments({ status: { $in: ["Active", "active"] }, isDeleted: false }),
+    Subscription.countDocuments({
+      status: { $nin: ["expired", "Expired"] },
+      $or: [
+        { endDate: { $gte: now, $lte: in7Days } },
+        { trialEndDate: { $gte: now, $lte: in7Days } },
+        { subscriptionEndDate: { $gte: now, $lte: in7Days } },
+      ],
+    }),
+    Subscription.countDocuments({
+      status: { $nin: ["expired", "Expired"] },
+      $or: [
+        { endDate: { $gte: now, $lte: in30Days } },
+        { trialEndDate: { $gte: now, $lte: in30Days } },
+        { subscriptionEndDate: { $gte: now, $lte: in30Days } },
+      ],
+    }),
+    SubscriptionPayment.countDocuments({ paymentStatus: { $in: ["Failed", "failed"] } }),
   ]);
 
   const monthlyPayments = await SubscriptionPayment.aggregate([
@@ -266,19 +294,31 @@ async function getSuperAdminAnalytics() {
   ]);
   const monthlyRevenue = monthlyPayments[0]?.total || 0;
 
+  // Account for hostels without explicit Subscription doc (they are in Trial by default)
+  const hostelsWithSub = await Subscription.distinct("hostelId");
+  const hostelsWithoutSubCount = Math.max(0, totalHostels - hostelsWithSub.length);
+  const totalTrialHostels = trialCount + hostelsWithoutSubCount;
+
   const expectedRevenue = totalActiveResidents * 10;
+  const pendingCollections = Math.max(0, expectedRevenue - monthlyRevenue);
 
   return {
-    trialHostels: trialCount,
+    totalHostels,
+    trialHostels: totalTrialHostels,
     activeSubscribers: activeCount,
     expiredHostels: expiredCount,
+    suspendedHostels: suspendedCount,
     pendingRequests: pendingRequestsCount,
+    expiringSoon7: expiring7Count,
+    expiringSoon30: expiring30Count,
+    failedPaymentsCount,
     totalActiveResidents,
     monthlyRevenue,
     expectedRevenue,
     residentRevenue: monthlyRevenue,
     platformRevenue: 0,
-    pendingCollections: Math.max(0, expectedRevenue - monthlyRevenue),
+    pendingCollections,
+    residentBillingRate: 10,
   };
 }
 

@@ -499,18 +499,24 @@ const listHostelSubscriptions = async (req, res) => {
         const targetExpiry = lifecycle?.expiryDate || (isTrial ? sub.trialEndDate : sub.endDate) || h.subscriptionEndDate || new Date(hCreatedAt.getTime() + 30 * 24 * 60 * 60 * 1000);
         const daysLeft = typeof lifecycle?.daysLeft === "number" ? lifecycle.daysLeft : 0;
 
+        const isExpiringSoon = daysLeft >= 0 && daysLeft <= 30;
+
         return {
           subscriptionId: sub._id || h._id,
           hostelId: h._id,
           hostelName: h.hostelName || h.name || "Hostel",
+          ownerId: h.ownerId?._id || h.ownerId,
           ownerName: h.ownerName || h.ownerId?.ownerName || "Owner",
           phone: h.phone || h.ownerId?.phone || "-",
-          plan: "HostelMate Unified",
+          email: h.email || h.ownerId?.email || "-",
+          city: h.city || h.address || "-",
+          plan: "HostelMate Unified Plan",
           status: lifecycle?.status || (isTrial ? "Trial" : "Active"),
           startDate: sub.startDate || sub.trialStartDate || hCreatedAt,
           expiryDate: targetExpiry,
           nextBillingDate: targetExpiry,
           daysRemaining: daysLeft,
+          isExpiringSoon,
           activeResidents,
           amount: sub.amount || estimatedAmount,
           estimatedAmount,
@@ -523,7 +529,14 @@ const listHostelSubscriptions = async (req, res) => {
 
     let result = formatted;
     if (status && status !== "all" && status !== "All") {
-      result = result.filter((item) => item.status.toLowerCase() === status.toLowerCase());
+      const st = status.toLowerCase();
+      if (st === "expiring" || st === "expiring_soon") {
+        result = result.filter((item) => item.daysRemaining >= 0 && item.daysRemaining <= 30 && item.status.toLowerCase() !== "expired");
+      } else if (st === "trial") {
+        result = result.filter((item) => item.isTrial || item.status.toLowerCase() === "trial");
+      } else {
+        result = result.filter((item) => item.status.toLowerCase() === st);
+      }
     }
 
     if (search && search.trim()) {
@@ -532,7 +545,11 @@ const listHostelSubscriptions = async (req, res) => {
         (item) =>
           item.hostelName.toLowerCase().includes(q) ||
           item.ownerName.toLowerCase().includes(q) ||
-          item.phone.toLowerCase().includes(q)
+          item.phone.toLowerCase().includes(q) ||
+          item.email.toLowerCase().includes(q) ||
+          item.city.toLowerCase().includes(q) ||
+          String(item.subscriptionId).toLowerCase().includes(q) ||
+          String(item.hostelId).toLowerCase().includes(q)
       );
     }
 

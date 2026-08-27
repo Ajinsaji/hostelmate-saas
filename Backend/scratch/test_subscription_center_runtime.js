@@ -64,7 +64,7 @@ runTest("6. listHostelSubscriptions maps every hostel by hostelId cleanly", () =
 // 7. Status filter case-insensitivity
 runTest("7. listHostelSubscriptions status filter handles case-insensitive values", () => {
   const controllerContent = fs.readFileSync(path.join(__dirname, "../controllers/saasAdminController.js"), "utf8");
-  assert.ok(controllerContent.includes("item.status.toLowerCase() === status.toLowerCase()"), "Status filter case-insensitive");
+  assert.ok(controllerContent.includes("item.status.toLowerCase() === st"), "Status filter case-insensitive");
 });
 
 // 8. Search query safety
