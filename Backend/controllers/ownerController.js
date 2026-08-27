@@ -1498,10 +1498,9 @@ const submitAdditionalHostelRequest = async (req, res) => {
     // 2. License Document Requirement
     let licensePhoto = req.body.licensePhoto || "";
     if (req.file) {
-      licensePhoto = req.file.path || req.file.url || req.file.filename || "";
+      licensePhoto = getUploadedFileUrl(req.file) || "";
     } else if (req.files?.licensePhoto?.[0]) {
-      const f = req.files.licensePhoto[0];
-      licensePhoto = f.path || f.url || f.filename || "";
+      licensePhoto = getUploadedFileUrl(req.files.licensePhoto[0]) || "";
     }
 
     if (!licensePhoto) {

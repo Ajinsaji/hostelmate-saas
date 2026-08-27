@@ -20,7 +20,8 @@ export default function useFcmNotifications({ enabled = true, onIncoming } = {})
       localStorage.getItem("adminToken") ||
       localStorage.getItem("token");
 
-    if (!jwt) {
+    // Strictly require authentication before requesting or registering FCM device tokens
+    if (!jwt || typeof jwt !== "string" || !jwt.trim()) {
       return;
     }
 
@@ -28,60 +29,36 @@ export default function useFcmNotifications({ enabled = true, onIncoming } = {})
 
     async function boot() {
       try {
-        if (import.meta.env.DEV) {
-          console.log("[useFcmNotifications] Initializing FCM...");
-        }
-
         const token = await requestFcmPermissionAndToken();
+
+        // Strict empty token protection: reject null, undefined, empty string
         if (!token || typeof token !== "string" || !token.trim()) {
-          if (import.meta.env.DEV) {
-            console.warn("[useFcmNotifications] FCM token unavailable - background notifications disabled");
-          }
           return;
         }
 
-        if (import.meta.env.DEV) {
-          console.log("[useFcmNotifications] Token obtained, registering with backend...");
-        }
         const user = getStoredUser();
 
         try {
           const { api } = await import("../services/api");
-          const response = await api.post(`/api/notifications/device-token`, {
-            token,
+          await api.post(`/api/notifications/device-token`, {
+            token: token.trim(),
             platform: "web",
-            userId: user?._id || null,
+            userId: user?._id || user?.id || null,
           });
-          
-          if (response.data?.success) {
-            if (import.meta.env.DEV) {
-              console.log("✓ Device token registered successfully");
-            }
-          } else {
-            console.warn("⚠ Device token registration returned non-success:", response.data);
-          }
         } catch (e) {
-          console.error("✗ Failed to register device token:", e?.response?.data || e?.message || e);
+          if (import.meta.env.DEV) {
+            console.warn("[useFcmNotifications] Device token registration deferred:", e?.message || e);
+          }
         }
 
         // Foreground message listener
-        if (import.meta.env.DEV) {
-          console.log("[useFcmNotifications] Setting up foreground message listener...");
-        }
         try {
           const messaging = getFirebaseMessagingSafe();
-          if (!messaging) {
-            console.warn("[useFcmNotifications] Firebase messaging not available for foreground");
-            return;
-          }
+          if (!messaging) return;
 
           const { onMessage } = await import("firebase/messaging");
 
           unsubscribe = onMessage(messaging, (payload) => {
-            if (import.meta.env.DEV) {
-              console.log("[useFcmNotifications] Foreground message received:", payload);
-            }
-            
             const route = payload?.data?.route || "";
             const title = payload?.notification?.title || "HostelMate";
             const body = payload?.notification?.body || "New notification";
@@ -93,15 +70,15 @@ export default function useFcmNotifications({ enabled = true, onIncoming } = {})
               payload,
             });
           });
-          
-          if (import.meta.env.DEV) {
-            console.log("✓ Foreground message listener active");
-          }
         } catch (e) {
-          console.error("✗ Failed to setup foreground listener:", e?.message || e);
+          if (import.meta.env.DEV) {
+            console.warn("[useFcmNotifications] Foreground message listener deferred:", e?.message || e);
+          }
         }
       } catch (e) {
-        console.error("[useFcmNotifications] Fatal initialization error:", e?.message || e);
+        if (import.meta.env.DEV) {
+          console.warn("[useFcmNotifications] FCM initialization deferred:", e?.message || e);
+        }
       }
     }
 
@@ -116,4 +93,3 @@ export default function useFcmNotifications({ enabled = true, onIncoming } = {})
     };
   }, [enabled]);
 }
-

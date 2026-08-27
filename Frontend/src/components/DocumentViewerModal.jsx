@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { X, ZoomIn, ZoomOut, RotateCcw, ExternalLink, Download, FileText, Image as ImageIcon } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { X, ZoomIn, ZoomOut, RotateCcw, ExternalLink, Download, FileText, Image as ImageIcon, AlertCircle } from "lucide-react";
 import buildFileUrl from "../utils/buildFileUrl";
 
 export default function DocumentViewerModal({
@@ -9,12 +9,20 @@ export default function DocumentViewerModal({
   title = "Document Preview",
 }) {
   const [zoom, setZoom] = useState(1);
+  const [imgLoadError, setImgLoadError] = useState(false);
+
+  useEffect(() => {
+    setZoom(1);
+    setImgLoadError(false);
+  }, [documentUrl, isOpen]);
 
   if (!isOpen || !documentUrl) return null;
 
   const resolvedUrl = buildFileUrl(documentUrl);
 
-  const cleanUrl = String(documentUrl).toLowerCase().split("?")[0];
+  // Strip query params & hash fragment for extension detection
+  const cleanUrl = String(documentUrl).split("?")[0].split("#")[0].toLowerCase();
+
   const isPdf = cleanUrl.endsWith(".pdf") || cleanUrl.includes("application/pdf");
   const isImage =
     cleanUrl.endsWith(".jpg") ||
@@ -22,6 +30,7 @@ export default function DocumentViewerModal({
     cleanUrl.endsWith(".png") ||
     cleanUrl.endsWith(".webp") ||
     cleanUrl.endsWith(".gif") ||
+    cleanUrl.endsWith(".bmp") ||
     cleanUrl.endsWith(".svg") ||
     cleanUrl.includes("image/");
 
@@ -54,7 +63,7 @@ export default function DocumentViewerModal({
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
-            {isImage && (
+            {isImage && !imgLoadError && (
               <div className="hidden sm:flex items-center gap-1 bg-[#1A2438] px-2 py-1 rounded-lg border border-[#202B45] mr-2">
                 <button
                   onClick={handleZoomOut}
@@ -114,31 +123,48 @@ export default function DocumentViewerModal({
         {/* Content Viewer Body */}
         <div className="relative flex-1 bg-[#070B14] p-2 sm:p-4 overflow-auto flex items-center justify-center min-h-[300px]">
           {isImage ? (
-            <div className="w-full h-full flex items-center justify-center overflow-auto p-2">
-              <img
-                src={resolvedUrl}
-                alt={title}
-                style={{ transform: `scale(${zoom})`, transformOrigin: "center center" }}
-                className="max-w-full max-h-[70vh] object-contain transition-transform duration-200 rounded-lg shadow-lg"
-                onError={(e) => {
-                  e.currentTarget.style.display = "none";
-                  const fallback = e.currentTarget.parentElement.querySelector(".img-fallback");
-                  if (fallback) fallback.style.display = "flex";
-                }}
-              />
-              <div className="img-fallback hidden flex-col items-center justify-center gap-3 p-6 text-center text-slate-400">
-                <FileText size={48} className="text-slate-600 animate-pulse" />
-                <p className="text-sm font-semibold">Unable to preview image directly.</p>
-                <a
-                  href={resolvedUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition"
-                >
-                  Open Document in New Tab
-                </a>
+            imgLoadError ? (
+              <div className="flex flex-col items-center justify-center gap-4 p-8 text-center">
+                <div className="p-4 bg-rose-500/10 rounded-full border border-rose-500/20 text-rose-400">
+                  <AlertCircle size={40} />
+                </div>
+                <div>
+                  <h4 className="font-bold text-slate-200 text-base">Document could not be loaded.</h4>
+                  <p className="text-xs text-slate-400 mt-1 max-w-md">
+                    The requested image document could not be retrieved from the server. Please verify your connection or open the file directly in a new tab.
+                  </p>
+                </div>
+                <div className="flex items-center gap-3 mt-2">
+                  <a
+                    href={resolvedUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl flex items-center gap-2 transition"
+                  >
+                    <ExternalLink size={14} /> Open Document in New Tab
+                  </a>
+                  <a
+                    href={resolvedUrl}
+                    download
+                    className="px-5 py-2.5 bg-[#1A2438] hover:bg-[#25334E] border border-[#202B45] text-slate-200 font-bold text-xs rounded-xl flex items-center gap-2 transition"
+                  >
+                    <Download size={14} /> Download File
+                  </a>
+                </div>
               </div>
-            </div>
+            ) : (
+              <div className="w-full h-full flex items-center justify-center overflow-auto p-2">
+                <img
+                  src={resolvedUrl}
+                  alt={title}
+                  style={{ transform: `scale(${zoom})`, transformOrigin: "center center" }}
+                  className="max-w-full max-h-[70vh] object-contain transition-transform duration-200 rounded-lg shadow-lg"
+                  onError={() => {
+                    setImgLoadError(true);
+                  }}
+                />
+              </div>
+            )
           ) : isPdf ? (
             <div className="w-full h-full flex flex-col items-center min-h-[500px]">
               <iframe
@@ -164,8 +190,10 @@ export default function DocumentViewerModal({
                 <FileText size={40} />
               </div>
               <div>
-                <h4 className="font-bold text-slate-200 text-base">{title}</h4>
-                <p className="text-xs text-slate-400 mt-1">Uploaded document file ready for inspection.</p>
+                <h4 className="font-bold text-slate-200 text-base">Preview unavailable for this file type.</h4>
+                <p className="text-xs text-slate-400 mt-1 max-w-md">
+                  This document format does not support inline browser previewing. You can open or download the file below.
+                </p>
               </div>
               <div className="flex items-center gap-3 mt-2">
                 <a
@@ -174,14 +202,14 @@ export default function DocumentViewerModal({
                   rel="noopener noreferrer"
                   className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl flex items-center gap-2 transition"
                 >
-                  <ExternalLink size={14} /> Open Document
+                  <ExternalLink size={14} /> Open Document in New Tab
                 </a>
                 <a
                   href={resolvedUrl}
                   download
                   className="px-5 py-2.5 bg-[#1A2438] hover:bg-[#25334E] border border-[#202B45] text-slate-200 font-bold text-xs rounded-xl flex items-center gap-2 transition"
                 >
-                  <Download size={14} /> Download
+                  <Download size={14} /> Download File
                 </a>
               </div>
             </div>

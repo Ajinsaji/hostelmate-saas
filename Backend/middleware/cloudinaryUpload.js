@@ -58,14 +58,16 @@ const folderForField = (fieldName) => {
 
 let storage;
 
-const isCloudinaryConfigured =
+const isCloudinaryConfigured = Boolean(
   process.env.CLOUDINARY_CLOUD_NAME &&
   !process.env.CLOUDINARY_CLOUD_NAME.includes("your_") &&
   !process.env.CLOUDINARY_CLOUD_NAME.includes("dummy") &&
   process.env.CLOUDINARY_API_KEY &&
   !process.env.CLOUDINARY_API_KEY.includes("your_") &&
   process.env.CLOUDINARY_API_SECRET &&
-  process.env.USE_CLOUDINARY === "true";
+  !process.env.CLOUDINARY_API_SECRET.includes("your_") &&
+  process.env.USE_CLOUDINARY !== "false"
+);
 
 if (isCloudinaryConfigured) {
   try {
