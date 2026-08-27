@@ -8,6 +8,7 @@ const SubscriptionFeature = require("../models/SubscriptionFeature");
 const BillingSettings = require("../models/BillingSettings");
 const Resident = require("../models/Resident");
 const Hostel = require("../models/Hostel");
+const Owner = require("../models/Owner");
 const Plan = require("../models/Plan");
 const Invoice = require("../models/Invoice");
 const { calculateResidentBilling } = require("../utils/residentBillingCalculator");
@@ -233,84 +234,113 @@ async function getOwnerSubscriptionDetails(hostelId) {
 }
 
 /**
- * Superadmin Subscription Analytics
+ * Single Authoritative Source of Truth for Subscription Analytics & Hostel Subscriptions Directory
+ * Ensures summary card numbers and directory table rows are 100% reconciled from the same database records.
  */
-async function getSuperAdminAnalytics() {
+async function getReconciledSubscriptionData() {
   const now = new Date();
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-  const in7Days = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
-  const in30Days = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
 
-  const [
-    totalHostels,
-    trialCount,
-    activeCount,
-    expiredCount,
-    suspendedCount,
-    pendingRequestsCount,
-    totalActiveResidents,
-    expiring7Count,
-    expiring30Count,
-    failedPaymentsCount,
-  ] = await Promise.all([
-    Hostel.countDocuments({ isDeleted: { $ne: true } }),
-    Subscription.countDocuments({
-      $or: [{ status: { $in: ["trial", "Trial"] } }, { isTrial: true }],
-    }),
-    Subscription.countDocuments({
-      status: { $in: ["active", "Active"] },
-      isTrial: false,
-    }),
-    Subscription.countDocuments({
-      status: { $in: ["expired", "Expired"] },
-    }),
-    Subscription.countDocuments({
-      status: { $in: ["suspended", "Suspended"] },
-    }),
+  const hostels = await Hostel.find({ isDeleted: { $ne: true } })
+    .populate("ownerId", "ownerName phone email")
+    .sort({ createdAt: -1 });
+
+  let activeSubscribers = 0;
+  let trialHostels = 0;
+  let expiredHostels = 0;
+  let suspendedHostels = 0;
+  let expiringSoon7 = 0;
+  let expiringSoon30 = 0;
+  let totalActiveResidents = 0;
+
+  const formattedSubscriptions = await Promise.all(
+    hostels.map(async (h) => {
+      let sub = await Subscription.findOne({ hostelId: h._id });
+      const hCreatedAt = h.createdAt ? new Date(h.createdAt) : now;
+
+      if (!sub) {
+        const fallbackEnd = h.subscriptionEndDate ? new Date(h.subscriptionEndDate) : new Date(hCreatedAt.getTime() + 30 * 24 * 60 * 60 * 1000);
+        sub = {
+          status: h.subscriptionStatus || "trial",
+          isTrial: h.isTrial !== false,
+          startDate: h.subscriptionStartDate || hCreatedAt,
+          endDate: fallbackEnd,
+          trialEndDate: fallbackEnd,
+          amount: 0,
+          paidAmount: 0,
+          paymentStatus: "Pending",
+        };
+      }
+
+      const lifecycle = getSubscriptionStatus(sub);
+      const activeResidents = await getActiveResidentCount(h._id);
+      const estimatedAmount = activeResidents * 10;
+
+      const isTrial = sub.isTrial === true || (sub.status && String(sub.status).toLowerCase() === "trial");
+      const targetExpiry = lifecycle?.expiryDate || (isTrial ? sub.trialEndDate : sub.endDate) || h.subscriptionEndDate || new Date(hCreatedAt.getTime() + 30 * 24 * 60 * 60 * 1000);
+      const daysLeft = typeof lifecycle?.daysLeft === "number" ? lifecycle.daysLeft : 0;
+      const resolvedStatus = lifecycle?.status || (isTrial ? "Trial" : "Active");
+      const statusLower = resolvedStatus.toLowerCase();
+
+      // Accumulate metrics
+      if (statusLower === "expired") expiredHostels++;
+      else if (statusLower === "suspended") suspendedHostels++;
+      else if (statusLower === "active") activeSubscribers++;
+      else if (statusLower === "trial" || isTrial) trialHostels++;
+
+      if (daysLeft >= 0 && daysLeft <= 7 && statusLower !== "expired") expiringSoon7++;
+      if (daysLeft >= 0 && daysLeft <= 30 && statusLower !== "expired") expiringSoon30++;
+
+      totalActiveResidents += activeResidents;
+
+      return {
+        subscriptionId: sub._id || h._id,
+        hostelId: h._id,
+        hostelName: h.hostelName || h.name || "Hostel",
+        ownerId: h.ownerId?._id || h.ownerId,
+        ownerName: h.ownerName || h.ownerId?.ownerName || "Owner",
+        phone: h.phone || h.ownerId?.phone || "-",
+        email: h.email || h.ownerId?.email || "-",
+        city: h.city || h.address || "-",
+        plan: "HostelMate Unified Plan",
+        status: resolvedStatus,
+        startDate: sub.startDate || sub.trialStartDate || hCreatedAt,
+        expiryDate: targetExpiry,
+        nextBillingDate: targetExpiry,
+        daysRemaining: daysLeft,
+        isExpiringSoon: daysLeft >= 0 && daysLeft <= 30 && statusLower !== "expired",
+        activeResidents,
+        amount: sub.amount || estimatedAmount,
+        estimatedAmount,
+        paidAmount: sub.paidAmount || 0,
+        paymentStatus: sub.paymentStatus || (sub.paid ? "Paid" : "Pending"),
+        isTrial,
+      };
+    })
+  );
+
+  const [pendingRequestsCount, failedPaymentsCount, monthlyPayments] = await Promise.all([
     SubscriptionRequest.countDocuments({ status: "pending" }),
-    Resident.countDocuments({ status: { $in: ["Active", "active"] }, isDeleted: false }),
-    Subscription.countDocuments({
-      status: { $nin: ["expired", "Expired"] },
-      $or: [
-        { endDate: { $gte: now, $lte: in7Days } },
-        { trialEndDate: { $gte: now, $lte: in7Days } },
-        { subscriptionEndDate: { $gte: now, $lte: in7Days } },
-      ],
-    }),
-    Subscription.countDocuments({
-      status: { $nin: ["expired", "Expired"] },
-      $or: [
-        { endDate: { $gte: now, $lte: in30Days } },
-        { trialEndDate: { $gte: now, $lte: in30Days } },
-        { subscriptionEndDate: { $gte: now, $lte: in30Days } },
-      ],
-    }),
     SubscriptionPayment.countDocuments({ paymentStatus: { $in: ["Failed", "failed"] } }),
+    SubscriptionPayment.aggregate([
+      { $match: { paymentStatus: { $in: ["Success", "Paid", "paid"] }, paidAt: { $gte: startOfMonth } } },
+      { $group: { _id: null, total: { $sum: "$amount" } } },
+    ]),
   ]);
 
-  const monthlyPayments = await SubscriptionPayment.aggregate([
-    { $match: { paymentStatus: { $in: ["Success", "Paid", "paid"] }, paidAt: { $gte: startOfMonth } } },
-    { $group: { _id: null, total: { $sum: "$amount" } } },
-  ]);
   const monthlyRevenue = monthlyPayments[0]?.total || 0;
-
-  // Account for hostels without explicit Subscription doc (they are in Trial by default)
-  const hostelsWithSub = await Subscription.distinct("hostelId");
-  const hostelsWithoutSubCount = Math.max(0, totalHostels - hostelsWithSub.length);
-  const totalTrialHostels = trialCount + hostelsWithoutSubCount;
-
   const expectedRevenue = totalActiveResidents * 10;
   const pendingCollections = Math.max(0, expectedRevenue - monthlyRevenue);
 
-  return {
-    totalHostels,
-    trialHostels: totalTrialHostels,
-    activeSubscribers: activeCount,
-    expiredHostels: expiredCount,
-    suspendedHostels: suspendedCount,
+  const analytics = {
+    totalHostels: hostels.length,
+    trialHostels,
+    activeSubscribers,
+    expiredHostels,
+    suspendedHostels,
     pendingRequests: pendingRequestsCount,
-    expiringSoon7: expiring7Count,
-    expiringSoon30: expiring30Count,
+    expiringSoon7,
+    expiringSoon30,
     failedPaymentsCount,
     totalActiveResidents,
     monthlyRevenue,
@@ -320,6 +350,19 @@ async function getSuperAdminAnalytics() {
     pendingCollections,
     residentBillingRate: 10,
   };
+
+  return {
+    analytics,
+    subscriptions: formattedSubscriptions,
+  };
+}
+
+/**
+ * Superadmin Subscription Analytics
+ */
+async function getSuperAdminAnalytics() {
+  const data = await getReconciledSubscriptionData();
+  return data.analytics;
 }
 
 module.exports = {
@@ -329,4 +372,5 @@ module.exports = {
   initializeTrialSubscription,
   getOwnerSubscriptionDetails,
   getSuperAdminAnalytics,
+  getReconciledSubscriptionData,
 };

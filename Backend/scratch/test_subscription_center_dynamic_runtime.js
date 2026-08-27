@@ -47,10 +47,10 @@ runTest("3. listHostelSubscriptions controller function exists", () => {
 
 // 4. listHostelSubscriptions returns rich hostel properties
 runTest("4. listHostelSubscriptions maps rich hostel properties (city, email, isExpiringSoon)", () => {
-  const controllerCode = fs.readFileSync(path.join(__dirname, "../controllers/saasAdminController.js"), "utf8");
-  assert.ok(controllerCode.includes("isExpiringSoon"), "isExpiringSoon computed");
-  assert.ok(controllerCode.includes("email:"), "email mapped");
-  assert.ok(controllerCode.includes("city:"), "city mapped");
+  const serviceCode = fs.readFileSync(path.join(__dirname, "../services/subscriptionService.js"), "utf8");
+  assert.ok(serviceCode.includes("isExpiringSoon"), "isExpiringSoon computed");
+  assert.ok(serviceCode.includes("email:"), "email mapped");
+  assert.ok(serviceCode.includes("city:"), "city mapped");
 });
 
 // 5. Status filter supports expiring and trial
@@ -100,20 +100,20 @@ runTest("12. saasAdminRoutes enforces super_admin/admin RBAC guard", () => {
 
 // 13. Null-date handling in listHostelSubscriptions
 runTest("13. listHostelSubscriptions handles missing createdAt safely", () => {
-  const controllerCode = fs.readFileSync(path.join(__dirname, "../controllers/saasAdminController.js"), "utf8");
-  assert.ok(controllerCode.includes("const hCreatedAt = h.createdAt ? new Date(h.createdAt) : now;"), "Safe hCreatedAt fallback");
+  const serviceCode = fs.readFileSync(path.join(__dirname, "../services/subscriptionService.js"), "utf8");
+  assert.ok(serviceCode.includes("const hCreatedAt = h.createdAt ? new Date(h.createdAt) : now;"), "Safe hCreatedAt fallback");
 });
 
 // 14. Missing Subscription record fallback
 runTest("14. listHostelSubscriptions falls back gracefully when Subscription document does not exist", () => {
-  const controllerCode = fs.readFileSync(path.join(__dirname, "../controllers/saasAdminController.js"), "utf8");
-  assert.ok(controllerCode.includes("if (!sub) {"), "Missing sub fallback exists");
+  const serviceCode = fs.readFileSync(path.join(__dirname, "../services/subscriptionService.js"), "utf8");
+  assert.ok(serviceCode.includes("if (!sub) {"), "Missing sub fallback exists");
 });
 
 // 15. Multi-hostel mapping by hostelId
 runTest("15. Hostels mapped independently by hostelId", () => {
-  const controllerCode = fs.readFileSync(path.join(__dirname, "../controllers/saasAdminController.js"), "utf8");
-  assert.ok(controllerCode.includes("hostelId: h._id"), "hostelId mapped in return object");
+  const serviceCode = fs.readFileSync(path.join(__dirname, "../services/subscriptionService.js"), "utf8");
+  assert.ok(serviceCode.includes("hostelId: h._id"), "hostelId mapped in return object");
 });
 
 // 16. Frontend Promise.allSettled usage

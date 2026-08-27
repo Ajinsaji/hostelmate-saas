@@ -466,68 +466,9 @@ const getAdminBillingCalculator = async (req, res) => {
 const listHostelSubscriptions = async (req, res) => {
   try {
     const { status, search } = req.query;
-    const hostels = await Hostel.find({ isDeleted: { $ne: true } })
-      .populate("ownerId", "ownerName phone email")
-      .sort({ createdAt: -1 });
+    const data = await subscriptionService.getReconciledSubscriptionData();
+    let result = data.subscriptions || [];
 
-    const now = new Date();
-
-    const formatted = await Promise.all(
-      hostels.map(async (h) => {
-        let sub = await Subscription.findOne({ hostelId: h._id });
-        const hCreatedAt = h.createdAt ? new Date(h.createdAt) : now;
-
-        if (!sub) {
-          const fallbackEnd = h.subscriptionEndDate ? new Date(h.subscriptionEndDate) : new Date(hCreatedAt.getTime() + 30 * 24 * 60 * 60 * 1000);
-          sub = {
-            status: h.subscriptionStatus || "trial",
-            isTrial: h.isTrial !== false,
-            startDate: h.subscriptionStartDate || hCreatedAt,
-            endDate: fallbackEnd,
-            trialEndDate: fallbackEnd,
-            amount: 0,
-            paidAmount: 0,
-            paymentStatus: "Pending",
-          };
-        }
-
-        const lifecycle = getSubscriptionStatus(sub);
-        const activeResidents = await subscriptionService.getActiveResidentCount(h._id);
-        const estimatedAmount = activeResidents * 10;
-
-        const isTrial = sub.isTrial === true || (sub.status && String(sub.status).toLowerCase() === "trial");
-        const targetExpiry = lifecycle?.expiryDate || (isTrial ? sub.trialEndDate : sub.endDate) || h.subscriptionEndDate || new Date(hCreatedAt.getTime() + 30 * 24 * 60 * 60 * 1000);
-        const daysLeft = typeof lifecycle?.daysLeft === "number" ? lifecycle.daysLeft : 0;
-
-        const isExpiringSoon = daysLeft >= 0 && daysLeft <= 30;
-
-        return {
-          subscriptionId: sub._id || h._id,
-          hostelId: h._id,
-          hostelName: h.hostelName || h.name || "Hostel",
-          ownerId: h.ownerId?._id || h.ownerId,
-          ownerName: h.ownerName || h.ownerId?.ownerName || "Owner",
-          phone: h.phone || h.ownerId?.phone || "-",
-          email: h.email || h.ownerId?.email || "-",
-          city: h.city || h.address || "-",
-          plan: "HostelMate Unified Plan",
-          status: lifecycle?.status || (isTrial ? "Trial" : "Active"),
-          startDate: sub.startDate || sub.trialStartDate || hCreatedAt,
-          expiryDate: targetExpiry,
-          nextBillingDate: targetExpiry,
-          daysRemaining: daysLeft,
-          isExpiringSoon,
-          activeResidents,
-          amount: sub.amount || estimatedAmount,
-          estimatedAmount,
-          paidAmount: sub.paidAmount || 0,
-          paymentStatus: sub.paymentStatus || (sub.paid ? "Paid" : "Pending"),
-          isTrial,
-        };
-      })
-    );
-
-    let result = formatted;
     if (status && status !== "all" && status !== "All") {
       const st = status.toLowerCase();
       if (st === "expiring" || st === "expiring_soon") {

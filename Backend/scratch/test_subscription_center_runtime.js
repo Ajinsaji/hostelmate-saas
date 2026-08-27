@@ -37,16 +37,16 @@ runTest("2. saasAdminRoutes enforces requireRole(['super_admin', 'admin']) middl
 
 // 3. Null-date handling in listHostelSubscriptions
 runTest("3. listHostelSubscriptions handles missing createdAt on hostel safely", () => {
-  const controllerContent = fs.readFileSync(path.join(__dirname, "../controllers/saasAdminController.js"), "utf8");
-  assert.ok(controllerContent.includes("const hCreatedAt = h.createdAt ? new Date(h.createdAt) : now;"), "hCreatedAt has safe Date fallback");
-  assert.ok(controllerContent.includes("hCreatedAt.getTime()"), "getTime called on valid Date object");
+  const serviceContent = fs.readFileSync(path.join(__dirname, "../services/subscriptionService.js"), "utf8");
+  assert.ok(serviceContent.includes("const hCreatedAt = h.createdAt ? new Date(h.createdAt) : now;"), "hCreatedAt has safe Date fallback");
+  assert.ok(serviceContent.includes("hCreatedAt.getTime()"), "getTime called on valid Date object");
 });
 
 // 4. Missing subscription fallback
 runTest("4. listHostelSubscriptions falls back gracefully when Subscription document does not exist", () => {
-  const controllerContent = fs.readFileSync(path.join(__dirname, "../controllers/saasAdminController.js"), "utf8");
-  assert.ok(controllerContent.includes("if (!sub) {"), "sub fallback block exists");
-  assert.ok(controllerContent.includes('paymentStatus: "Pending"'), "sub fallback provides paymentStatus");
+  const serviceContent = fs.readFileSync(path.join(__dirname, "../services/subscriptionService.js"), "utf8");
+  assert.ok(serviceContent.includes("if (!sub) {"), "sub fallback block exists");
+  assert.ok(serviceContent.includes('paymentStatus: "Pending"'), "sub fallback provides paymentStatus");
 });
 
 // 5. SubscriptionHistory query safety
@@ -57,8 +57,8 @@ runTest("5. getSubscriptionHistory queries with $or array safely", () => {
 
 // 6. Multi-hostel mapping
 runTest("6. listHostelSubscriptions maps every hostel by hostelId cleanly", () => {
-  const controllerContent = fs.readFileSync(path.join(__dirname, "../controllers/saasAdminController.js"), "utf8");
-  assert.ok(controllerContent.includes("hostelId: h._id"), "hostelId mapped in return object");
+  const serviceContent = fs.readFileSync(path.join(__dirname, "../services/subscriptionService.js"), "utf8");
+  assert.ok(serviceContent.includes("hostelId: h._id"), "hostelId mapped in return object");
 });
 
 // 7. Status filter case-insensitivity
