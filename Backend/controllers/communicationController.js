@@ -1,6 +1,7 @@
 "use strict";
 
 const Communication = require("../models/Communication");
+const { generateTemporaryPassword } = require("../utils/temporaryPassword");
 const SystemSetting = require("../models/SystemSetting");
 const Hostel = require("../models/Hostel");
 const Resident = require("../models/Resident");
@@ -846,7 +847,7 @@ const retryCommunication = async (req, res) => {
     if (comm.templateCode === "OWNER_ACCOUNT_ACTIVATED" && comm.ownerId) {
       const Owner = require("../models/Owner");
       const bcrypt = require("bcryptjs");
-      const newTempPassword = `HM${Math.floor(1000 + Math.random() * 9000)}@${String.fromCharCode(65 + Math.floor(Math.random() * 26))}${Math.floor(10 + Math.random() * 90)}`;
+      const newTempPassword = generateTemporaryPassword();
       const owner = await Owner.findById(comm.ownerId);
       if (owner) {
         owner.password = await bcrypt.hash(newTempPassword, 10);
@@ -854,7 +855,7 @@ const retryCommunication = async (req, res) => {
         owner.firstLogin = true;
         owner.credentialIssuedAt = new Date();
         await owner.save();
-        retryVars.tempPassword = newTempPassword;
+        retryVars.temporaryPassword = newTempPassword;
       }
     }
 

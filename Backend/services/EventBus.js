@@ -307,7 +307,7 @@ class EventBus extends EventEmitter {
               ownerName: data.ownerName || "Hostel Owner",
               hostelName: data.hostelName || "HostelMate",
               username: data.username || data.phone,
-              tempPassword: data.tempPassword || "-",
+              temporaryPassword: data.temporaryPassword || data.tempPassword || "-",
               planType: data.planType || "HostelMate Unified Plan",
               trialDays: data.trialDays !== undefined ? data.trialDays : 30,
               trialStartDate: data.trialStartDate || data.startDate || "",

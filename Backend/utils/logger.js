@@ -38,6 +38,7 @@ const redactOptions = {
     '*.password',
     '*.passwordHash',
     '*.tempPassword',
+    '*.temporaryPassword',
     '*.idNumber',
     '*.aadhaar',
     '*.aadhaarNumber',

@@ -23,6 +23,9 @@ const { generateQRCode } = require('../utils/qrCodeService');
 const { sendApprovalMessages } = require('../utils/messageService');
 const mongoose = require("mongoose");
 const { createPerformanceTimer } = require("../utils/performanceTiming");
+const { generateTemporaryPassword } = require("../utils/temporaryPassword");
+
+const activationInFlight = new Set();
 
 
 
@@ -362,8 +365,27 @@ const finalizeHostelActivation = async (req, res) => {
       });
     }
 
-    // 1. Resolve Target Hostel
-    const hostel = await timer.measure("hostelLookupMs", () => Hostel.findById(rawTargetId));
+    const activationKey = String(rawTargetId);
+    if (activationInFlight.has(activationKey)) {
+      return res.status(409).json({
+        success: false,
+        code: "ACTIVATION_IN_PROGRESS",
+        message: "Hostel activation is already in progress.",
+      });
+    }
+    activationInFlight.add(activationKey);
+
+    // 1. Resolve a hostel ID directly or resolve the approved request ID to its hostel.
+    let hostel = await timer.measure("hostelLookupMs", () => Hostel.findById(rawTargetId));
+    if (!hostel && mongoose.Types.ObjectId.isValid(rawTargetId)) {
+      const activationRequest = await HostelRequest.findById(rawTargetId);
+      if (activationRequest?.hostelId) {
+        hostel = await timer.measure("hostelRequestResolutionMs", () => Hostel.findById(activationRequest.hostelId));
+      }
+      if (!hostel && activationRequest?.phone) {
+        hostel = await timer.measure("hostelPhoneResolutionMs", () => Hostel.findOne({ phone: activationRequest.phone }));
+      }
+    }
     if (!hostel) {
       return res.status(404).json({
         success: false,
@@ -390,23 +412,18 @@ const finalizeHostelActivation = async (req, res) => {
       });
     }
 
-    // 3. Parallel Independent Reads & Password Hash Preparation
-    const tempPassword = `HM${Math.floor(1000 + Math.random() * 9000)}@${String.fromCharCode(65 + Math.floor(Math.random() * 26))}${Math.floor(10 + Math.random() * 90)}`;
-    const bcryptjs = require("bcryptjs");
-
+    // 3. Resolve the owner before issuing credentials. Existing active owners keep their login.
     let relatedRequest = await HostelRequest.findOne({ $or: [{ hostelId: String(hostel._id) }, { phone: hostel.phone }] });
 
     const [
       existingOwnerByHostel,
       existingOwnerByPhone,
       existingSubscriptionDoc,
-      hashedPassword,
     ] = await timer.measure("activationParallelLookupMs", () =>
       Promise.all([
         Owner.findOne({ hostelId: hostel._id }),
         hostel.phone ? Owner.findOne({ phone: hostel.phone }) : Promise.resolve(null),
         Subscription.findOne({ hostelId: hostel._id }),
-        bcryptjs.hash(tempPassword, 10),
       ])
     );
 
@@ -420,7 +437,8 @@ const finalizeHostelActivation = async (req, res) => {
         if (otherHostel && otherHostel.isDeleted !== true && otherHostel.pendingActivation === false) {
           return res.status(409).json({
             success: false,
-            code: "OWNER_ACTIVE_ON_ANOTHER_HOSTEL",
+            code: "OWNER_PHONE_CONFLICT",
+            legacyCode: "OWNER_ACTIVE_ON_ANOTHER_HOSTEL",
             message: `An active owner account with phone number ${hostel.phone} already exists and is managing another property.`,
           });
         }
@@ -429,6 +447,12 @@ const finalizeHostelActivation = async (req, res) => {
     } else if (existingOwnerByHostel) {
       ownerDoc = existingOwnerByHostel;
     }
+
+    const isExistingAccount = Boolean(ownerDoc && ownerDoc.password && !ownerDoc.firstLogin);
+    const tempPassword = isExistingAccount ? null : generateTemporaryPassword();
+    const hashedPassword = tempPassword
+      ? await require("bcryptjs").hash(tempPassword, 10)
+      : null;
 
     // 5. Ensure Public Code & Canonical URL
     const frontendBase = process.env.FRONTEND_URL || process.env.VITE_APP_URL || process.env.PUBLIC_URL || (req.headers && req.headers.origin ? req.headers.origin : "https://hostelmate-saas.vercel.app");
@@ -458,8 +482,6 @@ const finalizeHostelActivation = async (req, res) => {
 
     // 7. Critical Write Path
     const writeStartedAt = process.hrtime.bigint();
-    const isExistingAccount = Boolean(ownerDoc && ownerDoc.password && !ownerDoc.firstLogin);
-
     if (ownerDoc) {
       if (!isExistingAccount) {
         ownerDoc.password = hashedPassword;
@@ -502,6 +524,7 @@ const finalizeHostelActivation = async (req, res) => {
       subscriptionDoc.ownerId = ownerDoc._id;
       subscriptionDoc.planType = normalizedPlanType;
       subscriptionDoc.status = subStatus;
+      subscriptionDoc.subscriptionStatus = subStatus;
       subscriptionDoc.isTrial = isTrialMode;
       subscriptionDoc.startDate = finalStartDate;
       subscriptionDoc.endDate = finalEndDate;
@@ -515,6 +538,7 @@ const finalizeHostelActivation = async (req, res) => {
         ownerId: ownerDoc._id,
         planType: normalizedPlanType,
         status: subStatus,
+        subscriptionStatus: subStatus,
         isTrial: isTrialMode,
         startDate: finalStartDate,
         endDate: finalEndDate,
@@ -635,7 +659,7 @@ const finalizeHostelActivation = async (req, res) => {
             ownerName: ownerDoc.ownerName,
             hostelName: hostel.hostelName || hostel.name,
             username: ownerDoc.phone,
-            tempPassword,
+            temporaryPassword: tempPassword,
             planType: normalizedPlanType,
             trialDays,
             trialStartDate: formattedStartDate,
@@ -670,7 +694,7 @@ const finalizeHostelActivation = async (req, res) => {
       "",
       "🔐 Login Details",
       `Username: ${ownerDoc.phone}`,
-      `Temporary Password: ${tempPassword}`,
+      ...(tempPassword ? [`Temporary Password: ${tempPassword}`] : []),
       "",
       `📦 Subscription: ${normalizedPlanType}`,
       `🎁 Trial Period: ${trialDays} Days Free`,
@@ -706,8 +730,7 @@ const finalizeHostelActivation = async (req, res) => {
       },
       credentials: {
         loginUrl,
-        tempPassword,
-        temporaryPassword: tempPassword,
+        ...(tempPassword ? { tempPassword, temporaryPassword: tempPassword } : {}),
         username: hostel.phone,
         issuedAt: ownerDoc.credentialIssuedAt,
       },
@@ -753,6 +776,9 @@ const finalizeHostelActivation = async (req, res) => {
       code: "ACTIVATION_FAILED",
       message: error?.message || "Unable to complete hostel activation. Please try again.",
     });
+  } finally {
+    const activationKey = req.params.hostelId || req.params.id;
+    if (activationKey) activationInFlight.delete(String(activationKey));
   }
 };
 
@@ -999,7 +1025,7 @@ const sendCredentials = async (req, res) => {
     const config = validateWhatsAppConfig();
 
     // Secure backend temporary password generation on every explicit credential dispatch/reissue
-    const runtimeTempPassword = `HM${Math.floor(1000 + Math.random() * 9000)}@${String.fromCharCode(65 + Math.floor(Math.random() * 26))}${Math.floor(10 + Math.random() * 90)}`;
+    const runtimeTempPassword = generateTemporaryPassword();
     const bcryptjs = require("bcryptjs");
     owner.password = await bcryptjs.hash(runtimeTempPassword, 10);
     owner.mustChangePassword = true;
@@ -1058,7 +1084,7 @@ const sendCredentials = async (req, res) => {
       hostelName: hostel ? (hostel.hostelName || hostel.name) : "",
       phone: owner.phone,
       username: owner.phone,
-      tempPassword: runtimeTempPassword || "",
+      temporaryPassword: runtimeTempPassword || "",
       planType: hostel ? hostel.planType : "HostelMate Unified Plan",
       expiryDate: hostel ? hostel.subscriptionEndDate : null,
       qrUrl: hostel ? hostel.qrCodeUrl : "",
@@ -1132,7 +1158,7 @@ const resetOwnerTempPassword = async (req, res) => {
     }
     if (!owner) return res.status(404).json({ success: false, message: "Owner not found" });
 
-    const newTempPassword = "Temp@" + Math.floor(1000 + Math.random() * 9000);
+    const newTempPassword = generateTemporaryPassword();
 
     const bcryptjs = require("bcryptjs");
     const hashedPassword = await bcryptjs.hash(newTempPassword, 10);

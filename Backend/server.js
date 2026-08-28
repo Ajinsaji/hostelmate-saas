@@ -460,20 +460,7 @@ const { seedDefaultFeaturesAndPlans } = require("./services/subscriptionService"
 
 async function startServer() {
   try {
-    // 1. Connect to Database
-    await connectDB();
-
-    // 2. Initialize subscription defaults (idempotent seeding)
-    try {
-      await seedDefaultFeaturesAndPlans();
-    } catch (seedErr) {
-      logger.warn({ err: seedErr, component: "Startup" }, "Subscription default seeding encountered an issue, will retry on next cycle");
-    }
-
-    // 3. Start Subscription Scheduler
-    startSubscriptionScheduler(60 * 60 * 1000);
-
-    // 4. Start HTTP Server
+    // 1. Start HTTP Server listening on PORT first (ensures /api/health/live succeeds immediately)
     if (!server.listening) {
       server.listen(PORT, () => {
         logger.info({ port: PORT, env: process.env.NODE_ENV || "production" }, `✓ Server Running on Port ${PORT}`);
@@ -485,9 +472,23 @@ async function startServer() {
         }
       });
     }
+
+    // 2. Connect to Database asynchronously in background
+    connectDB().then(async () => {
+      // 3. Initialize subscription defaults (idempotent seeding)
+      try {
+        await seedDefaultFeaturesAndPlans();
+      } catch (seedErr) {
+        logger.warn({ err: seedErr, component: "Startup" }, "Subscription default seeding encountered an issue, will retry on next cycle");
+      }
+
+      // 4. Start Subscription Scheduler
+      startSubscriptionScheduler(60 * 60 * 1000);
+    }).catch((dbErr) => {
+      logger.error({ err: dbErr, component: "Startup" }, "Background database connection error");
+    });
   } catch (startupErr) {
-    logger.error({ err: startupErr, component: "Startup" }, "Fatal server startup failure");
-    process.exit(1);
+    logger.error({ err: startupErr, component: "Startup" }, "Server startup error");
   }
 }
 

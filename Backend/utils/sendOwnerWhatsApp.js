@@ -1,5 +1,6 @@
 const { logger } = require("./logger");
 const axios = require("axios");
+const crypto = require("crypto");
 
 // Custom Error Class for Meta WhatsApp Delivery Failures
 class WhatsAppDeliveryError extends Error {
@@ -218,7 +219,7 @@ const formatMessage = ({
   hostelName,
   username,
   phone,
-  tempPassword,
+  temporaryPassword,
   planType,
   trialDays,
   trialStartDate,
@@ -253,7 +254,7 @@ const formatMessage = ({
     "",
     "🔐 Login Details",
     `Username: ${safeUsername}`,
-    `Temporary Password: ${tempPassword || "-"}`,
+    `Temporary Password: ${temporaryPassword || "-"}`,
     "",
     `📦 Subscription: ${safePlan}`,
     `🎁 Trial Period: ${safeTrialDays} Days Free`,
@@ -282,6 +283,7 @@ const sendOwnerWhatsApp = async (payload) => {
     ownerName,
     hostelName,
     username,
+    temporaryPassword,
     tempPassword,
     planType,
     trialDays,
@@ -333,6 +335,10 @@ const sendOwnerWhatsApp = async (payload) => {
 
   const url = `https://graph.facebook.com/${config.apiVersion}/${config.phoneNumberId}/messages`;
   const to = normalizedPhone;
+  const runtimeTemporaryPassword = temporaryPassword || tempPassword;
+  const passwordFingerprint = runtimeTemporaryPassword
+    ? crypto.createHash("sha256").update(runtimeTemporaryPassword).digest("hex").slice(0, 12)
+    : null;
   const message =
     messageText ||
     customMessage ||
@@ -340,7 +346,7 @@ const sendOwnerWhatsApp = async (payload) => {
       ownerName,
       hostelName,
       username,
-      tempPassword,
+      temporaryPassword: runtimeTemporaryPassword,
       planType,
       expiryDate,
       loginUrl,
@@ -360,6 +366,7 @@ const sendOwnerWhatsApp = async (payload) => {
     normalizedPhone,
     to,
     url,
+    passwordFingerprint,
   });
 
   try {

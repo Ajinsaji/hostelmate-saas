@@ -8,6 +8,8 @@ const Hostel = require("../models/Hostel");
 const { logger } = require("../utils/logger");
 const { sendOwnerWhatsApp, validateWhatsAppConfig } = require("../utils/sendOwnerWhatsApp");
 
+const CONTROLLED_ACTIVATION_CREDENTIAL = "[Controlled Activation Credential]";
+
 // Normalize phone to E.164-like with country code for India (no leading +)
 const normalizePhoneNumber = (phone) => {
   if (!phone) return null;
@@ -163,6 +165,12 @@ const compileTemplate = (templateCode, variablesDict = {}, customText = null) =>
   }
 
   const safeVars = { ...variablesDict };
+  if (safeVars.temporaryPassword === undefined && safeVars.tempPassword !== undefined) {
+    safeVars.temporaryPassword = safeVars.tempPassword;
+  }
+  if (safeVars.temporaryPassword !== undefined) {
+    safeVars.tempPassword = safeVars.temporaryPassword;
+  }
   if (templateCode === "OWNER_ACCOUNT_ACTIVATED") {
     if (!safeVars.planType || safeVars.planType === "Pro" || safeVars.planType === "Basic" || safeVars.planType === "Enterprise") {
       safeVars.planType = "HostelMate Unified Plan";
@@ -363,8 +371,10 @@ const dispatchWhatsAppMessage = async ({
 
   // Redacted variables & message text for safe MongoDB storage (Security Boundary)
   const sanitizedVariables = { ...variables };
-  if (sanitizedVariables.tempPassword && sanitizedVariables.tempPassword !== "[Controlled Activation Credential]") {
-    sanitizedVariables.tempPassword = "[Controlled Activation Credential]";
+  const runtimeTemporaryPassword = variables.temporaryPassword ?? variables.tempPassword;
+  if (runtimeTemporaryPassword && runtimeTemporaryPassword !== CONTROLLED_ACTIVATION_CREDENTIAL) {
+    sanitizedVariables.temporaryPassword = CONTROLLED_ACTIVATION_CREDENTIAL;
+    sanitizedVariables.tempPassword = CONTROLLED_ACTIVATION_CREDENTIAL;
   }
   const sanitizedMessageText = compileTemplate(templateCode, sanitizedVariables, customMessage);
   const sanitizedWaMeUrl = buildWaMeUrl(normalizedPhone, sanitizedMessageText);
@@ -472,7 +482,7 @@ const dispatchWhatsAppMessage = async ({
         ownerName: recipientName,
         hostelName: variables.hostelName || "",
         username: variables.username || "",
-        tempPassword: variables.tempPassword || "",
+        temporaryPassword: variables.temporaryPassword || variables.tempPassword || "",
         planType: variables.planType || "HostelMate Unified Plan",
         expiryDate: variables.expiryDate || "",
         loginUrl: variables.loginUrl || "",
