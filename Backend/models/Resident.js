@@ -310,6 +310,14 @@ const residentSchema = new mongoose.Schema(
 
 // Middleware to sync name & fullName before saving
 residentSchema.pre("save", function () {
+  if (this.dateOfBirth === "") this.dateOfBirth = undefined;
+  if (this.dob === "") this.dob = undefined;
+  if (this.joiningDate === "") this.joiningDate = undefined;
+  if (this.joinDate === "") this.joinDate = undefined;
+  if (this.checkInDate === "") this.checkInDate = undefined;
+  if (this.expectedCheckoutDate === "") this.expectedCheckoutDate = undefined;
+  if (this.actualCheckoutDate === "") this.actualCheckoutDate = undefined;
+
   if (!this.tenantId) {
     this.tenantId = this.hostelId;
   }

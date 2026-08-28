@@ -998,16 +998,13 @@ const sendCredentials = async (req, res) => {
     const { validateWhatsAppConfig, sendOwnerWhatsApp } = require("../utils/sendOwnerWhatsApp");
     const config = validateWhatsAppConfig();
 
-    // Secure backend temporary password generation (never trust frontend req.body passwords)
-    let runtimeTempPassword = null;
-    if (owner.mustChangePassword !== false) {
-      runtimeTempPassword = `HM${Math.floor(1000 + Math.random() * 9000)}@${String.fromCharCode(65 + Math.floor(Math.random() * 26))}${Math.floor(10 + Math.random() * 90)}`;
-      const bcryptjs = require("bcryptjs");
-      owner.password = await bcryptjs.hash(runtimeTempPassword, 10);
-      owner.mustChangePassword = true;
-      owner.firstLogin = true;
-      owner.credentialIssuedAt = new Date();
-    }
+    // Secure backend temporary password generation on every explicit credential dispatch/reissue
+    const runtimeTempPassword = `HM${Math.floor(1000 + Math.random() * 9000)}@${String.fromCharCode(65 + Math.floor(Math.random() * 26))}${Math.floor(10 + Math.random() * 90)}`;
+    const bcryptjs = require("bcryptjs");
+    owner.password = await bcryptjs.hash(runtimeTempPassword, 10);
+    owner.mustChangePassword = true;
+    owner.firstLogin = true;
+    owner.credentialIssuedAt = new Date();
 
     const frontendBase = process.env.FRONTEND_URL || process.env.VITE_APP_URL || process.env.PUBLIC_URL || (req.headers && req.headers.origin ? req.headers.origin : "https://hostelmate-saas.vercel.app");
     const loginUrl = `${String(frontendBase).replace(/\/$/, "")}/owner/login`;

@@ -11,8 +11,20 @@ async function generateAdmissionNumber(hostelId) {
   const now = new Date();
   const yearMonth = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}`;
   const count = await Resident.countDocuments({ hostelId });
-  const seq = String(count + 1).padStart(4, "0");
-  return `ADM-${yearMonth}-${seq}`;
+  
+  let admissionNumber = "";
+  let attempts = 0;
+  while (!admissionNumber && attempts < 10) {
+    attempts++;
+    const uniqueSuffix = `${Date.now().toString().slice(-4)}${Math.floor(100 + Math.random() * 900)}`;
+    const candidate = `ADM-${yearMonth}-${String(count + attempts).padStart(4, "0")}-${uniqueSuffix}`;
+    const existing = await Resident.findOne({ admissionNumber: candidate });
+    if (!existing) {
+      admissionNumber = candidate;
+    }
+  }
+
+  return admissionNumber || `ADM-${yearMonth}-${Date.now()}`;
 }
 
 /**

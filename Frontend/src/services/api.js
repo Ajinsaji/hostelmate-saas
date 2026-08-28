@@ -120,7 +120,9 @@ api.interceptors.request.use(
     }
 
     const isAdminRequest =
-      requestUrl.includes("/api/admin") || isAdminContext();
+      requestUrl.includes("/api/admin") ||
+      requestUrl.includes("/api/saas-admin") ||
+      isAdminContext();
 
     // Admin and owner tokens must not cross-redirect each other.
     const token = isAdminRequest
@@ -174,7 +176,7 @@ api.interceptors.response.use(
   (error) => {
     const status = error?.response?.status;
     const requestUrl = error?.config?.url || "";
-    const isAdminRequest = requestUrl.includes("/api/admin");
+    const isAdminRequest = requestUrl.includes("/api/admin") || requestUrl.includes("/api/saas-admin");
 
     if (status === 401) {
       const method = (error?.config?.method || "").toUpperCase();

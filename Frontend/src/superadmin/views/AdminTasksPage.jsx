@@ -60,6 +60,11 @@ export default function AdminTasksPage() {
   const [retryingIds, setRetryingIds] = useState({});
   const [dismissingIds, setDismissingIds] = useState({});
 
+  const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
+  const [taskToDelete, setTaskToDelete] = useState(null);
+  const [selectedTaskIds, setSelectedTaskIds] = useState(new Set());
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
+
   const fetchTasks = useCallback(async () => {
     try {
       setLoading(true);

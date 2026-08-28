@@ -841,7 +841,23 @@ const retryCommunication = async (req, res) => {
     comm.status = "queued";
     await comm.save();
 
-    // Re-dispatch using whatsappService
+    // Re-dispatch using whatsappService with fresh credentials if activation message
+    let retryVars = { ...(comm.variables || {}) };
+    if (comm.templateCode === "OWNER_ACCOUNT_ACTIVATED" && comm.ownerId) {
+      const Owner = require("../models/Owner");
+      const bcrypt = require("bcryptjs");
+      const newTempPassword = `HM${Math.floor(1000 + Math.random() * 9000)}@${String.fromCharCode(65 + Math.floor(Math.random() * 26))}${Math.floor(10 + Math.random() * 90)}`;
+      const owner = await Owner.findById(comm.ownerId);
+      if (owner) {
+        owner.password = await bcrypt.hash(newTempPassword, 10);
+        owner.mustChangePassword = true;
+        owner.firstLogin = true;
+        owner.credentialIssuedAt = new Date();
+        await owner.save();
+        retryVars.tempPassword = newTempPassword;
+      }
+    }
+
     const result = await dispatchWhatsAppMessage({
       hostelId: comm.hostelId,
       residentId: comm.residentId,
@@ -850,7 +866,7 @@ const retryCommunication = async (req, res) => {
       recipientName: comm.recipientName,
       recipientType: comm.recipientType,
       templateCode: comm.templateCode,
-      variables: comm.variables || {},
+      variables: retryVars,
       customMessage: comm.customMessage,
       businessEvent: comm.businessEvent,
       referenceId: `${comm.referenceId}_RETRY_${comm.attemptCount}`,

@@ -9,11 +9,12 @@ export function useOwnerCreation(initialMode = "admin") {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [submittedResult, setSubmittedResult] = useState(null);
+  const [hasSavedDraft, setHasSavedDraft] = useState(false);
 
   const [pincodeLoading, setPincodeLoading] = useState(false);
   const [pincodeStatus, setPincodeStatus] = useState(null); // { type: 'info'|'success'|'error', text: '' }
 
-  const [formData, setFormData] = useState({
+  const initialFormState = {
     // Step 1: Owner Info
     ownerName: "",
     phone: "",
@@ -44,10 +45,70 @@ export function useOwnerCreation(initialMode = "admin") {
     roomsCount: 10,
     capacity: 20,
     licensePhoto: null,
+  };
+
+  const [formData, setFormData] = useState(() => {
+    try {
+      const saved = localStorage.getItem("ownerRegistrationDraft");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed && typeof parsed === "object") {
+          return { ...initialFormState, ...parsed.formData };
+        }
+      }
+    } catch {
+      // silent
+    }
+    return initialFormState;
   });
 
+  // Restore step if draft exists
+  useState(() => {
+    try {
+      const saved = localStorage.getItem("ownerRegistrationDraft");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed?.step > 0 && parsed?.step < 4) {
+          setStep(parsed.step);
+          setHasSavedDraft(true);
+        }
+      }
+    } catch {
+      // silent
+    }
+  });
+
+  // Save non-sensitive draft fields to localStorage
+  const saveDraft = (newForm, currentStep) => {
+    try {
+      const { frontDoc, backDoc, selfie, ownerPhoto, licensePhoto, ...serializableForm } = newForm;
+      localStorage.setItem(
+        "ownerRegistrationDraft",
+        JSON.stringify({ formData: serializableForm, step: currentStep, savedAt: Date.now() })
+      );
+      setHasSavedDraft(true);
+    } catch {
+      // silent
+    }
+  };
+
+  const clearDraft = () => {
+    try {
+      localStorage.removeItem("ownerRegistrationDraft");
+      setHasSavedDraft(false);
+      setFormData(initialFormState);
+      setStep(0);
+    } catch {
+      // silent
+    }
+  };
+
   const updateFormData = (fields) => {
-    setFormData((prev) => ({ ...prev, ...fields }));
+    setFormData((prev) => {
+      const updated = { ...prev, ...fields };
+      saveDraft(updated, step);
+      return updated;
+    });
   };
 
   /**
@@ -256,6 +317,12 @@ export function useOwnerCreation(initialMode = "admin") {
       }
 
       if (response.data?.success) {
+        try {
+          localStorage.removeItem("ownerRegistrationDraft");
+          setHasSavedDraft(false);
+        } catch {
+          // silent
+        }
         setSubmittedResult(response.data);
         setStep(4); // Success step
       } else {
@@ -284,6 +351,8 @@ export function useOwnerCreation(initialMode = "admin") {
     setStep,
     formData,
     updateFormData,
+    hasSavedDraft,
+    clearDraft,
     handlePincodeChange,
     pincodeLoading,
     pincodeStatus,

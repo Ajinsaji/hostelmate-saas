@@ -69,81 +69,92 @@ export function ConnectionProvider({ children }) {
     const baseUrl = getApiUrl();
     const healthUrl = `${baseUrl.replace(/\/+$/, "")}/api/health`;
 
-    try {
-      const response = await fetch(healthUrl, {
-        method: "GET",
-        headers: { Accept: "application/json" },
-        signal: controller.signal,
-        cache: "no-store",
-      });
+    let attempts = 0;
+    const maxAttempts = force ? 1 : 2;
 
-      clearTimeout(timeoutId);
+    while (attempts < maxAttempts) {
+      attempts++;
+      const controller = new AbortController();
+      const timeoutMs = attempts === 1 ? 12000 : 15000;
+      const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
-      if (response.ok) {
-        let isSessionValid = null;
-        const token = localStorage.getItem("ownerToken") || localStorage.getItem("adminToken") || localStorage.getItem("token");
+      try {
+        const response = await fetch(healthUrl, {
+          method: "GET",
+          headers: { Accept: "application/json" },
+          signal: controller.signal,
+          cache: "no-store",
+        });
 
-        if (token) {
-          try {
-            const verifyController = new AbortController();
-            const verifyTimeout = setTimeout(() => verifyController.abort(), 4000);
+        clearTimeout(timeoutId);
 
-            const verifyRes = await fetch(`${baseUrl.replace(/\/+$/, "")}/api/auth/verify-session`, {
-              method: "GET",
-              headers: {
-                Authorization: `Bearer ${token}`,
-                Accept: "application/json",
-              },
-              signal: verifyController.signal,
-            });
-            clearTimeout(verifyTimeout);
+        if (response.ok) {
+          let isSessionValid = null;
+          const token = localStorage.getItem("ownerToken") || localStorage.getItem("adminToken") || localStorage.getItem("token");
 
-            if (verifyRes.ok) {
-              isSessionValid = true;
-            } else if (verifyRes.status === 401) {
-              isSessionValid = false;
+          if (token) {
+            try {
+              const verifyController = new AbortController();
+              const verifyTimeout = setTimeout(() => verifyController.abort(), 6000);
+
+              const verifyRes = await fetch(`${baseUrl.replace(/\/+$/, "")}/api/auth/verify-session`, {
+                method: "GET",
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                  Accept: "application/json",
+                },
+                signal: verifyController.signal,
+              });
+              clearTimeout(verifyTimeout);
+
+              if (verifyRes.ok) {
+                isSessionValid = true;
+              } else if (verifyRes.status === 401) {
+                isSessionValid = false;
+              }
+            } catch {
+              isSessionValid = null;
             }
-          } catch {
-            // Keep sessionValid null on network verification error, DO NOT clear token or fail connection
-            isSessionValid = null;
           }
+
+          const newDiag = {
+            deviceOnline: true,
+            serverAvailable: true,
+            sessionValid: isSessionValid,
+            lastCheckedAt: new Date(),
+            message: "HostelMate is fully reachable.",
+          };
+          setDiagnosticData(newDiag);
+          setConnectionState(CONNECTION_STATES.ONLINE);
+          setIsChecking(false);
+          setHasCompletedInitialCheck(true);
+          isCheckingRef.current = false;
+          return CONNECTION_STATES.ONLINE;
         }
-
-        const newDiag = {
-          deviceOnline: true,
-          serverAvailable: true,
-          sessionValid: isSessionValid,
-          lastCheckedAt: new Date(),
-          message: "HostelMate is fully reachable.",
-        };
-        setDiagnosticData(newDiag);
-        setConnectionState(CONNECTION_STATES.ONLINE);
-        setIsChecking(false);
-        setHasCompletedInitialCheck(true);
-        isCheckingRef.current = false;
-        return CONNECTION_STATES.ONLINE;
-      } else {
-        throw new Error(`Health check status ${response.status}`);
+      } catch (err) {
+        clearTimeout(timeoutId);
+        if (attempts < maxAttempts) {
+          // Wait 2s for Render cold start
+          await new Promise((r) => setTimeout(r, 2000));
+        } else {
+          const isAbort = err.name === "AbortError";
+          const newDiag = {
+            deviceOnline: true,
+            serverAvailable: false,
+            sessionValid: null,
+            lastCheckedAt: new Date(),
+            message: isAbort
+              ? "Connecting to HostelMate server... (server cold start)"
+              : "HostelMate backend server is currently unreachable.",
+          };
+          setDiagnosticData(newDiag);
+          setConnectionState(CONNECTION_STATES.SERVER_UNAVAILABLE);
+          setIsChecking(false);
+          setHasCompletedInitialCheck(true);
+          isCheckingRef.current = false;
+          return CONNECTION_STATES.SERVER_UNAVAILABLE;
+        }
       }
-    } catch (err) {
-      clearTimeout(timeoutId);
-
-      const isAbort = err.name === "AbortError";
-      const newDiag = {
-        deviceOnline: true,
-        serverAvailable: false,
-        sessionValid: null,
-        lastCheckedAt: new Date(),
-        message: isAbort
-          ? "HostelMate health check timed out."
-          : "HostelMate backend server is currently unreachable.",
-      };
-      setDiagnosticData(newDiag);
-      setConnectionState(CONNECTION_STATES.SERVER_UNAVAILABLE);
-      setIsChecking(false);
-      setHasCompletedInitialCheck(true);
-      isCheckingRef.current = false;
-      return CONNECTION_STATES.SERVER_UNAVAILABLE;
     }
   }, [connectionState]);
 

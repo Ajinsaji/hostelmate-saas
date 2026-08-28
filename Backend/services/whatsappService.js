@@ -167,24 +167,9 @@ const compileTemplate = (templateCode, variablesDict = {}, customText = null) =>
     if (!safeVars.planType || safeVars.planType === "Pro" || safeVars.planType === "Basic" || safeVars.planType === "Enterprise") {
       safeVars.planType = "HostelMate Unified Plan";
     }
-    if (safeVars.trialStartDate) {
-      safeVars.trialStartDate = formatExpiryDate(safeVars.trialStartDate);
-    }
-    if (safeVars.trialEndDate) {
-      safeVars.trialEndDate = formatExpiryDate(safeVars.trialEndDate);
-    }
-    if (safeVars.expiryDate) {
-      safeVars.expiryDate = formatExpiryDate(safeVars.expiryDate);
-    }
-    if (!safeVars.trialStartDate && safeVars.startDate) {
-      safeVars.trialStartDate = formatExpiryDate(safeVars.startDate);
-    }
-    if (!safeVars.trialEndDate && safeVars.endDate) {
-      safeVars.trialEndDate = formatExpiryDate(safeVars.endDate);
-    }
-    if (!safeVars.expiryDate && safeVars.trialEndDate) {
-      safeVars.expiryDate = safeVars.trialEndDate;
-    }
+    safeVars.trialStartDate = formatExpiryDate(safeVars.trialStartDate || safeVars.startDate || new Date());
+    safeVars.trialEndDate = formatExpiryDate(safeVars.trialEndDate || safeVars.endDate || safeVars.expiryDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000));
+    safeVars.expiryDate = safeVars.expiryDate ? formatExpiryDate(safeVars.expiryDate) : safeVars.trialEndDate;
     safeVars.trialDays = safeVars.trialDays !== undefined && safeVars.trialDays !== null ? safeVars.trialDays : "30";
     safeVars.trialAmount = safeVars.trialAmount !== undefined && safeVars.trialAmount !== null ? safeVars.trialAmount : "0";
     safeVars.subscriptionAmount = safeVars.subscriptionAmount !== undefined && safeVars.subscriptionAmount !== null ? safeVars.subscriptionAmount : (safeVars.amount || "10");
@@ -253,17 +238,14 @@ const compileTemplate = (templateCode, variablesDict = {}, customText = null) =>
   }
 
   let compiled = text;
-  Object.keys(safeVars).forEach((key) => {
-    const regex = new RegExp(`{{\\s*${key}\\s*}}`, "g");
-    const val = safeVars[key] !== undefined && safeVars[key] !== null ? String(safeVars[key]) : "";
-    compiled = compiled.replace(regex, val);
+  // Replace all {{varName}} dynamically from safeVars or fallback to "-"
+  compiled = compiled.replace(/{{\s*([\w.-]+)\s*}}/g, (_, key) => {
+    const val = safeVars[key];
+    if (val !== undefined && val !== null) {
+      return String(val);
+    }
+    return "-";
   });
-
-  // Safety check: ensure no unresolved {{...}} tags remain
-  if (/{{\s*[\w.-]+\s*}}/.test(compiled)) {
-    const unresolved = compiled.match(/{{\s*[\w.-]+\s*}}/g);
-    throw new Error(`Template compilation failed: Unresolved template variables remaining: ${unresolved?.join(", ")}`);
-  }
 
   return compiled;
 };
