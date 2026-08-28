@@ -22,6 +22,7 @@ import { COLORS } from "../constants/theme";
 import { useHostel } from "../hooks/useHostel";
 import { api } from "../../services/api";
 import toast from "react-hot-toast";
+import { isConfirmationMatching } from "../../utils/confirmationUtils";
 import PageContainer from "../layouts/PageContainer";
 import StatusBadge from "../components/feedback/StatusBadge";
 import QuickActionButton from "../components/widgets/QuickActionButton";
@@ -75,8 +76,17 @@ export const HostelDetailsLayout = React.memo(() => {
     }
   };
 
+  // Reset confirmation input when delete modal closes
+  useEffect(() => {
+    if (!deleteModalOpen) {
+      setConfirmInput("");
+    }
+  }, [deleteModalOpen]);
+
+  const isConfirmed = isConfirmationMatching(confirmInput, hostelName);
+
   const handleDeleteHostel = async () => {
-    if (confirmInput.trim().toLowerCase() !== hostelName.trim().toLowerCase()) {
+    if (!isConfirmed) {
       return toast.error("Hostel name does not match exact confirmation string");
     }
 
@@ -84,7 +94,9 @@ export const HostelDetailsLayout = React.memo(() => {
     const toastId = toast.loading("Moving hostel to 60-day Trash...");
 
     try {
-      const res = await api.delete(`/api/admin/hostels/${id}`);
+      const res = await api.delete(`/api/admin/hostels/${id}`, {
+        data: { confirmHostelName: confirmInput }
+      });
       if (res.data.success) {
         toast.success(res.data.message || "Hostel moved to Trash (retained for 60 days). Financial records preserved.", { id: toastId });
         setDeleteModalOpen(false);
@@ -286,7 +298,7 @@ export const HostelDetailsLayout = React.memo(() => {
               <button 
                 type="button"
                 onClick={handleDeleteHostel}
-                disabled={confirmInput.trim().toLowerCase() !== hostelName.trim().toLowerCase() || isDeleting}
+                disabled={!isConfirmed || isDeleting}
                 className="px-5 py-3 rounded-xl text-xs font-bold text-white bg-rose-600 hover:bg-rose-500 disabled:opacity-40 disabled:cursor-not-allowed transition flex items-center gap-2 min-h-[48px] cursor-pointer shadow-lg shadow-rose-900/30"
               >
                 {isDeleting ? (

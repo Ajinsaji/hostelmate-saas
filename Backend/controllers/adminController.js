@@ -24,6 +24,7 @@ const { sendApprovalMessages } = require('../utils/messageService');
 const mongoose = require("mongoose");
 const { createPerformanceTimer } = require("../utils/performanceTiming");
 const { generateTemporaryPassword } = require("../utils/temporaryPassword");
+const { isConfirmationMatching } = require("../utils/confirmationUtils");
 
 const activationInFlight = new Set();
 
@@ -1248,21 +1249,70 @@ const deleteHostel = async (req, res) => {
     }
 
     if (hostel.isDeleted) {
-      return res.status(400).json({ success: false, message: "Hostel is already in Trash" });
+      return res.status(409).json({ success: false, message: "Hostel is already in Trash" });
     }
 
-    // Soft-delete hostel document.
-    // CRITICAL: Financial, payment, and subscription history MUST NEVER be deleted!
-    hostel.isDeleted = true;
-    hostel.deletedAt = new Date();
-    hostel.deletedBy = req.admin?._id || req.user?._id || null;
-    hostel.deleteReason = req.body?.reason || "Admin deletion";
-    await hostel.save();
+    // Independent backend confirmation re-validation
+    const confirmInput = req.body?.confirmHostelName || req.body?.confirmationText || req.body?.confirmName || "";
+    const canonicalName = hostel.hostelName || hostel.name || "";
+
+    if (!isConfirmationMatching(confirmInput, canonicalName)) {
+      return res.status(400).json({
+        success: false,
+        message: "Hostel name does not match exact confirmation string"
+      });
+    }
+
+    const adminId = req.user?.id || req.user?._id || req.admin?._id || null;
+    const validAdminId = mongoose.Types.ObjectId.isValid(adminId) ? adminId : null;
+
+    // Atomic soft-delete update to prevent concurrent duplicate deletion
+    const updatedHostel = await Hostel.findOneAndUpdate(
+      {
+        _id: hostelId,
+        isDeleted: { $ne: true }
+      },
+      {
+        $set: {
+          isDeleted: true,
+          deletedAt: new Date(),
+          deletedBy: validAdminId,
+          deleteReason: req.body?.reason || "Admin deletion"
+        }
+      },
+      { returnDocument: "after" }
+    );
+
+    if (!updatedHostel) {
+      const recheck = await Hostel.findById(hostelId);
+      if (!recheck) {
+        return res.status(404).json({ success: false, message: "Hostel not found" });
+      }
+      return res.status(409).json({ success: false, message: "Hostel is already in Trash" });
+    }
+
+    // Safely record AuditLog event (State change has already succeeded)
+    AuditLog.create({
+      adminId: validAdminId,
+      hostelId: updatedHostel._id,
+      action: "DELETE_HOSTEL",
+      actionType: "DELETE",
+      entity: "Hostel",
+      targetId: updatedHostel._id,
+      details: {
+        hostelName: updatedHostel.hostelName || updatedHostel.name,
+        reason: updatedHostel.deleteReason,
+        message: `Moved hostel ${updatedHostel.hostelName || updatedHostel.name} to 60-day Trash`
+      },
+      timestamp: new Date()
+    }).catch((auditErr) => {
+      console.error("[WARN] AuditLog recording failed after successful hostel soft-delete:", auditErr?.message || auditErr);
+    });
 
     return res.status(200).json({
       success: true,
       message: "Hostel moved to Trash. Retained for 60 days. All financial & payment records preserved.",
-      hostelId: hostel._id,
+      hostelId: updatedHostel._id,
       retentionDays: 60,
     });
   } catch (error) {
@@ -1380,8 +1430,8 @@ const restoreHostelFromTrash = async (req, res) => {
     hostel.deleteReason = "";
     await hostel.save();
 
-    await AuditLog.create({
-      adminId: req.user?._id || req.admin?._id,
+    AuditLog.create({
+      adminId: req.user?.id || req.user?._id || req.admin?._id || null,
       hostelId: hostel._id,
       action: "RESTORE_HOSTEL",
       actionType: "RESTORE",
@@ -1419,8 +1469,8 @@ const permanentDeleteHostelFromTrash = async (req, res) => {
       return res.status(404).json({ success: false, message: "Hostel not found in Trash" });
     }
 
-    const expectedName = (hostel.hostelName || hostel.name || "").trim();
-    if (!confirmHostelName || String(confirmHostelName).trim() !== expectedName) {
+    const expectedName = hostel.hostelName || hostel.name || "";
+    if (!isConfirmationMatching(confirmHostelName, expectedName)) {
       return res.status(400).json({
         success: false,
         message: `Confirmation failed. Please enter exact hostel name: "${expectedName}"`,

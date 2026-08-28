@@ -13,6 +13,7 @@ import { COLORS } from "../constants/theme";
 import { Download, Eye, ChevronDown, Link, QrCode, Trash2, AlertTriangle, X, Loader2 } from "lucide-react";
 import toast from "react-hot-toast";
 import { api } from "../../services/api";
+import { isConfirmationMatching, normalizeConfirmationText } from "../../utils/confirmationUtils";
 
 export const HostelsList = React.memo(() => {
   const navigate = useNavigate();
@@ -92,18 +93,41 @@ export const HostelsList = React.memo(() => {
 
   const filteredHostels = hostels || [];
 
+  // State reset effect on selected hostel change
+  useEffect(() => {
+    setConfirmNameInput("");
+  }, [removeModalHostel]);
+
+  const canonicalRemoveHostelName = removeModalHostel
+    ? (removeModalHostel.hostelName || removeModalHostel.name || "")
+    : "";
+
+  const isRemoveConfirmed = isConfirmationMatching(confirmNameInput, canonicalRemoveHostelName);
+
+  if (import.meta.env.DEV && removeModalHostel) {
+    console.log("[HOSTEL REMOVE CONFIRMATION]", {
+      displayedHostelName: canonicalRemoveHostelName,
+      canonicalHostelName,
+      rawInput: confirmNameInput,
+      normalizedInput: normalizeConfirmationText(confirmNameInput),
+      normalizedHostelName: normalizeConfirmationText(canonicalRemoveHostelName),
+      isConfirmed: isRemoveConfirmed
+    });
+  }
+
   const handleRemoveHostel = async () => {
     if (!removeModalHostel) return;
-    const expectedName = (removeModalHostel.name || removeModalHostel.hostelName || "").trim();
-    if (confirmNameInput.trim().toLowerCase() !== expectedName.toLowerCase()) {
+    if (!isRemoveConfirmed) {
       return toast.error("Hostel name does not match exact confirmation string");
     }
 
     setIsRemoving(true);
-    const toastId = toast.loading(`Moving ${expectedName} to 60-day Trash...`);
+    const toastId = toast.loading(`Moving ${canonicalRemoveHostelName} to 60-day Trash...`);
 
     try {
-      const res = await api.delete(`/api/admin/hostels/${removeModalHostel.id || removeModalHostel._id}`);
+      const res = await api.delete(`/api/admin/hostels/${removeModalHostel.id || removeModalHostel._id}`, {
+        data: { confirmHostelName: confirmNameInput }
+      });
       if (res.data?.success) {
         toast.success(res.data.message || "Hostel moved to Trash. Retained for 60 days.", { id: toastId });
         setRemoveModalHostel(null);
@@ -450,7 +474,7 @@ export const HostelsList = React.memo(() => {
             <div className="p-3.5 bg-black/40 border border-white/5 rounded-xl space-y-1 text-xs">
               <div className="flex justify-between text-slate-400">
                 <span>Hostel Name:</span>
-                <span className="font-bold text-white">{removeModalHostel.name || removeModalHostel.hostelName}</span>
+                <span className="font-bold text-white">{canonicalRemoveHostelName}</span>
               </div>
               <div className="flex justify-between text-slate-400">
                 <span>Owner Name:</span>
@@ -464,13 +488,13 @@ export const HostelsList = React.memo(() => {
 
             <div className="space-y-2">
               <label className="text-xs font-bold text-slate-300 block">
-                Type <span className="text-rose-400 select-all font-extrabold">{removeModalHostel.name || removeModalHostel.hostelName}</span> to confirm removal:
+                Type <span className="text-rose-400 select-all font-extrabold">{canonicalRemoveHostelName}</span> to confirm removal:
               </label>
               <input 
                 type="text" 
                 value={confirmNameInput}
                 onChange={(e) => setConfirmNameInput(e.target.value)}
-                placeholder={`Type "${removeModalHostel.name || removeModalHostel.hostelName}" here`}
+                placeholder={`Type "${canonicalRemoveHostelName}" here`}
                 disabled={isRemoving}
                 className="w-full text-xs font-semibold px-4 py-3 bg-slate-950 border border-white/10 rounded-xl text-white outline-none focus:border-rose-500 transition min-h-[48px]"
               />
@@ -488,7 +512,7 @@ export const HostelsList = React.memo(() => {
               <button 
                 type="button"
                 onClick={handleRemoveHostel}
-                disabled={confirmNameInput.trim().toLowerCase() !== (removeModalHostel.name || removeModalHostel.hostelName || "").trim().toLowerCase() || isRemoving}
+                disabled={!isRemoveConfirmed || isRemoving}
                 className="px-5 py-3 rounded-xl text-xs font-bold text-white bg-rose-600 hover:bg-rose-500 disabled:opacity-40 disabled:cursor-not-allowed transition flex items-center gap-2 min-h-[48px] cursor-pointer shadow-lg shadow-rose-900/30"
               >
                 {isRemoving ? (

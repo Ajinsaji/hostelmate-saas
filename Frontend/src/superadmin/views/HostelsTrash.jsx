@@ -5,6 +5,7 @@ import ContentContainer from "../layouts/ContentContainer";
 import { RotateCcw, ShieldCheck, AlertTriangle, Loader2, Trash2, X } from "lucide-react";
 import toast from "react-hot-toast";
 import { api } from "../../services/api";
+import { isConfirmationMatching } from "../../utils/confirmationUtils";
 import ConfirmDialog from "../components/modals/ConfirmDialog";
 
 export const HostelsTrash = React.memo(() => {
@@ -63,19 +64,29 @@ export const HostelsTrash = React.memo(() => {
     }
   };
 
+  // State reset effect on selected permanent purge hostel change
+  useEffect(() => {
+    setConfirmNameInput("");
+  }, [permanentModalHostel]);
+
+  const canonicalPurgeHostelName = permanentModalHostel
+    ? (permanentModalHostel.hostelName || permanentModalHostel.name || "")
+    : "";
+
+  const isPurgeConfirmed = isConfirmationMatching(confirmNameInput, canonicalPurgeHostelName);
+
   const handlePermanentDelete = async () => {
     if (!permanentModalHostel) return;
-    const expectedName = (permanentModalHostel.hostelName || permanentModalHostel.name || "").trim();
-    if (confirmNameInput.trim().toLowerCase() !== expectedName.toLowerCase()) {
+    if (!isPurgeConfirmed) {
       return toast.error("Hostel name does not match exact confirmation string");
     }
 
     setIsPurging(true);
-    const toastId = toast.loading(`Purging ${expectedName} document...`);
+    const toastId = toast.loading(`Purging ${canonicalPurgeHostelName} document...`);
 
     try {
       const res = await api.delete(`/api/admin/trash/hostels/${permanentModalHostel._id}/permanent`, {
-        data: { confirmHostelName: confirmNameInput.trim() }
+        data: { confirmHostelName: confirmNameInput }
       });
       if (res.data?.success) {
         toast.success(res.data.message || "Hostel document purged. Financial records remain preserved.", { id: toastId });
@@ -250,7 +261,7 @@ export const HostelsTrash = React.memo(() => {
               <button 
                 type="button"
                 onClick={handlePermanentDelete}
-                disabled={confirmNameInput.trim().toLowerCase() !== (permanentModalHostel.hostelName || permanentModalHostel.name || "").trim().toLowerCase() || isPurging}
+                disabled={!isPurgeConfirmed || isPurging}
                 className="px-5 py-3 rounded-xl text-xs font-bold text-white bg-rose-600 hover:bg-rose-500 disabled:opacity-40 disabled:cursor-not-allowed transition flex items-center gap-2 min-h-[48px] cursor-pointer shadow-lg shadow-rose-900/30"
               >
                 {isPurging ? (
