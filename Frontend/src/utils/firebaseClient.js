@@ -92,7 +92,7 @@ export async function registerFirebaseServiceWorker() {
 
   try {
     const existingRegistration = await navigator.serviceWorker.getRegistration(
-      "/firebase-messaging-sw.js"
+      "/firebase-cloud-messaging-push-scope"
     );
 
     if (existingRegistration) {
@@ -111,7 +111,7 @@ export async function registerFirebaseServiceWorker() {
     const registration = await navigator.serviceWorker.register(
       "/firebase-messaging-sw.js",
       {
-        scope: "/",
+        scope: "/firebase-cloud-messaging-push-scope",
       }
     );
 
@@ -190,7 +190,11 @@ export async function requestFcmPermissionAndToken() {
         return null;
       }
 
-      return token.trim();
+      const trimmedToken = token.trim();
+      if (import.meta.env.DEV) {
+        console.log("[FCM] Device token acquired safely:", `${trimmedToken.slice(0, 8)}...`);
+      }
+      return trimmedToken;
     } catch (error) {
       if (import.meta.env.DEV) {
         console.warn("[FCM] Push registration unavailable:", error?.message || error);

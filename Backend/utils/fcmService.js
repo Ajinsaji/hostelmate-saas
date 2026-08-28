@@ -59,7 +59,7 @@ async function sendPushToUserDevices({
     android: {
       priority: "high",
       notification: {
-        channelId: "hostelmate",
+        channelId: "hostelmate_v2",
         sound: "default",
         defaultSound: true,
         defaultVibrateTimings: true,
@@ -105,10 +105,10 @@ async function sendPushToUserDevices({
     const invalidTokens = [];
 
     response.responses.forEach((res, index) => {
+      const safeFingerprint = tokens[index] ? `${tokens[index].slice(0, 8)}...` : "unknown";
       if (!res.success) {
         logger.error(
-          `[fcmService] Token failed:`,
-          tokens[index],
+          `[fcmService] Token failed (${safeFingerprint}):`,
           res.error?.code,
           res.error?.message
         );

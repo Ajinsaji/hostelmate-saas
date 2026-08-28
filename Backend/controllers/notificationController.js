@@ -2,9 +2,18 @@ const notificationService = require("../services/notificationCenterService");
 const { logger } = require("../utils/logger");
 
 function getUserContext(req) {
+  const userId =
+    req.owner?.ownerId ||
+    req.owner?._id ||
+    req.user?.userId ||
+    req.user?.id ||
+    req.user?._id ||
+    req.admin?._id ||
+    null;
+
   return {
-    hostelId: req.owner?.hostelId || req.user?.hostelId || req.body?.hostelId,
-    userId: req.owner?._id || req.user?._id,
+    hostelId: req.owner?.hostelId || req.user?.hostelId || req.body?.hostelId || null,
+    userId,
     ip: req.ip || req.headers["x-forwarded-for"] || "",
   };
 }
@@ -193,7 +202,19 @@ const registerDeviceToken = async (req, res) => {
       },
       { upsert: true, returnDocument: "after" }
     );
-    return res.status(200).json({ success: true, message: "Device token registered successfully", deviceToken });
+    logger.info(`[registerDeviceToken] Registered token ${token.slice(0, 8)}... for user ${userCtx.userId}`);
+    return res.status(200).json({
+      success: true,
+      message: "Device token registered successfully",
+      deviceToken: {
+        _id: deviceToken._id,
+        userId: deviceToken.userId,
+        platform: deviceToken.platform,
+        isActive: deviceToken.isActive,
+        safeFingerprint: `${token.slice(0, 8)}...`,
+        lastSeenAt: deviceToken.lastSeenAt,
+      },
+    });
   } catch (err) {
     logger.error("registerDeviceToken error:", err);
     return res.status(500).json({ success: false, message: err.message || "Failed to register device token" });

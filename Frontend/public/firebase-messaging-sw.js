@@ -72,7 +72,6 @@ try {
   } catch (err) {
     console.error("[FCM-SW] Initialization error:", err);
   }
-}
 
 // Notification Click Deep-Link Handling
 self.addEventListener("notificationclick", (event) => {
