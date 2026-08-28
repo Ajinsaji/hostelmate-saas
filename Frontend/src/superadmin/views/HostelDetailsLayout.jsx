@@ -76,7 +76,7 @@ export const HostelDetailsLayout = React.memo(() => {
   };
 
   const handleDeleteHostel = async () => {
-    if (confirmInput.trim() !== hostelName.trim()) {
+    if (confirmInput.trim().toLowerCase() !== hostelName.trim().toLowerCase()) {
       return toast.error("Hostel name does not match exact confirmation string");
     }
 
@@ -286,7 +286,7 @@ export const HostelDetailsLayout = React.memo(() => {
               <button 
                 type="button"
                 onClick={handleDeleteHostel}
-                disabled={confirmInput.trim() !== hostelName.trim() || isDeleting}
+                disabled={confirmInput.trim().toLowerCase() !== hostelName.trim().toLowerCase() || isDeleting}
                 className="px-5 py-3 rounded-xl text-xs font-bold text-white bg-rose-600 hover:bg-rose-500 disabled:opacity-40 disabled:cursor-not-allowed transition flex items-center gap-2 min-h-[48px] cursor-pointer shadow-lg shadow-rose-900/30"
               >
                 {isDeleting ? (

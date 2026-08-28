@@ -66,7 +66,7 @@ export const HostelsTrash = React.memo(() => {
   const handlePermanentDelete = async () => {
     if (!permanentModalHostel) return;
     const expectedName = (permanentModalHostel.hostelName || permanentModalHostel.name || "").trim();
-    if (confirmNameInput.trim() !== expectedName) {
+    if (confirmNameInput.trim().toLowerCase() !== expectedName.toLowerCase()) {
       return toast.error("Hostel name does not match exact confirmation string");
     }
 
@@ -250,7 +250,7 @@ export const HostelsTrash = React.memo(() => {
               <button 
                 type="button"
                 onClick={handlePermanentDelete}
-                disabled={confirmNameInput.trim() !== (permanentModalHostel.hostelName || permanentModalHostel.name || "").trim() || isPurging}
+                disabled={confirmNameInput.trim().toLowerCase() !== (permanentModalHostel.hostelName || permanentModalHostel.name || "").trim().toLowerCase() || isPurging}
                 className="px-5 py-3 rounded-xl text-xs font-bold text-white bg-rose-600 hover:bg-rose-500 disabled:opacity-40 disabled:cursor-not-allowed transition flex items-center gap-2 min-h-[48px] cursor-pointer shadow-lg shadow-rose-900/30"
               >
                 {isPurging ? (

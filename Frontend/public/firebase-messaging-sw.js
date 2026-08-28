@@ -5,18 +5,25 @@ importScripts("https://www.gstatic.com/firebasejs/12.13.0/firebase-app-compat.js
 importScripts("https://www.gstatic.com/firebasejs/12.13.0/firebase-messaging-compat.js");
 importScripts("/firebase-config.js");
 
-const firebaseConfig = self.__FIREBASE_CONFIG__;
+const firebaseConfig = self.__FIREBASE_CONFIG__ || {
+  projectId: "hostelmate-f0de8",
+  messagingSenderId: "654995812093",
+};
 
-if (
-  firebaseConfig &&
-  firebaseConfig.apiKey &&
-  firebaseConfig.projectId &&
-  firebaseConfig.messagingSenderId &&
-  firebaseConfig.appId
-) {
-  try {
-    firebase.initializeApp(firebaseConfig);
-    const messaging = firebase.messaging();
+const activeConfig = {
+  apiKey: firebaseConfig.apiKey || "",
+  authDomain: firebaseConfig.authDomain || "hostelmate-f0de8.firebaseapp.com",
+  projectId: firebaseConfig.projectId || "hostelmate-f0de8",
+  storageBucket: firebaseConfig.storageBucket || "hostelmate-f0de8.firebasestorage.app",
+  messagingSenderId: firebaseConfig.messagingSenderId || "654995812093",
+  appId: firebaseConfig.appId || "1:654995812093:web:5d2b7c4f4a3e2189",
+};
+
+try {
+  if (!firebase.apps.length) {
+    firebase.initializeApp(activeConfig);
+  }
+  const messaging = firebase.messaging();
 
     messaging.onBackgroundMessage((payload) => {
       console.log("[FCM-SW] Background push notification received:", payload);

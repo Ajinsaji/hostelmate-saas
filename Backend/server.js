@@ -178,6 +178,12 @@ app.get("/api/health/database", getDatabaseHealth);
 app.get("/api/health/storage", getStorageHealth);
 app.get("/api/health/cache", getCacheHealth);
 
+// Safe FCM Diagnostic Endpoint (Phase 3 requirement)
+app.get("/api/diagnostics/fcm", (req, res) => {
+  const { getFcmDiagnostics } = require("./utils/firebaseAdmin");
+  return res.status(200).json(getFcmDiagnostics());
+});
+
 // AUTH
 app.use(
   "/api/auth",

@@ -10,11 +10,11 @@ function firebaseConfigPlugin(env) {
     generateBundle() {
       const config = {
         apiKey: env.VITE_FIREBASE_API_KEY || "",
-        authDomain: env.VITE_FIREBASE_AUTH_DOMAIN || "",
-        projectId: env.VITE_FIREBASE_PROJECT_ID || "",
-        storageBucket: env.VITE_FIREBASE_STORAGE_BUCKET || "",
-        messagingSenderId: env.VITE_FIREBASE_MESSAGING_SENDER_ID || "",
-        appId: env.VITE_FIREBASE_APP_ID || "",
+        authDomain: env.VITE_FIREBASE_AUTH_DOMAIN || "hostelmate-f0de8.firebaseapp.com",
+        projectId: env.VITE_FIREBASE_PROJECT_ID || "hostelmate-f0de8",
+        storageBucket: env.VITE_FIREBASE_STORAGE_BUCKET || "hostelmate-f0de8.firebasestorage.app",
+        messagingSenderId: env.VITE_FIREBASE_MESSAGING_SENDER_ID || "654995812093",
+        appId: env.VITE_FIREBASE_APP_ID || "1:654995812093:web:5d2b7c4f4a3e2189",
       };
 
       this.emitFile({
