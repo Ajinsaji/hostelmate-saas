@@ -612,9 +612,13 @@ const getPendingAdmissions = async (req, res) => {
 const approveAdmission = async (req, res) => {
   try {
     const { id } = req.params;
-    const { hostelId } = req.owner;
+    const { hostelId } = req.owner || {};
     const mongoose = require("mongoose");
     
+    if (!hostelId) {
+      return res.status(400).json({ success: false, message: "Hostel context missing from request" });
+    }
+
     const admission = await PublicAdmission.findOne({ _id: id, hostelId });
     if (!admission) return res.status(404).json({ success: false, message: "Admission request not found" });
 
@@ -653,16 +657,35 @@ const approveAdmission = async (req, res) => {
       bed = await Bed.findOne({ hostelId, status: { $in: ["Vacant", "vacant"] }, isDeleted: false });
     }
 
-    // 4. Generate sequential admission number & parse names
+    // 4. Generate guaranteed unique admission number
     const now = new Date();
     const yearMonth = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}`;
     const count = await Resident.countDocuments({ hostelId });
-    const admissionNumber = `ADM-${yearMonth}-${String(count + 1).padStart(4, "0")}`;
+    
+    let admissionNumber = "";
+    let isUnique = false;
+    let attempts = 0;
+    while (!isUnique && attempts < 10) {
+      attempts++;
+      const uniqueSuffix = `${Date.now().toString().slice(-4)}${Math.floor(100 + Math.random() * 900)}`;
+      const candidateNumber = `ADM-${yearMonth}-${String(count + attempts).padStart(4, "0")}-${uniqueSuffix}`;
+      const existing = await Resident.findOne({ admissionNumber: candidateNumber });
+      if (!existing) {
+        admissionNumber = candidateNumber;
+        isUnique = true;
+      }
+    }
+
+    if (!admissionNumber) {
+      admissionNumber = `ADM-${yearMonth}-${Date.now()}`;
+    }
 
     const fullName = (admission.residentName || "Resident").trim();
     const nameParts = fullName.split(" ");
     const firstName = nameParts[0] || "Resident";
     const lastName = nameParts.slice(1).join(" ") || "";
+
+    const validCreatedBy = (req.owner?.ownerId && mongoose.Types.ObjectId.isValid(req.owner.ownerId)) ? req.owner.ownerId : null;
 
     // 5. Create Resident document
     const resident = await Resident.create({
@@ -679,14 +702,14 @@ const approveAdmission = async (req, res) => {
       address: admission.address || "",
       roomId: room._id,
       bedId: bed?._id || null,
-      monthlyRent: room.rentPerBed || 0,
+      monthlyRent: room.rentPerBed || room.monthlyRent || 0,
       depositAmount: 0,
       joiningDate: new Date(),
       joinDate: new Date(),
-      status: "active",
+      status: "Active",
       idProof: admission.idProofFile || "",
       photo: admission.photoFile || "",
-      createdBy: req.owner?.ownerId || null,
+      createdBy: validCreatedBy,
 
       // Immutable consent snapshot copied from PublicAdmission at approval time
       rulesVersionId: admission.rulesVersionId || "",
@@ -716,11 +739,11 @@ const approveAdmission = async (req, res) => {
     try {
       const { publishNotification } = require("../utils/notificationPublisher");
       await publishNotification({
-        userId: req.owner?.ownerId,
+        userId: validCreatedBy,
         hostelId,
         type: "resident_approved",
         title: "Resident Approved",
-        message: `Resident ${resident.fullName} approved and assigned to room ${room.roomNumber}`,
+        message: `Resident ${resident.fullName} approved and assigned to room ${room.roomNumber || room.roomName || "Selected Room"}`,
         meta: {
           route: "/admissions",
           residentId: resident?._id || null,
@@ -731,15 +754,26 @@ const approveAdmission = async (req, res) => {
       logger.error("Resident approval notification failed:", e?.message || e);
     }
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       message: "Admission approved & Resident created successfully",
       resident,
       admission
     });
   } catch (error) {
-    logger.error("approveAdmission error:", error?.message || error);
-    res.status(500).json({ success: false, message: "Failed to approve admission", error: error?.message || String(error) });
+    logger.error("approveAdmission error details:", {
+      admissionId: req.params?.id,
+      hostelId: req.owner?.hostelId,
+      errorName: error?.name,
+      errorMessage: error?.message,
+      errorCode: error?.code,
+      stack: error?.stack,
+    });
+    return res.status(500).json({
+      success: false,
+      message: error?.message || "Failed to approve admission",
+      error: error?.message || String(error)
+    });
   }
 };
 

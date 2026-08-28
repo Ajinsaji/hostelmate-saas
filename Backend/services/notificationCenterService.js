@@ -35,13 +35,32 @@ async function dispatchNotification(data) {
 }
 
 /**
+/**
+ * Build reconciled recipient query for Notifications
+ */
+function buildNotificationQuery({ hostelId, recipientId, recipientType = "Owner", unreadOnly = false }) {
+  const query = {};
+  if (hostelId) query.hostelId = hostelId;
+  if (unreadOnly) query.status = { $ne: "Read" };
+
+  if (recipientId) {
+    query.$or = [
+      { recipientId },
+      { recipientId: null },
+      { userId: recipientId },
+    ];
+  }
+  if (recipientType) {
+    query.recipientType = recipientType;
+  }
+  return query;
+}
+
+/**
  * Get Paginated Notifications for recipient
  */
 async function getNotifications({ hostelId, recipientId, recipientType = "Owner", unreadOnly = false, page = 1, limit = 20 }) {
-  const query = { hostelId };
-  if (recipientId) query.recipientId = recipientId;
-  if (recipientType) query.recipientType = recipientType;
-  if (unreadOnly) query.status = { $ne: "Read" };
+  const query = buildNotificationQuery({ hostelId, recipientId, recipientType, unreadOnly });
 
   const pageNum = parseInt(page, 10) || 1;
   const limitNum = parseInt(limit, 10) || 20;
@@ -71,9 +90,8 @@ async function markAsRead(notificationId) {
 /**
  * Mark All Notifications as Read for recipient
  */
-async function markAllAsRead({ hostelId, recipientId }) {
-  const query = { hostelId, status: { $ne: "Read" } };
-  if (recipientId) query.recipientId = recipientId;
+async function markAllAsRead({ hostelId, recipientId, recipientType = "Owner" }) {
+  const query = buildNotificationQuery({ hostelId, recipientId, recipientType, unreadOnly: true });
 
   const result = await Notification.updateMany(query, {
     $set: { status: "Read", readAt: new Date() },
@@ -85,9 +103,7 @@ async function markAllAsRead({ hostelId, recipientId }) {
  * Get Unread Notification Count
  */
 async function getUnreadCount({ hostelId, recipientId, recipientType = "Owner" }) {
-  const query = { hostelId, recipientType, status: { $ne: "Read" } };
-  if (recipientId) query.recipientId = recipientId;
-
+  const query = buildNotificationQuery({ hostelId, recipientId, recipientType, unreadOnly: true });
   return await Notification.countDocuments(query);
 }
 

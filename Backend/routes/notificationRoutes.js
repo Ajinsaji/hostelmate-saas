@@ -25,8 +25,12 @@ router.post("/test", sendTestNotification);
 router.post("/device-token", registerDeviceToken);
 router.post("/dispatch", dispatchNotification);
 router.get("/", getNotifications);
+router.get("/mine", getNotifications);
 router.get("/unread-count", getUnreadCount);
 router.patch("/:id/read", markAsRead);
+router.put("/:id/read", markAsRead);
+router.put("/read/:id", markAsRead);
 router.post("/read-all", markAllAsRead);
+router.put("/read-all", markAllAsRead);
 
 module.exports = router;

@@ -41,7 +41,7 @@ export function NotificationProvider({ children }) {
   const fetchNotifications = async () => {
     try {
       setLoading(true);
-      const res = await api.get(`/api/notifications/mine?limit=30`);
+      const res = await api.get(`/api/notifications?limit=30`);
       if (res.data?.success) setNotifications(res.data.notifications || []);
     } catch {
       // silent
@@ -121,7 +121,6 @@ export function NotificationProvider({ children }) {
     const adminToken = localStorage.getItem("adminToken");
     
     if (ownerToken || adminToken) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       fetchUnread();
       const id = setInterval(() => {
         fetchUnread();
@@ -132,7 +131,6 @@ export function NotificationProvider({ children }) {
 
   useEffect(() => {
     if (open) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       fetchNotifications();
     }
   }, [open]);
@@ -147,7 +145,7 @@ export function NotificationProvider({ children }) {
 
   const markAllRead = async () => {
     try {
-      await api.put(`/api/notifications/read-all`);
+      await api.post(`/api/notifications/read-all`);
       setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
       setUnreadCount(0);
       toast.success("Marked all as read");
@@ -155,7 +153,7 @@ export function NotificationProvider({ children }) {
       try {
         const unread = notifications.filter((n) => !n.isRead);
         for (const n of unread) {
-          await api.put(`/api/notifications/read/${n._id}`);
+          await api.patch(`/api/notifications/${n._id}/read`);
         }
         setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
         setUnreadCount(0);
@@ -168,7 +166,7 @@ export function NotificationProvider({ children }) {
 
   const markAsRead = async (id) => {
     try {
-      await api.put(`/api/notifications/read/${id}`);
+      await api.patch(`/api/notifications/${id}/read`);
       setNotifications((prev) =>
         prev.map((n) => (n._id === id ? { ...n, isRead: true } : n))
       );
@@ -196,7 +194,6 @@ export function NotificationProvider({ children }) {
         isConnectedRef.current = false;
       },
     }),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [notifications, unreadCount, loading, open, isBellAnimated]
   );
 
@@ -207,7 +204,6 @@ export function NotificationProvider({ children }) {
   );
 }
 
-// eslint-disable-next-line react-refresh/only-export-components
 export function useNotifications() {
   const context = useContext(NotificationContext);
   if (!context) {
