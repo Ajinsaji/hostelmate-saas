@@ -60,8 +60,8 @@ export default function useFcmNotifications({ enabled = true, onIncoming } = {})
 
           unsubscribe = onMessage(messaging, (payload) => {
             const route = payload?.data?.route || "";
-            const title = payload?.notification?.title || "HostelMate";
-            const body = payload?.notification?.body || "New notification";
+            const title = payload?.notification?.title || payload?.data?.title || "HostelMate";
+            const body = payload?.notification?.body || payload?.data?.body || "New notification";
 
             onIncomingRef.current?.({
               title,
@@ -69,6 +69,27 @@ export default function useFcmNotifications({ enabled = true, onIncoming } = {})
               route,
               payload,
             });
+
+            // Display native OS notification if permission is granted in foreground
+            if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted") {
+              try {
+                const notif = new Notification(title, {
+                  body,
+                  icon: "/logo192.png",
+                  badge: "/logo192.png",
+                  tag: payload?.data?.notificationId || undefined,
+                  data: { route },
+                });
+                notif.onclick = () => {
+                  window.focus();
+                  if (route && window.location.pathname !== route) {
+                    window.location.href = route;
+                  }
+                };
+              } catch (notifErr) {
+                // Ignore if browser restricts Notification constructor in foreground
+              }
+            }
           });
         } catch (e) {
           if (import.meta.env.DEV) {

@@ -192,6 +192,32 @@ const createRequest = async (req, res) => {
     logger.info("Hostel request saved successfully");
     logger.info(`[HostelRequest] Request saved: requestId=${request._id}`);
 
+    // Notify SuperAdmins / Admins of new registration request via push notification
+    try {
+      const { publishNotification } = require("../utils/notificationPublisher");
+      const Admin = require("../models/Admin");
+      const admins = await Admin.find({ role: { $in: ["super_admin", "admin"] } }).select("_id role").lean();
+      for (const adminDoc of admins || []) {
+        await publishNotification({
+          userId: adminDoc._id,
+          role: adminDoc.role || "super_admin",
+          type: "registration_submitted",
+          category: "system",
+          priority: "high",
+          title: "New Owner Registration Request",
+          message: `New registration request for "${request.hostelName || "Hostel"}" by ${request.ownerName || "Owner"}.`,
+          actionUrl: "/admin/requests",
+          meta: {
+            route: "/admin/requests",
+            deepLink: "/admin/requests",
+            requestId: String(request._id),
+          },
+        });
+      }
+    } catch (adminNotifErr) {
+      logger.error("[HostelRequest] Admin notification failed:", adminNotifErr?.message || adminNotifErr);
+    }
+
     timer.finish("Registration performance");
     return res.status(201).json({
       success: true,

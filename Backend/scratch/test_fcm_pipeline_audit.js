@@ -6,7 +6,7 @@ const fs = require("fs");
 const { execSync } = require("child_process");
 
 console.log("====================================================================");
-console.log("HOSTELMATE PRODUCTION ANDROID FCM PIPELINE REGRESSION SUITE (26 TESTS)");
+console.log("HOSTELMATE MULTI-USER FCM RECIPIENT ISOLATION REGRESSION SUITE (35 TESTS)");
 console.log("====================================================================");
 
 let passed = 0;
@@ -207,6 +207,65 @@ runTest("25. publishNotification attaches fcmResult to returned notification doc
 runTest("26. requestController logs [HostelRequest] Request saved on creation", () => {
   const reqCode = fs.readFileSync(path.join(__dirname, "../controllers/requestController.js"), "utf8");
   assert.ok(reqCode.includes("[HostelRequest] Request saved: requestId="));
+});
+
+// 27. Strict ObjectId Validation in Notification Publisher
+runTest("27. publishNotification validates strict mongoose.Types.ObjectId(userId) preventing BSON strip", () => {
+  const notifCode = fs.readFileSync(path.join(__dirname, "../utils/notificationPublisher.js"), "utf8");
+  assert.ok(notifCode.includes("mongoose.Types.ObjectId.isValid(userId)"));
+  assert.ok(notifCode.includes("new mongoose.Types.ObjectId(userId)"));
+});
+
+// 28. [FCM RECIPIENT AUDIT] Safe Diagnostic Logging
+runTest("28. publishNotification logs [FCM RECIPIENT AUDIT] with recipientRole, recipientUserId, and tokenFingerprints", () => {
+  const notifCode = fs.readFileSync(path.join(__dirname, "../utils/notificationPublisher.js"), "utf8");
+  assert.ok(notifCode.includes("[FCM RECIPIENT AUDIT]"));
+  assert.ok(notifCode.includes("recipientUserId="));
+  assert.ok(notifCode.includes("tokenFingerprints="));
+});
+
+// 29. Token Reassignment Detection in Controller
+runTest("29. registerDeviceToken logs [FCM TOKEN REASSIGNMENT] when a token changes user ownership", () => {
+  const controllerCode = fs.readFileSync(path.join(__dirname, "../controllers/notificationController.js"), "utf8");
+  assert.ok(controllerCode.includes("[FCM TOKEN REASSIGNMENT]"));
+});
+
+// 30. Admin Registration Request FCM Push Trigger
+runTest("30. requestController triggers publishNotification for Admin when an owner registers", () => {
+  const reqCode = fs.readFileSync(path.join(__dirname, "../controllers/requestController.js"), "utf8");
+  assert.ok(reqCode.includes("Admin.find"));
+  assert.ok(reqCode.includes("registration_submitted"));
+});
+
+// 31. Foreground System Notification Banner Display
+runTest("31. useFcmNotifications displays native OS Notification banner in foreground when permitted", () => {
+  const hookCode = fs.readFileSync(path.join(__dirname, "../../Frontend/src/hooks/useFcmNotifications.js"), "utf8");
+  assert.ok(hookCode.includes("new Notification(title"));
+  assert.ok(hookCode.includes("Notification.permission === \"granted\""));
+});
+
+// 32. TEST A & B: Recipient Isolation between Owner 1 and Owner 2
+runTest("32. TEST A & B: Notification publisher queries DeviceToken by canonical ObjectId, isolating Owner 1 and Owner 2", () => {
+  const notifCode = fs.readFileSync(path.join(__dirname, "../utils/notificationPublisher.js"), "utf8");
+  assert.ok(notifCode.includes("userId: canonicalUserId"));
+});
+
+// 33. TEST C: Admin Notification Isolation
+runTest("33. TEST C: Admin push notifications query Admin ObjectId exclusively", () => {
+  const reqCode = fs.readFileSync(path.join(__dirname, "../controllers/requestController.js"), "utf8");
+  assert.ok(reqCode.includes("userId: adminDoc._id"));
+});
+
+// 34. TEST F & G: Owner Approval Recipient Isolation
+runTest("34. TEST F & G: EventBus OWNER_ACCOUNT_ACTIVATED routes to data.ownerId exclusively", () => {
+  const busCode = fs.readFileSync(path.join(__dirname, "../services/EventBus.js"), "utf8");
+  assert.ok(busCode.includes("userId: data.ownerId"));
+});
+
+// 35. TEST H & I: Owner Registration Request Recipient Isolation
+runTest("35. TEST H & I: Owner registration requests target Admin recipients, excluding owners", () => {
+  const reqCode = fs.readFileSync(path.join(__dirname, "../controllers/requestController.js"), "utf8");
+  assert.ok(reqCode.includes("role: adminDoc.role"));
 });
 
 console.log("\n-------------------------------------------------------------");

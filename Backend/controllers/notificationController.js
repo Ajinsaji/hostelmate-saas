@@ -180,21 +180,31 @@ const registerDeviceToken = async (req, res) => {
       os = "Android",
     } = req.body;
 
-    if (!userCtx.userId) {
-      return res.status(401).json({ success: false, message: "Authentication required to register device token" });
+    const mongoose = require("mongoose");
+    if (!userCtx.userId || !mongoose.Types.ObjectId.isValid(userCtx.userId)) {
+      return res.status(401).json({ success: false, message: "Valid authenticated identity required to register device token" });
     }
 
     if (!token || typeof token !== "string" || !token.trim()) {
       return res.status(400).json({ success: false, message: "A non-empty device token string is required" });
     }
 
+    const canonicalUserId = new mongoose.Types.ObjectId(userCtx.userId);
     const trimmedToken = token.trim();
+    const safeFingerprint = `${trimmedToken.slice(0, 8)}...`;
     const DeviceToken = require("../models/DeviceToken");
+
+    // Audit existing token ownership
+    const existing = await DeviceToken.findOne({ token: trimmedToken });
+    if (existing && String(existing.userId) !== String(canonicalUserId)) {
+      logger.info(`[FCM TOKEN REASSIGNMENT] Reassigning token ${safeFingerprint} from previous user ${existing.userId} to new user ${canonicalUserId}`);
+    }
+
     const deviceToken = await DeviceToken.findOneAndUpdate(
       { token: trimmedToken },
       {
-        userId: userCtx.userId,
-        hostelId: userCtx.hostelId,
+        userId: canonicalUserId,
+        hostelId: userCtx.hostelId ? (mongoose.Types.ObjectId.isValid(userCtx.hostelId) ? new mongoose.Types.ObjectId(userCtx.hostelId) : null) : null,
         role: req.owner ? "owner" : req.user?.role || "user",
         platform: String(platform || "web"),
         deviceType: String(deviceType || "mobile"),
@@ -207,8 +217,8 @@ const registerDeviceToken = async (req, res) => {
       },
       { upsert: true, returnDocument: "after" }
     );
-    const safeFingerprint = `${trimmedToken.slice(0, 8)}...`;
-    logger.info(`[registerDeviceToken] Registered token ${safeFingerprint} for user ${userCtx.userId}`);
+
+    logger.info(`[registerDeviceToken] Registered token ${safeFingerprint} for user ${canonicalUserId} (role: ${deviceToken.role})`);
     return res.status(200).json({
       success: true,
       message: "Device token registered successfully",

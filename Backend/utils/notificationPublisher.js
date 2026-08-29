@@ -91,48 +91,57 @@ async function publishNotification({
 
   let fcmResult = null;
   try {
-    const settings = await timer.measure("notificationSettingsMs", () => NotificationSetting.findOne({
-      userId,
-      role,
-      hostelId: hostelId || null,
-    }));
+    const mongoose = require("mongoose");
+    const isObjectIdValid = userId && mongoose.Types.ObjectId.isValid(userId);
 
-    const allowPush = settings ? settings.pushNotifications : true;
-    const allowCategory = settings ? (settings.categories?.[resolvedCategory] ?? true) : true;
-
-    if (allowPush && allowCategory) {
-      const tokens = await timer.measure("deviceTokenLookupMs", () => DeviceToken.find({
-        userId,
-        isActive: true,
-      }).select("token"));
-
-      const tokenList = tokens.map((t) => t.token);
-      
-      if (tokenList.length > 0) {
-        logger.info(`[publishNotification] Found ${tokenList.length} device token(s) for user ${userId}`);
-      } else {
-        logger.info(`[publishNotification] No device tokens found for user ${userId} - background notifications won't be sent`);
-      }
-
-      fcmResult = await timer.measure("fcmMs", () => sendPushToUserDevices({
-        userId,
-        hostelId,
-        title: title || "HostelMate",
-        body: message,
-        data: {
-          tokens: tokenList,
-          payload: {
-            type,
-            notificationId: String(notification._id),
-            route: normalizedMeta.route || "",
-          },
-        },
-      }));
+    if (!isObjectIdValid) {
+      logger.warn(`[FCM RECIPIENT AUDIT] Invalid or missing recipientUserId (${userId}) - device token query & FCM push aborted`);
     } else {
-      logger.info(`[publishNotification] Push disabled for user ${userId} (allowPush: ${allowPush}, allowCategory: ${allowCategory})`);
+      const canonicalUserId = new mongoose.Types.ObjectId(userId);
+      const settings = await timer.measure("notificationSettingsMs", () => NotificationSetting.findOne({
+        userId: canonicalUserId,
+        role: role || null,
+        hostelId: hostelId || null,
+      }));
+
+      const allowPush = settings ? settings.pushNotifications : true;
+      const allowCategory = settings ? (settings.categories?.[resolvedCategory] ?? true) : true;
+
+      if (allowPush && allowCategory) {
+        const tokens = await timer.measure("deviceTokenLookupMs", () => DeviceToken.find({
+          userId: canonicalUserId,
+          isActive: true,
+        }).select("token"));
+
+        const tokenList = tokens.map((t) => t.token);
+        const fingerprints = tokenList.map((t) => (t ? `${t.slice(0, 8)}...` : "unknown"));
+
+        logger.info(`[FCM RECIPIENT AUDIT] event=${type || "notification"} recipientRole=${role || "user"} recipientUserId=${canonicalUserId} recipientHostelId=${hostelId || "none"} deviceTokenCount=${tokenList.length} tokenFingerprints=[${fingerprints.join(", ")}]`);
+
+        if (tokenList.length > 0) {
+          fcmResult = await timer.measure("fcmMs", () => sendPushToUserDevices({
+            userId: canonicalUserId,
+            hostelId,
+            title: title || "HostelMate",
+            body: message,
+            data: {
+              tokens: tokenList,
+              payload: {
+                type,
+                notificationId: String(notification._id),
+                route: normalizedMeta.route || "",
+              },
+            },
+          }));
+        } else {
+          logger.info(`[FCM RECIPIENT AUDIT] No active device tokens found for recipientUserId=${canonicalUserId} - FCM push skipped`);
+        }
+      } else {
+        logger.info(`[FCM RECIPIENT AUDIT] Push disabled for user ${canonicalUserId} (allowPush: ${allowPush}, allowCategory: ${allowCategory})`);
+      }
     }
   } catch (e) {
-    logger.error(`[publishNotification] Push error for user ${userId}:`, e?.message || e);
+    logger.error(`[FCM RECIPIENT AUDIT] Push error for user ${userId}:`, e?.message || e);
   }
 
   try {
