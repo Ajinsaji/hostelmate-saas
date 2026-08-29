@@ -218,27 +218,23 @@ export default function NotificationSettings() {
       return;
     }
 
-    if (!currentToken) {
-      toast.error("This device is not registered for push notifications. Please enable notifications first.");
-      return;
-    }
-
     try {
       setSendingTest(true);
-      const res = await api.post("/api/notifications/test", {
-        token: currentToken,
-      });
+      const res = await api.post("/api/notifications/test");
 
       if (res.data?.success) {
-        toast.success("Test notification sent! Check your Android notification bar.");
+        const accepted = res.data.successCount ?? 1;
+        const total = res.data.tokenCount ?? 1;
+        toast.success(`Firebase accepted ${accepted}/${total} device(s)! Check your Android notification bar.`);
       } else {
-        toast.error(res.data?.message || "Unable to send test notification.");
+        toast.error(res.data?.message || "Firebase failed to accept push notification.");
       }
     } catch (err) {
       if (err.response?.status === 429) {
         toast.error(err.response.data?.message || "Rate limit reached. Please wait before testing again.");
       } else {
-        toast.error(err.response?.data?.message || "Test push notification failed.");
+        const msg = err.response?.data?.message || err.response?.data?.reason || "Test push notification failed.";
+        toast.error(`Push test failed: ${msg}`);
       }
     } finally {
       setSendingTest(false);

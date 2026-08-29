@@ -5,10 +5,7 @@ importScripts("https://www.gstatic.com/firebasejs/12.13.0/firebase-app-compat.js
 importScripts("https://www.gstatic.com/firebasejs/12.13.0/firebase-messaging-compat.js");
 importScripts("/firebase-config.js");
 
-const firebaseConfig = self.__FIREBASE_CONFIG__ || {
-  projectId: "hostelmate-f0de8",
-  messagingSenderId: "654995812093",
-};
+const firebaseConfig = (typeof self !== "undefined" && self.__FIREBASE_CONFIG__) || {};
 
 const activeConfig = {
   apiKey: firebaseConfig.apiKey || "",
@@ -25,53 +22,51 @@ try {
   }
   const messaging = firebase.messaging();
 
-    messaging.onBackgroundMessage((payload) => {
-      console.log("[FCM-SW] Background push notification received:", payload);
+  messaging.onBackgroundMessage((payload) => {
+    const title =
+      payload?.notification?.title ||
+      payload?.data?.title ||
+      "HostelMate";
 
-      const title =
-        payload.notification?.title ||
-        payload.data?.title ||
-        "HostelMate";
+    const body =
+      payload?.notification?.body ||
+      payload?.data?.body ||
+      payload?.data?.message ||
+      "New notification received.";
 
-      const body =
-        payload.notification?.body ||
-        payload.data?.body ||
-        payload.data?.message ||
-        "New notification received.";
+    const route =
+      payload?.data?.route ||
+      payload?.data?.deepLink ||
+      payload?.fcmOptions?.link ||
+      "/notifications";
 
-      const route =
-        payload.data?.route ||
-        payload.data?.deepLink ||
-        payload.fcmOptions?.link ||
-        "/notifications";
+    const options = {
+      body,
+      icon: payload?.notification?.icon || "/logo192.png",
+      badge: "/logo192.png",
+      image: payload?.notification?.image || undefined,
+      tag: payload?.data?.notificationId || payload?.data?.referenceId || "hostelmate-alert",
+      renotify: true,
+      requireInteraction: true,
+      silent: false,
+      vibrate: [200, 100, 200],
+      data: {
+        route,
+        notificationId: payload?.data?.notificationId,
+        referenceId: payload?.data?.referenceId,
+        timestamp: Date.now(),
+      },
+      actions: [
+        { action: "open_notification", title: "Open" },
+        { action: "dismiss", title: "Dismiss" },
+      ],
+    };
 
-      const options = {
-        body,
-        icon: payload.notification?.icon || "/logo192.png",
-        badge: "/logo192.png",
-        image: payload.notification?.image || undefined,
-        tag: payload.data?.notificationId || payload.data?.referenceId || "hostelmate-alert",
-        renotify: true,
-        requireInteraction: true,
-        silent: false,
-        vibrate: [200, 100, 200],
-        data: {
-          route,
-          notificationId: payload.data?.notificationId,
-          referenceId: payload.data?.referenceId,
-          timestamp: Date.now(),
-        },
-        actions: [
-          { action: "open_notification", title: "Open" },
-          { action: "dismiss", title: "Dismiss" }
-        ]
-      };
-
-      self.registration.showNotification(title, options);
-    });
-  } catch (err) {
-    console.error("[FCM-SW] Initialization error:", err);
-  }
+    self.registration.showNotification(title, options);
+  });
+} catch (err) {
+  // Silent fallback if firebase initialization fails in service worker environment
+}
 
 // Notification Click Deep-Link Handling
 self.addEventListener("notificationclick", (event) => {
@@ -81,18 +76,15 @@ self.addEventListener("notificationclick", (event) => {
     return;
   }
 
-  const route =
-    event.notification.data?.route ||
-    "/notifications";
+  const route = event.notification.data?.route || "/notifications";
+  const targetUrl = route.startsWith("http") ? route : `${self.location.origin}${route.startsWith("/") ? "" : "/"}${route}`;
 
   event.waitUntil(
-    clients
-      .matchAll({
-        type: "window",
-        includeUncontrolled: true,
-      })
-      .then((clientList) => {
-        // Focus existing open tab if available
+    clients.matchAll({
+      type: "window",
+      includeUncontrolled: true,
+    })
+    .then((clientList) => {
         for (const client of clientList) {
           if ("focus" in client) {
             client.focus();
@@ -104,9 +96,8 @@ self.addEventListener("notificationclick", (event) => {
           }
         }
 
-        // Otherwise open new window/PWA viewport
         if (clients.openWindow) {
-          return clients.openWindow(route);
+          return clients.openWindow(targetUrl);
         }
       })
   );

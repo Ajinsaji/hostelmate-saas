@@ -71,7 +71,7 @@ function getFcmDiagnostics() {
     projectId: serviceAccount?.project_id || "hostelmate-f0de8",
     messagingAvailable: Boolean(messaging),
     serviceAccountPresent: Boolean(serviceAccount),
-    vapidConfiguredOnFrontend: Boolean(process.env.VITE_FIREBASE_VAPID_KEY || process.env.VAPID_KEY || true),
+    vapidConfiguredOnFrontend: Boolean(process.env.VITE_FIREBASE_VAPID_KEY || process.env.VAPID_KEY || process.env.FIREBASE_VAPID_KEY),
     environment: process.env.NODE_ENV || "production",
   };
 }

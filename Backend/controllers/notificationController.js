@@ -180,38 +180,47 @@ const registerDeviceToken = async (req, res) => {
       os = "Android",
     } = req.body;
 
-    if (!token) {
-      return res.status(400).json({ success: false, message: "Device token is required" });
+    if (!userCtx.userId) {
+      return res.status(401).json({ success: false, message: "Authentication required to register device token" });
     }
 
+    if (!token || typeof token !== "string" || !token.trim()) {
+      return res.status(400).json({ success: false, message: "A non-empty device token string is required" });
+    }
+
+    const trimmedToken = token.trim();
     const DeviceToken = require("../models/DeviceToken");
     const deviceToken = await DeviceToken.findOneAndUpdate(
-      { token },
+      { token: trimmedToken },
       {
         userId: userCtx.userId,
         hostelId: userCtx.hostelId,
         role: req.owner ? "owner" : req.user?.role || "user",
-        platform,
-        deviceType,
-        deviceName,
-        browser,
-        os,
+        platform: String(platform || "web"),
+        deviceType: String(deviceType || "mobile"),
+        deviceName: String(deviceName || "Android / Mobile Device"),
+        browser: String(browser || "Chrome"),
+        os: String(os || "Android"),
         ipAddress: userCtx.ip,
         isActive: true,
         lastSeenAt: new Date(),
       },
       { upsert: true, returnDocument: "after" }
     );
-    logger.info(`[registerDeviceToken] Registered token ${token.slice(0, 8)}... for user ${userCtx.userId}`);
+    const safeFingerprint = `${trimmedToken.slice(0, 8)}...`;
+    logger.info(`[registerDeviceToken] Registered token ${safeFingerprint} for user ${userCtx.userId}`);
     return res.status(200).json({
       success: true,
       message: "Device token registered successfully",
+      platform: deviceToken.platform,
+      safeFingerprint,
+      lastSeenAt: deviceToken.lastSeenAt,
       deviceToken: {
         _id: deviceToken._id,
         userId: deviceToken.userId,
         platform: deviceToken.platform,
         isActive: deviceToken.isActive,
-        safeFingerprint: `${token.slice(0, 8)}...`,
+        safeFingerprint,
         lastSeenAt: deviceToken.lastSeenAt,
       },
     });
@@ -268,9 +277,11 @@ const testNotificationTimers = new Map();
 const sendTestNotification = async (req, res) => {
   try {
     const userCtx = getUserContext(req);
-    const { token } = req.body;
-    const userIdStr = String(userCtx.userId || "anonymous");
+    if (!userCtx.userId) {
+      return res.status(401).json({ success: false, reason: "UNAUTHENTICATED", message: "Authentication required" });
+    }
 
+    const userIdStr = String(userCtx.userId);
     const now = Date.now();
     const lastSent = testNotificationTimers.get(userIdStr) || 0;
     if (now - lastSent < 30000) {
@@ -282,21 +293,16 @@ const sendTestNotification = async (req, res) => {
     }
 
     const DeviceToken = require("../models/DeviceToken");
-    let targetTokens = [];
+    const devTokens = await DeviceToken.find({ userId: userCtx.userId, isActive: true })
+      .select("token");
 
-    if (token) {
-      targetTokens = [token];
-    } else {
-      const devTokens = await DeviceToken.find({ userId: userCtx.userId, isActive: true })
-        .select("token")
-        .limit(1);
-      targetTokens = devTokens.map((t) => t.token);
-    }
+    const targetTokens = devTokens.map((t) => t.token);
 
     if (!targetTokens.length) {
       return res.status(400).json({
         success: false,
-        message: "No registered push device token found for this device. Please enable notifications first.",
+        reason: "NO_ACTIVE_DEVICE_TOKENS",
+        message: "No registered push device tokens found for this account. Please enable notifications first.",
       });
     }
 
@@ -317,9 +323,27 @@ const sendTestNotification = async (req, res) => {
       },
     });
 
+    const successCount = pushResult?.successCount || 0;
+    const failureCount = pushResult?.failureCount || 0;
+
+    if (!pushResult.success || successCount === 0) {
+      return res.status(502).json({
+        success: false,
+        tokenCount: targetTokens.length,
+        successCount: 0,
+        failureCount: failureCount || targetTokens.length,
+        reason: "FIREBASE_DELIVERY_FAILED",
+        message: `Firebase rejected all target device tokens (${targetTokens.length} device(s)).`,
+        pushResult,
+      });
+    }
+
     return res.status(200).json({
       success: true,
-      message: "Test notification sent to this device.",
+      tokenCount: targetTokens.length,
+      successCount,
+      failureCount,
+      message: `Firebase accepted ${successCount}/${targetTokens.length} device(s).`,
       pushResult,
     });
   } catch (err) {

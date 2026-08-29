@@ -82,7 +82,9 @@ async function sendPushToUserDevices({
         requireInteraction: true,
       },
       fcmOptions: {
-        link: payloadData.route || "/",
+        link: payloadData.route
+          ? (payloadData.route.startsWith("http") ? payloadData.route : `https://hostelmate-saas.vercel.app${payloadData.route.startsWith("/") ? "" : "/"}${payloadData.route}`)
+          : "https://hostelmate-saas.vercel.app/",
       },
     },
   };
@@ -141,12 +143,16 @@ async function sendPushToUserDevices({
 
     timer.finish("FCM performance");
     return {
-      success: response.failureCount === 0,
+      success: response.successCount > 0,
       successCount: response.successCount,
       failureCount: response.failureCount,
       total: tokens.length,
-      invalidTokens,
-      responses: response.responses,
+      invalidTokensCount: invalidTokens.length,
+      responses: response.responses.map((r) => ({
+        success: r.success,
+        messageId: r.messageId || null,
+        errorCode: r.error?.code || null,
+      })),
     };
   } catch (error) {
     logger.error(
