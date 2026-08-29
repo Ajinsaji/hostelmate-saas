@@ -13,6 +13,7 @@ const {
   getUserDevices,
   deleteDeviceToken,
   sendTestNotification,
+  getOwnerTokenStatus,
 } = require("../controllers/notificationController");
 
 router.use(ownerAuth);
@@ -20,6 +21,7 @@ router.use(ownerAuth);
 router.get("/settings", getNotificationSettings);
 router.put("/settings", updateNotificationSettings);
 router.get("/devices", getUserDevices);
+router.get("/owner-token-status/:ownerId", getOwnerTokenStatus);
 router.delete("/devices/:id", deleteDeviceToken);
 router.post("/test", sendTestNotification);
 router.post("/device-token", registerDeviceToken);

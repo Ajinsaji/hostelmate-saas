@@ -276,6 +276,7 @@ const loginOwner = async (req, res) => {
       return res.status(500).json({ success: false, message: "Server misconfigured: JWT_SECRET missing" });
     }
     const token = jwt.sign(payload, secret, { expiresIn: "7d" });
+    logger.info(`[FCM OWNER TOKEN FLOW] ownerId=${userId}`);
 
     if (owner) {
       const [subscription, hostelDoc] = await Promise.all([

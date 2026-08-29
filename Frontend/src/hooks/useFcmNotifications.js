@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { useLocation } from "react-router-dom";
 import { requestFcmPermissionAndToken, getFirebaseMessagingSafe } from "../utils/firebaseClient";
 import { getStoredUser } from "../utils/authToken";
 
@@ -6,6 +7,7 @@ import { getStoredUser } from "../utils/authToken";
 // Background notifications are handled by firebase-messaging-sw.js.
 
 export default function useFcmNotifications({ enabled = true, onIncoming } = {}) {
+  const location = useLocation();
   const onIncomingRef = useRef(onIncoming);
 
   useEffect(() => {
@@ -15,19 +17,18 @@ export default function useFcmNotifications({ enabled = true, onIncoming } = {})
   useEffect(() => {
     if (!enabled) return;
 
-    const jwt =
-      localStorage.getItem("ownerToken") ||
-      localStorage.getItem("adminToken") ||
-      localStorage.getItem("token");
-
-    // Strictly require authentication before requesting or registering FCM device tokens
-    if (!jwt || typeof jwt !== "string" || !jwt.trim()) {
-      return;
-    }
-
     let unsubscribe = null;
 
     async function boot() {
+      const jwt =
+        localStorage.getItem("ownerToken") ||
+        localStorage.getItem("adminToken") ||
+        localStorage.getItem("token");
+
+      // Require authentication before requesting or registering FCM device tokens
+      if (!jwt || typeof jwt !== "string" || !jwt.trim()) {
+        return;
+      }
       try {
         const token = await requestFcmPermissionAndToken();
 
@@ -105,12 +106,23 @@ export default function useFcmNotifications({ enabled = true, onIncoming } = {})
 
     boot();
 
+    const handleAuthChange = () => {
+      boot();
+    };
+
+    if (typeof window !== "undefined") {
+      window.addEventListener("auth_state_changed", handleAuthChange);
+    }
+
     return () => {
       try {
+        if (typeof window !== "undefined") {
+          window.removeEventListener("auth_state_changed", handleAuthChange);
+        }
         unsubscribe?.();
       } catch {
         // ignore
       }
     };
-  }, [enabled]);
+  }, [enabled, location.pathname]);
 }

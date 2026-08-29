@@ -638,6 +638,13 @@ const finalizeHostelActivation = async (req, res) => {
         });
 
         const EventBus = require("../services/EventBus");
+        const DeviceToken = require("../models/DeviceToken");
+        const activeDeviceTokenCount = await DeviceToken.countDocuments({ userId: ownerDoc._id, isActive: true }).catch(() => 0);
+        logger.info(`[FCM ACTIVATION RECIPIENT] ownerId=${ownerDoc._id} activeDeviceTokenCount=${activeDeviceTokenCount}`);
+        if (activeDeviceTokenCount === 0) {
+          logger.info(`[FCM ACTIVATION RECIPIENT] Owner ${ownerDoc._id} has zero active device tokens at activation time. FCM push skipped (Expected if owner has not logged in yet; WhatsApp/Email credentials dispatched).`);
+        }
+
         if (isExistingAccount) {
           EventBus.emit("HOSTEL_ACTIVATED_FOR_EXISTING_OWNER", {
             hostelId: hostel._id,

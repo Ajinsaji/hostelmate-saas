@@ -52,6 +52,9 @@ export const setOwnerAuth = (token) => {
     if (!token) return;
     resetSessionVerificationCache();
     localStorage.setItem(OWNER_TOKEN_KEY, token);
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new Event("auth_state_changed"));
+    }
   } catch {
     // ignore
   }
@@ -62,6 +65,9 @@ export const setAdminAuth = (token) => {
     if (!token) return;
     resetSessionVerificationCache();
     localStorage.setItem(ADMIN_TOKEN_KEY, token);
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new Event("auth_state_changed"));
+    }
   } catch {
     // ignore
   }

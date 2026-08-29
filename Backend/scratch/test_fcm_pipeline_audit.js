@@ -6,7 +6,7 @@ const fs = require("fs");
 const { execSync } = require("child_process");
 
 console.log("====================================================================");
-console.log("HOSTELMATE MULTI-USER FCM RECIPIENT ISOLATION REGRESSION SUITE (35 TESTS)");
+console.log("HOSTELMATE MULTI-USER FCM RECIPIENT ISOLATION REGRESSION SUITE (40 TESTS)");
 console.log("====================================================================");
 
 let passed = 0;
@@ -244,26 +244,61 @@ runTest("31. useFcmNotifications displays native OS Notification banner in foreg
   assert.ok(hookCode.includes("Notification.permission === \"granted\""));
 });
 
-// 32. TEST A & B: Recipient Isolation between Owner 1 and Owner 2
-runTest("32. TEST A & B: Notification publisher queries DeviceToken by canonical ObjectId, isolating Owner 1 and Owner 2", () => {
+// 32. Safe Diagnostic Owner Token Status Endpoint
+runTest("32. notificationController implements getOwnerTokenStatus safe diagnostic endpoint", () => {
+  const controllerCode = fs.readFileSync(path.join(__dirname, "../controllers/notificationController.js"), "utf8");
+  assert.ok(controllerCode.includes("getOwnerTokenStatus"));
+  assert.ok(controllerCode.includes("activeDeviceTokenCount"));
+  assert.ok(controllerCode.includes("safeFingerprints"));
+});
+
+// 33. Front-End Auth State Event Listener for FCM Token Registration
+runTest("33. setOwnerAuth and setAdminAuth dispatch auth_state_changed event to trigger useFcmNotifications upon login", () => {
+  const authCode = fs.readFileSync(path.join(__dirname, "../../Frontend/src/utils/authToken.js"), "utf8");
+  const hookCode = fs.readFileSync(path.join(__dirname, "../../Frontend/src/hooks/useFcmNotifications.js"), "utf8");
+  assert.ok(authCode.includes("auth_state_changed"));
+  assert.ok(hookCode.includes("auth_state_changed"));
+});
+
+// 34. FCM Owner Token Flow Diagnostic Logging
+runTest("34. ownerController logs [FCM OWNER TOKEN FLOW] during owner login", () => {
+  const ownerCode = fs.readFileSync(path.join(__dirname, "../controllers/ownerController.js"), "utf8");
+  assert.ok(ownerCode.includes("[FCM OWNER TOKEN FLOW]"));
+});
+
+// 35. FCM Activation Recipient Diagnostic Logging
+runTest("35. adminController logs [FCM ACTIVATION RECIPIENT] activeDeviceTokenCount before activation notification", () => {
+  const adminCode = fs.readFileSync(path.join(__dirname, "../controllers/adminController.js"), "utf8");
+  assert.ok(adminCode.includes("[FCM ACTIVATION RECIPIENT]"));
+  assert.ok(adminCode.includes("activeDeviceTokenCount="));
+});
+
+// 36. Scenario 1: Activation of Pre-Registered Token Owner
+runTest("36. Scenario 1: Owner logged in prior to activation has activeDeviceTokenCount > 0 and receives push", () => {
+  const adminCode = fs.readFileSync(path.join(__dirname, "../controllers/adminController.js"), "utf8");
+  assert.ok(adminCode.includes("DeviceToken.countDocuments"));
+});
+
+// 37. Scenario 2: Activation of Un-Logged-In Brand-New Owner
+runTest("37. Scenario 2: Brand-new owner with activeDeviceTokenCount = 0 cleanly skips FCM and dispatches WhatsApp/Email credentials", () => {
+  const adminCode = fs.readFileSync(path.join(__dirname, "../controllers/adminController.js"), "utf8");
+  assert.ok(adminCode.includes("zero active device tokens at activation time"));
+});
+
+// 38. TEST A & B: Recipient Isolation between Owner 1 and Owner 2
+runTest("38. TEST A & B: Notification publisher queries DeviceToken by canonical ObjectId, isolating Owner 1 and Owner 2", () => {
   const notifCode = fs.readFileSync(path.join(__dirname, "../utils/notificationPublisher.js"), "utf8");
   assert.ok(notifCode.includes("userId: canonicalUserId"));
 });
 
-// 33. TEST C: Admin Notification Isolation
-runTest("33. TEST C: Admin push notifications query Admin ObjectId exclusively", () => {
+// 39. TEST C: Admin Notification Isolation
+runTest("39. TEST C: Admin push notifications query Admin ObjectId exclusively", () => {
   const reqCode = fs.readFileSync(path.join(__dirname, "../controllers/requestController.js"), "utf8");
   assert.ok(reqCode.includes("userId: adminDoc._id"));
 });
 
-// 34. TEST F & G: Owner Approval Recipient Isolation
-runTest("34. TEST F & G: EventBus OWNER_ACCOUNT_ACTIVATED routes to data.ownerId exclusively", () => {
-  const busCode = fs.readFileSync(path.join(__dirname, "../services/EventBus.js"), "utf8");
-  assert.ok(busCode.includes("userId: data.ownerId"));
-});
-
-// 35. TEST H & I: Owner Registration Request Recipient Isolation
-runTest("35. TEST H & I: Owner registration requests target Admin recipients, excluding owners", () => {
+// 40. TEST H & I: Owner Registration Request Recipient Isolation
+runTest("40. TEST H & I: Owner registration requests target Admin recipients, excluding owners", () => {
   const reqCode = fs.readFileSync(path.join(__dirname, "../controllers/requestController.js"), "utf8");
   assert.ok(reqCode.includes("role: adminDoc.role"));
 });

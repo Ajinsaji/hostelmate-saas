@@ -192,7 +192,10 @@ const registerDeviceToken = async (req, res) => {
     const canonicalUserId = new mongoose.Types.ObjectId(userCtx.userId);
     const trimmedToken = token.trim();
     const safeFingerprint = `${trimmedToken.slice(0, 8)}...`;
+    const resolvedRole = req.owner ? "owner" : req.user?.role || "user";
     const DeviceToken = require("../models/DeviceToken");
+
+    logger.info(`[FCM TOKEN REGISTRATION] authenticatedUserId=${canonicalUserId} role=${resolvedRole} tokenPresent=true tokenFingerprint=${safeFingerprint} platform=web isActive=true`);
 
     // Audit existing token ownership
     const existing = await DeviceToken.findOne({ token: trimmedToken });
@@ -205,7 +208,7 @@ const registerDeviceToken = async (req, res) => {
       {
         userId: canonicalUserId,
         hostelId: userCtx.hostelId ? (mongoose.Types.ObjectId.isValid(userCtx.hostelId) ? new mongoose.Types.ObjectId(userCtx.hostelId) : null) : null,
-        role: req.owner ? "owner" : req.user?.role || "user",
+        role: resolvedRole,
         platform: String(platform || "web"),
         deviceType: String(deviceType || "mobile"),
         deviceName: String(deviceName || "Android / Mobile Device"),
@@ -218,7 +221,7 @@ const registerDeviceToken = async (req, res) => {
       { upsert: true, returnDocument: "after" }
     );
 
-    logger.info(`[registerDeviceToken] Registered token ${safeFingerprint} for user ${canonicalUserId} (role: ${deviceToken.role})`);
+    logger.info(`[FCM TOKEN REGISTERED] userId=${deviceToken.userId} deviceTokenId=${deviceToken._id} tokenFingerprint=${safeFingerprint} isActive=${deviceToken.isActive}`);
     return res.status(200).json({
       success: true,
       message: "Device token registered successfully",
@@ -237,6 +240,41 @@ const registerDeviceToken = async (req, res) => {
   } catch (err) {
     logger.error("registerDeviceToken error:", err);
     return res.status(500).json({ success: false, message: err.message || "Failed to register device token" });
+  }
+};
+
+const getOwnerTokenStatus = async (req, res) => {
+  try {
+    const { ownerId } = req.params;
+    const mongoose = require("mongoose");
+    if (!ownerId || !mongoose.Types.ObjectId.isValid(ownerId)) {
+      return res.status(400).json({ success: false, message: "Valid ownerId parameter required" });
+    }
+
+    const DeviceToken = require("../models/DeviceToken");
+    const canonicalOwnerId = new mongoose.Types.ObjectId(ownerId);
+    const tokens = await DeviceToken.find({ userId: canonicalOwnerId }).lean();
+
+    const activeTokens = tokens.filter((t) => t.isActive);
+    const platforms = Array.from(new Set(tokens.map((t) => t.platform || "web")));
+    const safeFingerprints = tokens.map((t) => (t.token ? `${t.token.slice(0, 8)}...` : "unknown"));
+    const sorted = tokens.filter((t) => t.lastSeenAt).sort((a, b) => new Date(b.lastSeenAt) - new Date(a.lastSeenAt));
+
+    logger.info(`[FCM DIAGNOSTIC] ownerId=${canonicalOwnerId} totalTokens=${tokens.length} activeTokens=${activeTokens.length}`);
+
+    return res.status(200).json({
+      success: true,
+      ownerId: String(canonicalOwnerId),
+      role: "owner",
+      deviceTokenCount: tokens.length,
+      activeDeviceTokenCount: activeTokens.length,
+      platforms,
+      lastSeenAt: sorted.length ? sorted[0].lastSeenAt : null,
+      safeFingerprints,
+    });
+  } catch (err) {
+    logger.error("getOwnerTokenStatus error:", err);
+    return res.status(500).json({ success: false, message: err.message || "Failed to retrieve owner token status" });
   }
 };
 
@@ -374,5 +412,6 @@ module.exports = {
   getUserDevices,
   deleteDeviceToken,
   sendTestNotification,
+  getOwnerTokenStatus,
 };
 
