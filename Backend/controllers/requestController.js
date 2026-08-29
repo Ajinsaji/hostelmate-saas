@@ -190,6 +190,7 @@ const createRequest = async (req, res) => {
     }
 
     logger.info("Hostel request saved successfully");
+    logger.info(`[HostelRequest] Request saved: requestId=${request._id}`);
 
     timer.finish("Registration performance");
     return res.status(201).json({

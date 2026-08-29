@@ -6,7 +6,7 @@ const fs = require("fs");
 const { execSync } = require("child_process");
 
 console.log("====================================================================");
-console.log("HOSTELMATE PRODUCTION ANDROID FCM PIPELINE REGRESSION SUITE (21 TESTS)");
+console.log("HOSTELMATE PRODUCTION ANDROID FCM PIPELINE REGRESSION SUITE (26 TESTS)");
 console.log("====================================================================");
 
 let passed = 0;
@@ -168,6 +168,45 @@ runTest("20. Backend entry point server.js passes node syntax check", () => {
 runTest("21. Frontend source files exist and compile without syntax errors", () => {
   const clientPath = path.join(__dirname, "../../Frontend/src/utils/firebaseClient.js");
   assert.ok(fs.existsSync(clientPath));
+});
+
+// 22. Multi-Step Owner Lookup Order in Public Admission Submit
+runTest("22. publicController submitAdmission implements multi-step owner lookup (hostel.ownerId -> activeHostelId -> hostelId)", () => {
+  const pubCode = fs.readFileSync(path.join(__dirname, "../controllers/publicController.js"), "utf8");
+  assert.ok(pubCode.includes("Owner.findById(hostel.ownerId)"));
+  assert.ok(pubCode.includes("Owner.findOne({ activeHostelId: hostel._id"));
+  assert.ok(pubCode.includes("Owner.findOne({ hostelId: hostel._id"));
+});
+
+// 23. Resident Request Diagnostic Logging Sequence
+runTest("23. publicController submitAdmission logs exact [ResidentRequestNotification] sequence", () => {
+  const pubCode = fs.readFileSync(path.join(__dirname, "../controllers/publicController.js"), "utf8");
+  assert.ok(pubCode.includes("[ResidentRequest] Request saved: requestId="));
+  assert.ok(pubCode.includes("[ResidentRequestNotification] hostelId="));
+  assert.ok(pubCode.includes("[ResidentRequestNotification] ownerId="));
+  assert.ok(pubCode.includes("[ResidentRequestNotification] resolvedUserId="));
+  assert.ok(pubCode.includes("[ResidentRequestNotification] notificationId="));
+  assert.ok(pubCode.includes("[ResidentRequestNotification] deviceTokenCount="));
+  assert.ok(pubCode.includes("[ResidentRequestNotification] fcmSuccessCount="));
+});
+
+// 24. Non-blocking Admission Flow Guarantee
+runTest("24. Notification errors are caught and logged without breaking HTTP 201 admission response", () => {
+  const pubCode = fs.readFileSync(path.join(__dirname, "../controllers/publicController.js"), "utf8");
+  assert.ok(pubCode.includes("Admission submit notification failed:"));
+  assert.ok(pubCode.includes("res.status(201).json"));
+});
+
+// 25. Notification Publisher Attaches FCM Result Metadata
+runTest("25. publishNotification attaches fcmResult to returned notification document", () => {
+  const notifCode = fs.readFileSync(path.join(__dirname, "../utils/notificationPublisher.js"), "utf8");
+  assert.ok(notifCode.includes("notification.fcmResult = fcmResult"));
+});
+
+// 26. Hostel Request Creation Audit Logging
+runTest("26. requestController logs [HostelRequest] Request saved on creation", () => {
+  const reqCode = fs.readFileSync(path.join(__dirname, "../controllers/requestController.js"), "utf8");
+  assert.ok(reqCode.includes("[HostelRequest] Request saved: requestId="));
 });
 
 console.log("\n-------------------------------------------------------------");

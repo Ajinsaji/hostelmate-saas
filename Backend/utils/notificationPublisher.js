@@ -89,6 +89,7 @@ async function publishNotification({
     meta: normalizedMeta,
   }));
 
+  let fcmResult = null;
   try {
     const settings = await timer.measure("notificationSettingsMs", () => NotificationSetting.findOne({
       userId,
@@ -113,7 +114,7 @@ async function publishNotification({
         logger.info(`[publishNotification] No device tokens found for user ${userId} - background notifications won't be sent`);
       }
 
-      await timer.measure("fcmMs", () => sendPushToUserDevices({
+      fcmResult = await timer.measure("fcmMs", () => sendPushToUserDevices({
         userId,
         hostelId,
         title: title || "HostelMate",
@@ -141,6 +142,9 @@ async function publishNotification({
   }
 
   timer.finish("Notification performance");
+  if (notification) {
+    notification.fcmResult = fcmResult;
+  }
   return notification;
 }
 

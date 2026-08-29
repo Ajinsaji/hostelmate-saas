@@ -217,13 +217,39 @@ const submitAdmission = async (req, res) => {
       status: "Pending"
     }));
 
-    // Notification for owner/admin of this hostel
+    logger.info(`[ResidentRequest] Request saved: requestId=${admission._id}`);
+
+    // Notification for owner of this hostel
     try {
       const { publishNotification } = require("../utils/notificationPublisher");
       const Owner = require("../models/Owner");
-      const owner = await timer.measure("ownerLookupMs", () => Owner.findOne({ hostelId: hostel._id, role: "owner" }));
+
+      // Multi-step Owner lookup order:
+      // 1. hostel.ownerId
+      // 2. Owner.activeHostelId
+      // 3. Owner.hostelId
+      let owner = null;
+      if (hostel.ownerId) {
+        owner = await timer.measure("ownerLookupByIdMs", () => Owner.findById(hostel.ownerId));
+      }
+      if (!owner) {
+        owner = await timer.measure("ownerLookupByActiveHostelMs", () => Owner.findOne({ activeHostelId: hostel._id, role: "owner" }));
+      }
+      if (!owner) {
+        owner = await timer.measure("ownerLookupByHostelIdMs", () => Owner.findOne({ hostelId: hostel._id, role: "owner" }));
+      }
+      if (!owner) {
+        owner = await timer.measure("ownerLookupFallbackMs", () => Owner.findOne({ $or: [{ activeHostelId: hostel._id }, { hostelId: hostel._id }] }));
+      }
+
+      logger.info(`[ResidentRequestNotification] hostelId=${hostel._id}`);
+      logger.info(`[ResidentRequestNotification] ownerId=${owner?._id || "NONE"}`);
+      logger.info(`[ResidentRequestNotification] resolvedUserId=${owner?._id || "NONE"}`);
+
+      const applicantName = residentName || req.body.name || req.body.fullName || req.body.firstName || "An applicant";
+
       if (owner?._id) {
-        await timer.measure("notificationMs", () => publishNotification({
+        const notif = await timer.measure("notificationMs", () => publishNotification({
           userId: owner._id,
           hostelId: hostel._id,
           role: "owner",
@@ -231,7 +257,7 @@ const submitAdmission = async (req, res) => {
           category: "admissions",
           priority: "high",
           title: "New Admission Request",
-          message: `${fullName || firstName || "An applicant"} submitted a new admission request for ${hostel.hostelName || hostel.name || "your hostel"}.`,
+          message: `New admission request submitted by ${applicantName} for ${hostel.hostelName || hostel.name || "your hostel"}.`,
           actionUrl: "/owner/pending-admissions",
           meta: {
             route: "/owner/pending-admissions",
@@ -239,6 +265,12 @@ const submitAdmission = async (req, res) => {
             admissionId: String(admission._id),
           },
         }));
+
+        logger.info(`[ResidentRequestNotification] notificationId=${notif?._id || "NONE"}`);
+        logger.info(`[ResidentRequestNotification] deviceTokenCount=${notif?.fcmResult?.total ?? 0}`);
+        logger.info(`[ResidentRequestNotification] fcmSuccessCount=${notif?.fcmResult?.successCount ?? 0}`);
+      } else {
+        logger.warn(`[ResidentRequestNotification] No active owner resolved for hostel ${hostel._id} - push notification skipped`);
       }
 
       // EventBus dispatch for WhatsApp applicant confirmation
@@ -247,7 +279,7 @@ const submitAdmission = async (req, res) => {
         admissionId: admission._id,
         hostelId: hostel._id,
         hostelName: hostel.hostelName || hostel.name || "HostelMate",
-        applicantName: fullName || firstName || "Applicant",
+        applicantName,
         phone,
         referenceId: String(admission._id),
         submissionDate: new Date().toLocaleDateString(),
