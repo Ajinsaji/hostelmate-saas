@@ -59,6 +59,7 @@ export default function useFcmNotifications({ enabled = true, onIncoming } = {})
           const { api } = await import("../services/api");
           const res = await api.post(`/api/notifications/device-token`, {
             token: trimmedToken,
+            deviceId,
             platform: "web",
             userId: user?._id || user?.id || null,
           });

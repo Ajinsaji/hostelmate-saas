@@ -173,6 +173,7 @@ const registerDeviceToken = async (req, res) => {
     const userCtx = getUserContext(req);
     const {
       token,
+      deviceId: rawDeviceId,
       platform = "web",
       deviceType = "mobile",
       deviceName = "Android / Mobile Device",
@@ -192,23 +193,31 @@ const registerDeviceToken = async (req, res) => {
     const canonicalUserId = new mongoose.Types.ObjectId(userCtx.userId);
     const trimmedToken = token.trim();
     const safeFingerprint = `${trimmedToken.slice(0, 8)}...`;
+    const resolvedDeviceId = String(rawDeviceId || req.headers["x-device-id"] || `dev_${canonicalUserId.toString().slice(0, 8)}_${trimmedToken.slice(0, 8)}`).trim();
+    const deviceIdFingerprint = `${resolvedDeviceId.slice(0, 8)}...`;
     const resolvedRole = req.owner ? "owner" : req.user?.role || "user";
     const DeviceToken = require("../models/DeviceToken");
 
-    logger.info(`[FCM TOKEN REGISTRATION] authenticatedUserId=${canonicalUserId} role=${resolvedRole} tokenPresent=true tokenFingerprint=${safeFingerprint} platform=web isActive=true`);
+    logger.info(`[DEVICE REGISTER] authenticatedUserId=${canonicalUserId} role=${resolvedRole} deviceId=${deviceIdFingerprint} tokenFingerprint=${safeFingerprint} platform=${platform} isActive=true`);
 
-    // Audit existing token ownership
-    const existing = await DeviceToken.findOne({ token: trimmedToken });
-    if (existing && String(existing.userId) !== String(canonicalUserId)) {
-      logger.info(`[FCM TOKEN REASSIGNMENT] Reassigning token ${safeFingerprint} from previous user ${existing.userId} to new user ${canonicalUserId}`);
+    // Audit token reassignment: if this FCM token was linked to another user, remove old ownership
+    const existingSameToken = await DeviceToken.find({ token: trimmedToken });
+    for (const doc of existingSameToken) {
+      if (String(doc.userId) !== String(canonicalUserId)) {
+        logger.info(`[FCM TOKEN REASSIGNMENT] oldUserId=${doc.userId} newUserId=${canonicalUserId} deviceId=${resolvedDeviceId} tokenFingerprint=${safeFingerprint} reason=user_login_switch`);
+        await DeviceToken.deleteOne({ _id: doc._id }).catch(() => {});
+      }
     }
 
+    // Upsert device document by (userId, deviceId) to enforce 1 active record per device per user
     const deviceToken = await DeviceToken.findOneAndUpdate(
-      { token: trimmedToken },
+      { userId: canonicalUserId, deviceId: resolvedDeviceId },
       {
         userId: canonicalUserId,
+        deviceId: resolvedDeviceId,
         hostelId: userCtx.hostelId ? (mongoose.Types.ObjectId.isValid(userCtx.hostelId) ? new mongoose.Types.ObjectId(userCtx.hostelId) : null) : null,
         role: resolvedRole,
+        token: trimmedToken,
         platform: String(platform || "web"),
         deviceType: String(deviceType || "mobile"),
         deviceName: String(deviceName || "Android / Mobile Device"),
@@ -221,12 +230,13 @@ const registerDeviceToken = async (req, res) => {
       { upsert: true, returnDocument: "after" }
     );
 
-    // Enforce database-level token uniqueness: remove any duplicate documents with the same token string
+    // Enforce DB cleanup: delete any duplicate documents with identical token string for other device IDs
     await DeviceToken.deleteMany({
       token: trimmedToken,
       _id: { $ne: deviceToken._id },
     }).catch(() => {});
 
+    logger.info(`[DEVICE UPDATED] userId=${deviceToken.userId} deviceId=${deviceToken.deviceId} tokenFingerprint=${safeFingerprint} isActive=${deviceToken.isActive}`);
     logger.info(`[FCM TOKEN REGISTERED] userId=${deviceToken.userId} deviceTokenId=${deviceToken._id} tokenFingerprint=${safeFingerprint} isActive=${deviceToken.isActive}`);
 
     // Post-login pending notification push delivery (Scenario 1 & 2 resolution)
@@ -272,10 +282,12 @@ const registerDeviceToken = async (req, res) => {
       message: "Device token registered successfully",
       platform: deviceToken.platform,
       safeFingerprint,
+      deviceId: deviceToken.deviceId,
       lastSeenAt: deviceToken.lastSeenAt,
       deviceToken: {
         _id: deviceToken._id,
         userId: deviceToken.userId,
+        deviceId: deviceToken.deviceId,
         platform: deviceToken.platform,
         isActive: deviceToken.isActive,
         safeFingerprint,
@@ -285,6 +297,117 @@ const registerDeviceToken = async (req, res) => {
   } catch (err) {
     logger.error("registerDeviceToken error:", err);
     return res.status(500).json({ success: false, message: err.message || "Failed to register device token" });
+  }
+};
+
+const logoutCurrentDevice = async (req, res) => {
+  try {
+    const userCtx = getUserContext(req);
+    const mongoose = require("mongoose");
+    if (!userCtx.userId || !mongoose.Types.ObjectId.isValid(userCtx.userId)) {
+      return res.status(401).json({ success: false, message: "Authentication required" });
+    }
+
+    const { deviceId: bodyDeviceId, token } = req.body || {};
+    const deviceId = String(bodyDeviceId || req.headers["x-device-id"] || "").trim();
+    const DeviceToken = require("../models/DeviceToken");
+    const canonicalUserId = new mongoose.Types.ObjectId(userCtx.userId);
+
+    const query = { userId: canonicalUserId };
+    if (deviceId) {
+      query.deviceId = deviceId;
+    } else if (token) {
+      query.token = token.trim();
+    }
+
+    const result = await DeviceToken.findOneAndUpdate(
+      query,
+      { $set: { isActive: false, lastSeenAt: new Date() } },
+      { returnDocument: "after" }
+    );
+
+    logger.info(`[FCM DEVICE DEACTIVATED] userId=${canonicalUserId} deviceId=${deviceId || result?.deviceId || "unknown"}`);
+
+    return res.status(200).json({
+      success: true,
+      message: "Device logged out successfully",
+      deviceId: result?.deviceId || deviceId || null,
+      isActive: false,
+    });
+  } catch (err) {
+    logger.error("logoutCurrentDevice error:", err);
+    return res.status(500).json({ success: false, message: err.message || "Failed to logout device" });
+  }
+};
+
+const logoutAllDevices = async (req, res) => {
+  try {
+    const userCtx = getUserContext(req);
+    const mongoose = require("mongoose");
+    if (!userCtx.userId || !mongoose.Types.ObjectId.isValid(userCtx.userId)) {
+      return res.status(401).json({ success: false, message: "Authentication required" });
+    }
+
+    const DeviceToken = require("../models/DeviceToken");
+    const canonicalUserId = new mongoose.Types.ObjectId(userCtx.userId);
+
+    const result = await DeviceToken.updateMany(
+      { userId: canonicalUserId },
+      { $set: { isActive: false, lastSeenAt: new Date() } }
+    );
+
+    logger.info(`[FCM DEVICE DEACTIVATED ALL] userId=${canonicalUserId} count=${result.modifiedCount}`);
+
+    return res.status(200).json({
+      success: true,
+      message: `Logged out ${result.modifiedCount} device(s) successfully`,
+      deactivatedCount: result.modifiedCount,
+    });
+  } catch (err) {
+    logger.error("logoutAllDevices error:", err);
+    return res.status(500).json({ success: false, message: err.message || "Failed to logout all devices" });
+  }
+};
+
+const getAdminDeviceDiagnostics = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const mongoose = require("mongoose");
+    if (!userId || !mongoose.Types.ObjectId.isValid(userId)) {
+      return res.status(400).json({ success: false, message: "Valid userId parameter required" });
+    }
+
+    const DeviceToken = require("../models/DeviceToken");
+    const canonicalUserId = new mongoose.Types.ObjectId(userId);
+    const devices = await DeviceToken.find({ userId: canonicalUserId })
+      .select("deviceId role platform deviceType deviceName browser os isActive lastSeenAt createdAt token")
+      .sort({ lastSeenAt: -1 })
+      .lean();
+
+    const safeDevices = devices.map((d) => ({
+      _id: d._id,
+      deviceId: d.deviceId,
+      role: d.role,
+      platform: d.platform,
+      deviceType: d.deviceType,
+      deviceName: d.deviceName,
+      browser: d.browser,
+      os: d.os,
+      isActive: d.isActive,
+      lastSeenAt: d.lastSeenAt,
+      tokenFingerprint: d.token ? `${d.token.slice(0, 8)}...` : "unknown",
+    }));
+
+    return res.status(200).json({
+      success: true,
+      userId: String(canonicalUserId),
+      deviceCount: safeDevices.length,
+      activeDeviceCount: safeDevices.filter((d) => d.isActive).length,
+      devices: safeDevices,
+    });
+  } catch (err) {
+    logger.error("getAdminDeviceDiagnostics error:", err);
+    return res.status(500).json({ success: false, message: err.message || "Failed to retrieve device diagnostics" });
   }
 };
 
@@ -327,12 +450,25 @@ const getUserDevices = async (req, res) => {
   try {
     const userCtx = getUserContext(req);
     const DeviceToken = require("../models/DeviceToken");
-    const devices = await DeviceToken.find({ userId: userCtx.userId, isActive: true })
-      .select("_id platform deviceType deviceName browser os lastSeenAt createdAt")
+    const devices = await DeviceToken.find({ userId: userCtx.userId })
+      .select("_id deviceId platform deviceType deviceName browser os isActive lastSeenAt createdAt token")
       .sort({ lastSeenAt: -1 })
       .lean();
 
-    return res.status(200).json({ success: true, devices });
+    const safeDevices = devices.map((d) => ({
+      _id: d._id,
+      deviceId: d.deviceId,
+      platform: d.platform,
+      deviceType: d.deviceType,
+      deviceName: d.deviceName,
+      browser: d.browser,
+      os: d.os,
+      isActive: d.isActive,
+      lastSeenAt: d.lastSeenAt,
+      tokenFingerprint: d.token ? `${d.token.slice(0, 8)}...` : "unknown",
+    }));
+
+    return res.status(200).json({ success: true, devices: safeDevices });
   } catch (err) {
     logger.error("getUserDevices error:", err);
     return res.status(500).json({ success: false, message: err.message || "Failed to fetch devices" });
@@ -456,6 +592,9 @@ module.exports = {
   registerDeviceToken,
   getUserDevices,
   deleteDeviceToken,
+  logoutCurrentDevice,
+  logoutAllDevices,
+  getAdminDeviceDiagnostics,
   sendTestNotification,
   getOwnerTokenStatus,
 };

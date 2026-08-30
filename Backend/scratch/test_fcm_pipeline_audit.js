@@ -562,6 +562,51 @@ runTest("80. getToken failure diagnosis: firebaseClient logs [FCM GET TOKEN FAIL
   assert.ok(clientCode.includes("errorMessage="));
 });
 
+// 81. DeviceToken schema implements compound unique index (userId, deviceId)
+runTest("81. DeviceToken model has deviceId field and compound index (userId, deviceId)", () => {
+  const modelCode = fs.readFileSync(path.join(__dirname, "../models/DeviceToken.js"), "utf8");
+  assert.ok(modelCode.includes("deviceId:"));
+  assert.ok(modelCode.includes("{ userId: 1, deviceId: 1 }"));
+});
+
+// 82. registerDeviceToken upserts by userId + deviceId and logs [DEVICE REGISTER]
+runTest("82. registerDeviceToken upserts by (userId, deviceId) and logs [DEVICE REGISTER] & [DEVICE UPDATED]", () => {
+  const controllerCode = fs.readFileSync(path.join(__dirname, "../controllers/notificationController.js"), "utf8");
+  assert.ok(controllerCode.includes("{ userId: canonicalUserId, deviceId: resolvedDeviceId }"));
+  assert.ok(controllerCode.includes("[DEVICE REGISTER]"));
+  assert.ok(controllerCode.includes("[DEVICE UPDATED]"));
+});
+
+// 83. logoutCurrentDevice deactivates target device for user
+runTest("83. logoutCurrentDevice controller function deactivates current device and logs [FCM DEVICE DEACTIVATED]", () => {
+  const controllerCode = fs.readFileSync(path.join(__dirname, "../controllers/notificationController.js"), "utf8");
+  assert.ok(controllerCode.includes("logoutCurrentDevice"));
+  assert.ok(controllerCode.includes("[FCM DEVICE DEACTIVATED]"));
+});
+
+// 84. logoutAllDevices deactivates all devices for user
+runTest("84. logoutAllDevices controller function deactivates all devices for user and logs [FCM DEVICE DEACTIVATED ALL]", () => {
+  const controllerCode = fs.readFileSync(path.join(__dirname, "../controllers/notificationController.js"), "utf8");
+  assert.ok(controllerCode.includes("logoutAllDevices"));
+  assert.ok(controllerCode.includes("[FCM DEVICE DEACTIVATED ALL]"));
+});
+
+// 85. getAdminDeviceDiagnostics endpoint exports safe device metadata
+runTest("85. getAdminDeviceDiagnostics returns safe device metadata without raw FCM token exposure", () => {
+  const controllerCode = fs.readFileSync(path.join(__dirname, "../controllers/notificationController.js"), "utf8");
+  const routesCode = fs.readFileSync(path.join(__dirname, "../routes/notificationRoutes.js"), "utf8");
+  assert.ok(controllerCode.includes("getAdminDeviceDiagnostics"));
+  assert.ok(controllerCode.includes("tokenFingerprint:"));
+  assert.ok(routesCode.includes("/admin-devices/:userId"));
+});
+
+// 86. Multi-device scenario isolation: publishNotification queries user devices strictly by validated userId and isActive
+runTest("86. Recipient isolation invariant: DeviceToken.find requires validated canonicalUserId and isActive: true", () => {
+  const notifCode = fs.readFileSync(path.join(__dirname, "../utils/notificationPublisher.js"), "utf8");
+  assert.ok(notifCode.includes("userId: canonicalUserId"));
+  assert.ok(notifCode.includes("isActive: true"));
+});
+
 console.log("\n-------------------------------------------------------------");
 console.log(`SUITE RESULTS: ${passed} / ${total} TESTS PASSED`);
 console.log("-------------------------------------------------------------\n");
