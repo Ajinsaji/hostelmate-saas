@@ -640,6 +640,7 @@ const finalizeHostelActivation = async (req, res) => {
         const EventBus = require("../services/EventBus");
         const DeviceToken = require("../models/DeviceToken");
         const activeDeviceTokenCount = await DeviceToken.countDocuments({ userId: ownerDoc._id, isActive: true }).catch(() => 0);
+        logger.info(`[OWNER ACTIVATION DELIVERY] ownerId=${ownerDoc._id} hostelId=${hostel._id} ownerPhonePresent=${Boolean(ownerDoc.phone)} temporaryPasswordPresent=${Boolean(tempPassword)} fcmTokenCount=${activeDeviceTokenCount}`);
         logger.info(`[FCM ACTIVATION RECIPIENT] ownerId=${ownerDoc._id} activeDeviceTokenCount=${activeDeviceTokenCount}`);
         if (activeDeviceTokenCount === 0) {
           logger.info(`[FCM ACTIVATION RECIPIENT] Owner ${ownerDoc._id} has zero active device tokens at activation time. FCM push skipped (Expected if owner has not logged in yet; WhatsApp/Email credentials dispatched).`);
@@ -724,6 +725,9 @@ const finalizeHostelActivation = async (req, res) => {
       "Thank you for choosing HostelMate ❤️",
     ].join("\n");
 
+    const { buildWaMeUrl } = require("../services/whatsappService");
+    const waMeUrl = buildWaMeUrl(hostel.phone || ownerDoc.phone, notificationMessage);
+
     timer.finish("Activation performance");
     return res.status(200).json({
       success: true,
@@ -755,6 +759,7 @@ const finalizeHostelActivation = async (req, res) => {
         expiryDate: formattedExpiryDate,
       },
       notificationMessage,
+      waMeUrl,
       credentialDelivery: {
         status: ownerDoc.credentialDeliveryStatus,
       },

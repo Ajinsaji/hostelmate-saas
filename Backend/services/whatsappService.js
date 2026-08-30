@@ -383,11 +383,18 @@ const dispatchWhatsAppMessage = async ({
   const recipientUserId = ownerId || residentId;
   const { mode, isAutomatic, reason } = await resolveAutomationMode(hostelId, tplCategory, recipientUserId);
 
+  if (templateCode === "OWNER_ACCOUNT_ACTIVATED" || templateCode === "HOSTEL_ACTIVATED_FOR_EXISTING_OWNER") {
+    logger.info(`[OWNER ACTIVATION WHATSAPP] ownerId=${ownerId || recipientUserId || "NONE"} phonePresent=${Boolean(normalizedPhone)} automationEnabled=${isAutomatic} provider=${mode} template=${templateCode} referenceId=${referenceId || "NONE"}`);
+  }
+
   // 2. Check Idempotency for all dispatches with a referenceId
   if (referenceId) {
     const isDuplicate = await checkIdempotency(hostelId, templateCode, referenceId);
     if (isDuplicate) {
       logger.info("Skipped duplicate WhatsApp message", { hostelId, templateCode, referenceId });
+      if (templateCode === "OWNER_ACCOUNT_ACTIVATED" || templateCode === "HOSTEL_ACTIVATED_FOR_EXISTING_OWNER") {
+        logger.info(`[OWNER ACTIVATION WHATSAPP RESULT] ownerId=${ownerId || recipientUserId || "NONE"} provider=${mode} success=true httpStatus=200 communicationId=IDEMPOTENT_SKIPPED failureReason=duplicate_skipped`);
+      }
       return {
         success: true,
         skipped: true,
@@ -419,6 +426,10 @@ const dispatchWhatsAppMessage = async ({
       metadata: { precedenceReason: reason, variables: sanitizedVariables },
       createdBy,
     });
+
+    if (templateCode === "OWNER_ACCOUNT_ACTIVATED" || templateCode === "HOSTEL_ACTIVATED_FOR_EXISTING_OWNER") {
+      logger.info(`[OWNER ACTIVATION WHATSAPP RESULT] ownerId=${ownerId || recipientUserId || "NONE"} provider=manual_wame success=true httpStatus=200 communicationId=${commRecord._id} failureReason=none_manual_mode`);
+    }
 
     return {
       success: true,
@@ -496,6 +507,10 @@ const dispatchWhatsAppMessage = async ({
         commRecord.failureReason = "";
         await commRecord.save();
 
+        if (templateCode === "OWNER_ACCOUNT_ACTIVATED" || templateCode === "HOSTEL_ACTIVATED_FOR_EXISTING_OWNER") {
+          logger.info(`[OWNER ACTIVATION WHATSAPP RESULT] ownerId=${ownerId || recipientUserId || "NONE"} provider=meta_api success=true httpStatus=200 communicationId=${commRecord._id} failureReason=none`);
+        }
+
         return {
           success: true,
           mode: "meta_api",
@@ -519,14 +534,21 @@ const dispatchWhatsAppMessage = async ({
     }
   }
 
+  const liveWaMeUrl = buildWaMeUrl(normalizedPhone, messageText);
   commRecord.status = "failed";
   commRecord.failureReason = lastError?.safeMessage || lastError?.message || "Meta delivery failed";
+  commRecord.waMeUrl = sanitizedWaMeUrl;
   await commRecord.save();
+
+  if (templateCode === "OWNER_ACCOUNT_ACTIVATED" || templateCode === "HOSTEL_ACTIVATED_FOR_EXISTING_OWNER") {
+    logger.info(`[OWNER ACTIVATION WHATSAPP RESULT] ownerId=${ownerId || recipientUserId || "NONE"} provider=meta_api success=false httpStatus=${lastError?.originalStatus || 502} communicationId=${commRecord._id} failureReason=${commRecord.failureReason}`);
+  }
 
   return {
     success: false,
     mode: "meta_api",
     status: "failed",
+    waMeUrl: liveWaMeUrl,
     messageText,
     communicationId: commRecord._id,
     error: commRecord.failureReason,

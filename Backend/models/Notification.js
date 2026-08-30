@@ -69,6 +69,20 @@ const notificationSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       default: null,
     },
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      default: null,
+      index: true,
+    },
+    isProcessedForPush: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+    pushDeliveredAt: {
+      type: Date,
+      default: null,
+    },
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       default: null,
@@ -76,6 +90,8 @@ const notificationSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+notificationSchema.index({ userId: 1, isProcessedForPush: 1 });
 
 notificationSchema.index({ hostelId: 1, recipientId: 1, status: 1 });
 notificationSchema.index({ hostelId: 1, createdAt: -1 });

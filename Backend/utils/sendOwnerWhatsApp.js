@@ -352,20 +352,57 @@ const sendOwnerWhatsApp = async (payload) => {
       loginUrl,
     });
 
-  const body = {
-    messaging_product: "whatsapp",
-    recipient_type: "individual",
-    to,
-    type: "text",
-    text: {
-      body: message,
-    },
-  };
+  const templateName = process.env.WHATSAPP_OWNER_ACTIVATION_TEMPLATE || "hostelmate_owner_activation";
+  const templateLanguage = process.env.WHATSAPP_OWNER_ACTIVATION_TEMPLATE_LANGUAGE || "en_US";
+  const useTemplate = payload.useTemplate !== false && Boolean(templateName);
+
+  let body;
+  if (useTemplate) {
+    body = {
+      messaging_product: "whatsapp",
+      recipient_type: "individual",
+      to,
+      type: "template",
+      template: {
+        name: templateName,
+        language: {
+          code: templateLanguage,
+        },
+        components: [
+          {
+            type: "body",
+            parameters: [
+              { type: "text", text: String(ownerName || "Hostel Owner") },
+              { type: "text", text: String(hostelName || "HostelMate") },
+              { type: "text", text: String(username || phone || "-") },
+              { type: "text", text: String(runtimeTemporaryPassword || "-") },
+              { type: "text", text: String(trialStartDate || "-") },
+              { type: "text", text: String(trialEndDate || expiryDate || "-") },
+              { type: "text", text: String(subscriptionAmount || "10") },
+              { type: "text", text: String(loginUrl || "https://hostelmate-saas.vercel.app/owner/login") },
+            ],
+          },
+        ],
+      },
+    };
+  } else {
+    body = {
+      messaging_product: "whatsapp",
+      recipient_type: "individual",
+      to,
+      type: "text",
+      text: {
+        body: message,
+      },
+    };
+  }
 
   logger.info("[Meta WhatsApp] Sending onboarding message", {
     normalizedPhone,
     to,
     url,
+    useTemplate,
+    templateName: useTemplate ? templateName : undefined,
     passwordFingerprint,
   });
 

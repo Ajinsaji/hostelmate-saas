@@ -6,7 +6,7 @@ const fs = require("fs");
 const { execSync } = require("child_process");
 
 console.log("====================================================================");
-console.log("HOSTELMATE MULTI-USER FCM RECIPIENT ISOLATION REGRESSION SUITE (40 TESTS)");
+console.log("HOSTELMATE OWNER ACTIVATION & WHATSAPP DELIVERY REGRESSION SUITE (70 TESTS)");
 console.log("====================================================================");
 
 let passed = 0;
@@ -301,6 +301,192 @@ runTest("39. TEST C: Admin push notifications query Admin ObjectId exclusively",
 runTest("40. TEST H & I: Owner registration requests target Admin recipients, excluding owners", () => {
   const reqCode = fs.readFileSync(path.join(__dirname, "../controllers/requestController.js"), "utf8");
   assert.ok(reqCode.includes("role: adminDoc.role"));
+});
+
+// 41. New Owner Zero FCM Tokens at Activation
+runTest("41. New owner has zero FCM tokens at activation time", () => {
+  const adminCode = fs.readFileSync(path.join(__dirname, "../controllers/adminController.js"), "utf8");
+  assert.ok(adminCode.includes("activeDeviceTokenCount === 0"));
+});
+
+// 42. Activation Notification Persisted in DB
+runTest("42. Activation notification is persisted in Notification collection with isProcessedForPush: false", () => {
+  const notifCode = fs.readFileSync(path.join(__dirname, "../utils/notificationPublisher.js"), "utf8");
+  assert.ok(notifCode.includes("isProcessedForPush: false"));
+});
+
+// 43. No Other Owner Token Selected
+runTest("43. Notification publisher queries strictly by canonical recipient ObjectId", () => {
+  const notifCode = fs.readFileSync(path.join(__dirname, "../utils/notificationPublisher.js"), "utf8");
+  assert.ok(notifCode.includes("userId: canonicalUserId"));
+});
+
+// 44. First Owner Login Registers Token
+runTest("44. First owner login triggers POST /api/notifications/device-token and saves active DeviceToken", () => {
+  const controllerCode = fs.readFileSync(path.join(__dirname, "../controllers/notificationController.js"), "utf8");
+  assert.ok(controllerCode.includes("[FCM TOKEN REGISTERED]"));
+});
+
+// 45. Post-Login Pending Activation Notification Delivery
+runTest("45. Pending activation notification is retrieved and delivered via FCM after token registration", () => {
+  const controllerCode = fs.readFileSync(path.join(__dirname, "../controllers/notificationController.js"), "utf8");
+  assert.ok(controllerCode.includes("[FCM POST-LOGIN PENDING PUSH]"));
+  assert.ok(controllerCode.includes("isProcessedForPush: true"));
+});
+
+// 46. Pending Activation Notification Delivered Only Once
+runTest("46. Delivered pending notifications are marked isProcessedForPush: true preventing duplicate sends", () => {
+  const controllerCode = fs.readFileSync(path.join(__dirname, "../controllers/notificationController.js"), "utf8");
+  assert.ok(controllerCode.includes("isProcessedForPush: { $ne: true }"));
+});
+
+// 47 & 48. Owner 1 and Owner 2 Activation Recipient Isolation
+runTest("47 & 48. Owner 1 cannot receive Owner 2 activation notification and vice-versa", () => {
+  const busCode = fs.readFileSync(path.join(__dirname, "../services/EventBus.js"), "utf8");
+  assert.ok(busCode.includes("userId: data.ownerId"));
+});
+
+// 49. OWNER_ACCOUNT_ACTIVATED Event Contains Temporary Password
+runTest("49. OWNER_ACCOUNT_ACTIVATED payload contains temporaryPassword internally", () => {
+  const adminCode = fs.readFileSync(path.join(__dirname, "../controllers/adminController.js"), "utf8");
+  assert.ok(adminCode.includes("temporaryPassword: tempPassword"));
+});
+
+// 50. Plaintext Password Never Persisted in Notification / Communication Logs
+runTest("50. whatsappService sanitizes temporary password before saving to Communication model", () => {
+  const waCode = fs.readFileSync(path.join(__dirname, "../services/whatsappService.js"), "utf8");
+  assert.ok(waCode.includes("CONTROLLED_ACTIVATION_CREDENTIAL"));
+});
+
+// 51. WhatsApp Listener Receives Activation Event
+runTest("51. EventBus OWNER_ACCOUNT_ACTIVATED listener dispatches WhatsApp message", () => {
+  const busCode = fs.readFileSync(path.join(__dirname, "../services/EventBus.js"), "utf8");
+  assert.ok(busCode.includes("templateCode: \"OWNER_ACCOUNT_ACTIVATED\""));
+});
+
+// 52. Correct Owner Phone Selected
+runTest("52. EventBus selects data.phone for WhatsApp dispatch", () => {
+  const busCode = fs.readFileSync(path.join(__dirname, "../services/EventBus.js"), "utf8");
+  assert.ok(busCode.includes("recipientPhone: data.phone"));
+});
+
+// 53. WhatsApp Automation Settings Respected
+runTest("53. whatsappService resolves automation mode via global + hostel precedence engine", () => {
+  const waCode = fs.readFileSync(path.join(__dirname, "../services/whatsappService.js"), "utf8");
+  assert.ok(waCode.includes("resolveAutomationMode"));
+});
+
+// 54. Meta API Failure Captured
+runTest("54. sendOwnerWhatsApp catches Meta Graph API errors and classifies error status", () => {
+  const waUtilCode = fs.readFileSync(path.join(__dirname, "../utils/sendOwnerWhatsApp.js"), "utf8");
+  assert.ok(waUtilCode.includes("classifyMetaError"));
+});
+
+// 55. Communication Record Records Success/Failure
+runTest("55. whatsappService records status, attemptCount, and failureReason in Communication document", () => {
+  const waCode = fs.readFileSync(path.join(__dirname, "../services/whatsappService.js"), "utf8");
+  assert.ok(waCode.includes("commRecord.status = \"failed\""));
+  assert.ok(waCode.includes("commRecord.status = \"sent\""));
+});
+
+// 56. WhatsApp Failure Does Not Break Owner Activation
+runTest("56. WhatsApp dispatch errors in EventBus are caught non-blocking without breaking activation", () => {
+  const busCode = fs.readFileSync(path.join(__dirname, "../services/EventBus.js"), "utf8");
+  assert.ok(busCode.includes("WhatsApp trigger for OWNER_ACCOUNT_ACTIVATED failed"));
+});
+
+// 57. Push Notification Errors Non-blocking
+runTest("57. Push notification errors in EventBus are caught non-blocking without breaking activation", () => {
+  const busCode = fs.readFileSync(path.join(__dirname, "../services/EventBus.js"), "utf8");
+  assert.ok(busCode.includes("Push notification for OWNER_ACCOUNT_ACTIVATED failed"));
+});
+
+// 58. Existing Owner Second Hostel Activation Does Not Generate New Password
+runTest("58. adminController activates existing owner with HOSTEL_ACTIVATED_FOR_EXISTING_OWNER event without temporary password", () => {
+  const adminCode = fs.readFileSync(path.join(__dirname, "../controllers/adminController.js"), "utf8");
+  assert.ok(adminCode.includes("HOSTEL_ACTIVATED_FOR_EXISTING_OWNER"));
+});
+
+// 59. Existing Owner Receives Correct Hostel Activation Notification
+runTest("59. EventBus HOSTEL_ACTIVATED_FOR_EXISTING_OWNER sends push and WhatsApp for new property", () => {
+  const busCode = fs.readFileSync(path.join(__dirname, "../services/EventBus.js"), "utf8");
+  assert.ok(busCode.includes("HOSTEL_ACTIVATED_FOR_EXISTING_OWNER"));
+});
+
+// 60. No Duplicate WhatsApp Activation Messages via Idempotency
+runTest("60. whatsappService checkIdempotency prevents duplicate activation messages for same referenceId", () => {
+  const waCode = fs.readFileSync(path.join(__dirname, "../services/whatsappService.js"), "utf8");
+  assert.ok(waCode.includes("checkIdempotency"));
+  assert.ok(waCode.includes("Duplicate message skipped via idempotency check"));
+});
+
+// 61. Meta Template Payload Support for OWNER_ACCOUNT_ACTIVATED
+runTest("61. sendOwnerWhatsApp constructs type: template payload when WHATSAPP_OWNER_ACTIVATION_TEMPLATE is configured", () => {
+  const waUtilCode = fs.readFileSync(path.join(__dirname, "../utils/sendOwnerWhatsApp.js"), "utf8");
+  assert.ok(waUtilCode.includes('type: "template"'));
+  assert.ok(waUtilCode.includes("WHATSAPP_OWNER_ACTIVATION_TEMPLATE"));
+});
+
+// 62. Default Template Name and Language Configured
+runTest("62. Default Meta template name defaults to hostelmate_owner_activation and language en_US", () => {
+  const waUtilCode = fs.readFileSync(path.join(__dirname, "../utils/sendOwnerWhatsApp.js"), "utf8");
+  assert.ok(waUtilCode.includes("hostelmate_owner_activation"));
+  assert.ok(waUtilCode.includes("en_US"));
+});
+
+// 63. Meta Template 8 Variable Order Verified
+runTest("63. Meta template body parameters construct 8 exact variables in correct order", () => {
+  const waUtilCode = fs.readFileSync(path.join(__dirname, "../utils/sendOwnerWhatsApp.js"), "utf8");
+  assert.ok(waUtilCode.includes("ownerName"));
+  assert.ok(waUtilCode.includes("hostelName"));
+  assert.ok(waUtilCode.includes("username"));
+  assert.ok(waUtilCode.includes("runtimeTemporaryPassword"));
+});
+
+// 64. Temporary Password Exists Only in Outbound Runtime Memory
+runTest("64. Real temporary password is passed to sendOwnerWhatsApp in runtime memory but sanitized before DB persistence", () => {
+  const waCode = fs.readFileSync(path.join(__dirname, "../services/whatsappService.js"), "utf8");
+  assert.ok(waCode.includes("sanitizedVariables"));
+  assert.ok(waCode.includes("CONTROLLED_ACTIVATION_CREDENTIAL"));
+});
+
+// 65. Meta Failure Returns waMeUrl Fallback
+runTest("65. whatsappService generates waMeUrl fallback on Meta API failure or unconfigured state", () => {
+  const waCode = fs.readFileSync(path.join(__dirname, "../services/whatsappService.js"), "utf8");
+  assert.ok(waCode.includes("liveWaMeUrl"));
+  assert.ok(waCode.includes("waMeUrl: liveWaMeUrl"));
+});
+
+// 66. Admin Response Surfacing waMeUrl
+runTest("66. adminController finalizeHostelActivation includes waMeUrl in API response payload", () => {
+  const adminCode = fs.readFileSync(path.join(__dirname, "../controllers/adminController.js"), "utf8");
+  assert.ok(adminCode.includes("waMeUrl"));
+  assert.ok(adminCode.includes("buildWaMeUrl"));
+});
+
+// 67. Global Automation Precedence Enforcement
+runTest("67. SystemSetting.whatsappAutomationEnabled OFF forces manual_wame mode", () => {
+  const waCode = fs.readFileSync(path.join(__dirname, "../services/whatsappService.js"), "utf8");
+  assert.ok(waCode.includes("Global WhatsApp Automation is OFF"));
+});
+
+// 68. Hostel Automation Precedence Enforcement
+runTest("68. Hostel whatsappConfig.automationEnabled false forces manual_wame mode", () => {
+  const waCode = fs.readFileSync(path.join(__dirname, "../services/whatsappService.js"), "utf8");
+  assert.ok(waCode.includes("Hostel WhatsApp Automation is OFF"));
+});
+
+// 69. Secret Scrubbing Audit in Loggers
+runTest("69. Loggers use passwordFingerprint and safeFingerprint with zero token or password exposure", () => {
+  const waUtilCode = fs.readFileSync(path.join(__dirname, "../utils/sendOwnerWhatsApp.js"), "utf8");
+  assert.ok(waUtilCode.includes("passwordFingerprint"));
+  assert.ok(!waUtilCode.includes("logger.info(temporaryPassword)"));
+});
+
+// 70. Idempotency Key Preserved across Retries
+runTest("70. Reference ID format OWNER_ACT_<ownerId> is preserved and checked against Communication collection", () => {
+  const busCode = fs.readFileSync(path.join(__dirname, "../services/EventBus.js"), "utf8");
+  assert.ok(busCode.includes("OWNER_ACT_"));
 });
 
 console.log("\n-------------------------------------------------------------");

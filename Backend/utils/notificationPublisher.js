@@ -76,6 +76,7 @@ async function publishNotification({
 
   const notification = await timer.measure("notificationCreationMs", () => Notification.create({
     userId,
+    recipientId: userId,
     tenantId: validHostelId,
     hostelId: validHostelId,
     title: title || message || "HostelMate",
@@ -86,6 +87,7 @@ async function publishNotification({
     icon: icon || null,
     actionUrl: actionUrl || normalizedMeta.route || null,
     receiverRole: role || null,
+    isProcessedForPush: false,
     meta: normalizedMeta,
   }));
 
@@ -133,6 +135,12 @@ async function publishNotification({
               },
             },
           }));
+
+          if (fcmResult?.successCount > 0) {
+            notification.isProcessedForPush = true;
+            notification.pushDeliveredAt = new Date();
+            await notification.save().catch(() => {});
+          }
         } else {
           logger.info(`[FCM RECIPIENT AUDIT] No active device tokens found for recipientUserId=${canonicalUserId} - FCM push skipped`);
         }

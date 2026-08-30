@@ -222,6 +222,45 @@ const registerDeviceToken = async (req, res) => {
     );
 
     logger.info(`[FCM TOKEN REGISTERED] userId=${deviceToken.userId} deviceTokenId=${deviceToken._id} tokenFingerprint=${safeFingerprint} isActive=${deviceToken.isActive}`);
+
+    // Post-login pending notification push delivery (Scenario 1 & 2 resolution)
+    try {
+      const Notification = require("../models/Notification");
+      const pendingNotifs = await Notification.find({
+        $or: [{ userId: canonicalUserId }, { recipientId: canonicalUserId }],
+        isProcessedForPush: { $ne: true },
+      }).lean();
+
+      if (pendingNotifs.length > 0) {
+        logger.info(`[FCM POST-LOGIN PENDING PUSH] Found ${pendingNotifs.length} pending notification(s) for user ${canonicalUserId}`);
+        const { sendPushToUserDevices } = require("../utils/fcmService");
+
+        for (const notif of pendingNotifs) {
+          await sendPushToUserDevices({
+            userId: canonicalUserId,
+            hostelId: notif.hostelId,
+            title: notif.title || "HostelMate",
+            body: notif.message,
+            data: {
+              tokens: [trimmedToken],
+              payload: {
+                type: notif.type,
+                notificationId: String(notif._id),
+                route: notif.actionUrl || notif.meta?.route || "",
+              },
+            },
+          });
+
+          await Notification.updateOne(
+            { _id: notif._id },
+            { $set: { isProcessedForPush: true, pushDeliveredAt: new Date() } }
+          );
+          logger.info(`[FCM POST-LOGIN PENDING PUSH] Delivered pending notification ${notif._id} (${notif.type}) to newly registered token ${safeFingerprint} for user ${canonicalUserId}`);
+        }
+      }
+    } catch (pendingErr) {
+      logger.error("[FCM POST-LOGIN PENDING PUSH] Error delivering pending notifications:", pendingErr?.message || pendingErr);
+    }
     return res.status(200).json({
       success: true,
       message: "Device token registered successfully",
