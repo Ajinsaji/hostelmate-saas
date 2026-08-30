@@ -47,6 +47,27 @@ export const getAdminToken = () => {
 
 export const getAuthToken = getOwnerToken;
 
+export const getAnyAuthToken = () => {
+  try {
+    const adminUser = getStoredAdmin();
+    const ownerUser = getStoredOwner();
+    const isAdminRoute = typeof window !== "undefined" && window.location.pathname.startsWith("/admin");
+
+    if (isAdminRoute && getAdminToken()) {
+      return getAdminToken();
+    }
+    if (adminUser && getAdminToken()) {
+      return getAdminToken();
+    }
+    if (ownerUser && getOwnerToken()) {
+      return getOwnerToken();
+    }
+    return getOwnerToken() || getAdminToken() || null;
+  } catch {
+    return null;
+  }
+};
+
 export const setOwnerAuth = (token) => {
   try {
     if (!token) return;

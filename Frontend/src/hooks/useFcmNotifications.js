@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import { useLocation } from "react-router-dom";
 import { requestFcmPermissionAndToken, getFirebaseMessagingSafe } from "../utils/firebaseClient";
-import { getStoredUser } from "../utils/authToken";
+import { getStoredUser, getAnyAuthToken, getDeviceId } from "../utils/authToken";
 
 // Foreground listener + device token registration.
 // Background notifications are handled by firebase-messaging-sw.js.
@@ -18,37 +18,69 @@ export default function useFcmNotifications({ enabled = true, onIncoming } = {})
     if (!enabled) return;
 
     let unsubscribe = null;
+    let isSubscribed = true;
 
-    async function boot() {
-      const jwt =
-        localStorage.getItem("ownerToken") ||
-        localStorage.getItem("adminToken") ||
-        localStorage.getItem("token");
+    async function boot(retryAttempt = 0) {
+      const jwt = getAnyAuthToken();
+      const user = getStoredUser();
+      const deviceId = getDeviceId();
+      const deviceIdFingerprint = deviceId ? `${deviceId.slice(0, 8)}...` : "unknown";
+      const userIdStr = user?._id || user?.id || null;
+      const userFingerprint = userIdStr ? `${String(userIdStr).slice(0, 8)}...` : "none";
+      const role = user?.role || "user";
+      const permissionState = typeof Notification !== "undefined" ? Notification.permission : "unsupported";
 
-      // Require authentication before requesting or registering FCM device tokens
-      if (!jwt || typeof jwt !== "string" || !jwt.trim()) {
+      if (import.meta.env.DEV || (typeof window !== "undefined" && window.location.hostname.includes("render"))) {
+        console.log(`[FCM CLIENT INIT] platform=web userId=${userFingerprint} role=${role} deviceId=${deviceIdFingerprint} permissionState=${permissionState}`);
+        console.log(`[FCM PERMISSION] state=${permissionState}`);
+      }
+
+      // Require valid authenticated user context before requesting or registering FCM device tokens
+      if (!jwt || typeof jwt !== "string" || !jwt.trim() || !user) {
         return;
       }
+
       try {
         const token = await requestFcmPermissionAndToken();
 
         // Strict empty token protection: reject null, undefined, empty string
-        if (!token || typeof token !== "string" || !token.trim()) {
+        if (!token || typeof token !== "string" || !token.trim() || !isSubscribed) {
           return;
         }
 
-        const user = getStoredUser();
+        const trimmedToken = token.trim();
+        const tokenFingerprint = `${trimmedToken.slice(0, 8)}...`;
+
+        if (import.meta.env.DEV || (typeof window !== "undefined" && window.location.hostname.includes("render"))) {
+          console.log(`[FCM DEVICE TOKEN REQUEST] userId=${userFingerprint} role=${role} platform=web deviceId=${deviceIdFingerprint} tokenFingerprint=${tokenFingerprint}`);
+        }
 
         try {
           const { api } = await import("../services/api");
-          await api.post(`/api/notifications/device-token`, {
-            token: token.trim(),
+          const res = await api.post(`/api/notifications/device-token`, {
+            token: trimmedToken,
             platform: "web",
             userId: user?._id || user?.id || null,
           });
+
+          if (import.meta.env.DEV || (typeof window !== "undefined" && window.location.hostname.includes("render"))) {
+            console.log(`[FCM DEVICE TOKEN RESPONSE] status=${res.status} userId=${userFingerprint} tokenFingerprint=${tokenFingerprint}`);
+          }
         } catch (e) {
-          if (import.meta.env.DEV) {
-            console.warn("[useFcmNotifications] Device token registration deferred:", e?.message || e);
+          const status = e?.response?.status || (e?.message?.includes("401") ? 401 : "ERR");
+          if (import.meta.env.DEV || (typeof window !== "undefined" && window.location.hostname.includes("render"))) {
+            console.warn(`[FCM DEVICE TOKEN RESPONSE] status=${status} userId=${userFingerprint} tokenFingerprint=${tokenFingerprint} error=${e?.message || e}`);
+          }
+
+          // Retry device token registration if initial call fails due to transient 401 or auth timing
+          if (retryAttempt < 2 && isSubscribed) {
+            const nextAttempt = retryAttempt + 1;
+            if (import.meta.env.DEV) {
+              console.log(`[FCM DEVICE TOKEN RETRY] userId=${userFingerprint} attempt=${nextAttempt}`);
+            }
+            setTimeout(() => {
+              if (isSubscribed) boot(nextAttempt);
+            }, nextAttempt * 1500);
           }
         }
 
@@ -115,6 +147,7 @@ export default function useFcmNotifications({ enabled = true, onIncoming } = {})
     }
 
     return () => {
+      isSubscribed = false;
       try {
         if (typeof window !== "undefined") {
           window.removeEventListener("auth_state_changed", handleAuthChange);

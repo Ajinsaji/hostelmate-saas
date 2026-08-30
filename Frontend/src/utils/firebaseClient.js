@@ -116,10 +116,17 @@ export async function registerFirebaseServiceWorker() {
     );
 
     const activeRegistration = await waitForServiceWorkerActive(registration);
-    return activeRegistration || registration;
+    const resolvedRegistration = activeRegistration || registration;
+
+    if (import.meta.env.DEV || (typeof window !== "undefined" && window.location.hostname.includes("render"))) {
+      const swState = resolvedRegistration?.active ? "active" : resolvedRegistration?.waiting ? "waiting" : resolvedRegistration?.installing ? "installing" : "none";
+      console.log(`[FCM SW REGISTERED] scope=${resolvedRegistration?.scope || "/firebase-cloud-messaging-push-scope"} swState=${swState}`);
+    }
+
+    return resolvedRegistration;
   } catch (error) {
     if (import.meta.env.DEV) {
-      console.warn("[FCM] Failed to register Firebase service worker:", error?.message || error);
+      console.warn(`[FCM GET TOKEN FAILED] errorCode=${error?.code || "SW_REGISTER_ERROR"} errorMessage=${error?.message || String(error)} permissionState=${typeof Notification !== "undefined" ? Notification.permission : "unsupported"}`);
     }
     return null;
   }
@@ -133,23 +140,24 @@ export async function requestFcmPermissionAndToken() {
   const messaging = getFirebaseMessagingSafe();
   if (!messaging) {
     if (import.meta.env.DEV) {
-      console.warn("[FCM] Firebase messaging not configured");
+      console.warn("[FCM GET TOKEN FAILED] errorCode=MESSAGING_NOT_CONFIGURED errorMessage=Firebase messaging not initialized");
     }
     return null;
   }
 
   if (!("Notification" in window)) {
     if (import.meta.env.DEV) {
-      console.warn("[FCM] Notifications not supported in this browser");
+      console.warn("[FCM GET TOKEN FAILED] errorCode=NOTIFICATIONS_UNSUPPORTED errorMessage=Notifications API not available in browser");
     }
     return null;
   }
 
-  if (Notification.permission !== "granted") {
+  const currentPermission = Notification.permission;
+  if (currentPermission !== "granted") {
     const permission = await Notification.requestPermission();
     if (permission !== "granted") {
       if (import.meta.env.DEV) {
-        console.warn("[FCM] Notification permission not granted");
+        console.warn(`[FCM GET TOKEN FAILED] errorCode=PERMISSION_DENIED errorMessage=User rejected notification permission permissionState=${permission}`);
       }
       return null;
     }
@@ -158,7 +166,7 @@ export async function requestFcmPermissionAndToken() {
   const vapidKey = import.meta.env.VITE_FIREBASE_VAPID_KEY?.trim();
   if (!vapidKey) {
     if (import.meta.env.DEV) {
-      console.warn("[FCM] Missing VITE_FIREBASE_VAPID_KEY");
+      console.warn("[FCM GET TOKEN FAILED] errorCode=MISSING_VAPID_KEY errorMessage=VITE_FIREBASE_VAPID_KEY missing from environment");
     }
     return null;
   }
@@ -166,17 +174,21 @@ export async function requestFcmPermissionAndToken() {
   const swRegistration = await registerFirebaseServiceWorker();
   if (!swRegistration) {
     if (import.meta.env.DEV) {
-      console.warn("[FCM] Service worker registration unavailable");
+      console.warn("[FCM GET TOKEN FAILED] errorCode=SW_UNAVAILABLE errorMessage=Service worker registration failed or worker unavailable");
     }
     return null;
   }
 
   const tokenPromise = (async () => {
     try {
+      if (import.meta.env.DEV) {
+        console.log(`[FCM GET TOKEN START] platform=web permissionState=${Notification.permission} swScope=${swRegistration.scope || "unknown"}`);
+      }
+
       const activeSw = await waitForServiceWorkerActive(swRegistration);
       if (!activeSw || !activeSw.active) {
         if (import.meta.env.DEV) {
-          console.warn("[FCM] Registration has no active worker - deferring getToken");
+          console.warn("[FCM GET TOKEN FAILED] errorCode=NO_ACTIVE_WORKER errorMessage=Registration active worker timing timeout");
         }
         return null;
       }
@@ -187,17 +199,21 @@ export async function requestFcmPermissionAndToken() {
       });
 
       if (!token || typeof token !== "string" || !token.trim()) {
+        if (import.meta.env.DEV) {
+          console.warn("[FCM GET TOKEN FAILED] errorCode=EMPTY_TOKEN errorMessage=Firebase returned empty device token");
+        }
         return null;
       }
 
       const trimmedToken = token.trim();
+      const tokenFingerprint = `${trimmedToken.slice(0, 8)}...`;
       if (import.meta.env.DEV) {
-        console.log("[FCM] Device token acquired safely:", `${trimmedToken.slice(0, 8)}...`);
+        console.log(`[FCM GET TOKEN SUCCESS] platform=web tokenFingerprint=${tokenFingerprint}`);
       }
       return trimmedToken;
     } catch (error) {
       if (import.meta.env.DEV) {
-        console.warn("[FCM] Push registration unavailable:", error?.message || error);
+        console.warn(`[FCM GET TOKEN FAILED] errorCode=${error?.code || "GET_TOKEN_ERROR"} errorMessage=${error?.message || String(error)} permissionState=${Notification.permission}`);
       }
       return null;
     }

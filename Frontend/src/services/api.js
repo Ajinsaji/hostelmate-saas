@@ -100,7 +100,7 @@ const redirectToLogin = (path) => {
 // Detect admin context for redirect decisions.
 const isAdminContext = () => window.location.pathname.startsWith("/admin");
 
-import { getDeviceId } from "../utils/authToken";
+import { getDeviceId, getAnyAuthToken } from "../utils/authToken";
 
 api.interceptors.request.use(
   (config) => {
@@ -119,13 +119,16 @@ api.interceptors.request.use(
       return config;
     }
 
+    const isNotificationRequest = requestUrl.includes("/api/notifications/");
     const isAdminRequest =
       requestUrl.includes("/api/admin") ||
       requestUrl.includes("/api/saas-admin") ||
       isAdminContext();
 
-    // Admin and owner tokens must not cross-redirect each other.
-    const token = isAdminRequest
+    // Notification endpoints scope fallback using getAnyAuthToken for authenticated user
+    const token = isNotificationRequest
+      ? getAnyAuthToken()
+      : isAdminRequest
       ? localStorage.getItem("adminToken") || localStorage.getItem("token")
       : localStorage.getItem("ownerToken") || localStorage.getItem("token");
 
@@ -186,6 +189,14 @@ api.interceptors.response.use(
 
       // If subscription is expired, do not clear tokens or redirect to login.
       if (code === "SUBSCRIPTION_EXPIRED" || message === "Subscription expired") {
+        return Promise.reject(error);
+      }
+
+      // Device token registration 401s should be caught by useFcmNotifications retry logic rather than triggering destructive auth redirect
+      if (requestUrl.includes("/api/notifications/device-token")) {
+        if (import.meta.env.DEV) {
+          console.warn("[FCM DEVICE TOKEN RESPONSE] status=401 url=" + requestUrl + " error=" + (message || "Unauthorized"));
+        }
         return Promise.reject(error);
       }
 

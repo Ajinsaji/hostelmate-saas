@@ -221,6 +221,12 @@ const registerDeviceToken = async (req, res) => {
       { upsert: true, returnDocument: "after" }
     );
 
+    // Enforce database-level token uniqueness: remove any duplicate documents with the same token string
+    await DeviceToken.deleteMany({
+      token: trimmedToken,
+      _id: { $ne: deviceToken._id },
+    }).catch(() => {});
+
     logger.info(`[FCM TOKEN REGISTERED] userId=${deviceToken.userId} deviceTokenId=${deviceToken._id} tokenFingerprint=${safeFingerprint} isActive=${deviceToken.isActive}`);
 
     // Post-login pending notification push delivery (Scenario 1 & 2 resolution)
@@ -296,7 +302,7 @@ const getOwnerTokenStatus = async (req, res) => {
 
     const activeTokens = tokens.filter((t) => t.isActive);
     const platforms = Array.from(new Set(tokens.map((t) => t.platform || "web")));
-    const safeFingerprints = tokens.map((t) => (t.token ? `${t.token.slice(0, 8)}...` : "unknown"));
+    const safeFingerprints = Array.from(new Set(tokens.map((t) => (t.token ? `${t.token.slice(0, 8)}...` : "unknown"))));
     const sorted = tokens.filter((t) => t.lastSeenAt).sort((a, b) => new Date(b.lastSeenAt) - new Date(a.lastSeenAt));
 
     logger.info(`[FCM DIAGNOSTIC] ownerId=${canonicalOwnerId} totalTokens=${tokens.length} activeTokens=${activeTokens.length}`);

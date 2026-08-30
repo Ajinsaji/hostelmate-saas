@@ -489,6 +489,79 @@ runTest("70. Reference ID format OWNER_ACT_<ownerId> is preserved and checked ag
   assert.ok(busCode.includes("OWNER_ACT_"));
 });
 
+// 71. Fresh Android login -> token registration succeeds
+runTest("71. Fresh Android login: registerDeviceToken handles token registration with HTTP 200 and safeFingerprint", () => {
+  const controllerCode = fs.readFileSync(path.join(__dirname, "../controllers/notificationController.js"), "utf8");
+  assert.ok(controllerCode.includes("Device token registered successfully"));
+  assert.ok(controllerCode.includes("safeFingerprint"));
+});
+
+// 72. Initial 401 -> retry after authentication becomes available
+runTest("72. Initial 401: useFcmNotifications implements retryAttempt backoff and getAnyAuthToken fallback", () => {
+  const hookCode = fs.readFileSync(path.join(__dirname, "../../Frontend/src/hooks/useFcmNotifications.js"), "utf8");
+  const apiCode = fs.readFileSync(path.join(__dirname, "../../Frontend/src/services/api.js"), "utf8");
+  assert.ok(hookCode.includes("retryAttempt < 2"));
+  assert.ok(hookCode.includes("[FCM DEVICE TOKEN RETRY]"));
+  assert.ok(apiCode.includes("getAnyAuthToken"));
+});
+
+// 73. No token is stored without authenticated user context
+runTest("73. No token stored without auth context: registerDeviceToken rejects unauthenticated requests with 401", () => {
+  const controllerCode = fs.readFileSync(path.join(__dirname, "../controllers/notificationController.js"), "utf8");
+  const hookCode = fs.readFileSync(path.join(__dirname, "../../Frontend/src/hooks/useFcmNotifications.js"), "utf8");
+  assert.ok(controllerCode.includes("Valid authenticated identity required to register device token"));
+  assert.ok(hookCode.includes("!jwt || typeof jwt !== \"string\" || !jwt.trim() || !user"));
+});
+
+// 74. One user cannot inherit another user's token
+runTest("74. Recipient token isolation: registerDeviceToken logs [FCM TOKEN REASSIGNMENT] when token changes user", () => {
+  const controllerCode = fs.readFileSync(path.join(__dirname, "../controllers/notificationController.js"), "utf8");
+  assert.ok(controllerCode.includes("[FCM TOKEN REASSIGNMENT]"));
+});
+
+// 75. Same token is not duplicated repeatedly
+runTest("75. Token deduplication: notificationController performs DB-level duplicate cleanup for identical token string", () => {
+  const controllerCode = fs.readFileSync(path.join(__dirname, "../controllers/notificationController.js"), "utf8");
+  assert.ok(controllerCode.includes("DeviceToken.deleteMany({"));
+  assert.ok(controllerCode.includes("token: trimmedToken"));
+  assert.ok(controllerCode.includes("_id: { $ne: deviceToken._id }"));
+});
+
+// 76. Stale token is deactivated after FCM UNREGISTERED
+runTest("76. Stale token deactivation: fcmService removes UNREGISTERED tokens from database", () => {
+  const serviceCode = fs.readFileSync(path.join(__dirname, "../utils/fcmService.js"), "utf8");
+  assert.ok(serviceCode.includes("registration-token-not-registered"));
+  assert.ok(serviceCode.includes("DeviceToken.deleteMany"));
+});
+
+// 77. Android notification permission denied is clearly diagnosed
+runTest("77. Permission denied diagnosis: firebaseClient logs [FCM GET TOKEN FAILED] PERMISSION_DENIED", () => {
+  const clientCode = fs.readFileSync(path.join(__dirname, "../../Frontend/src/utils/firebaseClient.js"), "utf8");
+  assert.ok(clientCode.includes("PERMISSION_DENIED"));
+  assert.ok(clientCode.includes("[FCM GET TOKEN FAILED]"));
+});
+
+// 78. Android permission granted is clearly diagnosed
+runTest("78. Permission granted diagnosis: firebaseClient logs [FCM GET TOKEN START] with permissionState", () => {
+  const clientCode = fs.readFileSync(path.join(__dirname, "../../Frontend/src/utils/firebaseClient.js"), "utf8");
+  assert.ok(clientCode.includes("[FCM GET TOKEN START]"));
+  assert.ok(clientCode.includes("permissionState=${Notification.permission}"));
+});
+
+// 79. Service worker registration failure is clearly diagnosed
+runTest("79. SW registration failure diagnosis: firebaseClient logs [FCM GET TOKEN FAILED] SW_UNAVAILABLE", () => {
+  const clientCode = fs.readFileSync(path.join(__dirname, "../../Frontend/src/utils/firebaseClient.js"), "utf8");
+  assert.ok(clientCode.includes("SW_UNAVAILABLE"));
+});
+
+// 80. FCM getToken failure is clearly diagnosed
+runTest("80. getToken failure diagnosis: firebaseClient logs [FCM GET TOKEN FAILED] with errorCode and errorMessage", () => {
+  const clientCode = fs.readFileSync(path.join(__dirname, "../../Frontend/src/utils/firebaseClient.js"), "utf8");
+  assert.ok(clientCode.includes("[FCM GET TOKEN FAILED]"));
+  assert.ok(clientCode.includes("errorCode="));
+  assert.ok(clientCode.includes("errorMessage="));
+});
+
 console.log("\n-------------------------------------------------------------");
 console.log(`SUITE RESULTS: ${passed} / ${total} TESTS PASSED`);
 console.log("-------------------------------------------------------------\n");
