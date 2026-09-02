@@ -5,8 +5,28 @@ import useFcmNotifications from "../hooks/useFcmNotifications";
 import useNotificationSocket from "../hooks/useNotificationSocket";
 import { playNotificationSound } from "../utils/notificationSound";
 import { api } from "../services/api";
+import { getStoredOwner, getStoredAdmin } from "../utils/authToken";
 
 const NotificationContext = createContext(null);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SECURITY: notifications may only be displayed when notification.userId
+// matches the currently authenticated user. The backend query is authoritative;
+// this check is defense-in-depth only, guarding against stale socket payloads
+// or any race condition during account switch.
+// ─────────────────────────────────────────────────────────────────────────────
+
+function getCurrentAuthenticatedUserId() {
+  try {
+    const admin = getStoredAdmin();
+    if (admin?._id || admin?.id) return String(admin._id || admin.id);
+    const owner = getStoredOwner();
+    if (owner?._id || owner?.id) return String(owner._id || owner.id);
+    return null;
+  } catch {
+    return null;
+  }
+}
 
 export function NotificationProvider({ children }) {
   const navigate = useNavigate();
@@ -18,6 +38,7 @@ export function NotificationProvider({ children }) {
   const [isBellAnimated, setIsBellAnimated] = useState(false);
   const animationTimer = useRef(null);
   const isConnectedRef = useRef(false);
+  const recentToastIdsRef = useRef(new Set());
 
   const addNotificationToTop = (notification) => {
     setNotifications((prev) => {
@@ -50,10 +71,57 @@ export function NotificationProvider({ children }) {
     }
   };
 
-  // Bind WebSocket & FCM listeners
+  /**
+   * Clear all notification state. Called on logout to prevent a subsequent
+   * user (same device, same browser) from seeing the previous user's state.
+   */
+  const clearNotificationState = () => {
+    setNotifications([]);
+    setUnreadCount(0);
+    setOpen(false);
+    setIsBellAnimated(false);
+    recentToastIdsRef.current.clear();
+    if (animationTimer.current) {
+      clearTimeout(animationTimer.current);
+    }
+  };
+
+  // Helper to deduplicate toasts across Socket.IO and FCM foreground delivery
+  const shouldShowToastForId = (id) => {
+    if (!id) return true;
+    const strId = String(id);
+    if (recentToastIdsRef.current.has(strId)) {
+      return false; // Already toasted recently — suppress duplicate
+    }
+    recentToastIdsRef.current.add(strId);
+    setTimeout(() => {
+      recentToastIdsRef.current.delete(strId);
+    }, 8000);
+    return true;
+  };
+
+  // Bind FCM foreground listener
   useFcmNotifications({
     enabled: true,
-    onIncoming: async ({ title, body, route }) => {
+    onIncoming: async ({ title, body, route, payload }) => {
+      const currentUserId = getCurrentAuthenticatedUserId();
+      const fcmUserId = payload?.data?.userId || null;
+      const notifId = payload?.data?.notificationId || null;
+
+      // Defense-in-depth: if payload specifies a target userId, verify it matches
+      if (fcmUserId && currentUserId && String(fcmUserId) !== currentUserId) {
+        console.warn(
+          "[NOTIFICATION SECURITY BLOCK] FCM payload targeted to another user — suppressed.",
+          { currentUserId, fcmUserId, notifId }
+        );
+        return;
+      }
+
+      // Deduplicate: if socket already showed toast for this notificationId, skip
+      if (notifId && !shouldShowToastForId(notifId)) {
+        return;
+      }
+
       try {
         playNotificationSound({ cooldownMs: 900 });
       } catch { /* silent */ }
@@ -79,10 +147,38 @@ export function NotificationProvider({ children }) {
     },
   });
 
+  // Bind Socket.IO realtime notification listener
   useNotificationSocket({
     enabled: true,
     onNotification: ({ notification, unreadCount: socketUnread }) => {
       if (!notification) return;
+
+      // ── Defense-in-depth recipient check ──────────────────────────────────
+      // The backend is the authoritative isolation boundary; this check guards
+      // against stale socket payloads during account switches.
+      // If notification.userId is present, it MUST match the currently
+      // authenticated user. If it does not match, block the toast entirely.
+      const currentUserId = getCurrentAuthenticatedUserId();
+      const notifUserId = notification.userId ? String(notification.userId) : null;
+
+      if (notifUserId && currentUserId && notifUserId !== currentUserId) {
+        console.warn(
+          "[NOTIFICATION SECURITY BLOCK] Received notification for a different user — suppressed.",
+          { currentUserId, notificationRecipientUserId: notifUserId, notificationId: notification._id }
+        );
+        return; // Do NOT display this toast or update state
+      }
+      // ── End recipient check ───────────────────────────────────────────────
+
+      // Deduplicate: if FCM foreground already showed toast for this notificationId, skip
+      if (notification._id && !shouldShowToastForId(notification._id)) {
+        return;
+      }
+
+      console.info(
+        `[NOTIFICATION TOAST] authenticatedUserId=${currentUserId} ` +
+        `notificationId=${notification._id} recipientUserId=${notifUserId}`
+      );
 
       addNotificationToTop(notification);
       setUnreadCount((prev) =>
@@ -115,17 +211,23 @@ export function NotificationProvider({ children }) {
     },
   });
 
-  // Pull initial unread count on login/route change
+  // Pull initial unread count on login/route change.
+  // Runs when a token exists — does NOT rely on client-supplied userId.
   useEffect(() => {
     const ownerToken = localStorage.getItem("ownerToken");
     const adminToken = localStorage.getItem("adminToken");
-    
+
     if (ownerToken || adminToken) {
+      const currentUserId = getCurrentAuthenticatedUserId();
+      console.info(`[NOTIFICATION CLIENT INIT] authenticatedUserId=${currentUserId}`);
       fetchUnread();
       const id = setInterval(() => {
         fetchUnread();
       }, 30000);
       return () => clearInterval(id);
+    } else {
+      // No token present (logout occurred) — clear notification state
+      clearNotificationState();
     }
   }, [location.pathname]);
 
@@ -187,6 +289,7 @@ export function NotificationProvider({ children }) {
       markAllRead,
       markAsRead,
       refresh: fetchUnread,
+      clearNotificationState,
       connect: () => {
         isConnectedRef.current = true;
       },

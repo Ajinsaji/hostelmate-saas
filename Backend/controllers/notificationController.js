@@ -1,6 +1,11 @@
 const notificationService = require("../services/notificationCenterService");
 const { logger } = require("../utils/logger");
 
+// ─────────────────────────────────────────────────────────────────────────────
+// SECURITY: authenticatedUserId is ALWAYS derived from the verified JWT,
+// never from client-supplied req.body fields.
+// ─────────────────────────────────────────────────────────────────────────────
+
 function getUserContext(req) {
   const userId =
     req.owner?.ownerId ||
@@ -11,20 +16,38 @@ function getUserContext(req) {
     req.admin?._id ||
     null;
 
+  // hostelId from JWT/session only — not req.body (business context, not security boundary)
+  const hostelId =
+    req.owner?.hostelId ||
+    req.user?.hostelId ||
+    null;
+
   return {
-    hostelId: req.owner?.hostelId || req.user?.hostelId || req.body?.hostelId || null,
+    hostelId,
     userId,
-    ip: req.ip || req.headers["x-forwarded-for"] || "",
+    ip: req.ip || req.headers?.["x-forwarded-for"] || "",
   };
 }
 
 const dispatchNotification = async (req, res) => {
   try {
     const userCtx = getUserContext(req);
+
+    // SECURITY: strip server-owned identity fields from req.body.
+    // userId, recipientId, recipientUserId, hostelId, and createdBy must
+    // be resolved server-side — never accepted from the client payload.
+    const {
+      // eslint-disable-next-line no-unused-vars
+      userId: _u, recipientId: _r, recipientUserId: _rv,
+      createdBy: _cb, hostelId: _h,
+      ...safeBody
+    } = req.body || {};
+
     const notification = await notificationService.dispatchNotification({
+      ...safeBody,
       hostelId: userCtx.hostelId,
       createdBy: userCtx.userId,
-      ...req.body,
+      // Caller must supply recipientUserId in safeBody from a server-resolved source
     });
     return res.status(201).json({ success: true, message: "Notification Dispatched", notification });
   } catch (err) {
@@ -37,9 +60,11 @@ const getNotifications = async (req, res) => {
   try {
     res.set("Cache-Control", "no-cache, no-store, must-revalidate");
     const userCtx = getUserContext(req);
+
+    logger.info(`[NOTIFICATION CLIENT INIT] authenticatedUserId=${userCtx.userId}`);
+
     const result = await notificationService.getNotifications({
-      hostelId: userCtx.hostelId,
-      recipientId: userCtx.userId,
+      authenticatedUserId: userCtx.userId,
       unreadOnly: req.query.unreadOnly === "true",
       page: req.query.page,
       limit: req.query.limit,
@@ -56,8 +81,7 @@ const getUnreadCount = async (req, res) => {
     res.set("Cache-Control", "no-cache, no-store, must-revalidate");
     const userCtx = getUserContext(req);
     const count = await notificationService.getUnreadCount({
-      hostelId: userCtx.hostelId,
-      recipientId: userCtx.userId,
+      authenticatedUserId: userCtx.userId,
     });
     return res.status(200).json({ success: true, unreadCount: count });
   } catch (err) {
@@ -68,11 +92,15 @@ const getUnreadCount = async (req, res) => {
 
 const markAsRead = async (req, res) => {
   try {
-    const notification = await notificationService.markAsRead(req.params.id);
+    const userCtx = getUserContext(req);
+    // SECURITY: ownership enforced inside markAsRead service — 404 if notification
+    // does not belong to this authenticatedUserId
+    const notification = await notificationService.markAsRead(req.params.id, userCtx.userId);
     return res.status(200).json({ success: true, message: "Marked as Read", notification });
   } catch (err) {
     logger.error("markAsRead error:", err);
-    return res.status(400).json({ success: false, message: err.message || "Failed to mark as read" });
+    const status = err.message === "Notification not found" ? 404 : 400;
+    return res.status(status).json({ success: false, message: err.message || "Failed to mark as read" });
   }
 };
 
@@ -80,8 +108,7 @@ const markAllAsRead = async (req, res) => {
   try {
     const userCtx = getUserContext(req);
     await notificationService.markAllAsRead({
-      hostelId: userCtx.hostelId,
-      recipientId: userCtx.userId,
+      authenticatedUserId: userCtx.userId,
     });
     return res.status(200).json({ success: true, message: "All Notifications Marked as Read" });
   } catch (err) {

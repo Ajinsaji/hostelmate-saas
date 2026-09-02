@@ -19,6 +19,8 @@ function setSocketServer(server) {
     },
   });
 
+  // Socket authentication middleware — userId resolved from verified JWT only.
+  // We never trust socket.handshake.query.userId or any frontend-supplied identity.
   io.use((socket, next) => {
     try {
       const token = socket.handshake.auth?.token || getBearerToken(socket.handshake.headers);
@@ -35,6 +37,7 @@ function setSocketServer(server) {
         return next(new Error("Invalid token payload"));
       }
 
+      // userId is the single canonical identity used for room assignment
       socket.user = {
         userId: payload.userId || payload.ownerId,
         role: payload.role,
@@ -49,26 +52,53 @@ function setSocketServer(server) {
   io.on("connection", (socket) => {
     const userId = socket.user?.userId;
     if (userId) {
+      // User-specific room — all notifications for this user are emitted here
       socket.join(`user_${userId}`);
+      logger.info(`[SOCKET CONNECTED] userId=${userId} socketId=${socket.id} room=user_${userId}`);
     }
 
     socket.on("disconnect", () => {
-      // no-op
+      // Room membership is cleaned up automatically by Socket.IO on disconnect
     });
   });
 }
 
+/**
+ * Emit a new notification to a specific user's socket room.
+ *
+ * SECURITY INVARIANT:
+ *   - userId is the authoritative recipient identity
+ *   - Emits ONLY to `user_${userId}` — never broadcasts to all clients
+ *   - Unread count is scoped to this userId using readAt:null (schema-accurate)
+ *
+ * @param {string|ObjectId} userId — canonical recipient (Notification.userId)
+ * @param {object} notification   — the saved Notification document
+ */
 async function emitNotificationToUser({ userId, notification }) {
   if (!io || !userId || !notification) return;
 
   try {
-    const query = { userId, isRead: false };
-    if (notification.hostelId) query.hostelId = notification.hostelId;
-    const unreadCount = await Notification.countDocuments(query);
-    io.to(`user_${userId}`).emit("notification:new", {
+    // Unread count scoped strictly to this user.
+    // readAt: null is the schema-accurate "unread" sentinel (not isRead, not status).
+    // $or covers both canonical userId field and legacy recipientId (migration compat).
+    const unreadCount = await Notification.countDocuments({
+      $or: [
+        { userId },
+        { recipientId: userId },
+      ],
+      readAt: null,
+    });
+
+    const room = `user_${userId}`;
+    io.to(room).emit("notification:new", {
       notification,
       unreadCount,
     });
+
+    logger.info(
+      `[NOTIFICATION SOCKET EMIT] recipientUserId=${userId} ` +
+      `notificationId=${notification._id} room=${room} unreadCount=${unreadCount}`
+    );
   } catch (e) {
     logger.error("emitNotificationToUser error:", e?.message || e);
   }

@@ -91,9 +91,16 @@ const notificationSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+// Canonical user-scoped query index: userId is the authoritative ownership field
+notificationSchema.index({ userId: 1, readAt: 1, createdAt: -1 });
+
+// Migration compat: recipientId fallback (will be removed after backfill)
+notificationSchema.index({ recipientId: 1, readAt: 1, createdAt: -1 });
+
+// FCM push delivery index (existing — kept)
 notificationSchema.index({ userId: 1, isProcessedForPush: 1 });
 
-notificationSchema.index({ hostelId: 1, recipientId: 1, status: 1 });
+// Legacy hostelId index kept for admin/audit views (NOT used as security boundary)
 notificationSchema.index({ hostelId: 1, createdAt: -1 });
 
 module.exports = mongoose.model("Notification", notificationSchema);

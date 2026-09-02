@@ -42,10 +42,21 @@ async function scanAndNotifyLowStock(hostelId) {
     $expr: { $lte: ["$currentStock", "$reorderLevel"] },
   });
 
+  if (!lowStockItems.length) return 0;
+
+  const Hostel = require("../models/Hostel");
+  const hostel = await Hostel.findById(hostelId).select("ownerId owner").lean();
+  const ownerId = hostel?.ownerId || hostel?.owner;
+  if (!ownerId) {
+    logger.warn(`[Inventory] No owner found for hostel ${hostelId} - skipping notification dispatch`);
+    return lowStockItems.length;
+  }
+
   for (const item of lowStockItems) {
     try {
       await dispatchNotification({
         hostelId,
+        recipientUserId: ownerId,
         type: "Maintenance Alert",
         title: `Low Stock Alert: ${item.itemName}`,
         message: `Inventory item ${item.itemName} stock is low (${item.currentStock} ${item.unit} remaining). Reorder level: ${item.reorderLevel} ${item.unit}.`,

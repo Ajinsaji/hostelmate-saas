@@ -65,6 +65,12 @@ async function publishNotification({
   icon,
   actionUrl,
 }) {
+  const mongoose = require("mongoose");
+  if (!userId || !mongoose.Types.ObjectId.isValid(userId)) {
+    logger.error(`[NOTIFICATION PUBLISHER] Refusing to publish notification without valid recipient userId: ${userId} - creation aborted (fail-closed)`);
+    return null;
+  }
+
   const timer = createPerformanceTimer("publishNotification", logger);
   const normalizedMeta = meta || {};
   const resolvedCategory = category || NOTIFICATION_CATEGORY_BY_TYPE[type] || "updates";
@@ -90,6 +96,12 @@ async function publishNotification({
     isProcessedForPush: false,
     meta: normalizedMeta,
   }));
+
+  logger.info(
+    `[NOTIFICATION CREATED] notificationId=${notification._id} recipientUserId=${userId} ` +
+    `recipientRole=${role || "user"} recipientHostelId=${validHostelId || "none"} ` +
+    `type=${canonicalType} source=publishNotification`
+  );
 
   let fcmResult = null;
   try {

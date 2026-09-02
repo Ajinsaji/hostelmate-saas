@@ -25,22 +25,35 @@ class NotificationPipelineService {
         }
       }
 
-      // 1. Log notification in database satisfying DB constraints
+      // Resolve target recipient: prefer explicit userId, fallback to hostel owner
+      let canonicalUserId = userId || null;
+      if (!canonicalUserId && finalHostelId) {
+        const hostelDoc = await Hostel.findById(finalHostelId).select("ownerId owner").lean();
+        canonicalUserId = hostelDoc?.ownerId || hostelDoc?.owner || null;
+      }
+
+      if (!canonicalUserId) {
+        logger.warn(`[NotificationPipeline] No recipient userId resolved for hostel ${finalHostelId} - notification creation aborted (fail-closed)`);
+        return null;
+      }
+
+      // 1. Log notification in database with canonical userId ownership
       const notificationDoc = await Notification.create({
         tenantId: finalHostelId,
         hostelId: finalHostelId,
+        userId: canonicalUserId,
+        recipientId: canonicalUserId,
         title,
         message: body,
         type: "System",
         status: "Sent",
-        recipientId: userId || null,
         recipientType: "Owner",
       });
 
       // 2. Fetch User Preferences (Fallback to default if not set)
       let preferences = { push: true, email: true, sms: false, whatsapp: false };
-      if (userId) {
-        const settings = await NotificationSetting.findOne({ userId }).lean();
+      if (canonicalUserId) {
+        const settings = await NotificationSetting.findOne({ userId: canonicalUserId }).lean();
         if (settings) {
           preferences = {
             push: settings.enablePush !== false,
