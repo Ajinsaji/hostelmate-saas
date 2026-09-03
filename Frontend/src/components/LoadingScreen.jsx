@@ -21,12 +21,29 @@ const tips = [
   "📈 Tip: Export reports for financial and occupancy analysis",
 ];
 
-function LoadingScreen() {
+function LoadingScreen({ onVideoEnded, isNetworkLoading = true }) {
   const [currentMessageIndex, setCurrentMessageIndex] = useState(0);
   const [progress, setProgress] = useState(0);
   const [currentTip, setCurrentTip] = useState(0);
   const [displayText, setDisplayText] = useState("");
   const [isTyping, setIsTyping] = useState(true);
+  // Video state
+  const [videoFinished, setVideoFinished] = useState(false);
+
+  const handleVideoEnd = () => {
+    if (!videoFinished) {
+      setVideoFinished(true);
+      if (onVideoEnded) onVideoEnded();
+    }
+  };
+
+  // Safe fallback timeout (in case autoplay is blocked and error event doesn't fire)
+  useEffect(() => {
+    const fallbackTimer = setTimeout(() => {
+      handleVideoEnd();
+    }, 12000);
+    return () => clearTimeout(fallbackTimer);
+  }, []);
 
   // Message rotation effect
   useEffect(() => {
@@ -35,17 +52,14 @@ function LoadingScreen() {
       setIsTyping(true);
       setDisplayText("");
     }, 4000);
-
     return () => clearInterval(interval);
   }, []);
 
   // Typing animation effect
   useEffect(() => {
     if (!isTyping) return;
-
     const currentMessage = messages[currentMessageIndex];
     let charIndex = 0;
-
     const typingInterval = setInterval(() => {
       if (charIndex <= currentMessage.length) {
         setDisplayText(currentMessage.slice(0, charIndex));
@@ -55,7 +69,6 @@ function LoadingScreen() {
         clearInterval(typingInterval);
       }
     }, 30);
-
     return () => clearInterval(typingInterval);
   }, [currentMessageIndex, isTyping]);
 
@@ -67,7 +80,6 @@ function LoadingScreen() {
         return prev + Math.random() * 15;
       });
     }, 800);
-
     return () => clearInterval(interval);
   }, []);
 
@@ -76,12 +88,44 @@ function LoadingScreen() {
     const interval = setInterval(() => {
       setCurrentTip((prev) => (prev + 1) % tips.length);
     }, 5000);
-
     return () => clearInterval(interval);
   }, []);
 
+  // Use 100dvh for mobile support, fallback to 100vh
+  const videoStyle = {
+    position: "fixed",
+    inset: 0,
+    width: "100vw",
+    height: "100dvh",
+    minHeight: "100vh",
+    overflow: "hidden",
+    objectFit: "cover",
+    objectPosition: "center",
+    backgroundColor: "#081028",
+  };
+
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center overflow-hidden">
+    <div className={`fixed inset-0 z-[9999] flex items-center justify-center overflow-hidden ${!videoFinished ? 'bg-[#081028]' : ''}`}>
+      {/* Video Overlay Layer */}
+      {!videoFinished && (
+        <div className="absolute inset-0 z-[10000] flex items-center justify-center overflow-hidden bg-[#081028]" style={{ width: "100vw", height: "100dvh", minHeight: "100vh" }}>
+          <video
+            src="/hostelmate-intro.mp4"
+            autoPlay
+            muted
+            playsInline
+            preload="auto"
+            style={videoStyle}
+            onEnded={handleVideoEnd}
+            onError={handleVideoEnd} // Fallback on error
+            aria-hidden="true"
+          />
+        </div>
+      )}
+
+      {/* Show the original Loading UI underneath, revealed when video finishes IF network is still loading */}
+      {(videoFinished || isNetworkLoading) && (
+      <>
       {/* Animated Background Gradient */}
       <div className="absolute inset-0 bg-gradient-to-br from-[#081028] via-[#0B1739] to-[#081028]">
         {/* Animated Glow Elements */}
@@ -323,6 +367,8 @@ function LoadingScreen() {
           }
         }
       `}</style>
+      </>
+      )}
     </div>
   );
 }

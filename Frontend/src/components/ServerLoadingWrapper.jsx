@@ -10,12 +10,10 @@ import ConnectionErrorScreen from "./ConnectionErrorScreen";
  * - Dismisses full screen blocking UI once connection is ONLINE so children render cleanly
  */
 function ServerLoadingWrapper({ children }) {
-  const { connectionState, isChecking, hasCompletedInitialCheck } = useConnection();
+  const { connectionState, hasCompletedInitialCheck } = useConnection();
+  const [videoEnded, setVideoEnded] = React.useState(false);
 
-  // 1. Startup phase: initial health check in progress
-  if (!hasCompletedInitialCheck || connectionState === CONNECTION_STATES.INITIALIZING) {
-    return <LoadingScreen />;
-  }
+  const isNetworkLoading = !hasCompletedInitialCheck || connectionState === CONNECTION_STATES.INITIALIZING;
 
   // 2. Startup failure: Device offline or HostelMate server unreachable on app boot
   if (
@@ -25,8 +23,28 @@ function ServerLoadingWrapper({ children }) {
     return <ConnectionErrorScreen />;
   }
 
-  // 3. Operational phase: Connection is ONLINE (or error recovered)
-  return <>{children}</>;
+  // We show the Splash/Loading Screen if the network is still checking OR the video is still playing
+  const showSplash = isNetworkLoading || !videoEnded;
+
+  return (
+    <>
+      {/*
+        Operational phase: Mount children as soon as the initial network check finishes.
+        This allows authentication to bootstrap in the background while the video plays!
+      */}
+      {!isNetworkLoading && children}
+
+      {/*
+        Startup phase: Keep the loading/splash overlay active until BOTH network and video are done.
+      */}
+      {showSplash && (
+        <LoadingScreen
+          onVideoEnded={() => setVideoEnded(true)}
+          isNetworkLoading={isNetworkLoading}
+        />
+      )}
+    </>
+  );
 }
 
 export default ServerLoadingWrapper;
