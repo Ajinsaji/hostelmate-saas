@@ -110,7 +110,7 @@ function LoadingScreen({ onVideoEnded, isNetworkLoading = true }) {
       {!videoFinished && (
         <div className="absolute inset-0 z-[10000] flex items-center justify-center overflow-hidden bg-[#081028]" style={{ width: "100vw", height: "100dvh", minHeight: "100vh" }}>
           <video
-            src="/hostelmate-intro.mp4"
+            src="/intro.mp4"
             autoPlay
             muted
             playsInline
@@ -189,7 +189,7 @@ function LoadingScreen({ onVideoEnded, isNetworkLoading = true }) {
                 boxShadow: "0 0 30px rgba(34, 197, 94, 0.2)",
               }}
             >
-              <Building2 size={48} className="text-green-400" />
+              <img src="/image.png" alt="HostelMate Logo" className="w-16 h-16 object-contain" />
             </div>
 
             {/* Pulsing Ring */}
