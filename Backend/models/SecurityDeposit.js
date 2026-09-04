@@ -51,7 +51,7 @@ const securityDepositSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-securityDepositSchema.pre("save", function (next) {
+securityDepositSchema.pre("save", function () {
   if (!this.tenantId) {
     this.tenantId = this.hostelId;
   }
@@ -61,7 +61,6 @@ securityDepositSchema.pre("save", function (next) {
   } else if (this.refundedAmount > 0 && this.refundedAmount < this.depositAmount) {
     this.status = "Partially Refunded";
   }
-  next();
 });
 
 securityDepositSchema.index({ hostelId: 1, residentId: 1 });

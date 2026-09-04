@@ -111,8 +111,14 @@ async function createResident(data, userContext = {}) {
 /**
  * Update Resident Profile
  */
+/**
+ * Update Resident Profile
+ */
 async function updateResident(residentId, updateData, userContext = {}) {
-  const resident = await Resident.findOne({ _id: residentId, isDeleted: false });
+  const hostelId = userContext.hostelId;
+  if (!hostelId) throw new Error("Hostel context required");
+
+  const resident = await Resident.findOne({ _id: residentId, hostelId, isDeleted: false });
   if (!resident) throw new Error("Resident not found");
 
   const oldValue = resident.toObject();
@@ -126,15 +132,20 @@ async function updateResident(residentId, updateData, userContext = {}) {
 
   updateData.updatedBy = userContext.userId || null;
 
-  const updatedResident = await Resident.findByIdAndUpdate(residentId, updateData, { returnDocument: "after" });
+  const updatedResident = await Resident.findOneAndUpdate(
+    { _id: residentId, hostelId, isDeleted: false },
+    updateData,
+    { returnDocument: "after" }
+  );
+  if (!updatedResident) throw new Error("Resident not found");
 
   await recordAuditLog({
-    hostelId: resident.hostelId,
+    hostelId,
     userId: userContext.userId,
     action: `Updated profile for resident ${updatedResident.fullName}`,
     actionType: "UPDATE",
     entity: "Resident",
-    targetId: resident._id,
+    targetId: updatedResident._id,
     oldValue,
     newValue: updatedResident.toObject(),
     details: updateData,
@@ -148,20 +159,21 @@ async function updateResident(residentId, updateData, userContext = {}) {
  * Soft Delete Resident (Preserves financial history, frees bed if assigned)
  */
 async function softDeleteResident(residentId, userContext = {}) {
-  const resident = await Resident.findById(residentId);
+  const hostelId = userContext.hostelId;
+  if (!hostelId) throw new Error("Hostel context required");
+
+  const resident = await Resident.findOne({ _id: residentId, hostelId, isDeleted: false });
   if (!resident) throw new Error("Resident not found");
   if (resident.isDeleted) throw new Error("Resident is already deleted");
 
   // If resident was occupying a bed, release bed & update room occupancy
   if (resident.bedId) {
-    const oldBed = await Bed.findById(resident.bedId);
-    if (oldBed) {
-      oldBed.status = "vacant";
-      oldBed.residentId = null;
-      await oldBed.save();
-    }
+    await Bed.findOneAndUpdate(
+      { _id: resident.bedId, hostelId },
+      { $set: { status: "vacant", residentId: null } }
+    );
     if (resident.roomId) {
-      const oldRoom = await Room.findById(resident.roomId);
+      const oldRoom = await Room.findOne({ _id: resident.roomId, hostelId });
       if (oldRoom && oldRoom.occupiedBeds > 0) {
         oldRoom.occupiedBeds -= 1;
         await oldRoom.save();
@@ -169,88 +181,97 @@ async function softDeleteResident(residentId, userContext = {}) {
     }
   }
 
-  resident.isDeleted = true;
-  resident.deletedAt = new Date();
-  resident.isActive = false;
-  resident.roomId = null;
-  resident.bedId = null;
-  await resident.save();
+  const deletedResident = await Resident.findOneAndUpdate(
+    { _id: residentId, hostelId, isDeleted: false },
+    {
+      $set: {
+        isDeleted: true,
+        deletedAt: new Date(),
+        isActive: false,
+        roomId: null,
+        bedId: null,
+      }
+    },
+    { returnDocument: "after" }
+  );
+  if (!deletedResident) throw new Error("Resident not found");
 
   await recordAuditLog({
-    hostelId: resident.hostelId,
+    hostelId,
     userId: userContext.userId,
     action: `Soft deleted resident ${resident.fullName}`,
     actionType: "DELETE",
     entity: "Resident",
     targetId: resident._id,
     oldValue: { isDeleted: false },
-    newValue: { isDeleted: true, deletedAt: resident.deletedAt },
+    newValue: { isDeleted: true, deletedAt: deletedResident.deletedAt },
     details: { reason: "Soft Delete Requested" },
     ipAddress: userContext.ip,
   });
 
-  return resident;
+  return deletedResident;
 }
 
 /**
  * Restore Soft Deleted Resident
  */
 async function restoreResident(residentId, userContext = {}) {
-  const resident = await Resident.findById(residentId);
-  if (!resident) throw new Error("Resident not found");
-  if (!resident.isDeleted) throw new Error("Resident is active and not deleted");
+  const hostelId = userContext.hostelId;
+  if (!hostelId) throw new Error("Hostel context required");
 
-  resident.isDeleted = false;
-  resident.deletedAt = null;
-  resident.isActive = true;
-  resident.status = "Pending Admission";
-  await resident.save();
+  const restoredResident = await Resident.findOneAndUpdate(
+    { _id: residentId, hostelId, isDeleted: true },
+    {
+      $set: {
+        isDeleted: false,
+        deletedAt: null,
+        isActive: true,
+        status: "Pending Admission",
+      }
+    },
+    { returnDocument: "after" }
+  );
+  if (!restoredResident) throw new Error("Resident not found or not deleted");
 
   await recordAuditLog({
-    hostelId: resident.hostelId,
+    hostelId,
     userId: userContext.userId,
-    action: `Restored resident ${resident.fullName}`,
+    action: `Restored resident ${restoredResident.fullName}`,
     actionType: "RESTORE",
     entity: "Resident",
-    targetId: resident._id,
+    targetId: restoredResident._id,
     oldValue: { isDeleted: true },
     newValue: { isDeleted: false },
     ipAddress: userContext.ip,
   });
 
-  return resident;
+  return restoredResident;
 }
 
 /**
  * Check-In Workflow (Assigns bed & updates room occupancy)
  */
 async function checkInResident({ residentId, roomId, bedId, checkInDate = new Date() }, userContext = {}) {
-  const resident = await Resident.findOne({ _id: residentId, isDeleted: false });
+  const hostelId = userContext.hostelId;
+  if (!hostelId) throw new Error("Hostel context required");
+
+  const resident = await Resident.findOne({ _id: residentId, hostelId, isDeleted: false });
   if (!resident) throw new Error("Resident not found");
 
   if (!roomId || !bedId) throw new Error("Room ID and Bed ID are required for check-in");
 
-  const room = await Room.findById(roomId);
+  const room = await Room.findOne({ _id: roomId, hostelId, isDeleted: false });
   if (!room) throw new Error("Target room not found");
 
-  // Strict tenant isolation
-  if (room.hostelId.toString() !== resident.hostelId.toString()) {
-    throw new Error("Cannot check in resident to a room in a different hostel");
-  }
-
-  const bed = await Bed.findById(bedId);
+  const bed = await Bed.findOne({ _id: bedId, roomId: room._id, hostelId, isDeleted: false });
   if (!bed) throw new Error("Target bed not found");
-
-  if (bed.hostelId.toString() !== resident.hostelId.toString() || bed.roomId.toString() !== room._id.toString()) {
-    throw new Error("Selected bed does not belong to this room and hostel");
-  }
 
   // Atomic bed claim to prevent race conditions
   const claimedBed = await Bed.findOneAndUpdate(
     {
       _id: bedId,
-      roomId,
-      hostelId: resident.hostelId,
+      roomId: room._id,
+      hostelId,
       $or: [{ status: { $in: ["Vacant", "vacant"] } }, { residentId: resident._id }]
     },
     { $set: { status: "Occupied", residentId: resident._id } },
@@ -263,11 +284,12 @@ async function checkInResident({ residentId, roomId, bedId, checkInDate = new Da
 
   // Release previous bed if resident was in another bed
   if (resident.bedId && resident.bedId.toString() !== bedId.toString()) {
-    await Bed.findByIdAndUpdate(resident.bedId, {
-      $set: { status: "Vacant", residentId: null }
-    });
+    await Bed.findOneAndUpdate(
+      { _id: resident.bedId, hostelId },
+      { $set: { status: "Vacant", residentId: null } }
+    );
     if (resident.roomId && resident.roomId.toString() !== roomId.toString()) {
-      const prevRoom = await Room.findById(resident.roomId);
+      const prevRoom = await Room.findOne({ _id: resident.roomId, hostelId });
       if (prevRoom && prevRoom.occupiedBeds > 0) {
         prevRoom.occupiedBeds -= 1;
         await prevRoom.save();
@@ -281,48 +303,58 @@ async function checkInResident({ residentId, roomId, bedId, checkInDate = new Da
     await room.save();
   }
 
-  resident.roomId = roomId;
-  resident.bedId = bedId;
-  resident.checkInDate = checkInDate;
-  resident.status = "Active";
-  resident.isActive = true;
-  await resident.save();
+  const updatedResident = await Resident.findOneAndUpdate(
+    { _id: residentId, hostelId, isDeleted: false },
+    {
+      $set: {
+        roomId: room._id,
+        bedId: bed._id,
+        checkInDate,
+        status: "Active",
+        isActive: true,
+      }
+    },
+    { returnDocument: "after" }
+  );
 
   await recordAuditLog({
-    hostelId: resident.hostelId,
+    hostelId,
     userId: userContext.userId,
-    action: `Checked in resident ${resident.fullName} to Room ${room.roomNumber}, Bed ${bed.bedNumber}`,
+    action: `Checked in resident ${updatedResident.fullName} to Room ${room.roomNumber}, Bed ${bed.bedNumber}`,
     actionType: "CHECK_IN",
     entity: "Resident",
-    targetId: resident._id,
-    newValue: { roomId, bedId, status: "Active", checkInDate },
+    targetId: updatedResident._id,
+    newValue: { roomId: room._id, bedId: bed._id, status: "Active", checkInDate },
     details: { roomNumber: room.roomNumber, bedNumber: bed.bedNumber },
     ipAddress: userContext.ip,
   });
 
   const EventBus = require("./EventBus");
   const Hostel = require("../models/Hostel");
-  const hostel = resident.hostelId ? await Hostel.findById(resident.hostelId).select("hostelName").lean() : null;
+  const hostel = await Hostel.findById(hostelId).select("hostelName").lean();
 
   EventBus.emit("ROOM_ASSIGNED", {
     workspaceId: userContext.workspaceId,
-    hostelId: resident.hostelId,
-    residentId: resident._id,
-    residentName: resident.fullName || `${resident.firstName || ""} ${resident.lastName || ""}`.trim(),
-    phone: resident.phone,
+    hostelId,
+    residentId: updatedResident._id,
+    residentName: updatedResident.fullName || `${updatedResident.firstName || ""} ${updatedResident.lastName || ""}`.trim(),
+    phone: updatedResident.phone,
     hostelName: hostel?.hostelName || "HostelMate",
     roomNumber: room.roomNumber,
     bedNumber: bed.bedNumber,
   });
 
-  return resident;
+  return updatedResident;
 }
 
 /**
  * Check-Out Workflow (Frees bed & decrements room occupancy)
  */
 async function checkOutResident({ residentId, actualCheckoutDate = new Date(), remarks = "" }, userContext = {}) {
-  const resident = await Resident.findOne({ _id: residentId, isDeleted: false });
+  const hostelId = userContext.hostelId;
+  if (!hostelId) throw new Error("Hostel context required");
+
+  const resident = await Resident.findOne({ _id: residentId, hostelId, isDeleted: false });
   if (!resident) throw new Error("Resident not found");
 
   if (resident.status === "Checked Out") {
@@ -331,83 +363,85 @@ async function checkOutResident({ residentId, actualCheckoutDate = new Date(), r
 
   // Free assigned bed
   if (resident.bedId) {
-    await Bed.findByIdAndUpdate(resident.bedId, {
-      $set: { status: "Vacant", residentId: null }
-    });
+    await Bed.findOneAndUpdate(
+      { _id: resident.bedId, hostelId },
+      { $set: { status: "Vacant", residentId: null } }
+    );
   }
 
   // Decrement room occupancy
   if (resident.roomId) {
-    const room = await Room.findById(resident.roomId);
+    const room = await Room.findOne({ _id: resident.roomId, hostelId });
     if (room && room.occupiedBeds > 0) {
       room.occupiedBeds -= 1;
       await room.save();
     }
   }
 
-  resident.status = "Checked Out";
-  resident.actualCheckoutDate = actualCheckoutDate;
-  if (remarks) resident.remarks = remarks;
-  resident.roomId = null;
-  resident.bedId = null;
-  await resident.save();
+  const updatedResident = await Resident.findOneAndUpdate(
+    { _id: residentId, hostelId, isDeleted: false },
+    {
+      $set: {
+        status: "Checked Out",
+        actualCheckoutDate,
+        roomId: null,
+        bedId: null,
+        ...(remarks ? { remarks } : {})
+      }
+    },
+    { returnDocument: "after" }
+  );
 
   await recordAuditLog({
-    hostelId: resident.hostelId,
+    hostelId,
     userId: userContext.userId,
-    action: `Checked out resident ${resident.fullName}`,
+    action: `Checked out resident ${updatedResident.fullName}`,
     actionType: "CHECK_OUT",
     entity: "Resident",
-    targetId: resident._id,
+    targetId: updatedResident._id,
     newValue: { status: "Checked Out", actualCheckoutDate, remarks },
     ipAddress: userContext.ip,
   });
 
   const EventBus = require("./EventBus");
   const Hostel = require("../models/Hostel");
-  const hostel = resident.hostelId ? await Hostel.findById(resident.hostelId).select("hostelName").lean() : null;
+  const hostel = await Hostel.findById(hostelId).select("hostelName").lean();
 
   EventBus.emit("RESIDENT_CHECKED_OUT", {
     workspaceId: userContext.workspaceId,
-    hostelId: resident.hostelId,
-    residentId: resident._id,
-    residentName: resident.fullName || `${resident.firstName || ""} ${resident.lastName || ""}`.trim(),
-    phone: resident.phone,
+    hostelId,
+    residentId: updatedResident._id,
+    residentName: updatedResident.fullName || `${updatedResident.firstName || ""} ${updatedResident.lastName || ""}`.trim(),
+    phone: updatedResident.phone,
     hostelName: hostel?.hostelName || "HostelMate",
     actualCheckoutDate,
   });
 
-  return resident;
+  return updatedResident;
 }
 
 /**
  * Room / Bed Transfer Workflow
  */
 async function transferRoomOrBed({ residentId, newRoomId, newBedId, reason = "" }, userContext = {}) {
-  const resident = await Resident.findOne({ _id: residentId, isDeleted: false });
+  const hostelId = userContext.hostelId;
+  if (!hostelId) throw new Error("Hostel context required");
+
+  const resident = await Resident.findOne({ _id: residentId, hostelId, isDeleted: false });
   if (!resident) throw new Error("Resident not found");
 
-  const newRoom = await Room.findById(newRoomId);
+  const newRoom = await Room.findOne({ _id: newRoomId, hostelId, isDeleted: false });
   if (!newRoom) throw new Error("New room not found");
 
-  // Strict tenant isolation
-  if (newRoom.hostelId.toString() !== resident.hostelId.toString()) {
-    throw new Error("Cannot transfer resident to a room in a different hostel");
-  }
-
-  const newBed = await Bed.findById(newBedId);
+  const newBed = await Bed.findOne({ _id: newBedId, roomId: newRoom._id, hostelId, isDeleted: false });
   if (!newBed) throw new Error("New bed not found");
-
-  if (newBed.hostelId.toString() !== resident.hostelId.toString() || newBed.roomId.toString() !== newRoom._id.toString()) {
-    throw new Error("Selected bed does not belong to the target room and hostel");
-  }
 
   // Atomic claim on new bed
   const claimedBed = await Bed.findOneAndUpdate(
     {
       _id: newBedId,
-      roomId: newRoomId,
-      hostelId: resident.hostelId,
+      roomId: newRoom._id,
+      hostelId,
       $or: [{ status: { $in: ["Vacant", "vacant"] } }, { residentId: resident._id }]
     },
     { $set: { status: "Occupied", residentId: resident._id } },
@@ -423,14 +457,15 @@ async function transferRoomOrBed({ residentId, newRoomId, newBedId, reason = "" 
 
   // 1. Release old bed if changing beds
   if (oldBedId && oldBedId.toString() !== newBedId.toString()) {
-    await Bed.findByIdAndUpdate(oldBedId, {
-      $set: { status: "Vacant", residentId: null }
-    });
+    await Bed.findOneAndUpdate(
+      { _id: oldBedId, hostelId },
+      { $set: { status: "Vacant", residentId: null } }
+    );
   }
 
   // 2. Decrement old room count & increment new room count
   if (oldRoomId && oldRoomId.toString() !== newRoomId.toString()) {
-    const oldRoom = await Room.findById(oldRoomId);
+    const oldRoom = await Room.findOne({ _id: oldRoomId, hostelId });
     if (oldRoom && oldRoom.occupiedBeds > 0) {
       oldRoom.occupiedBeds -= 1;
       await oldRoom.save();
@@ -439,78 +474,93 @@ async function transferRoomOrBed({ residentId, newRoomId, newBedId, reason = "" 
     await newRoom.save();
   }
 
-  resident.roomId = newRoomId;
-  resident.bedId = newBedId;
-  await resident.save();
+  const updatedResident = await Resident.findOneAndUpdate(
+    { _id: residentId, hostelId, isDeleted: false },
+    {
+      $set: {
+        roomId: newRoom._id,
+        bedId: newBed._id,
+      }
+    },
+    { returnDocument: "after" }
+  );
 
   await recordAuditLog({
-    hostelId: resident.hostelId,
+    hostelId,
     userId: userContext.userId,
-    action: `Transferred resident ${resident.fullName} to Room ${newRoom.roomNumber}, Bed ${newBed.bedNumber}`,
+    action: `Transferred resident ${updatedResident.fullName} to Room ${newRoom.roomNumber}, Bed ${newBed.bedNumber}`,
     actionType: "ROOM_BED_TRANSFER",
     entity: "Resident",
-    targetId: resident._id,
+    targetId: updatedResident._id,
     oldValue: { roomId: oldRoomId, bedId: oldBedId },
-    newValue: { roomId: newRoomId, bedId: newBedId, reason },
+    newValue: { roomId: newRoom._id, bedId: newBed._id, reason },
     ipAddress: userContext.ip,
   });
 
   try {
-    const oldRoomDoc = oldRoomId ? await Room.findById(oldRoomId).select("roomNumber").lean() : null;
-    const oldBedDoc = oldBedId ? await Bed.findById(oldBedId).select("bedNumber").lean() : null;
-    const hostelDoc = await Hostel.findById(resident.hostelId).select("hostelName name").lean();
+    const oldRoomDoc = oldRoomId ? await Room.findOne({ _id: oldRoomId, hostelId }).select("roomNumber").lean() : null;
+    const oldBedDoc = oldBedId ? await Bed.findOne({ _id: oldBedId, hostelId }).select("bedNumber").lean() : null;
+    const hostelDoc = await Hostel.findById(hostelId).select("hostelName name").lean();
 
     EventBus.emit("ROOM_TRANSFERRED", {
-      residentId: resident._id,
-      hostelId: resident.hostelId,
+      residentId: updatedResident._id,
+      hostelId,
       hostelName: hostelDoc?.hostelName || hostelDoc?.name || "HostelMate",
-      residentName: resident.fullName || `${resident.firstName || ""} ${resident.lastName || ""}`.trim(),
-      phone: resident.phone,
+      residentName: updatedResident.fullName || `${updatedResident.firstName || ""} ${updatedResident.lastName || ""}`.trim(),
+      phone: updatedResident.phone,
       oldRoom: oldRoomDoc?.roomNumber || "—",
       oldBed: oldBedDoc?.bedNumber || "—",
       newRoom: newRoom.roomNumber || "—",
       newBed: newBed.bedNumber || "—",
       effectiveDate: new Date(),
-      referenceId: `TRANSFER_${resident._id}_${Date.now()}`,
+      referenceId: `TRANSFER_${updatedResident._id}_${Date.now()}`,
     });
   } catch (emitErr) {
     // Non-blocking notification emission
   }
 
-  return resident;
+  return updatedResident;
 }
 
 /**
  * Change Status Workflow
  */
 async function changeResidentStatus({ residentId, newStatus, reason = "" }, userContext = {}) {
+  const hostelId = userContext.hostelId;
+  if (!hostelId) throw new Error("Hostel context required");
+
   const validStatuses = ["Pending Admission", "Active", "Notice Period", "Checked Out", "Blocked"];
   if (!validStatuses.includes(newStatus)) {
     throw new Error(`Invalid status. Must be one of: ${validStatuses.join(", ")}`);
   }
 
-  const resident = await Resident.findOne({ _id: residentId, isDeleted: false });
+  const resident = await Resident.findOne({ _id: residentId, hostelId, isDeleted: false });
   if (!resident) throw new Error("Resident not found");
 
   const oldStatus = resident.status;
-  resident.status = newStatus;
-  if (reason) resident.remarks = `${resident.remarks || ""}\n[Status Change Reason]: ${reason}`.trim();
+  let remarks = resident.remarks || "";
+  if (reason) remarks = `${remarks}\n[Status Change Reason]: ${reason}`.trim();
 
-  await resident.save();
+  const updatedResident = await Resident.findOneAndUpdate(
+    { _id: residentId, hostelId, isDeleted: false },
+    { $set: { status: newStatus, remarks } },
+    { returnDocument: "after" }
+  );
+  if (!updatedResident) throw new Error("Resident not found");
 
   await recordAuditLog({
-    hostelId: resident.hostelId,
+    hostelId,
     userId: userContext.userId,
-    action: `Changed status of resident ${resident.fullName} from ${oldStatus} to ${newStatus}`,
+    action: `Changed status of resident ${updatedResident.fullName} from ${oldStatus} to ${newStatus}`,
     actionType: "STATUS_CHANGE",
     entity: "Resident",
-    targetId: resident._id,
+    targetId: updatedResident._id,
     oldValue: { status: oldStatus },
     newValue: { status: newStatus, reason },
     ipAddress: userContext.ip,
   });
 
-  return resident;
+  return updatedResident;
 }
 
 /**

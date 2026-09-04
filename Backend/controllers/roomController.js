@@ -6,8 +6,9 @@ const Bed = require("../models/Bed");
 
 function getUserContext(req) {
   return {
-    hostelId: req.owner?.hostelId || req.user?.hostelId,
-    userId: req.owner?._id || req.user?._id,
+    hostelId: req.context?.hostelId || req.owner?.hostelId || req.user?.hostelId,
+    workspaceId: req.context?.workspaceId || req.owner?.workspaceId,
+    userId: req.context?.userId || req.owner?.ownerId || req.owner?._id || req.user?._id || req.user?.userId,
     ip: req.ip || req.headers?.["x-forwarded-for"] || "",
   };
 }

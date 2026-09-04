@@ -38,7 +38,10 @@ async function receiveDeposit(data, userContext = {}) {
  * Refund security deposit (Supports partial or full refund)
  */
 async function refundDeposit({ depositId, refundAmount, deductionAmount = 0, remarks = "" }, userContext = {}) {
-  const deposit = await SecurityDeposit.findById(depositId);
+  const hostelId = userContext.hostelId;
+  if (!hostelId) throw new Error("Hostel context required");
+
+  const deposit = await SecurityDeposit.findOne({ _id: depositId, hostelId });
   if (!deposit) throw new Error("Security deposit record not found");
 
   const amt = parseFloat(refundAmount);
@@ -48,23 +51,35 @@ async function refundDeposit({ depositId, refundAmount, deductionAmount = 0, rem
     throw new Error(`Refund amount ₹${amt} exceeds active deposit balance ₹${deposit.balance}`);
   }
 
-  deposit.refundedAmount = (deposit.refundedAmount || 0) + amt;
-  deposit.refundDate = new Date();
-  if (remarks) deposit.remarks = `${deposit.remarks || ""}\n[Refund]: ${remarks}`.trim();
-  await deposit.save();
+  const newRefunded = (deposit.refundedAmount || 0) + amt;
+  let newRemarks = deposit.remarks || "";
+  if (remarks) newRemarks = `${newRemarks}\n[Refund]: ${remarks}`.trim();
+
+  const updatedDeposit = await SecurityDeposit.findOneAndUpdate(
+    { _id: depositId, hostelId },
+    {
+      $set: {
+        refundedAmount: newRefunded,
+        refundDate: new Date(),
+        remarks: newRemarks,
+      }
+    },
+    { returnDocument: "after" }
+  );
+  if (!updatedDeposit) throw new Error("Security deposit record not found");
 
   // Record Ledger DEBIT entry for refund
   await recordLedgerEntry({
-    hostelId: deposit.hostelId,
+    hostelId,
     residentId: deposit.residentId,
     transactionType: "Refund",
     debit: amt,
     credit: 0,
-    referenceId: deposit._id,
+    referenceId: updatedDeposit._id,
     remarks: `Security Deposit Refunded: ₹${amt}${deductionAmount > 0 ? ` (Deductions: ₹${deductionAmount})` : ""}`,
   });
 
-  return deposit;
+  return updatedDeposit;
 }
 
 async function getDepositsList(hostelId, residentId) {

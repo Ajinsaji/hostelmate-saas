@@ -1,9 +1,16 @@
+const mongoose = require("mongoose");
 const Owner = require("../models/Owner");
+const Hostel = require("../models/Hostel");
 const Workspace = require("../models/Workspace");
 const Subscription = require("../models/Subscription");
 const FeatureGateService = require("../services/FeatureGateService");
 
 const contextMiddleware = async (req, res, next) => {
+  // If context is already resolved on this request, avoid duplicate execution
+  if (req.context) {
+    return next();
+  }
+
   // If not authenticated, we cannot populate context. Wait for JWT validation to populate req.user.
   if (!req.user) {
     return next();
@@ -26,17 +33,17 @@ const contextMiddleware = async (req, res, next) => {
 
       if (userRecord && userRecord.tenantId) {
         // Look up corresponding hostel workspace
-        const Hostel = require("../models/Hostel");
         const hostelRecord = await Hostel.findById(userRecord.tenantId).select("workspaceId").lean();
         if (hostelRecord) {
           workspaceId = hostelRecord.workspaceId;
         }
+        hostelId = userRecord.tenantId;
       }
 
       req.context = {
         workspaceId,
         hostelId,
-        ownerId,
+        userId: ownerId,
         role,
         plan: "base",
         permissions: [],
@@ -101,42 +108,69 @@ const contextMiddleware = async (req, res, next) => {
       }
     }
 
-    // Determine Active Hostel ID
-    // 1. Header (for frontend switches)
-    // 2. Query parameter
-    // 3. Owner activeContext
-    // 4. Default owner.hostelId (legacy compatibility)
-    const hostelId =
-      req.headers["x-active-hostel-id"] ||
-      req.query.hostelId ||
-      owner.activeHostelId ||
-      owner.hostelId ||
-      null;
+    // Determine Requested Active Hostel ID
+    const requestedHostelCandidate = req.headers["x-active-hostel-id"] || req.query.hostelId || null;
+    let resolvedHostelId = null;
+
+    if (requestedHostelCandidate) {
+      // Validate ObjectId format
+      if (!mongoose.Types.ObjectId.isValid(requestedHostelCandidate)) {
+        return res.status(400).json({
+          success: false,
+          code: "INVALID_TENANT_ID",
+          message: "Invalid hostel ID format",
+        });
+      }
+
+      const hostelRecord = await Hostel.findById(requestedHostelCandidate).select("_id workspaceId ownerId isDeleted").lean();
+
+      if (!hostelRecord || hostelRecord.isDeleted) {
+        return res.status(403).json({
+          success: false,
+          code: "FORBIDDEN_TENANT",
+          message: "Forbidden: Inaccessible or invalid hostel context.",
+        });
+      }
+
+      // Check authorization unless super_admin/admin/eps_admin
+      if (!["super_admin", "admin", "eps_admin"].includes(role)) {
+        const isAuthorized =
+          (hostelRecord.workspaceId && workspaceId && String(hostelRecord.workspaceId) === String(workspaceId)) ||
+          (hostelRecord.ownerId && String(hostelRecord.ownerId) === String(ownerId)) ||
+          (owner.hostelId && String(hostelRecord._id) === String(owner.hostelId));
+
+        if (!isAuthorized) {
+          return res.status(403).json({
+            success: false,
+            code: "FORBIDDEN_TENANT",
+            message: "Forbidden: Access denied to this hostel under your workspace context.",
+          });
+        }
+      }
+
+      resolvedHostelId = hostelRecord._id;
+    } else {
+      // Fallback chain for default active context
+      const fallback = owner.activeHostelId || owner.hostelId || null;
+      if (fallback && mongoose.Types.ObjectId.isValid(fallback)) {
+        const hostelRecord = await Hostel.findOne({ _id: fallback, isDeleted: { $ne: true } }).select("_id").lean();
+        if (hostelRecord) {
+          resolvedHostelId = hostelRecord._id;
+        }
+      }
+    }
 
     // Load Subscription and features
     const subContext = await FeatureGateService.getSubscriptionContext(workspaceId);
 
     req.context = {
       workspaceId,
-      hostelId,
-      ownerId,
+      hostelId: resolvedHostelId,
+      userId: ownerId,
       role,
       plan: subContext.planName,
       permissions: subContext.features,
     };
-
-    // Cross-workspace protection:
-    // If a hostelId is present, verify it belongs to the user's workspace (unless superadmin/admin)
-    if (hostelId && !["super_admin", "admin", "eps_admin"].includes(role)) {
-      const Hostel = require("../models/Hostel");
-      const hostelRecord = await Hostel.findById(hostelId).select("workspaceId").lean();
-      if (hostelRecord && hostelRecord.workspaceId && workspaceId && String(hostelRecord.workspaceId) !== String(workspaceId)) {
-        return res.status(403).json({
-          success: false,
-          message: "Forbidden: Access denied to this hostel under your workspace context.",
-        });
-      }
-    }
 
     next();
   } catch (error) {

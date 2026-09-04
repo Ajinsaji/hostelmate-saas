@@ -1,6 +1,8 @@
 const Room = require("../models/Room");
 const Bed = require("../models/Bed");
 const Resident = require("../models/Resident");
+const Building = require("../models/Building");
+const Floor = require("../models/Floor");
 const AuditLog = require("../models/AuditLog");
 const { logger } = require("../utils/logger");
 
@@ -144,21 +146,26 @@ async function createRoom(data, userContext = {}) {
  * Update Room details
  */
 async function updateRoom(roomId, updateData, userContext = {}) {
-  const room = await Room.findOne({ _id: roomId, isDeleted: false });
-  if (!room) throw new Error("Room not found");
+  const hostelId = userContext.hostelId;
+  if (!hostelId) throw new Error("Hostel context required");
 
   updateData.updatedBy = userContext.userId;
-  const updatedRoom = await Room.findByIdAndUpdate(roomId, updateData, { returnDocument: "after" });
+  const updatedRoom = await Room.findOneAndUpdate(
+    { _id: roomId, hostelId, isDeleted: false },
+    updateData,
+    { returnDocument: "after" }
+  );
+  if (!updatedRoom) throw new Error("Room not found");
 
   await recalculateRoomStatus(roomId);
 
   await recordAuditLog({
-    hostelId: room.hostelId,
+    hostelId,
     userId: userContext.userId,
     action: `Updated Room ${updatedRoom.roomNumber}`,
     actionType: "UPDATE",
     entity: "Room",
-    targetId: room._id,
+    targetId: updatedRoom._id,
     details: updateData,
     ipAddress: userContext.ip,
   });
@@ -170,12 +177,16 @@ async function updateRoom(roomId, updateData, userContext = {}) {
  * Soft Delete Room (Safety check: Cannot delete if occupied)
  */
 async function softDeleteRoom(roomId, userContext = {}) {
-  const room = await Room.findById(roomId);
+  const hostelId = userContext.hostelId;
+  if (!hostelId) throw new Error("Hostel context required");
+
+  const room = await Room.findOne({ _id: roomId, hostelId, isDeleted: false });
   if (!room) throw new Error("Room not found");
 
   // Safety check: Cannot delete room if it has active residents
   const activeResidentsCount = await Resident.countDocuments({
     roomId,
+    hostelId,
     status: { $in: ["Active", "active"] },
     isDeleted: false,
   });
@@ -184,15 +195,18 @@ async function softDeleteRoom(roomId, userContext = {}) {
     throw new Error(`Cannot delete room '${room.roomNumber}' because it has ${activeResidentsCount} active resident(s) staying in it`);
   }
 
-  room.isDeleted = true;
-  room.deletedAt = new Date();
-  await room.save();
+  const deletedRoom = await Room.findOneAndUpdate(
+    { _id: roomId, hostelId, isDeleted: false },
+    { isDeleted: true, deletedAt: new Date() },
+    { returnDocument: "after" }
+  );
+  if (!deletedRoom) throw new Error("Room not found");
 
-  // Soft delete associated vacant beds
-  await Bed.updateMany({ roomId }, { isDeleted: true, deletedAt: new Date() });
+  // Soft delete associated vacant beds in this hostel
+  await Bed.updateMany({ roomId, hostelId }, { isDeleted: true, deletedAt: new Date() });
 
   await recordAuditLog({
-    hostelId: room.hostelId,
+    hostelId,
     userId: userContext.userId,
     action: `Soft deleted Room ${room.roomNumber}`,
     actionType: "DELETE",
@@ -201,34 +215,37 @@ async function softDeleteRoom(roomId, userContext = {}) {
     ipAddress: userContext.ip,
   });
 
-  return room;
+  return deletedRoom;
 }
 
 /**
  * Restore Soft Deleted Room
  */
 async function restoreRoom(roomId, userContext = {}) {
-  const room = await Room.findById(roomId);
-  if (!room) throw new Error("Room not found");
+  const hostelId = userContext.hostelId;
+  if (!hostelId) throw new Error("Hostel context required");
 
-  room.isDeleted = false;
-  room.deletedAt = null;
-  await room.save();
+  const restoredRoom = await Room.findOneAndUpdate(
+    { _id: roomId, hostelId, isDeleted: true },
+    { isDeleted: false, deletedAt: null },
+    { returnDocument: "after" }
+  );
+  if (!restoredRoom) throw new Error("Room not found or not deleted");
 
-  await Bed.updateMany({ roomId }, { isDeleted: false, deletedAt: null });
+  await Bed.updateMany({ roomId, hostelId }, { isDeleted: false, deletedAt: null });
   await recalculateRoomStatus(roomId);
 
   await recordAuditLog({
-    hostelId: room.hostelId,
+    hostelId,
     userId: userContext.userId,
-    action: `Restored Room ${room.roomNumber}`,
+    action: `Restored Room ${restoredRoom.roomNumber}`,
     actionType: "RESTORE",
     entity: "Room",
-    targetId: room._id,
+    targetId: restoredRoom._id,
     ipAddress: userContext.ip,
   });
 
-  return room;
+  return restoredRoom;
 }
 
 /**

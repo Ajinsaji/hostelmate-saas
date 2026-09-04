@@ -25,19 +25,21 @@ async function recordAuditLog({ hostelId, userId, action, actionType, entity, ta
 }
 
 async function createBed(data, userContext = {}) {
-  const hostelId = data.hostelId || userContext.hostelId;
+  const hostelId = userContext.hostelId || data.hostelId;
   if (!hostelId) throw new Error("Hostel ID is required");
   if (!data.roomId) throw new Error("Room ID is required");
 
-  const room = await Room.findById(data.roomId);
-  if (!room) throw new Error("Parent room not found");
+  // Verify the parent Room in the authenticated active hostel
+  const room = await Room.findOne({ _id: data.roomId, hostelId, isDeleted: false });
+  if (!room) throw new Error("Parent room not found in active hostel");
 
   const bed = await Bed.create({
     ...data,
-    tenantId: hostelId,
-    hostelId,
+    tenantId: room.hostelId,
+    hostelId: room.hostelId,
     buildingId: room.buildingId,
     floorId: room.floorId,
+    roomId: room._id,
     status: data.status || "Vacant",
     createdBy: userContext.userId,
   });
@@ -45,7 +47,7 @@ async function createBed(data, userContext = {}) {
   await recalculateRoomStatus(data.roomId);
 
   await recordAuditLog({
-    hostelId,
+    hostelId: room.hostelId,
     userId: userContext.userId,
     action: `Created Bed ${bed.bedNumber} in Room ${room.roomNumber}`,
     actionType: "CREATE",
@@ -58,21 +60,26 @@ async function createBed(data, userContext = {}) {
 }
 
 async function updateBed(bedId, updateData, userContext = {}) {
-  const bed = await Bed.findOne({ _id: bedId, isDeleted: false });
-  if (!bed) throw new Error("Bed not found");
+  const hostelId = userContext.hostelId;
+  if (!hostelId) throw new Error("Hostel context required");
 
   updateData.updatedBy = userContext.userId;
-  const updatedBed = await Bed.findByIdAndUpdate(bedId, updateData, { returnDocument: "after" });
+  const updatedBed = await Bed.findOneAndUpdate(
+    { _id: bedId, hostelId, isDeleted: false },
+    updateData,
+    { returnDocument: "after" }
+  );
+  if (!updatedBed) throw new Error("Bed not found");
 
-  await recalculateRoomStatus(bed.roomId);
+  await recalculateRoomStatus(updatedBed.roomId);
 
   await recordAuditLog({
-    hostelId: bed.hostelId,
+    hostelId,
     userId: userContext.userId,
     action: `Updated Bed ${updatedBed.bedNumber}`,
     actionType: "UPDATE",
     entity: "Bed",
-    targetId: bed._id,
+    targetId: updatedBed._id,
     details: updateData,
     ipAddress: userContext.ip,
   });
@@ -81,136 +88,162 @@ async function updateBed(bedId, updateData, userContext = {}) {
 }
 
 async function reserveBed(bedId, reservationDetails = {}, userContext = {}) {
-  const bed = await Bed.findOne({ _id: bedId, isDeleted: false });
+  const hostelId = userContext.hostelId;
+  if (!hostelId) throw new Error("Hostel context required");
+
+  const bed = await Bed.findOne({ _id: bedId, hostelId, isDeleted: false });
   if (!bed) throw new Error("Bed not found");
 
   if (bed.status === "Occupied" || bed.status === "occupied" || bed.residentId) {
     throw new Error(`Cannot reserve Bed ${bed.bedNumber} because it is currently occupied by a resident`);
   }
 
-  bed.status = "Reserved";
-  if (reservationDetails.description) bed.description = reservationDetails.description;
-  await bed.save();
+  const updatedBed = await Bed.findOneAndUpdate(
+    { _id: bedId, hostelId, isDeleted: false, status: { $nin: ["Occupied", "occupied"] } },
+    { status: "Reserved", ...(reservationDetails.description ? { description: reservationDetails.description } : {}) },
+    { returnDocument: "after" }
+  );
+  if (!updatedBed) throw new Error("Bed not found or already occupied");
 
-  await recalculateRoomStatus(bed.roomId);
+  await recalculateRoomStatus(updatedBed.roomId);
 
   await recordAuditLog({
-    hostelId: bed.hostelId,
+    hostelId,
     userId: userContext.userId,
-    action: `Reserved Bed ${bed.bedNumber}`,
+    action: `Reserved Bed ${updatedBed.bedNumber}`,
     actionType: "RESERVE",
     entity: "Bed",
-    targetId: bed._id,
+    targetId: updatedBed._id,
     ipAddress: userContext.ip,
   });
 
-  return bed;
+  return updatedBed;
 }
 
 async function releaseBed(bedId, userContext = {}) {
-  const bed = await Bed.findOne({ _id: bedId, isDeleted: false });
+  const hostelId = userContext.hostelId;
+  if (!hostelId) throw new Error("Hostel context required");
+
+  const bed = await Bed.findOne({ _id: bedId, hostelId, isDeleted: false });
   if (!bed) throw new Error("Bed not found");
 
   if (bed.status === "Occupied" || bed.status === "occupied" || bed.residentId) {
     throw new Error(`Cannot release occupied bed directly. Please check out the resident first.`);
   }
 
-  bed.status = "Vacant";
-  bed.residentId = null;
-  await bed.save();
+  const updatedBed = await Bed.findOneAndUpdate(
+    { _id: bedId, hostelId, isDeleted: false, status: { $nin: ["Occupied", "occupied"] } },
+    { status: "Vacant", residentId: null },
+    { returnDocument: "after" }
+  );
+  if (!updatedBed) throw new Error("Bed not found or occupied");
 
-  await recalculateRoomStatus(bed.roomId);
+  await recalculateRoomStatus(updatedBed.roomId);
 
   await recordAuditLog({
-    hostelId: bed.hostelId,
+    hostelId,
     userId: userContext.userId,
-    action: `Released Bed ${bed.bedNumber} to Vacant`,
+    action: `Released Bed ${updatedBed.bedNumber} to Vacant`,
     actionType: "RELEASE",
     entity: "Bed",
-    targetId: bed._id,
+    targetId: updatedBed._id,
     ipAddress: userContext.ip,
   });
 
-  return bed;
+  return updatedBed;
 }
 
 async function setBedMaintenance(bedId, reason = "", userContext = {}) {
-  const bed = await Bed.findOne({ _id: bedId, isDeleted: false });
+  const hostelId = userContext.hostelId;
+  if (!hostelId) throw new Error("Hostel context required");
+
+  const bed = await Bed.findOne({ _id: bedId, hostelId, isDeleted: false });
   if (!bed) throw new Error("Bed not found");
 
   if (bed.status === "Occupied" || bed.status === "occupied" || bed.residentId) {
     throw new Error(`Cannot put Bed ${bed.bedNumber} into maintenance mode while occupied`);
   }
 
-  bed.status = "Maintenance";
-  if (reason) bed.description = reason;
-  await bed.save();
+  const updatedBed = await Bed.findOneAndUpdate(
+    { _id: bedId, hostelId, isDeleted: false, status: { $nin: ["Occupied", "occupied"] } },
+    { status: "Maintenance", ...(reason ? { description: reason } : {}) },
+    { returnDocument: "after" }
+  );
+  if (!updatedBed) throw new Error("Bed not found or occupied");
 
-  await recalculateRoomStatus(bed.roomId);
+  await recalculateRoomStatus(updatedBed.roomId);
 
   await recordAuditLog({
-    hostelId: bed.hostelId,
+    hostelId,
     userId: userContext.userId,
-    action: `Set Bed ${bed.bedNumber} to Maintenance mode`,
+    action: `Set Bed ${updatedBed.bedNumber} to Maintenance mode`,
     actionType: "MAINTENANCE",
     entity: "Bed",
-    targetId: bed._id,
+    targetId: updatedBed._id,
     details: { reason },
     ipAddress: userContext.ip,
   });
 
-  return bed;
+  return updatedBed;
 }
 
 async function softDeleteBed(bedId, userContext = {}) {
-  const bed = await Bed.findById(bedId);
+  const hostelId = userContext.hostelId;
+  if (!hostelId) throw new Error("Hostel context required");
+
+  const bed = await Bed.findOne({ _id: bedId, hostelId, isDeleted: false });
   if (!bed) throw new Error("Bed not found");
 
   if (bed.status === "Occupied" || bed.status === "occupied" || bed.residentId) {
     throw new Error(`Cannot delete Bed ${bed.bedNumber} because a resident is currently assigned to it`);
   }
 
-  bed.isDeleted = true;
-  bed.deletedAt = new Date();
-  await bed.save();
+  const deletedBed = await Bed.findOneAndUpdate(
+    { _id: bedId, hostelId, isDeleted: false, status: { $nin: ["Occupied", "occupied"] } },
+    { isDeleted: true, deletedAt: new Date() },
+    { returnDocument: "after" }
+  );
+  if (!deletedBed) throw new Error("Bed not found or occupied");
 
-  await recalculateRoomStatus(bed.roomId);
+  await recalculateRoomStatus(deletedBed.roomId);
 
   await recordAuditLog({
-    hostelId: bed.hostelId,
+    hostelId,
     userId: userContext.userId,
-    action: `Soft deleted Bed ${bed.bedNumber}`,
+    action: `Soft deleted Bed ${deletedBed.bedNumber}`,
     actionType: "DELETE",
     entity: "Bed",
-    targetId: bed._id,
+    targetId: deletedBed._id,
     ipAddress: userContext.ip,
   });
 
-  return bed;
+  return deletedBed;
 }
 
 async function restoreBed(bedId, userContext = {}) {
-  const bed = await Bed.findById(bedId);
-  if (!bed) throw new Error("Bed not found");
+  const hostelId = userContext.hostelId;
+  if (!hostelId) throw new Error("Hostel context required");
 
-  bed.isDeleted = false;
-  bed.deletedAt = null;
-  bed.status = "Vacant";
-  await bed.save();
+  const restoredBed = await Bed.findOneAndUpdate(
+    { _id: bedId, hostelId, isDeleted: true },
+    { isDeleted: false, deletedAt: null, status: "Vacant" },
+    { returnDocument: "after" }
+  );
+  if (!restoredBed) throw new Error("Bed not found or not deleted");
 
-  await recalculateRoomStatus(bed.roomId);
+  await recalculateRoomStatus(restoredBed.roomId);
 
   await recordAuditLog({
-    hostelId: bed.hostelId,
+    hostelId,
     userId: userContext.userId,
-    action: `Restored Bed ${bed.bedNumber}`,
+    action: `Restored Bed ${restoredBed.bedNumber}`,
     actionType: "RESTORE",
     entity: "Bed",
-    targetId: bed._id,
+    targetId: restoredBed._id,
     ipAddress: userContext.ip,
   });
 
-  return bed;
+  return restoredBed;
 }
 
 async function getBedsList({ hostelId, roomId, status, search, isDeleted = false }) {

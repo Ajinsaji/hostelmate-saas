@@ -429,7 +429,8 @@ const transferOwnership = async (req, res) => {
 // ==========================
 const getDashboardStats = async (req, res) => {
   try {
-    const { hostelId, ownerId } = req.owner;
+    const hostelId = req.context?.hostelId || req.owner?.hostelId;
+    const ownerId = req.context?.userId || req.owner?.ownerId;
     const mongoose = require("mongoose");
     const hId = new mongoose.Types.ObjectId(hostelId);
 
@@ -560,7 +561,7 @@ const getDashboardStats = async (req, res) => {
 // ==========================
 const getPendingCount = async (req, res) => {
   try {
-    const { hostelId } = req.owner;
+    const hostelId = req.context?.hostelId || req.owner?.hostelId;
     
     const pendingAdmissions = await PublicAdmission.countDocuments({
       hostelId,
@@ -584,7 +585,7 @@ const getPendingCount = async (req, res) => {
 // ==========================
 const getAdmissions = async (req, res) => {
   try {
-    const { hostelId } = req.owner;
+    const hostelId = req.context?.hostelId || req.owner?.hostelId;
     const admissions = await PublicAdmission.find({ hostelId }).sort({ createdAt: -1 });
     res.status(200).json({ success: true, admissions });
   } catch (error) {
@@ -598,7 +599,7 @@ const getAdmissions = async (req, res) => {
 // ==========================
 const getPendingAdmissions = async (req, res) => {
   try {
-    const { hostelId } = req.owner;
+    const hostelId = req.context?.hostelId || req.owner?.hostelId;
     const admissions = await PublicAdmission.find({ hostelId, status: "Pending" }).sort({ createdAt: -1 });
     res.status(200).json({ success: true, admissions });
   } catch (error) {
@@ -613,7 +614,7 @@ const getPendingAdmissions = async (req, res) => {
 const approveAdmission = async (req, res) => {
   try {
     const { id } = req.params;
-    const { hostelId } = req.owner || {};
+    const hostelId = req.context?.hostelId || req.owner?.hostelId;
     const mongoose = require("mongoose");
     
     if (!hostelId) {
@@ -785,7 +786,7 @@ const approveAdmission = async (req, res) => {
 const rejectAdmission = async (req, res) => {
   try {
     const { id } = req.params;
-    const { hostelId } = req.owner;
+    const hostelId = req.context?.hostelId || req.owner?.hostelId;
     
     const admission = await PublicAdmission.findOne({ _id: id, hostelId });
     if (!admission) return res.status(404).json({ success: false, message: "Admission request not found" });
