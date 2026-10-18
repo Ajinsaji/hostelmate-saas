@@ -602,6 +602,12 @@ const sendTestNotification = async (req, res) => {
       message: `Firebase accepted ${successCount}/${targetTokens.length} device(s).`,
       pushResult,
     });
+  } catch (err) {
+    logger.error("sendTestNotification error:", err);
+    return res.status(500).json({ success: false, message: err.message || "Failed to send test notification" });
+  }
+};
+
 const broadcastNotification = async (req, res) => {
   try {
     const userCtx = getUserContext(req);
