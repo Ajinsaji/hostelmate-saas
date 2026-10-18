@@ -25,7 +25,7 @@ const createVendorSchema = Joi.object({
 
 const createExpenseSchema = Joi.object({
   categoryId: Joi.string().required(),
-  vendorId: Joi.string().allow("", null),
+  vendorId: Joi.string().trim().hex().length(24).allow("", null),
   title: Joi.string().trim().required(),
   description: Joi.string().allow("", null),
   amount: Joi.number().min(0.01).required(),

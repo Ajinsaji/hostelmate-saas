@@ -35,6 +35,27 @@ async function createExpense(data, userContext = {}) {
   const hostelId = userContext.hostelId || data.hostelId;
   if (!hostelId) throw new Error("Hostel ID is required");
 
+  // Normalize vendorId
+  let vendorId = data.vendorId;
+  if (typeof vendorId === "string") {
+    vendorId = vendorId.trim() || null;
+  } else if (!vendorId) {
+    vendorId = null;
+  }
+
+  // Validate non-empty vendorId: must be valid ObjectId and exist in active hostel
+  if (vendorId) {
+    const mongoose = require("mongoose");
+    if (!mongoose.Types.ObjectId.isValid(vendorId)) {
+      throw new Error("Invalid vendor ID format");
+    }
+    const Vendor = require("../models/Vendor");
+    const vendor = await Vendor.findOne({ _id: vendorId, hostelId });
+    if (!vendor) {
+      throw new Error("Vendor not found in this hostel");
+    }
+  }
+
   const expenseDate = data.expenseDate ? new Date(data.expenseDate) : new Date();
   await assertPeriodOpen(hostelId, expenseDate);
 
@@ -42,6 +63,7 @@ async function createExpense(data, userContext = {}) {
 
   const expense = await Expense.create({
     ...data,
+    vendorId,
     tenantId: hostelId,
     hostelId,
     expenseNumber,

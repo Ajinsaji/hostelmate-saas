@@ -35,6 +35,7 @@ export const ExpenseDashboardDesktop = memo(function ExpenseDashboardDesktop({
   setShowAddExpenseModal,
   expenseForm,
   setExpenseForm,
+  submitting = false,
   handleCreateExpense,
   handleDeleteExpense,
 }) {
@@ -175,7 +176,7 @@ export const ExpenseDashboardDesktop = memo(function ExpenseDashboardDesktop({
               >
                 <option value="">General Category</option>
                 {categories.map((c) => (
-                  <option key={c._id} value={c._id}>{c.categoryName}</option>
+                  <option key={c._id} value={c._id}>{c.categoryName || c.name}</option>
                 ))}
               </select>
             </div>
@@ -189,12 +190,45 @@ export const ExpenseDashboardDesktop = memo(function ExpenseDashboardDesktop({
             />
           </div>
 
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-bold text-slate-400 mb-1.5">Vendor (Optional)</label>
+              <select
+                value={expenseForm.vendorId || ""}
+                onChange={(e) => setExpenseForm({ ...expenseForm, vendorId: e.target.value })}
+                className="w-full p-3 rounded-xl border text-sm font-medium bg-[#1A2438] text-white"
+                style={{ borderColor: colors.border.default || "#202B45", minHeight: "44px" }}
+              >
+                <option value="">Direct / No Vendor</option>
+                {vendors && vendors.map((v) => (
+                  <option key={v._id} value={v._id}>{v.vendorName || v.name}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-400 mb-1.5">Payment Method</label>
+              <select
+                value={expenseForm.paymentMethod || "UPI"}
+                onChange={(e) => setExpenseForm({ ...expenseForm, paymentMethod: e.target.value })}
+                className="w-full p-3 rounded-xl border text-sm font-medium bg-[#1A2438] text-white"
+                style={{ borderColor: colors.border.default || "#202B45", minHeight: "44px" }}
+              >
+                <option value="UPI">UPI</option>
+                <option value="Cash">Cash</option>
+                <option value="Bank Transfer">Bank Transfer</option>
+                <option value="Card">Card</option>
+                <option value="Cheque">Cheque</option>
+              </select>
+            </div>
+          </div>
+
           <div className="flex gap-3 pt-4 border-t" style={{ borderColor: colors.border.default || "#202B45" }}>
-            <Button variant="secondary" fullWidth onClick={() => setShowAddExpenseModal(false)}>
+            <Button variant="secondary" fullWidth onClick={() => setShowAddExpenseModal(false)} disabled={submitting}>
               Cancel
             </Button>
-            <Button type="submit" variant="primary" fullWidth>
-              Record Expense
+            <Button type="submit" variant="primary" fullWidth disabled={submitting}>
+              {submitting ? "Recording..." : "Record Expense"}
             </Button>
           </div>
         </form>

@@ -22,8 +22,15 @@ const createExpense = async (req, res) => {
       return res.status(403).json({ success: false, message: quotaCheck.message });
     }
 
-    const { error, value } = createExpenseSchema.validate(req.body);
+    const rawPayload = { ...req.body };
+    if (typeof rawPayload.vendorId === "string") {
+      rawPayload.vendorId = rawPayload.vendorId.trim() || null;
+    }
+
+    const { error, value } = createExpenseSchema.validate(rawPayload);
     if (error) return res.status(400).json({ success: false, message: error.details[0].message });
+
+    value.vendorId = (typeof value.vendorId === "string" && value.vendorId.trim()) ? value.vendorId.trim() : null;
 
     const expense = await expenseService.createExpense(value, userCtx);
 

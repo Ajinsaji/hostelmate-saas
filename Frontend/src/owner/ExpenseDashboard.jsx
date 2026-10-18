@@ -26,6 +26,8 @@ export function ExpenseDashboard() {
   // Modals
   const [showAddExpenseModal, setShowAddExpenseModal] = useState(false);
 
+  const [submitting, setSubmitting] = useState(false);
+
   const [expenseForm, setExpenseForm] = useState({
     title: "",
     categoryId: "",
@@ -47,7 +49,14 @@ export function ExpenseDashboard() {
       ]);
 
       if (eRes.data?.expenses) setExpenses(eRes.data.expenses);
-      if (cRes.data?.categories) setCategories(cRes.data.categories);
+      if (cRes.data?.categories) {
+        const cats = cRes.data.categories;
+        setCategories(cats);
+        setExpenseForm((prev) => ({
+          ...prev,
+          categoryId: prev.categoryId || (cats.length > 0 ? cats[0]._id : ""),
+        }));
+      }
       if (vRes.data?.vendors) setVendors(vRes.data.vendors);
     } catch (err) {
       console.warn("Failed to load expense data", err);
@@ -57,22 +66,65 @@ export function ExpenseDashboard() {
   }, []);
 
   useEffect(() => {
-    fetchData();
+    let ignore = false;
+    (async () => {
+      if (!ignore) {
+        await fetchData();
+      }
+    })();
+    return () => {
+      ignore = true;
+    };
   }, [fetchData, activeHostelId]);
 
   const handleCreateExpense = async (e) => {
     if (e && e.preventDefault) e.preventDefault();
-    if (!expenseForm.title || !expenseForm.amount) {
-      return toast.error("Expense title and amount are required");
+    if (submitting) return;
+
+    const trimmedTitle = expenseForm.title?.trim();
+    if (!trimmedTitle) {
+      return toast.error("Expense title is required");
     }
 
+    const amt = Number(expenseForm.amount);
+    if (!expenseForm.amount || isNaN(amt) || amt <= 0) {
+      return toast.error("Please enter a valid positive amount");
+    }
+
+    const selectedCategory = expenseForm.categoryId || (categories.length > 0 ? categories[0]._id : "");
+    if (!selectedCategory) {
+      return toast.error("Please select an expense category");
+    }
+
+    const payload = {
+      title: trimmedTitle,
+      amount: amt,
+      categoryId: selectedCategory,
+      vendorId: expenseForm.vendorId?.trim() ? expenseForm.vendorId.trim() : undefined,
+      paymentMethod: expenseForm.paymentMethod || "UPI",
+      status: expenseForm.status || "Paid",
+      description: expenseForm.description?.trim() || undefined,
+    };
+
+    setSubmitting(true);
     try {
-      await api.post("/api/expenses", expenseForm);
+      await api.post("/api/expenses", payload);
       toast.success("Expense recorded successfully!");
       setShowAddExpenseModal(false);
+      setExpenseForm({
+        title: "",
+        categoryId: categories.length > 0 ? categories[0]._id : "",
+        vendorId: "",
+        amount: "",
+        paymentMethod: "UPI",
+        status: "Paid",
+        description: "",
+      });
       fetchData();
     } catch (err) {
       toast.error(err.response?.data?.message || "Failed to record expense");
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -85,7 +137,7 @@ export function ExpenseDashboard() {
       toast.success("Expense deleted.");
       fetchData();
     } catch (err) {
-      toast.error("Failed to delete expense.");
+      toast.error(err.response?.data?.message || "Failed to delete expense.");
     } finally {
       setDeleteExpenseId(null);
     }
@@ -126,6 +178,7 @@ export function ExpenseDashboard() {
           setShowAddExpenseModal={setShowAddExpenseModal}
           expenseForm={expenseForm}
           setExpenseForm={setExpenseForm}
+          submitting={submitting}
           handleCreateExpense={handleCreateExpense}
           handleDeleteExpense={handleDeleteExpense}
         />
@@ -146,6 +199,7 @@ export function ExpenseDashboard() {
           setShowAddExpenseModal={setShowAddExpenseModal}
           expenseForm={expenseForm}
           setExpenseForm={setExpenseForm}
+          submitting={submitting}
           handleCreateExpense={handleCreateExpense}
           handleDeleteExpense={handleDeleteExpense}
         />

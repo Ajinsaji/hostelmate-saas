@@ -9,7 +9,6 @@ import {
 import { useTheme } from "../design-system/ThemeProvider";
 
 export const ExpenseDashboardMobile = memo(function ExpenseDashboardMobile({
-  expenses,
   filteredExpenses,
   totalExpenseSum,
   loading,
@@ -23,6 +22,7 @@ export const ExpenseDashboardMobile = memo(function ExpenseDashboardMobile({
   setShowAddExpenseModal,
   expenseForm,
   setExpenseForm,
+  submitting = false,
   handleCreateExpense,
   handleDeleteExpense,
 }) {
@@ -155,7 +155,7 @@ export const ExpenseDashboardMobile = memo(function ExpenseDashboardMobile({
                   minHeight: "48px",
                 }}
               >
-                {c.name}
+                {c.categoryName || c.name}
               </button>
             );
           })}
@@ -358,7 +358,22 @@ export const ExpenseDashboardMobile = memo(function ExpenseDashboardMobile({
                     <option value="">General / Uncategorized</option>
                     {categories.map((c) => (
                       <option key={c._id} value={c._id}>
-                        {c.name}
+                        {c.categoryName || c.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label style={{ fontSize: "13px", color: "#94A3B8", display: "block", marginBottom: "4px" }}>Vendor (Optional)</label>
+                  <select
+                    value={expenseForm.vendorId || ""}
+                    onChange={(e) => setExpenseForm({ ...expenseForm, vendorId: e.target.value })}
+                    style={{ width: "100%", padding: "12px", borderRadius: "12px", background: "#131C2E", border: "1px solid #202B45", color: "#FFF", fontSize: "14px", boxSizing: "border-box", minHeight: "44px" }}
+                  >
+                    <option value="">Direct / No Vendor</option>
+                    {vendors && vendors.map((v) => (
+                      <option key={v._id} value={v._id}>
+                        {v.vendorName || v.name}
                       </option>
                     ))}
                   </select>
@@ -373,6 +388,8 @@ export const ExpenseDashboardMobile = memo(function ExpenseDashboardMobile({
                     <option value="UPI">UPI / PhonePe / GPay</option>
                     <option value="Cash">Cash</option>
                     <option value="Bank Transfer">Bank Transfer</option>
+                    <option value="Card">Card</option>
+                    <option value="Cheque">Cheque</option>
                   </select>
                 </div>
               </div>
@@ -383,6 +400,7 @@ export const ExpenseDashboardMobile = memo(function ExpenseDashboardMobile({
                 <div style={{ fontSize: "16px", fontWeight: 700, color: "#FFF" }}>Confirm Expense</div>
                 <div style={{ fontSize: "13px", color: "#94A3B8" }}>Title: <span style={{ color: "#FFF", fontWeight: 700 }}>{expenseForm.title}</span></div>
                 <div style={{ fontSize: "13px", color: "#94A3B8" }}>Amount: <span style={{ color: "#EF4444", fontWeight: 700 }}>₹{expenseForm.amount}</span></div>
+                <div style={{ fontSize: "13px", color: "#94A3B8" }}>Vendor: <span style={{ color: "#FFF", fontWeight: 700 }}>{expenseForm.vendorId ? (vendors?.find(v => v._id === expenseForm.vendorId)?.vendorName || "Selected Vendor") : "Direct / None"}</span></div>
                 <div style={{ fontSize: "13px", color: "#94A3B8" }}>Method: <span style={{ color: "#FFF", fontWeight: 700 }}>{expenseForm.paymentMethod}</span></div>
               </div>
             )}
@@ -430,19 +448,21 @@ export const ExpenseDashboardMobile = memo(function ExpenseDashboardMobile({
                 <button
                   type="button"
                   onClick={handleCreateExpense}
+                  disabled={submitting}
                   style={{
-                    background: "#22C55E",
+                    background: submitting ? "#15803D" : "#22C55E",
+                    opacity: submitting ? 0.7 : 1,
                     color: "#FFF",
                     border: "none",
                     borderRadius: "12px",
                     padding: "10px 24px",
                     fontWeight: 700,
                     fontSize: "14px",
-                    cursor: "pointer",
+                    cursor: submitting ? "not-allowed" : "pointer",
                     minHeight: "44px",
                   }}
                 >
-                  Record Expense
+                  {submitting ? "Recording..." : "Record Expense"}
                 </button>
               )}
             </div>

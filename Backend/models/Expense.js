@@ -31,6 +31,7 @@ const expenseSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "Vendor",
       default: null,
+      set: (v) => (typeof v === "string" && !v.trim() ? null : v),
     },
     title: {
       type: String,
