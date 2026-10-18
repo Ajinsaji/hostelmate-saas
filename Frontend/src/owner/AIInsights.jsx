@@ -62,6 +62,14 @@ export default function AIInsights() {
   return (
     <div className="space-y-6">
       
+      {/* Transparency / Preview Banner */}
+      <div className="flex items-center gap-3 p-3.5 rounded-2xl border border-purple-500/30 bg-purple-950/30 text-purple-200 text-xs">
+        <Sparkles size={16} className="flex-shrink-0 text-purple-400" />
+        <span>
+          <strong>AI Intelligence Engine (Preview):</strong> Algorithmic recommendations and risk forecasts are currently in active development. Predictions will adapt dynamically as tenant history accumulates.
+        </span>
+      </div>
+
       {/* AI Overview Banner */}
       {overview && (
         <div className="p-6 rounded-3xl border border-purple-500/30 bg-gradient-to-r from-purple-900/20 to-emerald-900/20 backdrop-blur-md space-y-3">
@@ -70,7 +78,7 @@ export default function AIInsights() {
               <Sparkles className="text-purple-400" size={18} /> HostelMate AI Intelligence Engine
             </h3>
             <span className="px-3 py-1 rounded-full text-xs font-bold bg-purple-500/20 text-purple-300 border border-purple-500/30">
-              Confidence 98%
+              Preview Beta
             </span>
           </div>
           <p className="text-sm text-slate-300">{overview.summary}</p>

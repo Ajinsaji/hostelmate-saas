@@ -10,6 +10,7 @@ import ConfirmDialog from "../superadmin/components/modals/ConfirmDialog";
 import useIsMobile from "../hooks/useIsMobile";
 import ResidentsMobile from "./ResidentsMobile";
 import ResidentsDesktop from "./ResidentsDesktop";
+import ResidentCsvModal from "./ResidentCsvModal";
 
 export default function Residents() {
   const { hostel } = useCurrentHostel();
@@ -30,6 +31,7 @@ export default function Residents() {
   const page = 1;
 
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showCsvModal, setShowCsvModal] = useState(false);
   const [editingResident, setEditingResident] = useState(null);
   const [formStep, setFormStep] = useState(0);
 
@@ -91,7 +93,10 @@ export default function Residents() {
   }, [page, search, filterStatus, filterGender]);
 
   useEffect(() => {
-    fetchResidents();
+    const timer = setTimeout(() => {
+      fetchResidents();
+    }, 0);
+    return () => clearTimeout(timer);
   }, [fetchResidents, activeHostelId]);
 
   const handleRoomSelect = (roomId) => {
@@ -136,7 +141,7 @@ export default function Residents() {
       await api.delete(`/api/residents/${deleteResidentId}`);
       toast.success("Resident deleted.");
       fetchResidents();
-    } catch (err) {
+    } catch {
       toast.error("Failed to delete resident.");
     } finally {
       setDeleteResidentId(null);
@@ -168,6 +173,27 @@ export default function Residents() {
         return <Badge variant="danger">Blocked</Badge>;
       default:
         return <Badge variant="neutral">{status || "Unknown"}</Badge>;
+    }
+  };
+
+  const handleExportCsv = async () => {
+    try {
+      const params = new URLSearchParams({
+        ...(search && { search }),
+        ...(filterStatus && { status: filterStatus }),
+      });
+      const res = await api.get(`/api/residents/export/csv?${params.toString()}`, { responseType: "blob" });
+      const url = window.URL.createObjectURL(new Blob([res.data], { type: "text/csv" }));
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", `Residents_Export_${new Date().toISOString().split("T")[0]}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      toast.success("Residents CSV exported successfully");
+    } catch {
+      toast.error("Failed to export residents CSV");
     }
   };
 
@@ -222,8 +248,16 @@ export default function Residents() {
           handleDelete={handleDelete}
           handleViewProfile={handleViewProfile}
           renderStatusBadge={renderStatusBadge}
+          onOpenCsvImport={() => setShowCsvModal(true)}
+          onExportCsv={handleExportCsv}
         />
       )}
+
+      <ResidentCsvModal
+        isOpen={showCsvModal}
+        onClose={() => setShowCsvModal(false)}
+        onImportSuccess={fetchResidents}
+      />
 
       <ConfirmDialog
         isOpen={Boolean(deleteResidentId)}

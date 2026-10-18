@@ -1,4 +1,5 @@
 const Floor = require("../models/Floor");
+const Building = require("../models/Building");
 const Room = require("../models/Room");
 const Resident = require("../models/Resident");
 const AuditLog = require("../models/AuditLog");
@@ -28,6 +29,12 @@ async function createFloor(data, userContext = {}) {
   if (!hostelId) throw new Error("Hostel ID is required");
   if (!data.buildingId) throw new Error("Building ID is required");
 
+  // Verify that parent building belongs to this active hostel
+  const building = await Building.findOne({ _id: data.buildingId, hostelId, isDeleted: false });
+  if (!building) {
+    throw new Error("Referenced building not found in active hostel");
+  }
+
   // Check duplicate floor number in building
   const existing = await Floor.findOne({ buildingId: data.buildingId, floorNumber: data.floorNumber, isDeleted: false });
   if (existing) {
@@ -56,14 +63,47 @@ async function createFloor(data, userContext = {}) {
 }
 
 async function updateFloor(floorId, updateData, userContext = {}) {
-  const floor = await Floor.findOne({ _id: floorId, isDeleted: false });
-  if (!floor) throw new Error("Floor not found");
+  const hostelId = userContext.hostelId;
+  if (!hostelId) throw new Error("Hostel context required");
+
+  const floor = await Floor.findOne({ _id: floorId, hostelId, isDeleted: false });
+  if (!floor) throw new Error("Floor not found in active hostel");
+
+  // If changing buildingId, verify target building belongs to this hostel
+  if (updateData.buildingId && updateData.buildingId.toString() !== floor.buildingId.toString()) {
+    const targetBuilding = await Building.findOne({ _id: updateData.buildingId, hostelId, isDeleted: false });
+    if (!targetBuilding) {
+      throw new Error("Target building not found in active hostel");
+    }
+  }
+
+  // If changing floorNumber or buildingId, verify no duplicate
+  const targetBuildingId = updateData.buildingId || floor.buildingId;
+  const targetFloorNum = updateData.floorNumber !== undefined ? updateData.floorNumber : floor.floorNumber;
+  if (
+    (updateData.floorNumber !== undefined && updateData.floorNumber !== floor.floorNumber) ||
+    (updateData.buildingId && updateData.buildingId.toString() !== floor.buildingId.toString())
+  ) {
+    const duplicate = await Floor.findOne({
+      _id: { $ne: floorId },
+      buildingId: targetBuildingId,
+      floorNumber: targetFloorNum,
+      isDeleted: false,
+    });
+    if (duplicate) {
+      throw new Error(`Floor number ${targetFloorNum} already exists in this building`);
+    }
+  }
 
   updateData.updatedBy = userContext.userId;
-  const updatedFloor = await Floor.findByIdAndUpdate(floorId, updateData, { returnDocument: "after" });
+  const updatedFloor = await Floor.findOneAndUpdate(
+    { _id: floorId, hostelId, isDeleted: false },
+    updateData,
+    { returnDocument: "after" }
+  );
 
   await recordAuditLog({
-    hostelId: floor.hostelId,
+    hostelId,
     userId: userContext.userId,
     action: `Updated Floor ${updatedFloor.floorName}`,
     actionType: "UPDATE",
@@ -77,14 +117,24 @@ async function updateFloor(floorId, updateData, userContext = {}) {
 }
 
 async function softDeleteFloor(floorId, userContext = {}) {
-  const floor = await Floor.findById(floorId);
-  if (!floor) throw new Error("Floor not found");
+  const hostelId = userContext.hostelId;
+  if (!hostelId) throw new Error("Hostel context required");
 
-  // Safety check: Cannot delete floor if it contains active rooms with residents
-  const rooms = await Room.find({ floorId, isDeleted: false });
+  const floor = await Floor.findOne({ _id: floorId, hostelId, isDeleted: false });
+  if (!floor) throw new Error("Floor not found in active hostel");
+
+  // Safety check 1: Cannot delete floor if it contains active rooms
+  const activeRoomsCount = await Room.countDocuments({ floorId, hostelId, isDeleted: false });
+  if (activeRoomsCount > 0) {
+    throw new Error(`Cannot delete floor '${floor.floorName}' because it contains ${activeRoomsCount} active room(s). Delete or reassign rooms first.`);
+  }
+
+  // Safety check 2: Cannot delete floor if it contains rooms with active residents
+  const rooms = await Room.find({ floorId, hostelId, isDeleted: false });
   const roomIds = rooms.map((r) => r._id);
   const activeResidentsCount = await Resident.countDocuments({
     roomId: { $in: roomIds },
+    hostelId,
     status: { $in: ["Active", "active"] },
     isDeleted: false,
   });
@@ -99,7 +149,7 @@ async function softDeleteFloor(floorId, userContext = {}) {
   await floor.save();
 
   await recordAuditLog({
-    hostelId: floor.hostelId,
+    hostelId,
     userId: userContext.userId,
     action: `Soft deleted Floor ${floor.floorName}`,
     actionType: "DELETE",
@@ -112,8 +162,11 @@ async function softDeleteFloor(floorId, userContext = {}) {
 }
 
 async function restoreFloor(floorId, userContext = {}) {
-  const floor = await Floor.findById(floorId);
-  if (!floor) throw new Error("Floor not found");
+  const hostelId = userContext.hostelId;
+  if (!hostelId) throw new Error("Hostel context required");
+
+  const floor = await Floor.findOne({ _id: floorId, hostelId, isDeleted: true });
+  if (!floor) throw new Error("Floor not found or not deleted in active hostel");
 
   floor.isDeleted = false;
   floor.deletedAt = null;
@@ -121,7 +174,7 @@ async function restoreFloor(floorId, userContext = {}) {
   await floor.save();
 
   await recordAuditLog({
-    hostelId: floor.hostelId,
+    hostelId,
     userId: userContext.userId,
     action: `Restored Floor ${floor.floorName}`,
     actionType: "RESTORE",
@@ -134,6 +187,7 @@ async function restoreFloor(floorId, userContext = {}) {
 }
 
 async function getFloorsList({ hostelId, buildingId, isDeleted = false }) {
+  if (!hostelId) return [];
   const query = { hostelId, isDeleted: isDeleted === true || isDeleted === "true" };
   if (buildingId) query.buildingId = buildingId;
   return await Floor.find(query).populate("buildingId", "buildingName buildingCode").sort({ floorNumber: 1 });

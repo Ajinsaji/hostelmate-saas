@@ -16,8 +16,17 @@ const {
   checkoutResident,
   transferRoomOrBed,
   changeStatus,
+  getResidentCsvTemplate,
+  previewResidentCsv,
+  commitResidentCsv,
   exportResidentsCSV,
 } = require("../controllers/residentController");
+
+const multer = require("multer");
+const csvUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 },
+});
 
 const residentUploads = uploadFields([
   { name: "photo", maxCount: 1 },
@@ -29,6 +38,9 @@ const residentUploads = uploadFields([
 router.get("/statistics", ownerAuth, getResidentStatistics);
 router.get("/search", ownerAuth, searchResidents);
 router.get("/export/csv", ownerAuth, exportResidentsCSV);
+router.get("/import/template", ownerAuth, getResidentCsvTemplate);
+router.post("/import/preview", ownerAuth, csvUpload.single("file"), previewResidentCsv);
+router.post("/import/commit", ownerAuth, commitResidentCsv);
 
 // Workflow Patch Operations
 router.patch("/checkin", ownerAuth, checkInResident);

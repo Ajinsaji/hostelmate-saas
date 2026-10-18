@@ -16,18 +16,30 @@ async function generateInvoiceNumber(hostelId) {
  * Creates a single Rent Invoice and logs a DEBIT entry to the resident's ledger
  */
 async function createRentInvoice(data, userContext = {}) {
-  const hostelId = data.hostelId || userContext.hostelId;
+  const hostelId = userContext.hostelId || data.hostelId;
   if (!hostelId) throw new Error("Hostel ID is required");
 
   const issueDate = data.issueDate ? new Date(data.issueDate) : new Date();
   await assertPeriodOpen(hostelId, issueDate);
 
-  const resident = await Resident.findById(data.residentId);
-  if (!resident) throw new Error("Resident not found");
+  const resident = await Resident.findOne({ _id: data.residentId, hostelId, isDeleted: false });
+  if (!resident) throw new Error("Resident not found in this hostel");
 
+  const now = new Date();
+  const currentMonthYear = now.toLocaleString("default", { month: "long", year: "numeric" });
+  const billingPeriod = data.billingPeriod || currentMonthYear;
+
+  const existing = await RentInvoice.findOne({
+    hostelId,
+    residentId: resident._id,
+    billingPeriod,
+    isDeleted: false,
+  });
+  if (existing) {
+    throw new Error(`An active rent invoice already exists for ${resident.fullName || resident.name || "this resident"} for ${billingPeriod}`);
+  }
 
   const invoiceNumber = data.invoiceNumber || (await generateInvoiceNumber(hostelId));
-
 
   // Due Date default = 5th of current/next month if not specified
   let dueDate = data.dueDate ? new Date(data.dueDate) : null;
@@ -36,10 +48,6 @@ async function createRentInvoice(data, userContext = {}) {
     dueDate.setDate(resident.paymentDay || 5);
     if (dueDate <= issueDate) dueDate.setMonth(dueDate.getMonth() + 1);
   }
-
-  const now = new Date();
-  const currentMonthYear = now.toLocaleString("default", { month: "long", year: "numeric" });
-  const billingPeriod = data.billingPeriod || currentMonthYear;
 
   const invoice = await RentInvoice.create({
     ...data,

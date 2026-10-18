@@ -31,12 +31,17 @@ const createMenuSchema = Joi.object({
 });
 
 const recordAttendanceSchema = Joi.object({
-  residentId: Joi.string().allow("", null),
+  residentId: Joi.string().hex().length(24).required(),
   attendanceDate: Joi.date().default(Date.now),
   meal: Joi.string().valid("Breakfast", "Lunch", "Snacks", "Dinner").required(),
   status: Joi.string().valid("Present", "Absent", "Leave", "Guest Meal", "Extra Meal").default("Present"),
   guestName: Joi.string().allow("", null),
   extraMealCharge: Joi.number().min(0).default(0),
+});
+
+const adjustInventoryStockSchema = Joi.object({
+  delta: Joi.number().min(-1000000000).max(1000000000).not(0).required(),
+  remarks: Joi.string().trim().max(250).allow("").default("Stock adjustment"),
 });
 
 const createInventoryItemSchema = Joi.object({
@@ -90,6 +95,7 @@ module.exports = {
   assignResidentMealPlanSchema,
   createMenuSchema,
   recordAttendanceSchema,
+  adjustInventoryStockSchema,
   createInventoryItemSchema,
   createRecipeSchema,
   recordPurchaseSchema,

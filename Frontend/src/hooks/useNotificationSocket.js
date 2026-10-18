@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { io } from "socket.io-client";
 import { getOwnerToken, getAdminToken } from "../utils/authToken";
+import { API_BASE_URL } from "../services/api";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SOCKET SINGLETON DESIGN
@@ -20,10 +21,11 @@ let activeListeners = 0;
 let currentToken = null; // tracks which JWT the current socket is authenticated with
 
 function resolveSocketUrl() {
-  const apiUrl = import.meta.env.VITE_API_URL || "";
-  if (!apiUrl) {
+  const apiUrl = API_BASE_URL;
+  if (!apiUrl && import.meta.env.DEV) {
     return window.location.origin;
   }
+  if (!apiUrl) return undefined;
   try {
     const parsed = new URL(apiUrl);
     return parsed.origin;
@@ -66,6 +68,11 @@ function createSocket() {
 
   socketUrl = resolveSocketUrl();
   currentToken = newToken;
+
+  if (!socketUrl) {
+    console.error("Socket.IO unavailable: VITE_API_URL is not configured.");
+    return null;
+  }
 
   socket = io(socketUrl, {
     transports: ["websocket", "polling"],
@@ -122,6 +129,7 @@ export default function useNotificationSocket({
     if (!authToken) return undefined;
 
     const client = createSocket();
+    if (!socket) return undefined;
     activeListeners += 1;
 
     const handleConnect = () => {

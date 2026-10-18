@@ -48,5 +48,9 @@ const mealAttendanceSchema = new mongoose.Schema(
 );
 
 mealAttendanceSchema.index({ hostelId: 1, attendanceDate: 1, meal: 1 });
+mealAttendanceSchema.index(
+  { hostelId: 1, attendanceDate: 1, meal: 1, residentId: 1 },
+  { unique: true, partialFilterExpression: { residentId: { $type: "objectId" } } }
+);
 
 module.exports = mongoose.model("MealAttendance", mealAttendanceSchema);

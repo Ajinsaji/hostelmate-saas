@@ -4,11 +4,11 @@ const InventoryTransaction = require("../models/InventoryTransaction");
 const { logger } = require("../utils/logger");
 
 async function recordWasteLog(data, userContext = {}) {
-  const hostelId = data.hostelId || userContext.hostelId;
+  const hostelId = userContext.hostelId || data.hostelId;
   if (!hostelId) throw new Error("Hostel ID is required");
 
-  const item = await InventoryItem.findById(data.inventoryItemId);
-  if (!item) throw new Error("Inventory item not found");
+  const item = await InventoryItem.findOne({ _id: data.inventoryItemId, hostelId });
+  if (!item) throw new Error("Inventory item not found in this hostel");
 
   const costImpact = (data.quantity || 0) * (item.averageCost || 0);
 

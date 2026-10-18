@@ -1,12 +1,4 @@
 import { useState, useEffect, useCallback } from "react";
-import {
-  IndianRupee,
-  BedDouble,
-  Users,
-  Wallet,
-  Receipt,
-  AlertTriangle
-} from "lucide-react";
 import toast from "react-hot-toast";
 
 import api from "../utils/apiClient";
@@ -22,34 +14,29 @@ export default function Reports() {
   const [emailModal, setEmailModal] = useState(null);
   const [emailInput, setEmailInput] = useState("");
   const [generating, setGenerating] = useState(false);
+  const [loadError, setLoadError] = useState("");
 
   const fetchReports = useCallback(async () => {
     try {
       const res = await api.get("/api/v2/reports");
       if (res.data?.success) {
         setReportsList(res.data.reports || []);
+      } else {
+        setLoadError("Report categories could not be loaded.");
       }
-    } catch {
-      console.warn("Failed to load reports");
+    } catch (err) {
+      setLoadError(err?.response?.data?.message || "Report categories are currently unavailable.");
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    fetchReports();
+    const timer = setTimeout(fetchReports, 0);
+    return () => clearTimeout(timer);
   }, [fetchReports]);
 
-  const defaultCategoryCards = [
-    { id: "rep-revenue", name: "Revenue Statement", category: "Revenue", icon: IndianRupee, formats: ["PDF", "Excel"] },
-    { id: "rep-occupancy", name: "Occupancy Rate Report", category: "Occupancy", icon: BedDouble, formats: ["PDF", "Excel"] },
-    { id: "rep-residents", name: "Residents Master Roster", category: "Residents", icon: Users, formats: ["PDF", "CSV"] },
-    { id: "rep-payments", name: "Rent Collection Ledger", category: "Payments", icon: Wallet, formats: ["PDF", "Excel"] },
-    { id: "rep-expenses", name: "Operating Expenses Summary", category: "Expenses", icon: Receipt, formats: ["PDF", "CSV"] },
-    { id: "rep-complaints", name: "Complaints & Maintenance Audit", category: "Complaints", icon: AlertTriangle, formats: ["PDF"] },
-  ];
-
-  const activeReports = reportsList.length > 0 ? reportsList : defaultCategoryCards;
+  const activeReports = reportsList;
 
   const handleGenerate = async (reportId) => {
     try {
@@ -58,13 +45,20 @@ export default function Reports() {
         reportId,
         format: selectedFormat
       });
-      if (res.data?.success) {
-        toast.success(`Generated report in ${selectedFormat} format!`);
+
+      if (res.data?.success && res.data?.downloadUrl && !res.data.downloadUrl.includes("/api/v2/reports/download/")) {
+        window.open(res.data.downloadUrl, "_blank");
+        toast.success(`Report ready for download in ${selectedFormat} format!`);
+      } else if (res.data?.success) {
+        toast(
+          res.data.message || `Report generation is currently in preview mode. Direct ${selectedFormat} file streaming will be available in an upcoming update.`,
+          { icon: "ℹ️", duration: 5000 }
+        );
       } else {
-        toast.success(`Exporting ${selectedFormat} file...`);
+        toast.error(res.data?.message || `Unable to generate ${selectedFormat} report.`);
       }
     } catch (err) {
-      toast.success(`Downloaded ${selectedFormat} report.`);
+      toast.error(err?.response?.data?.message || `Failed to generate ${selectedFormat} report. Generation service is currently unavailable.`);
     } finally {
       setGenerating(false);
     }
@@ -81,12 +75,14 @@ export default function Reports() {
         format: selectedFormat
       });
       if (res.data?.success) {
-        toast.success(res.data.message || "Report emailed successfully!");
+        toast.success(res.data.message || "Report dispatch request queued!");
         setEmailModal(null);
         setEmailInput("");
+      } else {
+        toast.error(res.data?.message || "Failed to email report.");
       }
     } catch (err) {
-      toast.error("Failed to email report");
+      toast.error(err?.response?.data?.message || "Failed to email report. Service is currently unavailable.");
     } finally {
       setGenerating(false);
     }
@@ -97,6 +93,7 @@ export default function Reports() {
       <ReportsMobile
         activeReports={activeReports}
         loading={loading}
+        loadError={loadError}
         selectedFormat={selectedFormat}
         setSelectedFormat={setSelectedFormat}
         handleGenerate={handleGenerate}
@@ -114,6 +111,7 @@ export default function Reports() {
     <ReportsDesktop
       activeReports={activeReports}
       loading={loading}
+      loadError={loadError}
       selectedFormat={selectedFormat}
       setSelectedFormat={setSelectedFormat}
       handleGenerate={handleGenerate}

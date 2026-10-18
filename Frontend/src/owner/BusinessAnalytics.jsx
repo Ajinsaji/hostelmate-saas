@@ -28,11 +28,13 @@ export default function BusinessAnalytics() {
   const [occupancyData, setOccupancyData] = useState(null);
   const [financeData, setFinanceData] = useState(null);
   const [residentData, setResidentData] = useState(null);
+  const [error, setError] = useState("");
   const [activeTab, setActiveTab] = useState("revenue"); // revenue | occupancy | finance | residents
 
   const fetchAnalytics = async () => {
     try {
       setLoading(true);
+      setError("");
       const [revRes, occRes, finRes, resRes] = await Promise.all([
         api.get("/api/v2/analytics/revenue"),
         api.get("/api/v2/analytics/occupancy"),
@@ -46,6 +48,7 @@ export default function BusinessAnalytics() {
       if (resRes.data?.success) setResidentData(resRes.data);
     } catch (err) {
       console.error(err);
+      setError(err?.response?.data?.message || "Live analytics are not available for this workspace yet.");
       toast.error("Failed to load business analytics");
     } finally {
       setLoading(false);
@@ -73,7 +76,7 @@ export default function BusinessAnalytics() {
               Multi-dimensional revenue forecasting, occupancy heatmaps, and financial analytics.
             </p>
           </div>
-          <StatusPill tone="success">Live Insights</StatusPill>
+          <StatusPill tone="warning">Analytics preview</StatusPill>
         </div>
 
         {/* Tab Navigation */}
@@ -108,6 +111,11 @@ export default function BusinessAnalytics() {
           <div className="p-8 text-center text-slate-500 bg-[#162032] border border-[#22304A] rounded-3xl animate-pulse">
             Loading analytics intelligence...
           </div>
+        ) : error ? (
+          <div role="alert" className="rounded-3xl border border-amber-500/30 bg-amber-500/10 p-6 text-sm text-amber-200 space-y-3">
+            <p>{error}</p>
+            <button type="button" onClick={fetchAnalytics} className="rounded-xl bg-amber-400 px-4 py-2 font-bold text-slate-950">Retry analytics</button>
+          </div>
         ) : (
           <>
             {/* REVENUE TAB */}
@@ -118,7 +126,7 @@ export default function BusinessAnalytics() {
                     <span className="text-[10px] font-bold text-slate-400 uppercase">Today's Revenue</span>
                     <div className="text-2xl font-black text-white mt-1">₹{revenueData.today?.toLocaleString()}</div>
                     <span className="text-[10px] text-emerald-400 flex items-center gap-1 mt-1 font-bold">
-                      <ArrowUpRight size={12} /> +4.2% vs yesterday
+                      <ArrowUpRight size={12} /> Comparison unavailable
                     </span>
                   </div>
                   <div className="bg-[#162032] border border-[#22304A] p-4 rounded-2xl">

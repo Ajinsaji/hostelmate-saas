@@ -3,7 +3,7 @@ import { PageContainer } from "../design-system/layouts/PageContainer";
 import { Card } from "../design-system/components/Card";
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import { api } from "../services/api";
 import { MapPin, Phone, Building, CheckCircle, ArrowRight } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -18,8 +18,7 @@ export default function PublicHostel() {
   useEffect(() => {
     const fetchHostel = async () => {
       try {
-        const url = import.meta.env.VITE_API_URL || (typeof window !== "undefined" ? window.location.origin : "");
-        const response = await axios.get(`${url}/api/public/hostel/${slug}`);
+        const response = await api.get(`/api/public/hostel/${slug}`);
         if (response.data.success) {
           setHostel(response.data.data);
         } else {

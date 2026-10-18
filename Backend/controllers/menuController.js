@@ -4,8 +4,8 @@ const { logger } = require("../utils/logger");
 
 function getUserContext(req) {
   return {
-    hostelId: req.owner?.hostelId || req.user?.hostelId,
-    userId: req.owner?._id || req.user?._id,
+    hostelId: req.context?.hostelId || req.owner?.hostelId || req.user?.hostelId,
+    userId: req.context?.userId || req.owner?.ownerId || req.user?.userId || req.user?.id,
     ip: req.ip || req.headers["x-forwarded-for"] || "",
   };
 }
@@ -27,6 +27,10 @@ const createOrUpdateMenu = async (req, res) => {
 const getMenu = async (req, res) => {
   try {
     const userCtx = getUserContext(req);
+    if (!userCtx.hostelId) return res.status(400).json({ success: false, message: "Hostel context is required" });
+    if (req.query.date && Number.isNaN(new Date(req.query.date).getTime())) {
+      return res.status(400).json({ success: false, message: "Invalid menu date" });
+    }
     const menu = await menuService.getMenuForDate(userCtx.hostelId, req.query.date);
     return res.status(200).json({ success: true, menu });
   } catch (err) {

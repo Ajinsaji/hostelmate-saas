@@ -4,8 +4,8 @@ const { logger } = require("../utils/logger");
 
 function getUserContext(req) {
   return {
-    hostelId: req.owner?.hostelId || req.user?.hostelId,
-    userId: req.owner?._id || req.user?._id,
+    hostelId: req.context?.hostelId || req.owner?.hostelId || req.user?.hostelId,
+    userId: req.context?.userId || req.owner?.ownerId || req.owner?._id || req.user?.userId || req.user?._id || req.user?.id,
     ip: req.ip || req.headers["x-forwarded-for"] || "",
   };
 }

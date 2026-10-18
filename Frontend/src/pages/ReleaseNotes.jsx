@@ -61,12 +61,16 @@ export default function ReleaseNotes() {
               Explore recent feature additions, security enhancements, bug fixes, and system improvements.
             </p>
           </div>
-          <StatusPill tone="success">Current Release: v3.2.1</StatusPill>
+          <StatusPill tone="info">Published releases</StatusPill>
         </div>
 
         {loading ? (
           <div className="p-8 text-center text-slate-500 bg-[#162032] border border-[#22304A] rounded-3xl animate-pulse">
             Loading release notes history...
+          </div>
+        ) : releases.length === 0 ? (
+          <div role="status" className="rounded-3xl border border-dashed border-[#22304A] bg-[#162032] p-8 text-center text-slate-400">
+            No published release notes are available yet.
           </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
@@ -87,7 +91,7 @@ export default function ReleaseNotes() {
                   >
                     <div>
                       <span className="block font-mono text-sm">{rel.version}</span>
-                      <span className="text-[10px] text-slate-400">{new Date(rel.releaseDate || Date.now()).toLocaleDateString()}</span>
+                      <span className="text-[10px] text-slate-400">{rel.releaseDate ? new Date(rel.releaseDate).toLocaleDateString() : "Date unavailable"}</span>
                     </div>
                     <ChevronRight size={16} />
                   </div>
@@ -106,7 +110,7 @@ export default function ReleaseNotes() {
                       Version {activeRelease.version}
                     </span>
                     <span className="text-xs text-slate-400 flex items-center gap-1 font-mono">
-                      <Calendar size={14} /> {new Date(activeRelease.releaseDate || Date.now()).toLocaleDateString()}
+                      <Calendar size={14} /> {activeRelease.releaseDate ? new Date(activeRelease.releaseDate).toLocaleDateString() : "Date unavailable"}
                     </span>
                   </div>
                   <h2 className="text-2xl font-black text-white">{activeRelease.title}</h2>

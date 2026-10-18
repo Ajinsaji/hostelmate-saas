@@ -1,9 +1,9 @@
 const express = require("express");
 const router = express.Router();
-const ownerAuth = require("../middleware/ownerAuth");
+const accountantAuth = require("../middleware/accountantAuth");
 const { createRentInvoice, generateMonthlyInvoices, getInvoices } = require("../controllers/rentInvoiceController");
 
-router.use(ownerAuth);
+router.use(accountantAuth);
 
 router.post("/batch-generate", generateMonthlyInvoices);
 router.post("/", createRentInvoice);

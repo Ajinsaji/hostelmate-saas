@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import axios from "axios";
+import { api } from "../services/api";
 import { useNavigate } from "react-router-dom";
 import { CheckCircle2, Loader2 } from "lucide-react";
 import toast from "react-hot-toast";
@@ -85,9 +85,7 @@ function PendingApproval() {
     setChecking(true);
     try {
       const queryPhone = pending.phone || pending.email;
-      const res = await axios.get(
-        `${import.meta.env.VITE_API_URL}/api/request/status/${encodeURIComponent(queryPhone)}`
-      );
+      const res = await api.get(`/api/request/status/${encodeURIComponent(queryPhone)}`);
 
       const data = res.data || {};
       const requestStatus = data?.request?.status || data?.status || "";
@@ -256,9 +254,7 @@ function PendingApproval() {
                         toast.error("No request id found");
                         return;
                       }
-                      const response = await axios.delete(
-                        `${import.meta.env.VITE_API_URL}/api/request/cancel/${requestId}`
-                      );
+                      const response = await api.delete(`/api/request/cancel/${requestId}`);
                       if (response.data.success) {
                         localStorage.removeItem("pendingRequestId");
                         localStorage.removeItem("pendingPhone");

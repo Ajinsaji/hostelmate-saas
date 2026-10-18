@@ -73,11 +73,27 @@ async function createRoom(data, userContext = {}) {
   let buildingId = data.buildingId;
   if (!buildingId || buildingId === "" || buildingId === "null" || buildingId === "undefined") {
     buildingId = null;
+  } else {
+    // Verify building belongs to this active hostel
+    const buildingDoc = await Building.findOne({ _id: buildingId, hostelId, isDeleted: false });
+    if (!buildingDoc) {
+      throw new Error("Referenced building not found in active hostel");
+    }
   }
 
   let floorId = data.floorId;
   if (!floorId || floorId === "" || floorId === "null" || floorId === "undefined") {
     floorId = null;
+  } else {
+    // Verify floor belongs to this active hostel
+    const floorDoc = await Floor.findOne({ _id: floorId, hostelId, isDeleted: false });
+    if (!floorDoc) {
+      throw new Error("Referenced floor not found in active hostel");
+    }
+    // If buildingId also provided, verify floor belongs to building
+    if (buildingId && floorDoc.buildingId && floorDoc.buildingId.toString() !== buildingId.toString()) {
+      throw new Error("Referenced floor does not belong to the selected building");
+    }
   }
 
   // Safely normalize numeric fields
@@ -149,13 +165,41 @@ async function updateRoom(roomId, updateData, userContext = {}) {
   const hostelId = userContext.hostelId;
   if (!hostelId) throw new Error("Hostel context required");
 
+  const room = await Room.findOne({ _id: roomId, hostelId, isDeleted: false });
+  if (!room) throw new Error("Room not found in active hostel");
+
+  // Validate buildingId if changed
+  if (updateData.buildingId && updateData.buildingId !== "" && updateData.buildingId !== "null") {
+    const bDoc = await Building.findOne({ _id: updateData.buildingId, hostelId, isDeleted: false });
+    if (!bDoc) throw new Error("Referenced building not found in active hostel");
+  }
+
+  // Validate floorId if changed
+  if (updateData.floorId && updateData.floorId !== "" && updateData.floorId !== "null") {
+    const fDoc = await Floor.findOne({ _id: updateData.floorId, hostelId, isDeleted: false });
+    if (!fDoc) throw new Error("Referenced floor not found in active hostel");
+  }
+
+  // Validate capacity: cannot be less than currently occupied beds
+  if (updateData.capacity !== undefined) {
+    const newCap = parseInt(updateData.capacity, 10);
+    const currentOccupied = await Bed.countDocuments({
+      roomId,
+      hostelId,
+      isDeleted: false,
+      status: { $in: ["Occupied", "occupied"] },
+    });
+    if (newCap < currentOccupied) {
+      throw new Error(`Cannot reduce room capacity to ${newCap} because ${currentOccupied} bed(s) are currently occupied`);
+    }
+  }
+
   updateData.updatedBy = userContext.userId;
   const updatedRoom = await Room.findOneAndUpdate(
     { _id: roomId, hostelId, isDeleted: false },
     updateData,
     { returnDocument: "after" }
   );
-  if (!updatedRoom) throw new Error("Room not found");
 
   await recalculateRoomStatus(roomId);
 

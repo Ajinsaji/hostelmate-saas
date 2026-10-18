@@ -6,6 +6,8 @@ import {
   CreditCard,
   Eye,
   Trash2,
+  Upload,
+  Download,
 } from "lucide-react";
 import { useTheme } from "../design-system/ThemeProvider";
 import {
@@ -20,7 +22,6 @@ import {
   SkeletonLoader,
   EmptyState,
   Modal,
-  Drawer,
   FormWizard
 } from "../design-system/components";
 
@@ -49,6 +50,8 @@ export const ResidentsDesktop = memo(function ResidentsDesktop({
   handleDelete,
   handleViewProfile,
   renderStatusBadge,
+  onOpenCsvImport,
+  onExportCsv,
 }) {
   const { colors, typography } = useTheme();
 
@@ -73,9 +76,21 @@ export const ResidentsDesktop = memo(function ResidentsDesktop({
           </p>
         </div>
 
-        <Button variant="primary" icon={Plus} onClick={() => { setEditingResident(null); setFormStep(0); setShowAddModal(true); }}>
-          Add Resident
-        </Button>
+        <div className="flex items-center gap-2">
+          {onExportCsv && (
+            <Button variant="outline" icon={Download} onClick={onExportCsv}>
+              Export CSV
+            </Button>
+          )}
+          {onOpenCsvImport && (
+            <Button variant="outline" icon={Upload} onClick={onOpenCsvImport}>
+              Import CSV
+            </Button>
+          )}
+          <Button variant="primary" icon={Plus} onClick={() => { setEditingResident(null); setFormStep(0); setShowAddModal(true); }}>
+            Add Resident
+          </Button>
+        </div>
       </div>
 
       {/* 2. Key Metrics */}
@@ -336,47 +351,6 @@ export const ResidentsDesktop = memo(function ResidentsDesktop({
           )}
         </FormWizard>
       </Modal>
-
-      {/* 6. Profile Drawer */}
-      <Drawer
-        isOpen={showProfileDrawer}
-        onClose={() => setShowProfileDrawer(false)}
-        title="Resident Profile"
-      >
-        {profileData && (
-          <div className="space-y-4">
-            <div className="flex items-center gap-4 p-4 rounded-2xl border" style={{ background: "rgba(255,255,255,0.02)", borderColor: colors.border.default || "#202B45" }}>
-              <Avatar name={profileData.name || `${profileData.firstName} ${profileData.lastName}`} size="xl" />
-              <div>
-                <h3 className="text-lg font-bold text-white">{profileData.name || `${profileData.firstName} ${profileData.lastName}`}</h3>
-                <p className="text-xs text-slate-400">{profileData.phone}</p>
-                <div className="mt-2">{renderStatusBadge(profileData.status)}</div>
-              </div>
-            </div>
-
-            <div className="space-y-2 text-sm">
-              <div className="flex justify-between p-3 rounded-xl bg-white/[0.02]">
-                <span className="text-slate-400">Room</span>
-                <span className="font-bold text-white">Room {profileData.roomId?.roomNumber || '—'}</span>
-              </div>
-              <div className="flex justify-between p-3 rounded-xl bg-white/[0.02]">
-                <span className="text-slate-400">Email</span>
-                <span className="font-bold text-white">{profileData.email || '—'}</span>
-              </div>
-              <div className="flex justify-between p-3 rounded-xl bg-white/[0.02]">
-                <span className="text-slate-400">Guardian Phone</span>
-                <span className="font-bold text-white">{profileData.guardianPhone || '—'}</span>
-              </div>
-            </div>
-
-            <div className="pt-4 flex gap-2">
-              <Button variant="danger" fullWidth onClick={() => handleDelete(profileData._id)}>
-                Delete Resident
-              </Button>
-            </div>
-          </div>
-        )}
-      </Drawer>
 
     </div>
   );

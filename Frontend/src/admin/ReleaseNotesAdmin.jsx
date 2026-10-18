@@ -1,12 +1,10 @@
-import React, { useState, useEffect } from "react";
-import { Plus, Edit3, Trash2, Rocket, Save, Send, Sparkles } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Plus, Trash2, Rocket } from "lucide-react";
 import toast from "react-hot-toast";
 import api from "../utils/apiClient";
 import ConfirmDialog from "../superadmin/components/modals/ConfirmDialog";
-import { OwnerLayout } from "../design-system/layouts/OwnerLayout";
 import { PageContainer } from "../design-system/layouts/PageContainer";
 import { Card } from "../design-system/components/Card";
-import { StatusPill } from "../design-system/components/StatusPill";
 
 export default function ReleaseNotesAdmin() {
   const [loading, setLoading] = useState(true);
@@ -83,7 +81,7 @@ export default function ReleaseNotesAdmin() {
         toast.success("Release note deleted");
         fetchReleases();
       }
-    } catch (err) {
+    } catch {
       toast.error("Deletion failed");
     } finally {
       setDeleteTargetId(null);
@@ -95,8 +93,7 @@ export default function ReleaseNotesAdmin() {
   };
 
   return (
-    <OwnerLayout>
-      <PageContainer className="pt-6 pb-24 space-y-6" style={{ background: "#0B1120", minHeight: "100vh" }}>
+    <PageContainer className="pt-6 pb-24 space-y-6" style={{ background: "#0B1120", minHeight: "100vh" }}>
         
         {/* Header */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-[#22304A] pb-6">
@@ -236,6 +233,5 @@ export default function ReleaseNotesAdmin() {
         />
 
       </PageContainer>
-    </OwnerLayout>
   );
 }

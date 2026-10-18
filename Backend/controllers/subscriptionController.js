@@ -195,18 +195,17 @@ const getOwnerSubscriptionHistory = async (req, res) => {
  * Legacy support methods
  */
 const getAvailablePlans = async (req, res) => {
-  return res.status(200).json({
-    success: true,
-    plans: [
-      {
-        _id: "unified",
-        name: "HostelMate Unified Plan",
-        description: "One unified plan with all features included",
-        monthlyPrice: 0,
-        residentChargePerResident: 10,
-      },
-    ],
-  });
+  try {
+    const plans = await SubscriptionPlan.find({ isActive: true })
+      .select("name description monthlyPrice residentChargePerResident durationDays features")
+      .populate("features", "name description")
+      .sort({ monthlyPrice: 1 })
+      .lean();
+    return res.status(200).json({ success: true, plans });
+  } catch (error) {
+    logger.error("getAvailablePlans error:", error);
+    return res.status(500).json({ success: false, message: "Unable to load subscription plans" });
+  }
 };
 
 const calculateUpgrade = async (req, res) => {

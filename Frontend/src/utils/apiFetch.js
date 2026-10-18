@@ -1,4 +1,5 @@
 import { getAuthToken, clearAuth } from "./authToken";
+import { API_BASE_URL } from "../services/api";
 
 export class ApiError extends Error {
   constructor(message, status = 500, code = "API_ERROR", data = null) {
@@ -11,7 +12,7 @@ export class ApiError extends Error {
 }
 
 const getApiBaseUrl = () => {
-  return import.meta.env.VITE_API_URL || (typeof window !== "undefined" ? window.location.origin : "");
+  return API_BASE_URL || (import.meta.env.DEV ? "" : null);
 };
 
 const PUBLIC_PATHS = new Set([
@@ -83,6 +84,9 @@ export async function parseApiResponse(response) {
 
 export const apiFetch = async (url, options = {}) => {
   const baseUrl = getApiBaseUrl();
+  if (!baseUrl && !url.startsWith("http://") && !url.startsWith("https://")) {
+    throw new ApiError("VITE_API_URL is not configured for this production deployment.", 0, "API_CONFIGURATION_ERROR");
+  }
   const resolvedUrl = url.startsWith("http://") || url.startsWith("https://")
     ? url
     : `${baseUrl.replace(/\/+$/, "")}/${url.replace(/^\/+/, "")}`;

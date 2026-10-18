@@ -2,7 +2,8 @@ import { memo } from "react";
 import {
   FileText,
   Download,
-  Mail
+  Mail,
+  AlertTriangle
 } from "lucide-react";
 import { useTheme } from "../design-system/ThemeProvider";
 import {
@@ -17,6 +18,7 @@ import {
 export const ReportsDesktop = memo(function ReportsDesktop({
   activeReports,
   loading,
+  loadError,
   selectedFormat,
   setSelectedFormat,
   handleGenerate,
@@ -35,11 +37,14 @@ export const ReportsDesktop = memo(function ReportsDesktop({
       {/* 1. Header & Format Switcher */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 style={{ fontSize: typography.sizes["2xl"] || "24px", fontWeight: typography.weights.bold, color: colors.text.primary || "#FFFFFF", margin: 0 }}>
-            Report Category Generator
-          </h1>
+          <div className="flex items-center gap-2 mb-1">
+            <h1 style={{ fontSize: typography.sizes["2xl"] || "24px", fontWeight: typography.weights.bold, color: colors.text.primary || "#FFFFFF", margin: 0 }}>
+              Report Category Generator
+            </h1>
+            <Badge variant="warning" showDot={false}>Preview Engine</Badge>
+          </div>
           <p style={{ fontSize: typography.sizes.sm || "14px", color: colors.text.secondary || "#94A3B8", margin: "4px 0 0" }}>
-            Select a report category to instantly generate & download PDF, Excel, or CSV files
+            Select a report category to generate & download PDF, Excel, or CSV files
           </p>
         </div>
 
@@ -58,6 +63,14 @@ export const ReportsDesktop = memo(function ReportsDesktop({
         </div>
       </div>
 
+      {/* Honest Preview Notice */}
+      <div className="flex items-center gap-3 p-3.5 rounded-xl border border-amber-500/20 bg-amber-500/10 text-amber-300 text-xs">
+        <AlertTriangle size={16} className="flex-shrink-0 text-amber-400" />
+        <span>
+          <strong>Preview only:</strong> report categories are listed, but generation, downloads, scheduling, and email delivery are not implemented. No files or emails are created.
+        </span>
+      </div>
+
       {/* 2. Report Category Cards Grid */}
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -65,6 +78,10 @@ export const ReportsDesktop = memo(function ReportsDesktop({
             <SkeletonLoader key={n} height="160px" />
           ))}
         </div>
+      ) : loadError ? (
+        <div role="alert" className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-5 text-sm text-rose-200">{loadError}</div>
+      ) : activeReports.length === 0 ? (
+        <div className="rounded-xl border border-dashed border-slate-600 p-8 text-center text-sm text-slate-400">No report categories are available.</div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {activeReports.map((rep) => {

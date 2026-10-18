@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from "react";
+import { API_BASE_URL } from "../services/api";
 
 export const CONNECTION_STATES = {
   INITIALIZING: "INITIALIZING",
@@ -27,7 +28,7 @@ export function ConnectionProvider({ children }) {
   const isCheckingRef = useRef(false);
 
   const getApiUrl = () => {
-    return import.meta.env.VITE_API_URL || (typeof window !== "undefined" ? window.location.origin : "");
+    return API_BASE_URL || (import.meta.env.DEV ? "" : null);
   };
 
   /**
@@ -67,6 +68,20 @@ export function ConnectionProvider({ children }) {
     const timeoutId = setTimeout(() => controller.abort(), 6000);
 
     const baseUrl = getApiUrl();
+    if (baseUrl === null) {
+      setDiagnosticData({
+        deviceOnline: isDeviceOnline,
+        serverAvailable: false,
+        sessionValid: null,
+        lastCheckedAt: new Date(),
+        message: "Backend configuration is missing. Set VITE_API_URL to the deployed API URL.",
+      });
+      setConnectionState(CONNECTION_STATES.ERROR);
+      setIsChecking(false);
+      setHasCompletedInitialCheck(true);
+      isCheckingRef.current = false;
+      return CONNECTION_STATES.ERROR;
+    }
     const healthUrl = `${baseUrl.replace(/\/+$/, "")}/api/health`;
 
     let attempts = 0;

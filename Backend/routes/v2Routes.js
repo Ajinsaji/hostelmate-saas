@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const ownerAuth = require("../middleware/ownerAuth");
+const adminOnly = require("../middleware/adminOnly");
 
 const {
   getActiveContext,
@@ -27,6 +28,8 @@ const developerService = require("../services/DeveloperService");
 const marketplaceService = require("../services/MarketplaceService");
 const auditService = require("../services/AuditService");
 const backupService = require("../services/BackupService");
+
+const sendPreviewResult = (res, data) => res.status(data.success ? 200 : 501).json(data);
 
 const {
   getLatestRelease,
@@ -108,56 +111,66 @@ router.get("/workspaces/insights", getWorkspaceInsights);
 
 // Module 1 — Analytics Engine
 router.get("/analytics/dashboard", async (req, res) => {
-  const data = await analyticsService.getDashboard(req.context.workspaceId, req.context.activeHostelId);
+  if (req.query.timeframe && !["30d", "90d", "365d"].includes(req.query.timeframe)) {
+    return res.status(400).json({ success: false, message: "timeframe must be one of 30d, 90d, or 365d" });
+  }
+  if (!req.context.workspaceId && !req.context.hostelId) {
+    return res.status(403).json({ success: false, message: "An authorized workspace or hostel context is required" });
+  }
+  const data = await analyticsService.getDashboard(
+    req.context.workspaceId,
+    req.context.hostelId,
+    req.query.timeframe
+  );
   res.json({ success: true, ...data });
 });
 router.get("/analytics/revenue", async (req, res) => {
   const data = await analyticsService.getRevenue(req.context.workspaceId);
-  res.json({ success: true, ...data });
+  sendPreviewResult(res, data);
 });
 router.get("/analytics/occupancy", async (req, res) => {
   const data = await analyticsService.getOccupancy(req.context.workspaceId);
-  res.json({ success: true, ...data });
+  sendPreviewResult(res, data);
 });
 router.get("/analytics/finance", async (req, res) => {
   const data = await analyticsService.getFinance(req.context.workspaceId);
-  res.json({ success: true, ...data });
+  sendPreviewResult(res, data);
 });
 router.get("/analytics/residents", async (req, res) => {
   const data = await analyticsService.getResidents(req.context.workspaceId);
-  res.json({ success: true, ...data });
+  sendPreviewResult(res, data);
 });
 
 // Module 2 — AI Intelligence
 router.get("/ai/overview", async (req, res) => {
   const data = await aiService.getOverview(req.context.workspaceId);
-  res.json(data);
+  sendPreviewResult(res, data);
 });
 router.get("/ai/recommendations", async (req, res) => {
   const data = await aiService.getRecommendations(req.context.workspaceId);
-  res.json(data);
+  sendPreviewResult(res, data);
 });
 router.get("/ai/predictions", async (req, res) => {
   const data = await aiService.getPredictions(req.context.workspaceId);
-  res.json(data);
+  sendPreviewResult(res, data);
 });
 
 // Module 3 — Subscription & Billing
 router.get("/billing", async (req, res) => {
   const data = await billingService.getBillingOverview(req.context.workspaceId);
-  res.json(data);
+  sendPreviewResult(res, data);
 });
 router.post("/billing/checkout", async (req, res) => {
   const data = await billingService.processCheckout(req.context.workspaceId, req.body);
-  res.json(data);
+  sendPreviewResult(res, data);
 });
 router.post("/billing/coupon", async (req, res) => {
   const data = await billingService.validateCoupon(req.body.couponCode);
-  res.json(data);
+  sendPreviewResult(res, data);
 });
 router.get("/billing/invoices", async (req, res) => {
   const data = await billingService.getInvoices(req.context.workspaceId);
-  res.json(data);
+  sendPreviewResult(res, data);
 });
 
 // Module 4 — Storage Center
@@ -185,118 +198,118 @@ router.get("/reports", async (req, res) => {
 });
 router.post("/reports/generate", async (req, res) => {
   const data = await reportService.generateReport(req.context.workspaceId, req.body);
-  res.json(data);
+  res.status(data.success ? 200 : 501).json(data);
 });
 router.post("/reports/email", async (req, res) => {
   const data = await reportService.emailReport(req.context.workspaceId, req.body);
-  res.json(data);
+  res.status(data.success ? 200 : 501).json(data);
 });
 
 // WAVE 4 ENTERPRISE ENDPOINTS
 router.get("/enterprise/branding", async (req, res) => {
   const data = await whiteLabelService.getBranding(req.context.workspaceId);
-  res.json(data);
+  sendPreviewResult(res, data);
 });
 router.put("/enterprise/branding", async (req, res) => {
   const data = await whiteLabelService.updateBranding(req.context.workspaceId, req.body);
-  res.json(data);
+  sendPreviewResult(res, data);
 });
 router.post("/enterprise/domain", async (req, res) => {
   const data = await whiteLabelService.addDomain(req.context.workspaceId, req.body);
-  res.json(data);
+  sendPreviewResult(res, data);
 });
 router.get("/enterprise/domain/status", async (req, res) => {
   const data = await whiteLabelService.getDomainStatus(req.context.workspaceId);
-  res.json(data);
+  sendPreviewResult(res, data);
 });
 router.delete("/enterprise/domain", async (req, res) => {
   const data = await whiteLabelService.removeDomain(req.context.workspaceId);
-  res.json(data);
+  sendPreviewResult(res, data);
 });
 
 router.get("/developer/api-keys", async (req, res) => {
   const data = await developerService.getApiKeys(req.context.workspaceId);
-  res.json(data);
+  sendPreviewResult(res, data);
 });
 router.post("/developer/api-keys", async (req, res) => {
   const data = await developerService.generateApiKey(req.context.workspaceId, req.body);
-  res.json(data);
+  sendPreviewResult(res, data);
 });
 router.delete("/developer/api-keys/:id", async (req, res) => {
   const data = await developerService.deleteApiKey(req.context.workspaceId, req.params.id);
-  res.json(data);
+  sendPreviewResult(res, data);
 });
 router.get("/developer/webhooks", async (req, res) => {
   const data = await developerService.getWebhooks(req.context.workspaceId);
-  res.json(data);
+  sendPreviewResult(res, data);
 });
 router.post("/developer/webhooks", async (req, res) => {
   const data = await developerService.createWebhook(req.context.workspaceId, req.body);
-  res.json(data);
+  sendPreviewResult(res, data);
 });
 router.put("/developer/webhooks/:id", async (req, res) => {
   const data = await developerService.updateWebhook(req.context.workspaceId, req.params.id, req.body);
-  res.json(data);
+  sendPreviewResult(res, data);
 });
 router.delete("/developer/webhooks/:id", async (req, res) => {
   const data = await developerService.deleteWebhook(req.context.workspaceId, req.params.id);
-  res.json(data);
+  sendPreviewResult(res, data);
 });
 
 router.get("/marketplace", async (req, res) => {
   const data = await marketplaceService.getPlugins(req.context.workspaceId);
-  res.json(data);
+  sendPreviewResult(res, data);
 });
 router.post("/marketplace/install", async (req, res) => {
   const data = await marketplaceService.installPlugin(req.context.workspaceId, req.body);
-  res.json(data);
+  sendPreviewResult(res, data);
 });
 router.put("/marketplace/configure", async (req, res) => {
   const data = await marketplaceService.configurePlugin(req.context.workspaceId, req.body);
-  res.json(data);
+  sendPreviewResult(res, data);
 });
 router.delete("/marketplace/uninstall", async (req, res) => {
   const data = await marketplaceService.uninstallPlugin(req.context.workspaceId, req.body.pluginId);
-  res.json(data);
+  sendPreviewResult(res, data);
 });
 
 router.get("/audit", async (req, res) => {
   const data = await auditService.getAuditLogs(req.context.workspaceId);
-  res.json(data);
+  sendPreviewResult(res, data);
 });
 router.get("/audit/export", async (req, res) => {
   const data = await auditService.exportAudit(req.context.workspaceId);
-  res.json(data);
+  sendPreviewResult(res, data);
 });
 router.get("/audit/:id", async (req, res) => {
   const data = await auditService.getAuditById(req.context.workspaceId, req.params.id);
-  res.json(data);
+  sendPreviewResult(res, data);
 });
 
 router.get("/backups", async (req, res) => {
   const data = await backupService.getBackups(req.context.workspaceId);
-  res.json(data);
+  sendPreviewResult(res, data);
 });
 router.post("/backups/create", async (req, res) => {
   const data = await backupService.createBackup(req.context.workspaceId, req.body);
-  res.json(data);
+  sendPreviewResult(res, data);
 });
 router.post("/backups/restore", async (req, res) => {
   const data = await backupService.restoreBackup(req.context.workspaceId, req.body);
-  res.json(data);
+  sendPreviewResult(res, data);
 });
 router.delete("/backups/:id", async (req, res) => {
   const data = await backupService.deleteBackup(req.context.workspaceId, req.params.id);
-  res.json(data);
+  sendPreviewResult(res, data);
 });
 
 // RELEASE NOTES & IN-APP UPDATE ENDPOINTS
 router.get("/releases/latest", getLatestRelease);
 router.get("/releases", getAllReleases);
 router.get("/releases/:version", getReleaseByVersion);
-router.post("/releases", createRelease);
-router.put("/releases/:id", updateRelease);
-router.delete("/releases/:id", deleteRelease);
+router.post("/releases", adminOnly, createRelease);
+router.put("/releases/:id", adminOnly, updateRelease);
+router.delete("/releases/:id", adminOnly, deleteRelease);
 router.patch("/releases/mark-read", markReleaseAsRead);
 
 module.exports = router;

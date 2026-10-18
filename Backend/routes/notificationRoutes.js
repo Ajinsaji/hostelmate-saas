@@ -3,6 +3,7 @@ const router = express.Router();
 const ownerAuth = require("../middleware/ownerAuth");
 const {
   dispatchNotification,
+  broadcastNotification,
   getNotifications,
   getUnreadCount,
   markAsRead,
@@ -32,6 +33,7 @@ router.delete("/devices/:id", deleteDeviceToken);
 router.post("/test", sendTestNotification);
 router.post("/device-token", registerDeviceToken);
 router.post("/dispatch", dispatchNotification);
+router.post("/broadcast", broadcastNotification);
 router.get("/", getNotifications);
 router.get("/mine", getNotifications);
 router.get("/unread-count", getUnreadCount);

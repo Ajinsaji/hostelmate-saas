@@ -3,13 +3,15 @@ import {
   FileText,
   Download,
   Mail,
-  X
+  X,
+  AlertTriangle
 } from "lucide-react";
 import { useTheme } from "../design-system/ThemeProvider";
 
 export const ReportsMobile = memo(function ReportsMobile({
   activeReports,
   loading,
+  loadError,
   selectedFormat,
   setSelectedFormat,
   handleGenerate,
@@ -37,12 +39,25 @@ export const ReportsMobile = memo(function ReportsMobile({
     >
       {/* 1. Header & Title */}
       <div>
-        <h1 style={{ fontSize: "28px", fontWeight: 700, color: "#FFFFFF", margin: 0 }}>
-          Reports
-        </h1>
+        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+          <h1 style={{ fontSize: "28px", fontWeight: 700, color: "#FFFFFF", margin: 0 }}>
+            Reports
+          </h1>
+          <span style={{ fontSize: "11px", fontWeight: 700, color: "#F59E0B", background: "rgba(245, 158, 11, 0.15)", padding: "2px 8px", borderRadius: "8px" }}>
+            Preview Engine
+          </span>
+        </div>
         <p style={{ fontSize: "13px", color: colors.text.secondary || "#94A3B8", margin: "4px 0 0" }}>
           Generate and download operational reports
         </p>
+      </div>
+
+      {/* Honest Preview Notice */}
+      <div style={{ display: "flex", alignItems: "center", gap: "10px", padding: "12px", borderRadius: "12px", border: "1px solid rgba(245, 158, 11, 0.2)", background: "rgba(245, 158, 11, 0.1)", color: "#FCD34D", fontSize: "12px" }}>
+        <AlertTriangle size={16} style={{ flexShrink: 0, color: "#F59E0B" }} />
+        <span>
+          <strong>Preview only:</strong> report categories are listed, but file generation, downloads, scheduling, and email delivery are not implemented.
+        </span>
       </div>
 
       {/* 2. Format Selector Chips */}
@@ -78,6 +93,10 @@ export const ReportsMobile = memo(function ReportsMobile({
           <div style={{ padding: "32px", textAlign: "center", color: "#94A3B8", fontSize: "14px" }}>
             Loading report categories...
           </div>
+        ) : loadError ? (
+          <div role="alert" style={{ padding: "20px", borderRadius: "12px", border: "1px solid rgba(244, 63, 94, 0.3)", background: "rgba(244, 63, 94, 0.1)", color: "#FDA4AF", fontSize: "14px" }}>{loadError}</div>
+        ) : activeReports.length === 0 ? (
+          <div style={{ padding: "24px", textAlign: "center", color: "#94A3B8", fontSize: "14px" }}>No report categories are available.</div>
         ) : (
           activeReports.map((rep) => {
             const IconComp = rep.icon || FileText;

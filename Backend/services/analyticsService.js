@@ -3,103 +3,103 @@ const Bed = require("../models/Bed");
 const Room = require("../models/Room");
 const RentPayment = require("../models/RentPayment");
 const Expense = require("../models/Expense");
-const Staff = require("../models/Staff");
+const Hostel = require("../models/Hostel");
 
 class AnalyticsService {
-  async getDashboard(workspaceId, hostelId) {
-    const filter = { workspaceId };
-    if (hostelId) filter.hostelId = hostelId;
+  async getDashboard(workspaceId, hostelId, timeframe = "30d") {
+    const validTimeframes = new Set(["30d", "90d", "365d"]);
+    const selectedTimeframe = validTimeframes.has(timeframe) ? timeframe : "30d";
+    const endDate = new Date();
+    const startDate = new Date(endDate);
+    startDate.setUTCDate(startDate.getUTCDate() - Number.parseInt(selectedTimeframe, 10));
 
-    const totalResidents = await Resident.countDocuments({ ...filter, isDeleted: false, status: "Active" });
-    const totalBeds = await Bed.countDocuments({ ...filter, isDeleted: false });
-    const occupiedBeds = await Bed.countDocuments({ ...filter, isOccupied: true, isDeleted: false });
+    // Context middleware authorizes the active hostel. Without one, aggregate only
+    // hostels belonging to the authenticated workspace (never by client-supplied ID).
+    const hostels = hostelId
+      ? [{ _id: hostelId }]
+      : await Hostel.find({ workspaceId }).select("_id").lean();
+    const hostelIds = hostels.map((hostel) => hostel._id);
+    if (hostelIds.length === 0) {
+      return {
+        totalResidents: 0,
+        totalBeds: 0,
+        occupiedBeds: 0,
+        occupancyRate: 0,
+        periodRevenue: 0,
+        periodExpenses: 0,
+        netProfit: 0,
+        periodStart: startDate,
+        periodEnd: endDate,
+      };
+    }
+
+    const tenantFilter = { hostelId: { $in: hostelIds } };
+    const totalResidents = await Resident.countDocuments({
+      ...tenantFilter,
+      isDeleted: false,
+      status: { $in: ["Active", "active"] },
+    });
+    const totalBeds = await Bed.countDocuments({ ...tenantFilter, isDeleted: false });
+    const occupiedBeds = await Bed.countDocuments({
+      ...tenantFilter,
+      isDeleted: false,
+      status: { $in: ["Occupied", "occupied"] },
+    });
     const occupancyRate = totalBeds > 0 ? Math.round((occupiedBeds / totalBeds) * 100) : 0;
 
-    const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
-
     const revenueAgg = await RentPayment.aggregate([
-      { $match: { ...filter, createdAt: { $gte: startOfMonth } } },
-      { $group: { _id: null, total: { $sum: "$amountPaid" } } }
+      {
+        $match: {
+          ...tenantFilter,
+          status: "Completed",
+          paymentDate: { $gte: startDate, $lte: endDate },
+        },
+      },
+      { $group: { _id: null, total: { $sum: "$amount" } } },
     ]);
-    const monthlyRevenue = revenueAgg[0]?.total || 0;
+    const periodRevenue = revenueAgg[0]?.total || 0;
 
     const expAgg = await Expense.aggregate([
-      { $match: { ...filter, expenseDate: { $gte: startOfMonth }, isDeleted: false } },
-      { $group: { _id: null, total: { $sum: "$netAmount" } } }
+      {
+        $match: {
+          ...tenantFilter,
+          status: "Paid",
+          isDeleted: false,
+          expenseDate: { $gte: startDate, $lte: endDate },
+        },
+      },
+      { $group: { _id: null, total: { $sum: "$netAmount" } } },
     ]);
-    const monthlyExpenses = expAgg[0]?.total || 0;
+    const periodExpenses = expAgg[0]?.total || 0;
 
     return {
       totalResidents,
       totalBeds,
       occupiedBeds,
       occupancyRate,
-      monthlyRevenue,
-      monthlyExpenses,
-      netProfit: monthlyRevenue - monthlyExpenses
+      periodRevenue,
+      periodExpenses,
+      netProfit: periodRevenue - periodExpenses,
+      periodStart: startDate,
+      periodEnd: endDate,
     };
   }
 
-  async getRevenue(workspaceId) {
-    const monthlyTrend = [
-      { month: "Jan", revenue: 45000, expenses: 18000 },
-      { month: "Feb", revenue: 52000, expenses: 21000 },
-      { month: "Mar", revenue: 49000, expenses: 19500 },
-      { month: "Apr", revenue: 58000, expenses: 22000 },
-      { month: "May", revenue: 64000, expenses: 24000 },
-      { month: "Jun", revenue: 72000, expenses: 26000 }
-    ];
-    return {
-      today: 3500,
-      week: 24500,
-      month: 72000,
-      year: 480000,
-      monthlyTrend
+  async getRevenue() {
+    return { success: false, message: "Revenue trend data is not currently calculated."
     };
   }
 
-  async getOccupancy(workspaceId) {
-    const heatmap = [
-      { day: "Mon", rate: 85 },
-      { day: "Tue", rate: 88 },
-      { day: "Wed", rate: 90 },
-      { day: "Thu", rate: 92 },
-      { day: "Fri", rate: 89 },
-      { day: "Sat", rate: 84 },
-      { day: "Sun", rate: 82 }
-    ];
-    return {
-      currentOccupancy: 88,
-      monthlyTrend: [82, 84, 85, 87, 88],
-      heatmap
-    };
+  async getOccupancy() {
+    return { success: false, message: "Historical occupancy trend data is not currently calculated." };
   }
 
-  async getFinance(workspaceId) {
-    return {
-      income: 72000,
-      expenses: 26000,
-      profit: 46000,
-      pendingRent: 8500,
-      breakdown: [
-        { category: "Rent Collections", amount: 72000 },
-        { category: "Utilities & Bills", amount: 12000 },
-        { category: "Maintenance", amount: 8000 },
-        { category: "Salaries", amount: 6000 }
-      ]
-    };
+  async getFinance() {
+    return { success: false, message: "Financial breakdown data is not currently calculated." };
   }
 
-  async getResidents(workspaceId) {
-    return {
-      admissionsThisMonth: 12,
-      exitsThisMonth: 3,
-      netGrowth: 9,
-      occupancyBreakdown: {
-        students: 65,
-        workingProfessionals: 35
-      }
-    };
+  async getResidents() {
+    return { success: false, message: "Resident trend data is not currently calculated." };
   }
 }
 

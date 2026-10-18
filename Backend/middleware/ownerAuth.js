@@ -2,7 +2,7 @@ const { requireRole } = require("./auth");
 const contextMiddleware = require("./contextMiddleware");
 
 const ownerAuth = (req, res, next) => {
-  const wrapper = requireRole(["super_admin", "admin", "eps_admin", "owner", "owner_admin", "Warden", "Cook", "Accountant"]);
+  const wrapper = requireRole(["super_admin", "admin", "eps_admin", "owner", "Owner", "owner_admin", "Warden", "warden", "Cook", "cook", "Accountant", "accountant"]);
   wrapper(req, res, () => {
     if (req.user) {
       req.owner = {

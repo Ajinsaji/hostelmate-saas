@@ -89,11 +89,16 @@ export default function DeveloperConsole() {
         {/* Header */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-[#22304A] pb-6">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-black text-white flex items-center gap-3">
-              <Code className="text-blue-400" /> Developer Portal & API Console
-            </h1>
+            <div className="flex items-center gap-3">
+              <h1 className="text-2xl sm:text-3xl font-black text-white flex items-center gap-3">
+                <Code className="text-blue-400" /> Developer Portal & API Console
+              </h1>
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-500/20 text-blue-300 border border-blue-500/30">
+                Beta
+              </span>
+            </div>
             <p className="text-slate-400 text-sm mt-1">
-              Manage secret API keys, webhook endpoints, rate limit stats, and system integrations.
+              Manage API keys, webhook endpoints, and system developer integrations.
             </p>
           </div>
           <button
@@ -102,6 +107,14 @@ export default function DeveloperConsole() {
           >
             <Plus size={16} /> Generate API Key
           </button>
+        </div>
+
+        {/* Transparency Banner */}
+        <div className="flex items-center gap-3 p-3.5 rounded-2xl border border-blue-500/20 bg-blue-500/10 text-blue-300 text-xs">
+          <Code size={16} className="flex-shrink-0 text-blue-400" />
+          <span>
+            <strong>Developer Platform (Beta):</strong> API key provisioning and webhook subscription engines are in developer preview. Inbound/outbound webhook event delivery is currently in sandbox mode.
+          </span>
         </div>
 
         {loading ? (

@@ -78,14 +78,27 @@ export default function Marketplace() {
         {/* Header */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-[#22304A] pb-6">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-black text-white flex items-center gap-3">
-              <Grid className="text-emerald-400" /> Enterprise Plugin Marketplace
-            </h1>
+            <div className="flex items-center gap-3">
+              <h1 className="text-2xl sm:text-3xl font-black text-white flex items-center gap-3">
+                <Grid className="text-emerald-400" /> Enterprise Plugin Marketplace
+              </h1>
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                Preview
+              </span>
+            </div>
             <p className="text-slate-400 text-sm mt-1">
-              Connect external services including AWS S3, Cloudinary, WhatsApp API, Twilio, QuickBooks, and Payment Gateways.
+              Browse workspace integrations when a persistent catalog and tenant connection state are available.
             </p>
           </div>
-          <StatusPill tone="success">9 Ecosystem Integrations</StatusPill>
+          <StatusPill tone="info">Marketplace (Preview)</StatusPill>
+        </div>
+
+        {/* Transparency Banner */}
+        <div className="flex items-center gap-3 p-3.5 rounded-2xl border border-emerald-500/20 bg-emerald-500/10 text-emerald-300 text-xs">
+          <Grid size={16} className="flex-shrink-0 text-emerald-400" />
+          <span>
+            <strong>Preview only:</strong> integration listing and connect/disconnect actions are not backed by persisted tenant integration records. No connector status is currently available here.
+          </span>
         </div>
 
         {loading ? (

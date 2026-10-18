@@ -3,7 +3,7 @@ import { PageContainer } from "../design-system/layouts/PageContainer";
 import { Card } from "../design-system/components/Card";
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import { api } from "../services/api";
 import toast from 'react-hot-toast';
 
 import { Upload, CheckCircle } from 'lucide-react';
@@ -52,10 +52,7 @@ export default function PublicHostelRegister() {
       if (files.idProofFile) data.append('idProofFile', files.idProofFile);
       if (files.signatureFile) data.append('signatureFile', files.signatureFile);
       
-      const url = import.meta.env.VITE_API_URL || (typeof window !== "undefined" ? window.location.origin : "");
-      const response = await axios.post(`${url}/api/public/hostel/${slug}/admission`, data, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      });
+      const response = await api.post(`/api/public/hostel/${slug}/admission`, data);
       
       if (response.data.success) {
         setSuccess(true);

@@ -1,9 +1,9 @@
 const express = require("express");
 const router = express.Router();
-const ownerAuth = require("../middleware/ownerAuth");
+const kitchenAuth = require("../middleware/kitchenAuth");
 const { createMealPlan, getMealPlans } = require("../controllers/mealPlanController");
 
-router.use(ownerAuth);
+router.use(kitchenAuth);
 
 router.post("/", createMealPlan);
 router.get("/", getMealPlans);

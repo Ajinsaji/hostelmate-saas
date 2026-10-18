@@ -1,3 +1,5 @@
+import { API_BASE_URL } from "../services/api";
+
 export default function buildFileUrl(filePath) {
   if (!filePath) return "";
   if (typeof filePath !== "string") return "";
@@ -31,8 +33,9 @@ export default function buildFileUrl(filePath) {
 
   const relativePath = `uploads/${cleanedName}`;
 
-  const base = import.meta.env.VITE_API_URL || (typeof window !== "undefined" ? window.location.origin : "");
+  const base = API_BASE_URL || (import.meta.env.DEV ? "" : null);
 
+  if (base === null) return "";
   if (!base) return `/${relativePath}`;
   return `${base.replace(/\/$/, "")}/${relativePath}`;
 }

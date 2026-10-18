@@ -42,6 +42,7 @@ export const BusinessIntelligenceDesktop = memo(function BusinessIntelligenceDes
   activeTab,
   setActiveTab,
   loading,
+  kpis,
 }) {
   const { colors, typography } = useTheme();
 
@@ -73,39 +74,41 @@ export const BusinessIntelligenceDesktop = memo(function BusinessIntelligenceDes
             <option value="90d">90 Days</option>
             <option value="365d">Full Year</option>
           </select>
-          <Button variant="primary" icon={Download} onClick={() => toast.success("Exporting Pro+ Analytics Report...")}>
-            Export Pro Report
+          <Button variant="secondary" icon={Download} onClick={() => toast.error("Analytics export is not available yet. No file was created.")}>
+            Export unavailable
           </Button>
         </div>
       </div>
 
-      {/* 2. Executive KPI Cards */}
+      {/* 2. Executive KPI Cards with real database counts */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <MetricCard
-          title="Growth Index"
-          value="+18.4%"
-          icon={TrendingUp}
-          trend="vs last period"
-          trendDirection="up"
-        />
-        <MetricCard
-          title="Avg Occupancy Rate"
-          value="88.2%"
-          icon={BedDouble}
-          trend="Peak"
-          trendDirection="up"
-        />
-        <MetricCard
-          title="Net Profit Margin"
-          value="42.6%"
+            title={`${timeframe === "30d" ? "30-Day" : timeframe === "90d" ? "90-Day" : "365-Day"} Collections`}
+          value={kpis?.periodRevenue !== undefined ? `₹${Number(kpis.periodRevenue).toLocaleString("en-IN")}` : "Unavailable"}
           icon={IndianRupee}
-          trend="Profitable"
-          trendDirection="up"
+          trend={kpis?.periodRevenue > 0 ? "Collections recorded" : "No collections recorded"}
+          trendDirection={kpis?.periodRevenue > 0 ? "up" : "neutral"}
         />
         <MetricCard
-          title="Resident Lifetime Value"
-          value="₹48,500"
+          title="Occupancy Rate"
+          value={kpis?.occupancyRate !== undefined ? `${kpis.occupancyRate}%` : "Unavailable"}
+          icon={BedDouble}
+          trend={kpis?.totalBeds ? `${kpis.occupiedBeds || 0} / ${kpis.totalBeds} beds` : "No beds configured"}
+          trendDirection={kpis?.occupancyRate > 0 ? "up" : "neutral"}
+        />
+        <MetricCard
+          title="Net Cashflow"
+          value={kpis?.netProfit !== undefined ? `₹${Number(kpis.netProfit).toLocaleString("en-IN")}` : "Unavailable"}
+          icon={TrendingUp}
+          trend={kpis?.netProfit >= 0 ? "Operational surplus" : "Operational deficit"}
+          trendDirection={kpis?.netProfit >= 0 ? "up" : "down"}
+        />
+        <MetricCard
+          title="Active Residents"
+          value={kpis?.totalResidents !== undefined ? `${kpis.totalResidents}` : "Unavailable"}
           icon={Users}
+          trend={kpis?.totalResidents > 0 ? "Current residents" : "No active residents"}
+          trendDirection="neutral"
         />
       </div>
 
@@ -131,23 +134,33 @@ export const BusinessIntelligenceDesktop = memo(function BusinessIntelligenceDes
           
           {/* Revenue Trend Area Chart */}
           <Card padding="lg">
-            <SectionHeader title="Revenue & Expense Growth Trend" subtitle="Monthly cashflow performance (₹)" />
+            <SectionHeader title="Revenue & Expense Growth Trend" subtitle="Historical cashflow trend unavailable; the graph will populate when period aggregates exist." />
             <div className="h-64 w-full mt-4">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={financialTrendData}>
-                  <defs>
-                    <linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#22C55E" stopOpacity={0.4}/>
-                      <stop offset="95%" stopColor="#22C55E" stopOpacity={0}/>
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#202B45" />
-                  <XAxis dataKey="month" stroke="#94A3B8" fontSize={12} />
-                  <YAxis stroke="#94A3B8" fontSize={12} />
-                  <Tooltip contentStyle={{ background: "#131C2E", borderColor: "#202B45", borderRadius: "12px", color: "#FFFFFF" }} />
-                  <Area type="monotone" dataKey="revenue" stroke="#22C55E" fillOpacity={1} fill="url(#colorRev)" strokeWidth={2} />
-                </AreaChart>
-              </ResponsiveContainer>
+              {financialTrendData && financialTrendData.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={financialTrendData}>
+                    <defs>
+                      <linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#22C55E" stopOpacity={0.4}/>
+                        <stop offset="95%" stopColor="#22C55E" stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#202B45" />
+                    <XAxis dataKey="month" stroke="#94A3B8" fontSize={12} />
+                    <YAxis stroke="#94A3B8" fontSize={12} />
+                    <Tooltip contentStyle={{ background: "#131C2E", borderColor: "#202B45", borderRadius: "12px", color: "#FFFFFF" }} />
+                    <Area type="monotone" dataKey="revenue" stroke="#22C55E" fillOpacity={1} fill="url(#colorRev)" strokeWidth={2} />
+                  </AreaChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="h-full flex flex-col items-center justify-center text-center p-6 border border-dashed rounded-2xl border-[#202B45] text-slate-400">
+                  <TrendingUp className="mx-auto text-slate-600 mb-2" size={32} />
+                  <p className="text-sm font-bold text-white">No Historical Trend Recorded</p>
+                  <p className="text-xs text-slate-400 max-w-xs mt-1">
+                    Multi-month revenue trajectories will display once consecutive billing periods are logged.
+                  </p>
+                </div>
+              )}
             </div>
           </Card>
 
@@ -155,15 +168,25 @@ export const BusinessIntelligenceDesktop = memo(function BusinessIntelligenceDes
           <Card padding="lg">
             <SectionHeader title="Occupancy Rate Trend (%)" subtitle="Monthly bed fill rates across buildings" />
             <div className="h-64 w-full mt-4">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={financialTrendData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#202B45" />
-                  <XAxis dataKey="month" stroke="#94A3B8" fontSize={12} />
-                  <YAxis stroke="#94A3B8" fontSize={12} domain={[0, 100]} />
-                  <Tooltip contentStyle={{ background: "#131C2E", borderColor: "#202B45", borderRadius: "12px", color: "#FFFFFF" }} />
-                  <Bar dataKey="occupancy" fill="#3B82F6" radius={[6, 6, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
+              {financialTrendData && financialTrendData.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={financialTrendData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#202B45" />
+                    <XAxis dataKey="month" stroke="#94A3B8" fontSize={12} />
+                    <YAxis stroke="#94A3B8" fontSize={12} domain={[0, 100]} />
+                    <Tooltip contentStyle={{ background: "#131C2E", borderColor: "#202B45", borderRadius: "12px", color: "#FFFFFF" }} />
+                    <Bar dataKey="occupancy" fill="#3B82F6" radius={[6, 6, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="h-full flex flex-col items-center justify-center text-center p-6 border border-dashed rounded-2xl border-[#202B45] text-slate-400">
+                  <BedDouble className="mx-auto text-slate-600 mb-2" size={32} />
+                  <p className="text-sm font-bold text-white">No Historical Occupancy Data</p>
+                  <p className="text-xs text-slate-400 max-w-xs mt-1">
+                    Occupancy timelines will populate as resident admissions and checkout records accumulate.
+                  </p>
+                </div>
+              )}
             </div>
           </Card>
 
@@ -171,24 +194,34 @@ export const BusinessIntelligenceDesktop = memo(function BusinessIntelligenceDes
           <Card padding="lg" className="lg:col-span-2">
             <SectionHeader title="Revenue Distribution Breakdown" subtitle="Source breakdown of incoming hostel payments" />
             <div className="h-64 w-full mt-4 flex items-center justify-center">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={categoryDistributionData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={60}
-                    outerRadius={90}
-                    paddingAngle={4}
-                    dataKey="value"
-                  >
-                    {categoryDistributionData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip contentStyle={{ background: "#131C2E", borderColor: "#202B45", borderRadius: "12px", color: "#FFFFFF" }} />
-                </PieChart>
-              </ResponsiveContainer>
+              {categoryDistributionData && categoryDistributionData.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={categoryDistributionData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={60}
+                      outerRadius={90}
+                      paddingAngle={4}
+                      dataKey="value"
+                    >
+                      {categoryDistributionData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip contentStyle={{ background: "#131C2E", borderColor: "#202B45", borderRadius: "12px", color: "#FFFFFF" }} />
+                  </PieChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="w-full h-full flex flex-col items-center justify-center text-center p-6 border border-dashed rounded-2xl border-[#202B45] text-slate-400">
+                  <IndianRupee className="mx-auto text-slate-600 mb-2" size={32} />
+                  <p className="text-sm font-bold text-white">No Cashflow Breakdown Available</p>
+                  <p className="text-xs text-slate-400 max-w-xs mt-1">
+                    Revenue collections and operating expense distributions will appear as payments are recorded.
+                  </p>
+                </div>
+              )}
             </div>
           </Card>
 

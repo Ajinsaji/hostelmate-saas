@@ -4,6 +4,13 @@ const Resident = require("../models/Resident");
 const Payment = require("../models/Payment");
 const Expense = require("../models/Expense");
 const TreasuryLedger = require("../models/TreasuryLedger");
+const MealAttendance = require("../models/MealAttendance");
+const InventoryItem = require("../models/InventoryItem");
+const WasteLog = require("../models/WasteLog");
+const RentPayment = require("../models/RentPayment");
+const RentInvoice = require("../models/RentInvoice");
+const BankAccount = require("../models/BankAccount");
+const VendorInvoice = require("../models/VendorInvoice");
 const { logger } = require("../utils/logger");
 
 const createStaff = async (req, res) => {
@@ -165,8 +172,101 @@ const getStaffDashboard = async (req, res) => {
     const { role, hostelId, tenantId } = req.user;
     const activeHostelId = hostelId || tenantId;
     const userRole = role ? role.toLowerCase() : "";
+    const requestedRole = req.query.role ? req.query.role.toLowerCase() : "";
+    const targetRole = requestedRole || userRole;
 
-    if (userRole === "warden") {
+    if (targetRole === "cook") {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+
+      const [breakfast, lunch, snacks, dinner, guestMeals, extraMeals] = await Promise.all([
+        MealAttendance.countDocuments({
+          hostelId: activeHostelId,
+          attendanceDate: { $gte: today, $lt: tomorrow },
+          meal: "Breakfast",
+          status: { $in: ["Present", "Guest Meal", "Extra Meal"] },
+        }),
+        MealAttendance.countDocuments({
+          hostelId: activeHostelId,
+          attendanceDate: { $gte: today, $lt: tomorrow },
+          meal: "Lunch",
+          status: { $in: ["Present", "Guest Meal", "Extra Meal"] },
+        }),
+        MealAttendance.countDocuments({
+          hostelId: activeHostelId,
+          attendanceDate: { $gte: today, $lt: tomorrow },
+          meal: "Snacks",
+          status: { $in: ["Present", "Guest Meal", "Extra Meal"] },
+        }),
+        MealAttendance.countDocuments({
+          hostelId: activeHostelId,
+          attendanceDate: { $gte: today, $lt: tomorrow },
+          meal: "Dinner",
+          status: { $in: ["Present", "Guest Meal", "Extra Meal"] },
+        }),
+        MealAttendance.countDocuments({
+          hostelId: activeHostelId,
+          attendanceDate: { $gte: today, $lt: tomorrow },
+          status: "Guest Meal",
+        }),
+        MealAttendance.countDocuments({
+          hostelId: activeHostelId,
+          attendanceDate: { $gte: today, $lt: tomorrow },
+          status: "Extra Meal",
+        }),
+      ]);
+
+      const [vegCount, nonVegCount] = await Promise.all([
+        Resident.countDocuments({
+          hostelId: activeHostelId,
+          status: { $in: ["Active", "active"] },
+          isDeleted: false,
+          foodPreference: { $in: ["Veg", "veg", "Vegetarian", "vegetarian"] },
+        }),
+        Resident.countDocuments({
+          hostelId: activeHostelId,
+          status: { $in: ["Active", "active"] },
+          isDeleted: false,
+          foodPreference: { $in: ["Non-Veg", "non-veg", "Non-Vegetarian", "non-vegetarian"] },
+        }),
+      ]);
+
+      const lowStockCount = await InventoryItem.countDocuments({
+        hostelId: activeHostelId,
+        $expr: { $lte: ["$currentStock", "$minimumStock"] },
+      });
+
+      const wasteAgg = await WasteLog.aggregate([
+        {
+          $match: {
+            hostelId: activeHostelId,
+            wasteDate: { $gte: today, $lt: tomorrow },
+          },
+        },
+        { $group: { _id: null, totalKg: { $sum: "$quantity" } } },
+      ]);
+      const foodWastageKg = Math.round((wasteAgg[0]?.totalKg || 0) * 10) / 10;
+
+      return res.status(200).json({
+        success: true,
+        stats: {
+          breakfast,
+          lunch,
+          snacks,
+          dinner,
+          vegCount,
+          nonVegCount,
+          guestMeals,
+          extraMeals,
+          lowStockCount,
+          foodWastageKg,
+        },
+      });
+    }
+
+    if (["warden", "owner", "admin", "super_admin", "owner_admin"].includes(targetRole) || !targetRole) {
       const rooms = await Room.find({ hostelId: activeHostelId });
       let totalBeds = 0;
       rooms.forEach((room) => { totalBeds += room.totalBeds || 0; });
@@ -204,57 +304,66 @@ const getStaffDashboard = async (req, res) => {
       });
     }
 
-    if (userRole === "cook") {
-      return res.status(200).json({
-        success: true,
-        stats: {
-          breakfast: 45,
-          lunch: 52,
-          dinner: 48,
-          vegCount: 35,
-          nonVegCount: 17,
-          guestMeals: 5,
-          extraMeals: 3,
-          lowStockCount: 2,
-          foodWastageKg: 1.5,
-        },
-      });
-    }
-
-    if (userRole === "accountant") {
+    if (targetRole === "accountant") {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       const tomorrow = new Date(today);
       tomorrow.setDate(tomorrow.getDate() + 1);
 
-      const payments = await Payment.find({ hostelId: activeHostelId });
-      let todayCollection = 0;
-      payments.forEach((payment) => {
+      const [rentPaymentsToday, legacyPayments] = await Promise.all([
+        RentPayment.aggregate([
+          { $match: { hostelId: activeHostelId, paymentDate: { $gte: today, $lt: tomorrow }, status: "Completed" } },
+          { $group: { _id: null, total: { $sum: "$amount" } } },
+        ]),
+        Payment.find({ hostelId: activeHostelId }),
+      ]);
+
+      let legacyTodayCollection = 0;
+      legacyPayments.forEach((payment) => {
         payment.entries?.forEach((entry) => {
           if (entry.createdAt >= today && entry.createdAt < tomorrow) {
-            todayCollection += entry.amount || 0;
+            legacyTodayCollection += entry.amount || 0;
           }
         });
       });
+      const todayCollection = (rentPaymentsToday[0]?.total || 0) + legacyTodayCollection;
 
-      const outstanding = await Payment.aggregate([
-        { $match: { hostelId: activeHostelId, status: { $in: ["pending", "partial"] } } },
-        { $group: { _id: null, total: { $sum: "$balance" } } },
+      const [rentInvoicesOutstanding, legacyOutstanding] = await Promise.all([
+        RentInvoice.aggregate([
+          { $match: { hostelId: activeHostelId, paymentStatus: { $in: ["Pending", "Partially Paid", "Overdue"] }, isDeleted: false } },
+          { $group: { _id: null, total: { $sum: "$balanceAmount" } } },
+        ]),
+        Payment.aggregate([
+          { $match: { hostelId: activeHostelId, status: { $in: ["pending", "partial"] } } },
+          { $group: { _id: null, total: { $sum: "$balance" } } },
+        ]),
       ]);
+      const outstandingRent = (rentInvoicesOutstanding[0]?.total || 0) + (legacyOutstanding[0]?.total || 0);
 
       const todayExpenses = await Expense.aggregate([
-        { $match: { hostelId: activeHostelId, expenseDate: { $gte: today, $lt: tomorrow } } },
-        { $group: { _id: null, total: { $sum: "$amount" } } },
+        { $match: { hostelId: activeHostelId, expenseDate: { $gte: today, $lt: tomorrow }, isDeleted: false, status: { $in: ["Approved", "Paid"] } } },
+        { $group: { _id: null, total: { $sum: "$netAmount" } } },
       ]);
+
+      const bankAccounts = await BankAccount.aggregate([
+        { $match: { hostelId: activeHostelId, status: "Active" } },
+        { $group: { _id: null, total: { $sum: "$currentBalance" } } },
+      ]);
+      const bankBalance = bankAccounts[0]?.total || 0;
+
+      const vendorBillsPending = await VendorInvoice.countDocuments({
+        hostelId: activeHostelId,
+        status: { $in: ["Pending", "Matched", "Approved"] },
+      });
 
       return res.status(200).json({
         success: true,
         stats: {
           todayCollection,
-          outstandingRent: outstanding[0]?.total || 0,
+          outstandingRent,
           todayExpenses: todayExpenses[0]?.total || 0,
-          bankBalance: 125000,
-          vendorBillsPending: 3,
+          bankBalance,
+          vendorBillsPending,
         },
       });
     }

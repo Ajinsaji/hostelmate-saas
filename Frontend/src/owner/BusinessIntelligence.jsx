@@ -1,8 +1,9 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { api } from "../services/api";
 import useIsMobile from "../hooks/useIsMobile";
 import BusinessIntelligenceMobile from "./BusinessIntelligenceMobile";
 import BusinessIntelligenceDesktop from "./BusinessIntelligenceDesktop";
+import { AlertTriangle, RefreshCcw } from "lucide-react";
 
 export default function BusinessIntelligence() {
   const isMobile = useIsMobile();
@@ -10,38 +11,68 @@ export default function BusinessIntelligence() {
   const [kpis, setKpis] = useState(null);
   const [timeframe, setTimeframe] = useState("30d");
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
   const fetchBIData = useCallback(async () => {
     setLoading(true);
+    setError(null);
     try {
-      const kpiRes = await api.get("/api/analytics/dashboard");
-      if (kpiRes.data?.success) setKpis(kpiRes.data.kpis);
-    } catch (error) {
-      console.warn("Unable to load business intelligence analytics", error);
+      // Use the canonical supported v2 analytics route
+      const kpiRes = await api.get("/api/v2/analytics/dashboard", { params: { timeframe } });
+      if (kpiRes.data?.success) {
+        setKpis(kpiRes.data);
+      } else {
+        setError("Unable to load analytics metrics from server");
+      }
+    } catch (err) {
+      console.warn("Unable to load business intelligence analytics", err);
+      setError(err?.response?.data?.message || "Business intelligence service is currently unavailable. Please try again later.");
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [timeframe]);
 
   useEffect(() => {
-    fetchBIData();
-  }, [fetchBIData, timeframe]);
+    const timer = setTimeout(fetchBIData, 0);
+    return () => clearTimeout(timer);
+  }, [fetchBIData]);
 
-  const financialTrendData = [
-    { month: "Jan", revenue: 140000, expenses: 62000, occupancy: 78 },
-    { month: "Feb", revenue: 155000, expenses: 68000, occupancy: 82 },
-    { month: "Mar", revenue: 160000, expenses: 71000, occupancy: 85 },
-    { month: "Apr", revenue: 172000, expenses: 73000, occupancy: 90 },
-    { month: "May", revenue: 168000, expenses: 69000, occupancy: 88 },
-    { month: "Jun", revenue: 185000, expenses: 75000, occupancy: 94 },
-  ];
+  // Derived real data: only show categories if actual non-zero revenue/expenses exist in the database
+  const categoryDistributionData = useMemo(() => {
+    if (!kpis) return [];
+    const items = [];
+    if (typeof kpis.periodRevenue === "number" && kpis.periodRevenue > 0) {
+      items.push({ name: "Rent Collections", value: kpis.periodRevenue });
+    }
+    if (typeof kpis.periodExpenses === "number" && kpis.periodExpenses > 0) {
+      items.push({ name: "Operating Expenses", value: kpis.periodExpenses });
+    }
+    return items;
+  }, [kpis]);
 
-  const categoryDistributionData = [
-    { name: "Rent Income", value: 145000 },
-    { name: "Food & Mess", value: 35000 },
-    { name: "Amenities & Laundry", value: 12000 },
-    { name: "Other Services", value: 8000 },
-  ];
+  // Multi-month historical time series: empty until historical snapshots are aggregated
+  // Never present hardcoded synthetic months/numbers as real data
+  const financialTrendData = useMemo(() => {
+    return [];
+  }, []);
+
+  if (error) {
+    return (
+      <div className="p-8 my-6 text-center bg-[#162032] border border-[#22304A] rounded-3xl text-slate-400 space-y-4 max-w-xl mx-auto">
+        <AlertTriangle className="mx-auto text-amber-400" size={36} />
+        <div>
+          <h3 className="text-white font-bold text-base">Analytics Engine Unavailable</h3>
+          <p className="text-xs text-slate-400 mt-1">{error}</p>
+        </div>
+        <button
+          onClick={fetchBIData}
+          className="px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded-xl text-xs inline-flex items-center gap-2 cursor-pointer transition-colors"
+        >
+          <RefreshCcw size={14} /> Retry Analytics Engine
+        </button>
+      </div>
+    );
+  }
 
   if (isMobile) {
     return (
@@ -50,6 +81,7 @@ export default function BusinessIntelligence() {
         setTimeframe={setTimeframe}
         financialTrendData={financialTrendData}
         categoryDistributionData={categoryDistributionData}
+        kpis={kpis}
       />
     );
   }

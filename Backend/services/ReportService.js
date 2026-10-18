@@ -15,17 +15,15 @@ class ReportService {
 
   async generateReport(workspaceId, { reportId, format, startDate, endDate }) {
     return {
-      success: true,
-      message: `Report ${reportId} generated in ${format} format`,
-      downloadUrl: `/api/v2/reports/download/${reportId}.${format.toLowerCase()}`,
-      generatedAt: new Date().toISOString()
+      success: false,
+      message: "Report generation is not available yet. This module is currently in preview and no file was created."
     };
   }
 
   async emailReport(workspaceId, { reportId, recipientEmail, format }) {
     return {
-      success: true,
-      message: `Report ${reportId} scheduled and sent to ${recipientEmail}`
+      success: false,
+      message: "Report email delivery is not available yet. No email was sent."
     };
   }
 }

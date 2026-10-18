@@ -1,12 +1,13 @@
 const express = require("express");
 const router = express.Router();
-const ownerAuth = require("../middleware/ownerAuth");
-const { createItem, getItems, scanLowStock } = require("../controllers/inventoryController");
+const kitchenAuth = require("../middleware/kitchenAuth");
+const { createItem, getItems, scanLowStock, adjustStock } = require("../controllers/inventoryController");
 
-router.use(ownerAuth);
+router.use(kitchenAuth);
 
 router.post("/", createItem);
 router.get("/", getItems);
 router.post("/scan-low-stock", scanLowStock);
+router.patch("/:itemId/stock", adjustStock);
 
 module.exports = router;

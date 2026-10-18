@@ -144,6 +144,7 @@ function NotificationBellHost() {
 
 import PageLoader from "./components/PageLoader";
 import useSessionVerification from "./hooks/useSessionVerification";
+import { api } from "./services/api";
 
 function SessionGateWrapper() {
   const { verifying } = useSessionVerification();
@@ -165,13 +166,8 @@ function RequestAutoRedirect() {
           return;
         }
 
-        const apiBase = import.meta.env?.VITE_API_URL || "";
-        const res = await fetch(
-          `${apiBase}/api/hostel-request/status/${encodeURIComponent(phone)}`
-        );
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-
-        const data = await res.json();
+        const res = await api.get(`/api/hostel-request/status/${encodeURIComponent(phone)}`);
+        const data = res.data;
         const status = data?.request?.status || data?.status;
         const allowed = ["pending", "approved", "activation_pending"];
 
@@ -815,16 +811,16 @@ function App() {
         <Route
           path="/admin/release-notes"
           element={
-            <OwnerProtectedRoute>
+            <AdminProtectedRoute>
               <DesktopShell
-                variant="owner"
+                variant="admin"
                 title="Release Notes Admin Console"
                 breadcrumbs={[{ label: "Release Admin" }]}
-                backTo={"/owner/dashboard"}
+                backTo={"/admin/dashboard"}
               >
                 <ReleaseNotesAdmin />
               </DesktopShell>
-            </OwnerProtectedRoute>
+            </AdminProtectedRoute>
           }
         />
         <Route
@@ -1136,7 +1132,63 @@ function App() {
                 title="Accountant Dashboard"
                 breadcrumbs={[{ label: "Dashboard" }]}
               >
-                <AccountantDashboard />
+                <AccountantDashboard initialTab="overview" />
+              </DesktopShell>
+            </AccountantProtectedRoute>
+          }
+        />
+        <Route
+          path="/accountant/dues"
+          element={
+            <AccountantProtectedRoute>
+              <DesktopShell
+                variant="accountant"
+                title="Rent Dues & Invoices"
+                breadcrumbs={[{ label: "Dashboard", href: "/accountant/dashboard" }, { label: "Rent Dues" }]}
+              >
+                <AccountantDashboard initialTab="dues" />
+              </DesktopShell>
+            </AccountantProtectedRoute>
+          }
+        />
+        <Route
+          path="/accountant/payments"
+          element={
+            <AccountantProtectedRoute>
+              <DesktopShell
+                variant="accountant"
+                title="Payments & Collections"
+                breadcrumbs={[{ label: "Dashboard", href: "/accountant/dashboard" }, { label: "Payments" }]}
+              >
+                <AccountantDashboard initialTab="payments" />
+              </DesktopShell>
+            </AccountantProtectedRoute>
+          }
+        />
+        <Route
+          path="/accountant/expenses"
+          element={
+            <AccountantProtectedRoute>
+              <DesktopShell
+                variant="accountant"
+                title="Expense Management"
+                breadcrumbs={[{ label: "Dashboard", href: "/accountant/dashboard" }, { label: "Expenses" }]}
+              >
+                <AccountantDashboard initialTab="expenses" />
+              </DesktopShell>
+            </AccountantProtectedRoute>
+          }
+        />
+        <Route
+          path="/accountant/reports"
+          element={
+            <AccountantProtectedRoute>
+              <DesktopShell
+                variant="accountant"
+                title="Financial Reconciliation & Reports"
+                breadcrumbs={[{ label: "Dashboard", href: "/accountant/dashboard" }, { label: "Reconciliation" }]}
+              >
+                <AccountantDashboard initialTab="collections" />
               </DesktopShell>
             </AccountantProtectedRoute>
           }

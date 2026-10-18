@@ -26,7 +26,8 @@ const assignMealPlan = async (req, res) => {
 
 const getResidentPlan = async (req, res) => {
   try {
-    const plan = await residentMealPlanService.getResidentMealPlan(req.params.residentId);
+    const userCtx = getUserContext(req);
+    const plan = await residentMealPlanService.getResidentMealPlan(req.params.residentId, userCtx.hostelId);
     return res.status(200).json({ success: true, plan });
   } catch (err) {
     logger.error("getResidentPlan error:", err);
@@ -34,7 +35,37 @@ const getResidentPlan = async (req, res) => {
   }
 };
 
+const listResidentMealPlans = async (req, res) => {
+  try {
+    const userCtx = getUserContext(req);
+    const result = await residentMealPlanService.listResidentMealPlans({
+      hostelId: userCtx.hostelId,
+      residentId: req.query.residentId,
+      status: req.query.status,
+      page: req.query.page,
+      limit: req.query.limit,
+    });
+    return res.status(200).json({ success: true, ...result });
+  } catch (err) {
+    logger.error("listResidentMealPlans error:", err);
+    return res.status(500).json({ success: false, message: err.message || "Server Error" });
+  }
+};
+
+const cancelResidentMealPlan = async (req, res) => {
+  try {
+    const userCtx = getUserContext(req);
+    const assignment = await residentMealPlanService.cancelResidentMealPlan(req.params.id, userCtx);
+    return res.status(200).json({ success: true, message: "Meal Plan Assignment Cancelled", assignment });
+  } catch (err) {
+    logger.error("cancelResidentMealPlan error:", err);
+    return res.status(400).json({ success: false, message: err.message || "Cancellation failed" });
+  }
+};
+
 module.exports = {
   assignMealPlan,
   getResidentPlan,
+  listResidentMealPlans,
+  cancelResidentMealPlan,
 };

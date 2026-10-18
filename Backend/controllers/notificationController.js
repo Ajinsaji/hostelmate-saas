@@ -602,14 +602,122 @@ const sendTestNotification = async (req, res) => {
       message: `Firebase accepted ${successCount}/${targetTokens.length} device(s).`,
       pushResult,
     });
+const broadcastNotification = async (req, res) => {
+  try {
+    const userCtx = getUserContext(req);
+    const hostelId = userCtx.hostelId;
+    if (!hostelId) {
+      return res.status(400).json({ success: false, message: "Active hostel context required for broadcast" });
+    }
+
+    const { title, message, audience = "all", priority = "Medium" } = req.body;
+    if (!title || title.trim().length < 3) {
+      return res.status(400).json({ success: false, message: "Title must be at least 3 characters" });
+    }
+    if (!message || message.trim().length < 3) {
+      return res.status(400).json({ success: false, message: "Message must be at least 3 characters" });
+    }
+
+    const validAudiences = ["all", "residents", "staff"];
+    const targetAudience = audience.toLowerCase();
+    if (!validAudiences.includes(targetAudience)) {
+      return res.status(400).json({ success: false, message: "Audience must be 'all', 'residents', or 'staff'" });
+    }
+
+    const Resident = require("../models/Resident");
+    const Staff = require("../models/Staff");
+    const Notification = require("../models/Notification");
+    const AuditLog = require("../models/AuditLog");
+
+    const recipients = [];
+
+    if (targetAudience === "residents" || targetAudience === "all") {
+      const residents = await Resident.find({
+        hostelId,
+        status: { $in: ["Active", "active"] },
+        isDeleted: false,
+      }).select("_id fullName phone").lean();
+
+      residents.forEach((r) => {
+        recipients.push({
+          userId: r._id,
+          recipientId: r._id,
+          recipientType: "Resident",
+        });
+      });
+    }
+
+    if (targetAudience === "staff" || targetAudience === "all") {
+      const staffList = await Staff.find({
+        hostelId,
+        isDeleted: false,
+      }).select("_id name userId").lean();
+
+      staffList.forEach((s) => {
+        recipients.push({
+          userId: s.userId || s._id,
+          recipientId: s._id,
+          recipientType: "Staff",
+        });
+      });
+    }
+
+    if (recipients.length === 0) {
+      return res.status(200).json({
+        success: true,
+        message: "No active recipients found in this hostel for the selected audience",
+        recipientCount: 0,
+      });
+    }
+
+    const cappedRecipients = recipients.slice(0, 500);
+    const now = new Date();
+    const notificationsToInsert = cappedRecipients.map((rec) => ({
+      userId: rec.userId,
+      recipientId: rec.recipientId,
+      recipientType: rec.recipientType,
+      tenantId: hostelId,
+      hostelId,
+      type: "Broadcast",
+      title: title.trim(),
+      message: message.trim(),
+      priority,
+      channel: "In-App",
+      status: "Sent",
+      sentAt: now,
+      readAt: null,
+      createdBy: userCtx.userId,
+    }));
+
+    await Notification.insertMany(notificationsToInsert);
+
+    await AuditLog.create({
+      hostelId,
+      userId: userCtx.userId || null,
+      action: `Broadcast Notification: Sent '${title}' to ${cappedRecipients.length} ${targetAudience} recipient(s)`,
+      actionType: "BROADCAST",
+      entity: "Notification",
+      targetId: null,
+      targetModel: "Notification",
+      details: { title, audience: targetAudience, recipientCount: cappedRecipients.length },
+      ipAddress: userCtx.ip || "",
+      timestamp: now,
+    }).catch(() => {});
+
+    return res.status(201).json({
+      success: true,
+      message: `Broadcast sent to ${cappedRecipients.length} recipient(s)`,
+      recipientCount: cappedRecipients.length,
+    });
   } catch (err) {
-    logger.error("sendTestNotification error:", err);
-    return res.status(500).json({ success: false, message: err.message || "Failed to send test notification" });
+    logger.error("broadcastNotification error:", err);
+    return res.status(500).json({ success: false, message: err.message || "Failed to send broadcast" });
   }
 };
 
 module.exports = {
   dispatchNotification,
+  broadcastNotification,
   getNotifications,
   getUnreadCount,
   markAsRead,

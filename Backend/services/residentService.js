@@ -2,6 +2,7 @@ const Resident = require("../models/Resident");
 const Room = require("../models/Room");
 const Bed = require("../models/Bed");
 const AuditLog = require("../models/AuditLog");
+const { recalculateRoomStatus } = require("./roomService");
 const { logger } = require("../utils/logger");
 
 /**
@@ -170,14 +171,10 @@ async function softDeleteResident(residentId, userContext = {}) {
   if (resident.bedId) {
     await Bed.findOneAndUpdate(
       { _id: resident.bedId, hostelId },
-      { $set: { status: "vacant", residentId: null } }
+      { $set: { status: "Vacant", residentId: null } }
     );
     if (resident.roomId) {
-      const oldRoom = await Room.findOne({ _id: resident.roomId, hostelId });
-      if (oldRoom && oldRoom.occupiedBeds > 0) {
-        oldRoom.occupiedBeds -= 1;
-        await oldRoom.save();
-      }
+      await recalculateRoomStatus(resident.roomId);
     }
   }
 
@@ -303,6 +300,12 @@ async function checkInResident({ residentId, roomId, bedId, checkInDate = new Da
     await room.save();
   }
 
+  // Authoritative recalculation of room occupancy & status
+  if (resident.roomId && resident.roomId.toString() !== roomId.toString()) {
+    await recalculateRoomStatus(resident.roomId);
+  }
+  await recalculateRoomStatus(room._id);
+
   const updatedResident = await Resident.findOneAndUpdate(
     { _id: residentId, hostelId, isDeleted: false },
     {
@@ -361,6 +364,8 @@ async function checkOutResident({ residentId, actualCheckoutDate = new Date(), r
     throw new Error("Resident is already checked out");
   }
 
+  const prevRoomId = resident.roomId;
+
   // Free assigned bed
   if (resident.bedId) {
     await Bed.findOneAndUpdate(
@@ -369,13 +374,9 @@ async function checkOutResident({ residentId, actualCheckoutDate = new Date(), r
     );
   }
 
-  // Decrement room occupancy
-  if (resident.roomId) {
-    const room = await Room.findOne({ _id: resident.roomId, hostelId });
-    if (room && room.occupiedBeds > 0) {
-      room.occupiedBeds -= 1;
-      await room.save();
-    }
+  // Decrement room occupancy & recalculate room status
+  if (prevRoomId) {
+    await recalculateRoomStatus(prevRoomId);
   }
 
   const updatedResident = await Resident.findOneAndUpdate(
@@ -465,14 +466,9 @@ async function transferRoomOrBed({ residentId, newRoomId, newBedId, reason = "" 
 
   // 2. Decrement old room count & increment new room count
   if (oldRoomId && oldRoomId.toString() !== newRoomId.toString()) {
-    const oldRoom = await Room.findOne({ _id: oldRoomId, hostelId });
-    if (oldRoom && oldRoom.occupiedBeds > 0) {
-      oldRoom.occupiedBeds -= 1;
-      await oldRoom.save();
-    }
-    newRoom.occupiedBeds = (newRoom.occupiedBeds || 0) + 1;
-    await newRoom.save();
+    await recalculateRoomStatus(oldRoomId);
   }
+  await recalculateRoomStatus(newRoomId);
 
   const updatedResident = await Resident.findOneAndUpdate(
     { _id: residentId, hostelId, isDeleted: false },

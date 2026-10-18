@@ -1,5 +1,5 @@
 import { Loader2 } from "lucide-react";
-import axios from "axios";
+import { api } from "../services/api";
 import toast from "react-hot-toast";
 import { useEffect, useRef } from "react";
 
@@ -42,8 +42,8 @@ export default function OnboardingStep3Rules({
   const handleSave = async () => {
     setLoading(true);
     try {
-      const response = await axios.put(
-        `${import.meta.env.VITE_API_URL}/api/owner/onboarding/rules`,
+      const response = await api.put(
+        "/api/owner/onboarding/rules",
         { rulesText: String(rules || "").trim() },
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -64,8 +64,8 @@ export default function OnboardingStep3Rules({
   const handleSkip = async () => {
     setRules("");
     try {
-      await axios.put(
-        `${import.meta.env.VITE_API_URL}/api/owner/onboarding/rules`,
+      await api.put(
+        "/api/owner/onboarding/rules",
         { rulesText: "" },
         { headers: { Authorization: `Bearer ${token}` } }
       );

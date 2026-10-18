@@ -4,6 +4,7 @@ import { getAuthToken, getStoredUser } from "../utils/authToken";
 import { useEffect, useState } from "react";
 import useSessionVerification from "../hooks/useSessionVerification";
 import PageLoader from "./PageLoader";
+import { api } from "../services/api";
 
 const decodeJwtPayload = (token) => {
   try {
@@ -42,13 +43,12 @@ export default function OwnerProtectedRoute({ children }) {
 
     const run = async () => {
       try {
-        const apiBase = import.meta.env.VITE_API_BASE || "";
-        const res = await fetch(`${apiBase}/api/owner/subscription-status`, {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
+        const response = await api.get("/api/owner/subscription-status");
+        const res = {
+          status: response.status,
+          ok: response.status >= 200 && response.status < 300,
+          json: async () => response.data,
+        };
 
         if (res.status === 403) {
           const data = await res.json().catch(() => ({}));
@@ -60,8 +60,11 @@ export default function OwnerProtectedRoute({ children }) {
           const data = await res.json().catch(() => ({}));
           if (!cancelled) setSubscriptionExpired(!!(data?.isExpired || data?.subscriptionExpired));
         }
-      } catch {
-        // fail open
+      } catch (error) {
+        if (error?.response?.status === 403) {
+          const data = error.response.data || {};
+          if (!cancelled) setSubscriptionExpired(!!(data?.isExpired || data?.subscriptionExpired));
+        }
       }
     };
 

@@ -105,11 +105,16 @@ export default function BackupCenter() {
         {/* Header */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-[#22304A] pb-6">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-black text-white flex items-center gap-3">
-              <Database className="text-cyan-400" /> Enterprise Backup & Disaster Recovery Manager
-            </h1>
+            <div className="flex items-center gap-3">
+              <h1 className="text-2xl sm:text-3xl font-black text-white flex items-center gap-3">
+                <Database className="text-cyan-400" /> Enterprise Backup & Disaster Recovery Manager
+              </h1>
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
+                Preview
+              </span>
+            </div>
             <p className="text-slate-400 text-sm mt-1">
-              Automated encrypted database backups, manual point-in-time snapshots, and instant restoration.
+              Backup inventory and restore operations are not connected to a verified backup provider.
             </p>
           </div>
           <button
@@ -119,6 +124,14 @@ export default function BackupCenter() {
           >
             <Plus size={16} /> {processing ? "Creating..." : "Create Manual Snapshot"}
           </button>
+        </div>
+
+        {/* Preview Notice */}
+        <div className="flex items-center gap-3 p-3.5 rounded-2xl border border-cyan-500/20 bg-cyan-500/10 text-cyan-300 text-xs">
+          <Database size={16} className="flex-shrink-0 text-cyan-400" />
+          <span>
+            <strong>Preview only:</strong> no backup provider is configured here. This screen cannot confirm that backups exist, create a backup, or restore data.
+          </span>
         </div>
 
         {loading ? (

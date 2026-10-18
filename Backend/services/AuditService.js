@@ -1,37 +1,22 @@
 class AuditService {
   async getAuditLogs(workspaceId) {
     return {
-      success: true,
-      logs: [
-        { id: "audit_1", action: "RESIDENT_ADMITTED", user: "Ajin (Owner)", ip: "192.168.1.10", browser: "Chrome 127", timestamp: new Date().toISOString(), details: "Admitted resident Rajesh Kumar to Room 102" },
-        { id: "audit_2", action: "PAYMENT_RECORDED", user: "Warden Office", ip: "192.168.1.15", browser: "Edge 126", timestamp: new Date(Date.now() - 3600000).toISOString(), details: "Recorded ₹7,500 rent payment via UPI" },
-        { id: "audit_3", action: "BRANDING_UPDATED", user: "Ajin (Owner)", ip: "192.168.1.10", browser: "Chrome 127", timestamp: new Date(Date.now() - 86400000).toISOString(), details: "Updated custom brand colors and logo" },
-        { id: "audit_4", action: "API_KEY_CREATED", user: "Ajin (Owner)", ip: "192.168.1.10", browser: "Chrome 127", timestamp: new Date(Date.now() - 172800000).toISOString(), details: "Generated new Production API Key" }
-      ]
+      success: false,
+      preview: true,
+      logs: [],
+      message: "Audit history is unavailable because this module is not connected to a persistent audit store.",
     };
   }
 
   async getAuditById(workspaceId, auditId) {
-    return {
-      success: true,
-      log: {
-        id: auditId,
-        action: "BRANDING_UPDATED",
-        user: "Ajin (Owner)",
-        ip: "192.168.1.10",
-        browser: "Chrome 127 / Windows",
-        timestamp: new Date().toISOString(),
-        oldValue: { primaryColor: "#16A34A" },
-        newValue: { primaryColor: "#15803D" }
-      }
-    };
+    return { success: false, preview: true, message: "Audit detail lookup is not connected to persistent audit records." };
   }
 
   async exportAudit(workspaceId) {
     return {
-      success: true,
-      downloadUrl: "/api/v2/audit/export/csv",
-      format: "CSV"
+      success: false,
+      preview: true,
+      message: "Audit export is unavailable because no persistent audit store is configured.",
     };
   }
 }

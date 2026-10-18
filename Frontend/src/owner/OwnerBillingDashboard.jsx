@@ -1,56 +1,49 @@
-import { useTheme } from "../design-system/ThemeProvider";
-import { Card } from "../design-system/components/Card";
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import {
   FiShield,
   FiZap,
-  FiUsers,
-  FiCheckCircle,
-  FiAlertTriangle,
   FiClock,
-  FiFileText,
-  FiArrowUpRight,
-  FiCreditCard,
   FiCheck,
-  FiLayers,
   FiRefreshCw,
-  FiDownload,
 } from "react-icons/fi";
 import toast from "../services/toast";
-import { getOwnerToken } from "../utils/authToken";
+import { api } from "../services/api";
 
 const OwnerBillingDashboard = () => {
-  const { colors } = useTheme();
   const [data, setData] = useState(null);
   const [plans, setPlans] = useState([]);
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [selectedPlan, setSelectedPlan] = useState(null);
-  const [orderData, setOrderData] = useState(null);
-  const [showCheckoutModal, setShowCheckoutModal] = useState(false);
-  const [processing, setProcessing] = useState(false);
+  const [loadErrors, setLoadErrors] = useState({ dashboard: "", plans: "", history: "" });
 
   const fetchDashboard = async () => {
     try {
       setLoading(true);
-      const token = getOwnerToken();
-      const headers = { Authorization: `Bearer ${token}` };
-
-      const [dashRes, plansRes, histRes] = await Promise.all([
-        fetch("/api/owner/subscription/dashboard", { headers }),
-        fetch("/api/owner/subscription/plans", { headers }),
-        fetch("/api/saas-payments/history", { headers }),
+      setData(null);
+      setPlans([]);
+      setHistory([]);
+      setLoadErrors({ dashboard: "", plans: "", history: "" });
+      const [dashRes, plansRes, histRes] = await Promise.allSettled([
+        api.get("/api/owner/subscription/dashboard"),
+        api.get("/api/owner/subscription/plans"),
+        api.get("/api/saas-payments/history"),
       ]);
 
-      const [dashData, plansData, histData] = await Promise.all([
-        dashRes.json(),
-        plansRes.json(),
-        histRes.json(),
-      ]);
-
-      if (dashData.success) setData(dashData);
-      if (plansData.success) setPlans(plansData.plans);
-      if (histData.success) setHistory(histData.attempts || []);
+      if (dashRes.status === "fulfilled" && dashRes.value?.data?.success) {
+        setData(dashRes.value.data);
+      } else {
+        setLoadErrors((current) => ({ ...current, dashboard: "Subscription details could not be loaded. Retry before making billing decisions." }));
+      }
+      if (plansRes.status === "fulfilled" && plansRes.value?.data?.success) {
+        setPlans(plansRes.value.data.plans || []);
+      } else {
+        setLoadErrors((current) => ({ ...current, plans: "Available plans could not be loaded." }));
+      }
+      if (histRes.status === "fulfilled" && histRes.value?.data?.success) {
+        setHistory(histRes.value.data.attempts || []);
+      } else {
+        setLoadErrors((current) => ({ ...current, history: "Payment history could not be loaded." }));
+      }
     } catch (err) {
       console.error(err);
       toast.error("Failed to load subscription details");
@@ -60,71 +53,9 @@ const OwnerBillingDashboard = () => {
   };
 
   useEffect(() => {
-    fetchDashboard();
+    const timer = setTimeout(fetchDashboard, 0);
+    return () => clearTimeout(timer);
   }, []);
-
-  const handleInitiatePayment = async (plan) => {
-    try {
-      setSelectedPlan(plan);
-      setProcessing(true);
-      const token = getOwnerToken();
-
-      const res = await fetch("/api/saas-payments/create-order", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ planId: plan._id }),
-      });
-      const order = await res.json();
-      if (order.success) {
-        setOrderData(order);
-        setShowCheckoutModal(true);
-      } else {
-        toast.error(order.message || "Failed to create order");
-      }
-    } catch (err) {
-      toast.error("Order creation error");
-    } finally {
-      setProcessing(false);
-    }
-  };
-
-  const handleConfirmVerification = async () => {
-    if (!orderData) return;
-    try {
-      setProcessing(true);
-      const token = getOwnerToken();
-
-      const res = await fetch("/api/saas-payments/verify", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          orderId: orderData.orderId,
-          paymentId: `pay_${Date.now()}`,
-          signature: `sig_${Date.now()}`,
-          invoiceId: orderData.invoiceId,
-        }),
-      });
-
-      const verifyRes = await res.json();
-      if (verifyRes.success) {
-        toast.success("Commercial payment verified successfully!");
-        setShowCheckoutModal(false);
-        fetchDashboard();
-      } else {
-        toast.error(verifyRes.message || "Verification failed");
-      }
-    } catch (err) {
-      toast.error("Verification endpoint error");
-    } finally {
-      setProcessing(false);
-    }
-  };
 
   if (loading) {
     return (
@@ -135,8 +66,8 @@ const OwnerBillingDashboard = () => {
     );
   }
 
-  const activeSub = data?.subscription;
-  const planInfo = data?.plan;
+  const activeSub = data;
+  const planInfo = data;
 
   return (
     <div className="space-y-6 max-w-6xl mx-auto p-4 text-white">
@@ -148,7 +79,7 @@ const OwnerBillingDashboard = () => {
           </div>
           <h1 className="text-2xl font-black text-white">Billing & Plan Status</h1>
           <p className="text-xs text-slate-400 mt-1">
-            Manage your HostelMate SaaS tier, renewal dates, and commercial invoices.
+            View your current subscription and available plans. Upgrades are unavailable until secure gateway checkout is connected.
           </p>
         </div>
 
@@ -160,6 +91,14 @@ const OwnerBillingDashboard = () => {
         </button>
       </div>
 
+      {(loadErrors.dashboard || loadErrors.plans || loadErrors.history) && (
+        <div role="alert" className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-200 space-y-2">
+          {loadErrors.dashboard && <p>{loadErrors.dashboard}</p>}
+          {loadErrors.plans && <p>{loadErrors.plans}</p>}
+          {loadErrors.history && <p>{loadErrors.history}</p>}
+        </div>
+      )}
+
       {/* Current Subscription Card */}
       <div className="bg-[#131C2E] border border-[#202B45] rounded-3xl p-6 shadow-xl space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[#202B45]">
@@ -169,13 +108,13 @@ const OwnerBillingDashboard = () => {
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="text-lg font-black text-white">{planInfo?.planName || "Standard Plan"}</h3>
+                <h3 className="text-lg font-black text-white">{planInfo?.planName || "HostelMate Unified Plan"}</h3>
                 <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                  {activeSub?.subscriptionStatus || "Active"}
+                  {activeSub?.status || "Status unavailable"}
                 </span>
               </div>
               <p className="text-xs text-slate-400 mt-0.5">
-                Hostel ID: {activeSub?.hostelId || "Default Workspace"}
+                Hostel ID: {activeSub?.hostelId || "Unavailable"}
               </p>
             </div>
           </div>
@@ -184,7 +123,7 @@ const OwnerBillingDashboard = () => {
             <div className="text-xs text-slate-400">Renewal Date</div>
             <div className="text-sm font-bold text-white flex items-center gap-1.5 sm:justify-end mt-0.5">
               <FiClock size={14} className="text-emerald-400" />
-              {activeSub?.subscriptionEndDate ? new Date(activeSub.subscriptionEndDate).toLocaleDateString() : "Lifetime / Active"}
+              {activeSub?.endDate ? new Date(activeSub.endDate).toLocaleDateString() : "Unavailable"}
             </div>
           </div>
         </div>
@@ -192,16 +131,16 @@ const OwnerBillingDashboard = () => {
         {/* Quota Metrics */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
           <div className="bg-[#0B1220] border border-[#202B45] rounded-2xl p-4 space-y-1">
-            <div className="text-xs text-slate-400">Resident Capacity Limit</div>
-            <div className="text-xl font-bold text-white">{planInfo?.maxResidents || 100} Beds</div>
+            <div className="text-xs text-slate-400">Active Residents</div>
+            <div className="text-xl font-bold text-white">{activeSub?.activeResidents ?? "Unavailable"}</div>
           </div>
           <div className="bg-[#0B1220] border border-[#202B45] rounded-2xl p-4 space-y-1">
-            <div className="text-xs text-slate-400">Staff User Seats</div>
-            <div className="text-xl font-bold text-white">{planInfo?.maxStaffUsers || 5} Seats</div>
+            <div className="text-xs text-slate-400">Days Remaining</div>
+            <div className="text-xl font-bold text-white">{activeSub?.daysRemaining ?? "Unavailable"}</div>
           </div>
           <div className="bg-[#0B1220] border border-[#202B45] rounded-2xl p-4 space-y-1">
-            <div className="text-xs text-slate-400">Cloud Storage Quota</div>
-            <div className="text-xl font-bold text-white">{planInfo?.maxStorageGB || 5} GB</div>
+            <div className="text-xs text-slate-400">Estimated Monthly Amount</div>
+            <div className="text-xl font-bold text-white">{activeSub?.estimatedMonthlyAmount != null ? `₹${Number(activeSub.estimatedMonthlyAmount).toLocaleString("en-IN")}` : "Unavailable"}</div>
           </div>
         </div>
       </div>
@@ -212,9 +151,15 @@ const OwnerBillingDashboard = () => {
           Available SaaS Plans & Tier Upgrades
         </h2>
 
+        {loadErrors.plans ? (
+          <p role="status" className="text-sm text-amber-200">{loadErrors.plans}</p>
+        ) : plans.length === 0 ? (
+          <p className="text-sm text-slate-400">No plans are currently available from the server.</p>
+        ) : null}
+
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {plans.map((p) => {
-            const isCurrent = p._id === planInfo?._id || p.planName === planInfo?.planName;
+            const isCurrent = p.name === planInfo?.planName;
 
             return (
               <div
@@ -225,7 +170,7 @@ const OwnerBillingDashboard = () => {
               >
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <h3 className="text-base font-black text-white">{p.planName}</h3>
+                    <h3 className="text-base font-black text-white">{p.name}</h3>
                     {isCurrent && (
                       <span className="text-[10px] font-bold uppercase px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
                         Current
@@ -233,34 +178,33 @@ const OwnerBillingDashboard = () => {
                     )}
                   </div>
                   <div className="text-2xl font-black text-white">
-                    ₹{(p.price || 0).toLocaleString()}
-                    <span className="text-xs font-normal text-slate-400"> / year</span>
+                    ₹{Number(p.monthlyPrice || 0).toLocaleString("en-IN")}
+                    <span className="text-xs font-normal text-slate-400"> / {p.durationDays || 30} days</span>
                   </div>
                   <p className="text-xs text-slate-400">{p.description || "Comprehensive hostel management plan"}</p>
 
                   <ul className="space-y-2 pt-2 border-t border-[#202B45] text-xs text-slate-300">
                     <li className="flex items-center gap-2">
-                      <FiCheck className="text-emerald-400" /> Up to {p.maxResidents || 100} Resident Beds
+                      <FiCheck className="text-emerald-400" /> ₹{Number(p.residentChargePerResident || 0).toLocaleString("en-IN")} per active resident
                     </li>
                     <li className="flex items-center gap-2">
-                      <FiCheck className="text-emerald-400" /> {p.maxStaffUsers || 5} Staff Accounts
+                      <FiCheck className="text-emerald-400" /> {p.features?.length || 0} configured features
                     </li>
                     <li className="flex items-center gap-2">
-                      <FiCheck className="text-emerald-400" /> {p.maxStorageGB || 5} GB Document Storage
+                      <FiCheck className="text-emerald-400" /> {p.description || "Plan details provided by server"}
                     </li>
                   </ul>
                 </div>
 
                 <button
-                  onClick={() => handleInitiatePayment(p)}
-                  disabled={isCurrent || processing}
+                  disabled
                   className={`w-full py-3.5 rounded-xl font-bold text-xs transition flex items-center justify-center gap-2 min-h-[48px] ${
                     isCurrent
                       ? "bg-white/5 border border-white/10 text-slate-500 cursor-not-allowed"
                       : "bg-emerald-500 hover:bg-emerald-600 text-white shadow-lg shadow-emerald-500/20"
                   }`}
                 >
-                  {isCurrent ? "Active Plan" : "Upgrade to " + p.planName}
+                  {isCurrent ? "Current Plan" : "Checkout unavailable"}
                 </button>
               </div>
             );
@@ -269,7 +213,9 @@ const OwnerBillingDashboard = () => {
       </div>
 
       {/* Payment History Table */}
-      {history.length > 0 && (
+      {loadErrors.history ? (
+        <div role="status" className="space-y-3 pt-4 text-sm text-amber-200">{loadErrors.history}</div>
+      ) : history.length > 0 ? (
         <div className="space-y-3 pt-4">
           <h2 className="text-sm font-bold uppercase tracking-wider text-slate-300">
             Payment & Invoice History
@@ -288,12 +234,12 @@ const OwnerBillingDashboard = () => {
                 <tbody className="divide-y divide-[#202B45]">
                   {history.map((h, idx) => (
                     <tr key={h._id || idx} className="hover:bg-white/5 transition">
-                      <td className="px-6 py-4 font-mono font-bold text-white">{h.paymentId || h.orderId || "tx_sample"}</td>
-                      <td className="px-6 py-4 font-bold text-emerald-400">₹{(h.amount || 0).toLocaleString()}</td>
-                      <td className="px-6 py-4">{new Date(h.createdAt || Date.now()).toLocaleDateString()}</td>
+                      <td className="px-6 py-4 font-mono font-bold text-white">{h.transactionId || h.paymentId || h.orderId || "—"}</td>
+                      <td className="px-6 py-4 font-bold text-emerald-400">{h.amount != null ? `₹${Number(h.amount).toLocaleString("en-IN")}` : "Unavailable"}</td>
+                      <td className="px-6 py-4">{h.createdAt ? new Date(h.createdAt).toLocaleDateString() : "—"}</td>
                       <td className="px-6 py-4">
-                        <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                          {h.status || "SUCCESS"}
+                        <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase bg-slate-500/20 text-slate-300 border border-slate-500/30">
+                          {h.paymentStatus || h.status || "Status unavailable"}
                         </span>
                       </td>
                     </tr>
@@ -303,48 +249,8 @@ const OwnerBillingDashboard = () => {
             </div>
           </div>
         </div>
-      )}
-
-      {/* Checkout Modal */}
-      {showCheckoutModal && selectedPlan && orderData && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm">
-          <div className="bg-[#131C2E] border border-[#202B45] rounded-3xl max-w-md w-full p-6 space-y-5 shadow-2xl text-white">
-            <h3 className="text-lg font-black text-white">Confirm Tier Upgrade</h3>
-            <div className="bg-[#0B1220] border border-[#202B45] rounded-2xl p-4 space-y-2 text-xs">
-              <div className="flex justify-between">
-                <span className="text-slate-400">Selected Plan:</span>
-                <strong className="text-white font-bold">{selectedPlan.planName}</strong>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-400">Order ID:</span>
-                <span className="font-mono text-slate-300">{orderData.orderId}</span>
-              </div>
-              <div className="flex justify-between text-sm font-bold text-emerald-400 pt-2 border-t border-[#202B45]">
-                <span>Total Amount:</span>
-                <span>₹{(orderData.amount || selectedPlan.price).toLocaleString()}</span>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3 pt-2">
-              <button
-                type="button"
-                onClick={() => setShowCheckoutModal(false)}
-                disabled={processing}
-                className="flex-1 py-3.5 rounded-xl bg-white/5 border border-white/10 text-slate-300 font-bold text-xs hover:text-white transition min-h-[48px]"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleConfirmVerification}
-                disabled={processing}
-                className="flex-1 py-3.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs shadow-lg shadow-emerald-500/20 transition min-h-[48px]"
-              >
-                {processing ? "Verifying..." : "Confirm & Pay"}
-              </button>
-            </div>
-          </div>
-        </div>
+      ) : (
+        <div className="space-y-3 pt-4 text-sm text-slate-400">No subscription payment attempts are recorded.</div>
       )}
 
       {/* Footer Branding */}

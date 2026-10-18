@@ -6,8 +6,8 @@ const { logger } = require("../utils/logger");
 
 function getUserContext(req) {
   return {
-    hostelId: req.owner?.hostelId || req.user?.hostelId,
-    userId: req.owner?._id || req.user?._id,
+    hostelId: req.context?.hostelId || req.owner?.hostelId || req.user?.hostelId,
+    userId: req.context?.userId || req.owner?.ownerId || req.owner?._id || req.user?.userId || req.user?._id || req.user?.id,
     ip: req.ip || req.headers["x-forwarded-for"] || "",
   };
 }
@@ -46,13 +46,16 @@ const getPayments = async (req, res) => {
 const streamReceiptPDF = async (req, res) => {
   try {
     const userCtx = getUserContext(req);
+    if (!userCtx.hostelId) {
+      return res.status(403).json({ success: false, message: "Forbidden: Active hostel context required" });
+    }
     const payment = await RentPayment.findById(req.params.id);
 
     if (!payment) {
       return res.status(404).json({ success: false, message: "Payment not found" });
     }
 
-    if (userCtx.hostelId && String(payment.hostelId) !== String(userCtx.hostelId)) {
+    if (String(payment.hostelId) !== String(userCtx.hostelId)) {
       return res.status(403).json({ success: false, message: "Forbidden: Access denied to this receipt" });
     }
 

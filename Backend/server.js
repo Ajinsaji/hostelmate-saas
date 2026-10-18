@@ -314,6 +314,7 @@ const foodReportRoutes = require("./routes/foodReportRoutes");
 app.use("/api/meal-plans", mealPlanRoutes);
 app.use("/api/resident-meal-plans", residentMealPlanRoutes);
 app.use("/api/menus", menuRoutes);
+app.use("/api/menu", menuRoutes);
 app.use("/api/meal-attendance", mealAttendanceRoutes);
 app.use("/api/inventory", inventoryRoutes);
 app.use("/api/recipes", recipeRoutes);

@@ -81,14 +81,27 @@ export default function BrandingSettings() {
         {/* Header */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-[#22304A] pb-6">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-black text-white flex items-center gap-3">
-              <Palette className="text-purple-400" /> White-Label & Custom Branding
-            </h1>
+            <div className="flex items-center gap-3">
+              <h1 className="text-2xl sm:text-3xl font-black text-white flex items-center gap-3">
+                <Palette className="text-purple-400" /> White-Label & Custom Branding
+              </h1>
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                Preview
+              </span>
+            </div>
             <p className="text-slate-400 text-sm mt-1">
-              Customize logos, theme colors, login pages, email signatures, and map your custom domain.
+              Workspace branding persistence and custom-domain routing are not connected in this preview.
             </p>
           </div>
-          <StatusPill tone="info">Enterprise White-Label Active</StatusPill>
+          <StatusPill tone="info">White-Label (Preview)</StatusPill>
+        </div>
+
+        {/* Transparency Banner */}
+        <div className="flex items-center gap-3 p-3.5 rounded-2xl border border-purple-500/20 bg-purple-500/10 text-purple-300 text-xs">
+          <Palette size={16} className="flex-shrink-0 text-purple-400" />
+          <span>
+            <strong>Preview only:</strong> branding changes are not persisted and custom-domain DNS routing is not configured. No visual or domain update will be applied.
+          </span>
         </div>
 
         {loading ? (

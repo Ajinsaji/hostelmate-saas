@@ -3,11 +3,11 @@ const { dispatchNotification } = require("./notificationCenterService");
 const { logger } = require("../utils/logger");
 
 async function createOrUpdateMenu(data, userContext = {}) {
-  const hostelId = data.hostelId || userContext.hostelId;
+  const hostelId = userContext.hostelId;
   if (!hostelId) throw new Error("Hostel ID is required");
 
   const menuDate = data.menuDate ? new Date(data.menuDate) : new Date();
-  menuDate.setHours(0, 0, 0, 0);
+  menuDate.setUTCHours(0, 0, 0, 0);
 
   let menu = await Menu.findOne({ hostelId, menuDate });
   if (menu) {
@@ -47,22 +47,12 @@ async function createOrUpdateMenu(data, userContext = {}) {
 }
 
 async function getMenuForDate(hostelId, dateStr) {
+  if (!hostelId) throw new Error("Hostel ID is required");
   const targetDate = dateStr ? new Date(dateStr) : new Date();
-  targetDate.setHours(0, 0, 0, 0);
+  if (Number.isNaN(targetDate.getTime())) throw new Error("Invalid menu date");
+  targetDate.setUTCHours(0, 0, 0, 0);
 
-  let menu = await Menu.findOne({ hostelId, menuDate: targetDate });
-  if (!menu) {
-    // Return empty default menu object
-    menu = {
-      menuDate: targetDate,
-      breakfast: "Poha / Idli & Tea",
-      lunch: "Roti, Rice, Dal, Sabzi & Curd",
-      snacks: "Tea & Biscuits",
-      dinner: "Roti, Rice, Paneer / Mixed Veg & Sweet",
-      status: "Published",
-    };
-  }
-  return menu;
+  return Menu.findOne({ hostelId, menuDate: targetDate });
 }
 
 module.exports = {

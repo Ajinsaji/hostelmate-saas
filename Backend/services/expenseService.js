@@ -32,15 +32,13 @@ async function recordAuditLog({ hostelId, userId, action, actionType, targetId, 
 }
 
 async function createExpense(data, userContext = {}) {
-  const hostelId = data.hostelId || userContext.hostelId;
+  const hostelId = userContext.hostelId || data.hostelId;
   if (!hostelId) throw new Error("Hostel ID is required");
 
   const expenseDate = data.expenseDate ? new Date(data.expenseDate) : new Date();
   await assertPeriodOpen(hostelId, expenseDate);
 
   const expenseNumber = data.expenseNumber || (await generateExpenseNumber(hostelId));
-
-
 
   const expense = await Expense.create({
     ...data,
@@ -71,8 +69,11 @@ async function createExpense(data, userContext = {}) {
 }
 
 async function updateExpenseStatus(expenseId, status, userContext = {}) {
-  const expense = await Expense.findOne({ _id: expenseId, isDeleted: false });
-  if (!expense) throw new Error("Expense not found");
+  const filter = { _id: expenseId, isDeleted: false };
+  if (userContext.hostelId) filter.hostelId = userContext.hostelId;
+
+  const expense = await Expense.findOne(filter);
+  if (!expense) throw new Error("Expense not found in this hostel");
 
   const oldStatus = expense.status;
   expense.status = status;
@@ -99,8 +100,11 @@ async function updateExpenseStatus(expenseId, status, userContext = {}) {
 }
 
 async function softDeleteExpense(expenseId, userContext = {}) {
-  const expense = await Expense.findById(expenseId);
-  if (!expense) throw new Error("Expense not found");
+  const filter = { _id: expenseId, isDeleted: false };
+  if (userContext.hostelId) filter.hostelId = userContext.hostelId;
+
+  const expense = await Expense.findOne(filter);
+  if (!expense) throw new Error("Expense not found in this hostel");
 
   expense.isDeleted = true;
   expense.deletedAt = new Date();

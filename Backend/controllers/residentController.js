@@ -387,25 +387,88 @@ const changeStatus = async (req, res) => {
   }
 };
 
+const residentCsvService = require("../services/residentCsvService");
+
+/**
+ * GET /api/residents/import/template
+ */
+const getResidentCsvTemplate = (req, res) => {
+  try {
+    const csv = residentCsvService.getCsvTemplate();
+    res.setHeader("Content-Type", "text/csv");
+    res.setHeader("Content-Disposition", "attachment; filename=Resident_Import_Template.csv");
+    return res.status(200).send(csv);
+  } catch (err) {
+    logger.error("getResidentCsvTemplate error:", err);
+    return res.status(500).json({ success: false, message: "Failed to generate CSV template" });
+  }
+};
+
+/**
+ * POST /api/residents/import/preview
+ */
+const previewResidentCsv = async (req, res) => {
+  try {
+    const userCtx = getUserContext(req);
+    let rows = [];
+    if (req.file) {
+      const csvText = req.file.buffer ? req.file.buffer.toString("utf8") : "";
+      rows = await residentCsvService.parseCsvString(csvText);
+    } else if (req.body.csvText) {
+      rows = await residentCsvService.parseCsvString(req.body.csvText);
+    } else if (Array.isArray(req.body.rows)) {
+      rows = req.body.rows;
+    } else {
+      return res.status(400).json({ success: false, message: "No CSV file or data provided" });
+    }
+
+    const preview = await residentCsvService.previewResidentsImport(rows, userCtx);
+    return res.status(200).json({ success: true, ...preview });
+  } catch (err) {
+    logger.error("previewResidentCsv error:", err);
+    return res.status(400).json({ success: false, message: err.message || "Preview failed" });
+  }
+};
+
+/**
+ * POST /api/residents/import/commit
+ */
+const commitResidentCsv = async (req, res) => {
+  try {
+    const userCtx = getUserContext(req);
+    const rows = req.body.rows;
+    if (!Array.isArray(rows) || rows.length === 0) {
+      return res.status(400).json({ success: false, message: "No rows provided to commit" });
+    }
+
+    const result = await residentCsvService.commitResidentsImport(rows, userCtx);
+    return res.status(201).json({
+      success: true,
+      message: `Successfully imported ${result.importedCount} resident(s)`,
+      ...result,
+    });
+  } catch (err) {
+    logger.error("commitResidentCsv error:", err);
+    return res.status(400).json({ success: false, message: err.message || "Import commit failed" });
+  }
+};
+
 /**
  * GET /api/residents/export/csv
  */
 const exportResidentsCSV = async (req, res) => {
   try {
     const userCtx = getUserContext(req);
-    const result = await residentService.getResidentsList({
+    const csv = await residentCsvService.exportResidentsToCsv({
       hostelId: userCtx.hostelId,
-      limit: 10000,
-    });
-
-    let csv = "Admission No,Full Name,Phone,Gender,Occupation,Status,Monthly Rent,Joining Date\n";
-    result.residents.forEach((r) => {
-      csv += `"${r.admissionNumber}","${r.fullName || r.name}","${r.phone}","${r.gender}","${r.occupation}","${r.status}",${r.monthlyRent},"${new Date(r.joiningDate || r.createdAt).toLocaleDateString()}"\n`;
+      status: req.query.status,
+      roomId: req.query.roomId,
+      search: req.query.search,
     });
 
     res.setHeader("Content-Type", "text/csv");
     res.setHeader("Content-Disposition", "attachment; filename=Residents_Export.csv");
-    return res.send(csv);
+    return res.status(200).send(csv);
   } catch (error) {
     logger.error("exportResidentsCSV error:", error);
     return res.status(500).json({ success: false, message: error.message || "Export error" });
@@ -425,5 +488,8 @@ module.exports = {
   checkoutResident,
   transferRoomOrBed,
   changeStatus,
+  getResidentCsvTemplate,
+  previewResidentCsv,
+  commitResidentCsv,
   exportResidentsCSV,
 };

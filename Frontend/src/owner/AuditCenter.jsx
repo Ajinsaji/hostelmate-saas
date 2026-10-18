@@ -35,11 +35,14 @@ export default function AuditCenter() {
   const handleExportCSV = async () => {
     try {
       const res = await api.get("/api/v2/audit/export");
-      if (res.data?.success) {
+      if (res.data?.success && res.data.downloadUrl && !res.data.downloadUrl.includes("/api/v2/audit/export/csv")) {
+        window.open(res.data.downloadUrl, "_blank");
         toast.success("Audit log export ready!");
+      } else {
+        toast("Audit log export is currently in preview mode. CSV streaming will be enabled in an upcoming release.", { icon: "ℹ️" });
       }
     } catch (err) {
-      toast.error("Export failed");
+      toast.error("Export service currently unavailable");
     }
   };
 
@@ -56,11 +59,16 @@ export default function AuditCenter() {
         {/* Header */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-[#22304A] pb-6">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-black text-white flex items-center gap-3">
-              <ShieldCheck className="text-emerald-400" /> Enterprise Audit Trail & Security Center
-            </h1>
+            <div className="flex items-center gap-3">
+              <h1 className="text-2xl sm:text-3xl font-black text-white flex items-center gap-3">
+                <ShieldCheck className="text-emerald-400" /> Enterprise Audit Trail & Security Center
+              </h1>
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-500/20 text-blue-300 border border-blue-500/30">
+                Preview
+              </span>
+            </div>
             <p className="text-slate-400 text-sm mt-1">
-              Complete chronological audit logs of all user actions, CRUD changes, login events, and settings updates.
+              Chronological audit logs of tenant user actions, CRUD changes, login events, and security events.
             </p>
           </div>
           <button
@@ -69,6 +77,14 @@ export default function AuditCenter() {
           >
             <Download size={14} /> Export Audit CSV
           </button>
+        </div>
+
+        {/* Preview Disclaimer */}
+        <div className="flex items-center gap-3 p-3.5 rounded-2xl border border-blue-500/20 bg-blue-500/10 text-blue-300 text-xs">
+          <ShieldCheck size={16} className="flex-shrink-0 text-blue-400" />
+          <span>
+            <strong>Audit Vault Preview:</strong> Full-system chronological event logging is in active integration. Live production event streaming across workspaces is currently being calibrated.
+          </span>
         </div>
 
         {/* Filter & Search Bar */}
@@ -83,7 +99,7 @@ export default function AuditCenter() {
               className="w-full bg-[#0B1120] border border-[#22304A] rounded-xl pl-10 pr-4 py-2 text-xs text-white focus:outline-none"
             />
           </div>
-          <StatusPill tone="info">Tamper-Proof Audit Vault</StatusPill>
+          <StatusPill tone="info">Audit Vault (Preview)</StatusPill>
         </div>
 
         {loading ? (

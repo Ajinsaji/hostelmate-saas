@@ -1,7 +1,8 @@
 import axios from "axios";
 import toast from "react-hot-toast";
 
-const apiBaseURL = import.meta.env.VITE_API_URL || (typeof window !== "undefined" ? window.location.origin : "");
+export const API_BASE_URL = import.meta.env.VITE_API_URL?.trim() || "";
+const apiBaseURL = API_BASE_URL || (import.meta.env.DEV ? "" : undefined);
 
 export const api = axios.create({
   baseURL: apiBaseURL,
@@ -63,6 +64,7 @@ export const isPublicPath = (pathname) => {
 // These API endpoints do not require authentication.
 // A 401 from these must NOT trigger auth redirect or log auth-redirect noise.
 const PUBLIC_API_PATTERNS = [
+  "/api/auth/login",
   "/api/request/register",
   "/api/request/pincode/",
   "/api/request/status/",
@@ -104,6 +106,9 @@ import { getDeviceId, getAnyAuthToken } from "../utils/authToken";
 
 api.interceptors.request.use(
   (config) => {
+    if (!API_BASE_URL && !import.meta.env.DEV) {
+      return Promise.reject(new Error("VITE_API_URL is not configured for this production deployment."));
+    }
     config.headers = config.headers || {};
 
     const deviceId = getDeviceId();
@@ -140,7 +145,6 @@ api.interceptors.request.use(
         Method: method,
         URL: requestUrl,
         Authorization: authorizationHeaderExists || !!token ? "Present" : "Missing",
-        "Token Prefix": token ? String(token).slice(0, 20) + "..." : "(none)",
         "Is Admin Request": isAdminRequest,
       });
     }
@@ -228,17 +232,17 @@ api.interceptors.response.use(
 
       // ***** AUTH REDIRECT TRIGGERED *****
       // Only logged for genuinely authenticated endpoints on protected routes that returned 401.
-      console.log("***** AUTH REDIRECT TRIGGERED *****", {
-        Request: {
-          Method: method,
-          URL: requestUrl,
-        },
-        Status: status,
-        Reason: reason,
-        "Current Route": window.location.pathname,
-        "Token Exists": !!localStorage.getItem("ownerToken"),
-        "Owner Exists": !!localStorage.getItem("ownerUser"),
-      });
+      if (import.meta.env.DEV) {
+        console.log("[API] Authentication redirect", {
+          method,
+          url: requestUrl,
+          status,
+          reason,
+          currentRoute: window.location.pathname,
+          hasOwnerToken: !!localStorage.getItem("ownerToken"),
+          hasOwner: !!localStorage.getItem("ownerUser"),
+        });
+      }
 
       if (isAdminRequest) {
         localStorage.removeItem("adminToken");

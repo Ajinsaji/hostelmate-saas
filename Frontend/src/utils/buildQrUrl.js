@@ -1,4 +1,6 @@
-const BACKEND_URL = import.meta.env.VITE_API_URL || "";
+import { API_BASE_URL } from "../services/api";
+
+const BACKEND_URL = API_BASE_URL || (import.meta.env.DEV ? "" : null);
 
 export default function buildQrUrl(qrCodeUrl) {
   if (!qrCodeUrl || typeof qrCodeUrl !== "string") return "";
@@ -10,6 +12,7 @@ export default function buildQrUrl(qrCodeUrl) {
     return trimmed;
   }
 
+  if (BACKEND_URL === null) return "";
   const backend = BACKEND_URL.replace(/\/$/, "");
 
   if (trimmed.includes("/uploads/")) {

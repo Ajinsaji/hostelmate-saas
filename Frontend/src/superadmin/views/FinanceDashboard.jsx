@@ -4,6 +4,7 @@ import SectionHeader from "../layouts/SectionHeader";
 import ContentContainer from "../layouts/ContentContainer";
 import LoadingState from "../components/feedback/LoadingState";
 import toast from "../../services/toast";
+import { api } from "../../services/api";
 import {
   FiDollarSign,
   FiTrendingUp,
@@ -23,11 +24,8 @@ export const FinanceDashboard = React.memo(() => {
   const fetchFinanceData = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem("token");
-      const res = await fetch("/api/admin/subscriptions/dashboard", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await res.json();
+      const res = await api.get("/api/admin/subscriptions/dashboard");
+      const data = res.data;
       if (data.success) {
         setAnalytics(data.analytics);
       } else {
@@ -59,8 +57,8 @@ export const FinanceDashboard = React.memo(() => {
   const cashFlow = analytics?.cashFlow || { today: 0, tomorrow: 0, thisWeek: 0, thisMonth: 0 };
   const totalHostels = (analytics?.trialHostels || 0) + (analytics?.baseSubscribers || 0) + (analytics?.proSubscribers || 0);
   const conversionRate = totalHostels > 0 ? Math.round(((analytics?.proSubscribers || 0) / totalHostels) * 100) : 0;
-  const renewalRate = 92; // 92% renewal rate benchmark
-  const churnRate = 2.4; // 2.4% monthly churn rate
+    const renewalRate = analytics?.renewalRate;
+    const churnRate = analytics?.churnRate;
 
   return (
     <PageContainer>
@@ -77,9 +75,9 @@ export const FinanceDashboard = React.memo(() => {
               <span>This Month Revenue</span>
               <FiDollarSign className="text-emerald-400 text-lg" />
             </div>
-            <div className="text-3xl font-black text-white mt-3">₹{analytics?.monthlyRevenue || 0}</div>
+              <div className="text-3xl font-black text-white mt-3">{analytics?.monthlyRevenue != null ? `₹${analytics.monthlyRevenue}` : "Unavailable"}</div>
             <div className="text-xs text-emerald-400 font-semibold mt-2 flex items-center gap-1">
-              <FiTrendingUp /> +18.4% vs last month
+                <FiTrendingUp /> {analytics?.monthlyRevenueChange != null ? `${analytics.monthlyRevenueChange}% vs last month` : "Comparison unavailable"}
             </div>
           </div>
 
@@ -153,11 +151,11 @@ export const FinanceDashboard = React.memo(() => {
               </div>
               <div className="flex justify-between items-center pb-2 border-b border-white/5">
                 <span className="text-slate-400">Subscriber Renewal Rate</span>
-                <span className="font-black text-blue-400 text-sm">{renewalRate}%</span>
+                  <span className="font-black text-blue-400 text-sm">{renewalRate != null ? `${renewalRate}%` : "Unavailable"}</span>
               </div>
               <div className="flex justify-between items-center pb-2 border-b border-white/5">
                 <span className="text-slate-400">Monthly Revenue Churn Rate</span>
-                <span className="font-black text-rose-400 text-sm">{churnRate}%</span>
+                  <span className="font-black text-rose-400 text-sm">{churnRate != null ? `${churnRate}%` : "Unavailable"}</span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-slate-400">Pending Collections</span>

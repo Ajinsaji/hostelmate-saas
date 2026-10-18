@@ -18,7 +18,7 @@ async function generatePaymentNumber(hostelId) {
  * Record a payment for an invoice or resident advance
  */
 async function recordPayment(data, userContext = {}) {
-  const hostelId = data.hostelId || userContext.hostelId;
+  const hostelId = userContext.hostelId || data.hostelId;
   if (!hostelId) throw new Error("Hostel ID is required");
   if (!data.residentId) throw new Error("Resident ID is required");
 
@@ -28,17 +28,43 @@ async function recordPayment(data, userContext = {}) {
   const amount = parseFloat(data.amount);
   if (isNaN(amount) || amount <= 0) throw new Error("Payment amount must be greater than 0");
 
-
-  const paymentNumber = data.paymentNumber || (await generatePaymentNumber(hostelId));
+  const resident = await Resident.findOne({ _id: data.residentId, hostelId, isDeleted: false });
+  if (!resident) throw new Error("Resident not found in this hostel");
 
   let invoice = null;
   if (data.invoiceId) {
-    invoice = await RentInvoice.findById(data.invoiceId);
-    if (!invoice) throw new Error("Target invoice not found");
+    invoice = await RentInvoice.findOne({ _id: data.invoiceId, hostelId, isDeleted: false });
+    if (!invoice) throw new Error("Target invoice not found in this hostel");
+    if (String(invoice.residentId) !== String(data.residentId)) {
+      throw new Error("Invoice does not belong to the selected resident");
+    }
+    if (invoice.paymentStatus === "Paid" || invoice.balanceAmount <= 0) {
+      throw new Error("Invoice is already fully paid");
+    }
+    if (amount > invoice.balanceAmount) {
+      throw new Error(`Payment amount (₹${amount}) exceeds invoice outstanding balance (₹${invoice.balanceAmount})`);
+    }
+  }
 
-    // Update invoice paid amount & balance
+  // Idempotency: Return existing record if identical submission was persisted in the last 10 seconds
+  const tenSecondsAgo = new Date(Date.now() - 10000);
+  const existingRecent = await RentPayment.findOne({
+    hostelId,
+    residentId: data.residentId,
+    amount,
+    createdAt: { $gte: tenSecondsAgo },
+    ...(data.invoiceId ? { invoiceId: data.invoiceId } : {}),
+    ...(data.transactionReference ? { transactionReference: data.transactionReference } : {}),
+  });
+  if (existingRecent) {
+    return existingRecent;
+  }
+
+  const paymentNumber = data.paymentNumber || (await generatePaymentNumber(hostelId));
+
+  if (invoice) {
     invoice.paidAmount = (invoice.paidAmount || 0) + amount;
-    await invoice.save(); // pre-save hook updates status and balanceAmount
+    await invoice.save(); // pre-save hook recalculates balanceAmount and paymentStatus
   }
 
   const payment = await RentPayment.create({

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import axios from "axios";
+import { api } from "../services/api";
 import toast from "react-hot-toast";
 import { setAdminAuth, setStoredAdmin } from "../utils/authToken";
 import { ArrowLeft, User, Lock, Eye, EyeOff } from "lucide-react";
@@ -26,10 +26,7 @@ function AdminLogin() {
     if (loading) return;
     setLoading(true);
     try {
-      const response = await axios.post(
-        `${import.meta.env.VITE_API_URL}/api/auth/login`,
-        { username, password }
-      );
+      const response = await api.post("/api/auth/login", { username, password });
 
       if (response.data?.success && response.data?.token) {
         toast.success("Login successful. Welcome back!");

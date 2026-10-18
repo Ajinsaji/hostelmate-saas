@@ -33,6 +33,12 @@ async function createBed(data, userContext = {}) {
   const room = await Room.findOne({ _id: data.roomId, hostelId, isDeleted: false });
   if (!room) throw new Error("Parent room not found in active hostel");
 
+  // Prevent duplicate bed identifier in room
+  const existing = await Bed.findOne({ roomId: room._id, bedNumber: data.bedNumber, isDeleted: false });
+  if (existing) {
+    throw new Error(`Bed '${data.bedNumber}' already exists in Room ${room.roomNumber}`);
+  }
+
   const bed = await Bed.create({
     ...data,
     tenantId: room.hostelId,
