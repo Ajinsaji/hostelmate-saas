@@ -1,5 +1,4 @@
 import { memo } from "react";
-import { useTheme } from "../design-system/ThemeProvider";
 import { PageContainer } from "../design-system/layouts/PageContainer";
 import { Card } from "../design-system/components/Card";
 import { StatusPill } from "../design-system/components/StatusPill";
@@ -22,23 +21,32 @@ export const StaffManagementDesktop = memo(function StaffManagementDesktop({
   inactiveCount,
   filteredStaff,
   setIsAddModalOpen,
+  setEditingStaff,
   toggleStatus,
   resetPassword,
   deleteStaff,
 }) {
-  const { colors } = useTheme();
-
   return (
     <PageContainer
-      title="Staff Management"
-      subtitle="Manage hostel wardens, cooks, accountants, and staff members"
+      title="Staff Directory"
+      subtitle={`${totalStaff} staff member${totalStaff !== 1 ? "s" : ""} across all operational roles`}
       action={
         <button
-          onClick={() => setIsAddModalOpen(true)}
-          className="inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold shadow-lg transition"
-          style={{ background: colors.accent.primary || "#22C55E", color: "#FFFFFF" }}
+          type="button"
+          onClick={() => {
+            if (setEditingStaff) setEditingStaff(null);
+            setIsAddModalOpen(true);
+          }}
+          className="inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-bold shadow-lg transition hover:brightness-110 active:scale-95 cursor-pointer"
+          style={{
+            background: "#22C55E",
+            color: "#FFFFFF",
+            boxShadow: "0 4px 14px rgba(34, 197, 94, 0.35)",
+            minHeight: "44px",
+          }}
         >
-          <Plus size={16} /> Add Staff Member
+          <Plus size={18} strokeWidth={2.5} />
+          <span>Add Staff</span>
         </button>
       }
     >
@@ -113,6 +121,18 @@ export const StaffManagementDesktop = memo(function StaffManagementDesktop({
 
             <div className="flex items-center gap-2 pt-2 border-t border-slate-800">
               <button
+                type="button"
+                onClick={() => {
+                  if (setEditingStaff) setEditingStaff(s);
+                  setIsAddModalOpen(true);
+                }}
+                className="text-xs text-blue-400 font-bold hover:underline"
+              >
+                Edit
+              </button>
+              <span className="text-slate-600">•</span>
+              <button
+                type="button"
                 onClick={() => toggleStatus(s)}
                 className="text-xs text-emerald-400 font-bold hover:underline"
               >
@@ -120,6 +140,7 @@ export const StaffManagementDesktop = memo(function StaffManagementDesktop({
               </button>
               <span className="text-slate-600">•</span>
               <button
+                type="button"
                 onClick={() => resetPassword(s)}
                 className="text-xs text-slate-300 font-bold hover:underline"
               >
@@ -127,6 +148,7 @@ export const StaffManagementDesktop = memo(function StaffManagementDesktop({
               </button>
               <span className="text-slate-600">•</span>
               <button
+                type="button"
                 onClick={() => deleteStaff(s._id)}
                 className="text-xs text-rose-400 font-bold hover:underline"
               >

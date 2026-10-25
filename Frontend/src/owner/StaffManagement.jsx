@@ -207,6 +207,7 @@ export default function StaffManagement() {
           inactiveCount={inactiveCount}
           filteredStaff={filteredStaff}
           setIsAddModalOpen={setIsAddModalOpen}
+          setEditingStaff={setEditingStaff}
           toggleStatus={toggleStatus}
           resetPassword={resetPassword}
           deleteStaff={deleteStaff}
