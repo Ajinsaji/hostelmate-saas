@@ -43,10 +43,17 @@ const drawerSections = [
     ]
   },
   {
+    title: 'MANAGEMENT',
+    items: [
+      { key: 'staff', label: 'Staff Management', icon: Users, href: '/owner/staff-management' },
+      { key: 'reports', label: 'Reports', icon: FileText, href: '/reports' }
+    ]
+  },
+  {
     title: 'BUSINESS',
     items: [
-      { key: 'reports', label: 'Reports', icon: FileText, href: '/reports' },
-      { key: 'analytics', label: 'Analytics', icon: BarChart3, href: '/owner/business-intelligence' }
+      { key: 'analytics', label: 'Analytics', icon: BarChart3, href: '/owner/business-intelligence' },
+      { key: 'ai', label: 'AI Insights', icon: BarChart3, href: '/owner/ai-insights' }
     ]
   },
   {
@@ -65,7 +72,6 @@ export const MobileDrawer = memo(function MobileDrawer({
   menuItems,
   userName: propUserName,
   userRole: propUserRole,
-  userAvatar: propUserAvatar,
   onLogout
 }) {
   const { colors, radius } = useTheme();
@@ -261,7 +267,7 @@ export const MobileDrawer = memo(function MobileDrawer({
                 gap: '16px',
               }}
             >
-              {(isAdmin && menuItems ? menuItems.map(sec => ({ title: sec.section || sec.title, items: sec.items })) : drawerSections).map((section) => (
+              {((menuItems && menuItems.length > 0) ? menuItems.map(sec => ({ title: sec.section || sec.title, items: sec.items })) : drawerSections).map((section) => (
                 <div key={section.title}>
                   <div
                     style={{
@@ -281,11 +287,16 @@ export const MobileDrawer = memo(function MobileDrawer({
                       if (typeof Icon === 'string') {
                         const iconMap = {
                           Home, Users, BedDouble, Wallet, Receipt, FileText, BarChart3, Settings, HelpCircle, ShieldCheck,
-                          Building: BedDouble, CreditCard: Wallet, IndianRupee: Wallet, User: Users, Clock: HelpCircle, Activity: BarChart3
+                          Building: BedDouble, CreditCard: Wallet, IndianRupee: Wallet, User: Users, Clock: HelpCircle, Activity: BarChart3,
+                          UserCog: Users, Sparkles: BarChart3
                         };
                         Icon = iconMap[Icon] || FileText;
                       }
-                      const isActive = location.pathname === item.href || (item.href !== '/owner/dashboard' && item.href !== '/admin/dashboard' && location.pathname.startsWith(item.href));
+                      const isActive =
+                        location.pathname === item.href ||
+                        ((item.href === '/owner/staff-management' || item.href === '/staff') && (location.pathname === '/staff' || location.pathname === '/owner/staff-management')) ||
+                        ((item.href === '/owner/ai-insights' || item.href === '/ai-insights') && (location.pathname === '/ai-insights' || location.pathname === '/owner/ai-insights')) ||
+                        (item.href !== '/owner/dashboard' && item.href !== '/admin/dashboard' && location.pathname.startsWith(item.href));
                       return (
                         <button
                           key={item.key || item.href}

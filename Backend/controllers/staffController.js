@@ -15,8 +15,11 @@ const { logger } = require("../utils/logger");
 
 const createStaff = async (req, res) => {
   try {
-    const tenantId = req.user.tenantId || req.user.hostelId;
-    const hostelId = req.body.hostelId || req.user.hostelId || tenantId;
+    const tenantId = req.context?.hostelId || req.user?.hostelId || req.user?.tenantId;
+    if (!tenantId) {
+      return res.status(400).json({ success: false, message: "Hostel context not resolved" });
+    }
+    const hostelId = tenantId;
     const createdBy = req.user.userId || req.user.id;
 
     const result = await staffService.createStaff(tenantId, hostelId, req.body, createdBy);
@@ -36,10 +39,13 @@ const createStaff = async (req, res) => {
 
 const getStaff = async (req, res) => {
   try {
-    const tenantId = req.user.tenantId || req.user.hostelId;
-    const { role, status, hostelId } = req.query;
+    const tenantId = req.context?.hostelId || req.user?.hostelId || req.user?.tenantId;
+    if (!tenantId) {
+      return res.status(400).json({ success: false, message: "Hostel context not resolved" });
+    }
+    const { role, status } = req.query;
 
-    const staffList = await staffService.getStaff(tenantId, { role, status, hostelId });
+    const staffList = await staffService.getStaff(tenantId, { role, status, hostelId: tenantId });
     return res.status(200).json({ success: true, staff: staffList });
   } catch (error) {
     logger.error("GET STAFF CONTROLLER ERROR:", error?.message || error);
@@ -49,7 +55,7 @@ const getStaff = async (req, res) => {
 
 const getStaffById = async (req, res) => {
   try {
-    const tenantId = req.user.tenantId || req.user.hostelId;
+    const tenantId = req.context?.hostelId || req.user?.hostelId || req.user?.tenantId;
     const staff = await staffService.getStaffById(tenantId, req.params.id);
     return res.status(200).json({ success: true, staff });
   } catch (error) {
@@ -73,9 +79,12 @@ const getStaffProfile = async (req, res) => {
 
 const updateStaff = async (req, res) => {
   try {
-    const tenantId = req.user.tenantId || req.user.hostelId;
+    const tenantId = req.context?.hostelId || req.user?.hostelId || req.user?.tenantId;
     const updatedBy = req.user.userId || req.user.id;
-    const updated = await staffService.updateStaff(tenantId, req.params.id, req.body, updatedBy);
+    const safeBody = { ...req.body };
+    delete safeBody.hostelId;
+    delete safeBody.tenantId;
+    const updated = await staffService.updateStaff(tenantId, req.params.id, safeBody, updatedBy);
     return res.status(200).json({ success: true, message: "Staff details updated", staff: updated });
   } catch (error) {
     logger.error("UPDATE STAFF ERROR:", error?.message || error);
@@ -86,7 +95,7 @@ const updateStaff = async (req, res) => {
 
 const toggleStatus = async (req, res) => {
   try {
-    const tenantId = req.user.tenantId || req.user.hostelId;
+    const tenantId = req.context?.hostelId || req.user?.hostelId || req.user?.tenantId;
     const updatedBy = req.user.userId || req.user.id;
     const { status, isActive } = req.body;
     const newStatus = status || (isActive ? "Active" : "Inactive");
@@ -102,7 +111,7 @@ const toggleStatus = async (req, res) => {
 
 const resetPassword = async (req, res) => {
   try {
-    const tenantId = req.user.tenantId || req.user.hostelId;
+    const tenantId = req.context?.hostelId || req.user?.hostelId || req.user?.tenantId;
     const resetBy = req.user.userId || req.user.id;
     const { newPassword } = req.body;
 
@@ -144,7 +153,7 @@ const changeSelfPassword = async (req, res) => {
 
 const deleteStaff = async (req, res) => {
   try {
-    const tenantId = req.user.tenantId || req.user.hostelId;
+    const tenantId = req.context?.hostelId || req.user?.hostelId || req.user?.tenantId;
     const deletedBy = req.user.userId || req.user.id;
     const result = await staffService.deleteStaff(tenantId, req.params.id, deletedBy);
     return res.status(200).json({ success: true, message: result.message });
@@ -157,7 +166,7 @@ const deleteStaff = async (req, res) => {
 
 const getStaffActivity = async (req, res) => {
   try {
-    const tenantId = req.user.tenantId || req.user.hostelId;
+    const tenantId = req.context?.hostelId || req.user?.hostelId || req.user?.tenantId;
     const logs = await staffService.getStaffActivity(tenantId, req.params.id);
     return res.status(200).json({ success: true, activity: logs });
   } catch (error) {
@@ -170,7 +179,7 @@ const getStaffActivity = async (req, res) => {
 const getStaffDashboard = async (req, res) => {
   try {
     const { role, hostelId, tenantId } = req.user;
-    const activeHostelId = hostelId || tenantId;
+    const activeHostelId = req.context?.hostelId || hostelId || tenantId;
     const userRole = role ? role.toLowerCase() : "";
     const requestedRole = req.query.role ? req.query.role.toLowerCase() : "";
     const targetRole = requestedRole || userRole;

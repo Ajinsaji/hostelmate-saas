@@ -599,6 +599,21 @@ function App() {
           }
         />
         <Route
+          path="/owner/staff-management"
+          element={
+            <OwnerProtectedRoute>
+              <DesktopShell
+                variant="owner"
+                title="Staff Management"
+                breadcrumbs={[{ label: "Staff Management" }]}
+                backTo={"/owner/dashboard"}
+              >
+                <StaffManagement />
+              </DesktopShell>
+            </OwnerProtectedRoute>
+          }
+        />
+        <Route
           path="/attendance-shifts"
           element={
             <OwnerProtectedRoute>
@@ -825,6 +840,21 @@ function App() {
         />
         <Route
           path="/ai-insights"
+          element={
+            <OwnerProtectedRoute>
+              <DesktopShell
+                variant="owner"
+                title="AI Insights & Automation"
+                breadcrumbs={[{ label: "AI Insights" }]}
+                backTo={"/owner/dashboard"}
+              >
+                <AIInsights />
+              </DesktopShell>
+            </OwnerProtectedRoute>
+          }
+        />
+        <Route
+          path="/owner/ai-insights"
           element={
             <OwnerProtectedRoute>
               <DesktopShell

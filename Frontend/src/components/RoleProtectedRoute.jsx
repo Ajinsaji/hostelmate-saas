@@ -37,7 +37,9 @@ export default function RoleProtectedRoute({ children, allowedRoles = [] }) {
     return <Navigate to="/login" replace />;
   }
 
-  if (allowedRoles.length > 0 && !allowedRoles.includes(payload.role)) {
+  const normRole = (payload.role || "").toLowerCase();
+  const normAllowed = allowedRoles.map((r) => String(r).toLowerCase());
+  if (normAllowed.length > 0 && !normAllowed.includes(normRole)) {
     return <Navigate to="/login" replace />;
   }
 

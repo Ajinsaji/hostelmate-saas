@@ -27,8 +27,15 @@ export const StaffManagementMobile = memo(function StaffManagementMobile({
   const roleOptions = ["All", "Warden", "Cook", "Accountant"];
 
   const filteredStaff = staff.filter((s) => {
-    const nameMatch = !searchQuery || s.fullName?.toLowerCase().includes(searchQuery.toLowerCase()) || s.phone?.includes(searchQuery);
-    const roleMatch = roleFilter === "All" || s.role === roleFilter;
+    const role = (s.userId?.role || s.designation || s.role || "").toLowerCase();
+    const phone = s.userId?.phone || s.phone || "";
+    const nameMatch =
+      !searchQuery ||
+      s.fullName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      phone.includes(searchQuery) ||
+      s.employeeCode?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      s.userId?.email?.toLowerCase().includes(searchQuery.toLowerCase());
+    const roleMatch = roleFilter === "All" || role === roleFilter.toLowerCase();
     return nameMatch && roleMatch;
   });
 
@@ -201,7 +208,7 @@ export const StaffManagementMobile = memo(function StaffManagementMobile({
                     <div>
                       <div style={{ fontSize: "16px", fontWeight: 700, color: "#FFFFFF" }}>{s.fullName}</div>
                       <div style={{ fontSize: "13px", color: colors.text.secondary || "#94A3B8" }}>
-                        {s.role || "Staff"} • {s.phone}
+                        {(s.userId?.role || s.designation || s.role || "Staff")} • {(s.userId?.phone || s.phone || "No phone")}
                       </div>
                     </div>
                   </div>

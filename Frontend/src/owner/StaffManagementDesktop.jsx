@@ -12,7 +12,6 @@ import {
   UserCheck,
   UserX,
 } from "lucide-react";
-import AddStaffModal from "./AddStaffModal";
 
 export const StaffManagementDesktop = memo(function StaffManagementDesktop({
   totalStaff,
@@ -23,11 +22,6 @@ export const StaffManagementDesktop = memo(function StaffManagementDesktop({
   inactiveCount,
   filteredStaff,
   setIsAddModalOpen,
-  isAddModalOpen,
-  editingStaff,
-  setEditingStaff,
-  handleCreate,
-  handleUpdate,
   toggleStatus,
   resetPassword,
   deleteStaff,
@@ -106,7 +100,13 @@ export const StaffManagementDesktop = memo(function StaffManagementDesktop({
             <div className="flex justify-between items-start">
               <div>
                 <h4 className="font-bold text-white text-base">{s.fullName}</h4>
-                <p className="text-xs text-slate-400">{s.role || "Staff Member"} • {s.phone}</p>
+                <p className="text-xs text-slate-400">
+                  {s.employeeCode ? `${s.employeeCode} • ` : ""}
+                  {s.userId?.role || s.designation || s.role || "Staff Member"} • {s.userId?.phone || s.phone || "No phone"}
+                </p>
+                {s.userId?.email && (
+                  <p className="text-[11px] text-slate-500 truncate">{s.userId.email}</p>
+                )}
               </div>
               <StatusPill status={s.employmentStatus} />
             </div>
@@ -136,18 +136,6 @@ export const StaffManagementDesktop = memo(function StaffManagementDesktop({
           </Card>
         ))}
       </div>
-
-      {(isAddModalOpen || editingStaff) && (
-        <AddStaffModal
-          isOpen={isAddModalOpen || !!editingStaff}
-          onClose={() => {
-            setIsAddModalOpen(false);
-            setEditingStaff(null);
-          }}
-          onSubmit={editingStaff ? handleUpdate : handleCreate}
-          initialData={editingStaff}
-        />
-      )}
     </PageContainer>
   );
 });

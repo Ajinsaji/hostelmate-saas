@@ -8,7 +8,9 @@ const { generateWhatsAppURL, generateStaffWhatsAppMessage } = require("../utils/
 const { normalizeRole } = require("./permissionService");
 
 const generateEmployeeCode = async (tenantId) => {
-  const count = await Staff.countDocuments({ tenantId });
+  const count = await Staff.countDocuments({
+    $or: [{ tenantId }, { hostelId: tenantId }],
+  });
   const num = (count + 1).toString().padStart(3, "0");
   return `EMP-${num}`;
 };
@@ -91,9 +93,12 @@ const createStaff = async (tenantId, hostelId, staffData, createdBy) => {
 };
 
 const getStaff = async (tenantId, filters = {}) => {
-  const query = { tenantId, isDeleted: false };
+  const targetHostel = filters.hostelId || tenantId;
+  const query = {
+    $or: [{ tenantId: targetHostel }, { hostelId: targetHostel }],
+    isDeleted: false,
+  };
 
-  if (filters.hostelId) query.hostelId = filters.hostelId;
   if (filters.status) query.employmentStatus = filters.status;
 
   let staffList = await Staff.find(query)
@@ -101,15 +106,23 @@ const getStaff = async (tenantId, filters = {}) => {
     .sort({ createdAt: -1 });
 
   if (filters.role) {
-    const normRole = normalizeRole(filters.role);
-    staffList = staffList.filter((s) => s.userId?.role === normRole);
+    const targetRole = normalizeRole(filters.role).toLowerCase();
+    staffList = staffList.filter((s) => {
+      const userRole = (s.userId?.role || "").toLowerCase();
+      const sDesignation = (s.designation || "").toLowerCase();
+      return userRole === targetRole || sDesignation === targetRole;
+    });
   }
 
   return staffList;
 };
 
 const getStaffById = async (tenantId, staffId) => {
-  const staff = await Staff.findOne({ _id: staffId, tenantId, isDeleted: false }).populate({
+  const staff = await Staff.findOne({
+    _id: staffId,
+    $or: [{ tenantId }, { hostelId: tenantId }],
+    isDeleted: false,
+  }).populate({
     path: "userId",
     select: "email phone role status lastLogin",
   });
@@ -130,7 +143,11 @@ const getStaffProfile = async (userId) => {
 };
 
 const updateStaff = async (tenantId, staffId, updateData, updatedBy) => {
-  const staff = await Staff.findOne({ _id: staffId, tenantId, isDeleted: false });
+  const staff = await Staff.findOne({
+    _id: staffId,
+    $or: [{ tenantId }, { hostelId: tenantId }],
+    isDeleted: false,
+  });
   if (!staff) {
     throw { statusCode: 404, message: "Staff member not found" };
   }
@@ -217,7 +234,11 @@ const updateStaff = async (tenantId, staffId, updateData, updatedBy) => {
 const toggleStatus = async (tenantId, staffId, status, updatedBy) => {
   const normStatus = status === "Active" || status === true ? "Active" : "Inactive";
 
-  const staff = await Staff.findOne({ _id: staffId, tenantId, isDeleted: false });
+  const staff = await Staff.findOne({
+    _id: staffId,
+    $or: [{ tenantId }, { hostelId: tenantId }],
+    isDeleted: false,
+  });
   if (!staff) {
     throw { statusCode: 404, message: "Staff member not found" };
   }
@@ -262,7 +283,11 @@ const toggleStatus = async (tenantId, staffId, status, updatedBy) => {
 };
 
 const resetPassword = async (tenantId, staffId, newPassword, resetBy) => {
-  const staff = await Staff.findOne({ _id: staffId, tenantId, isDeleted: false });
+  const staff = await Staff.findOne({
+    _id: staffId,
+    $or: [{ tenantId }, { hostelId: tenantId }],
+    isDeleted: false,
+  });
   if (!staff) {
     throw { statusCode: 404, message: "Staff member not found" };
   }
@@ -333,7 +358,11 @@ const changeSelfPassword = async (userId, oldPassword, newPassword) => {
 };
 
 const deleteStaff = async (tenantId, staffId, deletedBy) => {
-  const staff = await Staff.findOne({ _id: staffId, tenantId, isDeleted: false });
+  const staff = await Staff.findOne({
+    _id: staffId,
+    $or: [{ tenantId }, { hostelId: tenantId }],
+    isDeleted: false,
+  });
   if (!staff) {
     throw { statusCode: 404, message: "Staff member not found" };
   }
@@ -378,7 +407,10 @@ const deleteStaff = async (tenantId, staffId, deletedBy) => {
 };
 
 const getStaffActivity = async (tenantId, staffId) => {
-  const staff = await Staff.findOne({ _id: staffId, tenantId });
+  const staff = await Staff.findOne({
+    _id: staffId,
+    $or: [{ tenantId }, { hostelId: tenantId }],
+  });
   if (!staff) {
     throw { statusCode: 404, message: "Staff member not found" };
   }

@@ -107,7 +107,11 @@ export const getStoredAdmin = () => {
 };
 
 export const getStoredUser = () => {
-  return getStoredAdmin() || getStoredOwner();
+  const isAdminRoute = typeof window !== "undefined" && window.location.pathname.startsWith("/admin");
+  if (isAdminRoute) {
+    return getStoredAdmin() || getStoredOwner();
+  }
+  return getStoredOwner() || getStoredAdmin();
 };
 
 export const setStoredOwner = (user) => {

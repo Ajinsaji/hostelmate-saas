@@ -48,6 +48,8 @@ export default function UnifiedSidebar({
 
   const isActive = (href) => {
     if (href === location.pathname) return true;
+    if ((href === '/owner/staff-management' || href === '/staff') && (location.pathname === '/staff' || location.pathname === '/owner/staff-management')) return true;
+    if ((href === '/owner/ai-insights' || href === '/ai-insights') && (location.pathname === '/ai-insights' || location.pathname === '/owner/ai-insights')) return true;
     // Match sub-routes but avoid false positives on short paths
     if (href.length > 1 && location.pathname.startsWith(href + '/')) return true;
     return false;

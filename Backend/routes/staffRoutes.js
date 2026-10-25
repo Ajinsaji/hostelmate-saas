@@ -24,9 +24,9 @@ router.get("/dashboard", auth, getStaffDashboard);
 
 // Owner / Management staff endpoints
 router.post("/", ownerAuth, rolePermissionMiddleware("staff", "create"), createStaff);
-router.get("/", auth, rolePermissionMiddleware("staff", "view"), getStaff);
-router.get("/:id", auth, rolePermissionMiddleware("staff", "view"), getStaffById);
-router.get("/:id/activity", auth, rolePermissionMiddleware("staff", "view"), getStaffActivity);
+router.get("/", ownerAuth, rolePermissionMiddleware("staff", "view"), getStaff);
+router.get("/:id", ownerAuth, rolePermissionMiddleware("staff", "view"), getStaffById);
+router.get("/:id/activity", ownerAuth, rolePermissionMiddleware("staff", "view"), getStaffActivity);
 
 router.put("/:id", ownerAuth, rolePermissionMiddleware("staff", "edit"), updateStaff);
 router.delete("/:id", ownerAuth, rolePermissionMiddleware("staff", "delete"), deleteStaff);

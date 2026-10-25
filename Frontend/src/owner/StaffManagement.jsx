@@ -10,7 +10,7 @@ import ConfirmDialog from "../superadmin/components/modals/ConfirmDialog";
 export default function StaffManagement() {
   const isMobile = useIsMobile();
   const [staff, setStaff] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingStaff, setEditingStaff] = useState(null);
 
@@ -20,6 +20,7 @@ export default function StaffManagement() {
   const [statusFilter] = useState("All");
 
   const fetchStaff = async () => {
+    setLoading(true);
     try {
       const response = await api.get("/api/staff");
       if (response.data.success) {
@@ -33,7 +34,27 @@ export default function StaffManagement() {
   };
 
   useEffect(() => {
-    fetchStaff();
+    let isMounted = true;
+    api.get("/api/staff")
+      .then((response) => {
+        if (isMounted && response.data?.success) {
+          setStaff(response.data.staff || []);
+        }
+      })
+      .catch((error) => {
+        if (isMounted) {
+          toast.error(error?.response?.data?.message || "Unable to load staff list");
+        }
+      })
+      .finally(() => {
+        if (isMounted) {
+          setLoading(false);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const handleCreate = async (formData) => {
@@ -127,22 +148,23 @@ export default function StaffManagement() {
   };
 
   const totalStaff = staff.length;
-  const wardensCount = staff.filter((s) => s.userId?.role === "Warden").length;
-  const cooksCount = staff.filter((s) => s.userId?.role === "Cook").length;
-  const accountantsCount = staff.filter((s) => s.userId?.role === "Accountant").length;
+  const wardensCount = staff.filter((s) => (s.userId?.role || s.designation || "").toLowerCase() === "warden").length;
+  const cooksCount = staff.filter((s) => (s.userId?.role || s.designation || "").toLowerCase() === "cook").length;
+  const accountantsCount = staff.filter((s) => (s.userId?.role || s.designation || "").toLowerCase() === "accountant").length;
   const activeCount = staff.filter((s) => s.employmentStatus === "Active").length;
   const inactiveCount = staff.filter((s) => s.employmentStatus === "Inactive").length;
 
   const filteredStaff = staff.filter((member) => {
-    const memberRole = member.userId?.role || "";
+    const memberRole = member.userId?.role || member.designation || "";
     const matchesRole = roleFilter === "All" || memberRole.toLowerCase() === roleFilter.toLowerCase();
-    const matchesStatus = statusFilter === "All" || member.employmentStatus.toLowerCase() === statusFilter.toLowerCase();
+    const matchesStatus = statusFilter === "All" || (member.employmentStatus || "").toLowerCase() === statusFilter.toLowerCase();
+    const phone = member.userId?.phone || member.phone || "";
     const matchesSearch =
       searchQuery === "" ||
       member.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
       member.employeeCode?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       member.userId?.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      member.userId?.phone?.includes(searchQuery);
+      phone.includes(searchQuery);
 
     return matchesRole && matchesStatus && matchesSearch;
   });
@@ -152,6 +174,7 @@ export default function StaffManagement() {
       {isMobile ? (
         <StaffManagementMobile
           staff={staff}
+          loading={loading}
           totalStaff={totalStaff}
           wardensCount={wardensCount}
           cooksCount={cooksCount}
@@ -184,20 +207,16 @@ export default function StaffManagement() {
           inactiveCount={inactiveCount}
           filteredStaff={filteredStaff}
           setIsAddModalOpen={setIsAddModalOpen}
-          isAddModalOpen={isAddModalOpen}
-          editingStaff={editingStaff}
-          setEditingStaff={setEditingStaff}
-          handleCreate={handleCreate}
-          handleUpdate={handleUpdate}
           toggleStatus={toggleStatus}
           resetPassword={resetPassword}
           deleteStaff={deleteStaff}
         />
       )}
 
-      {isAddModalOpen && (
+      {(isAddModalOpen || !!editingStaff) && (
         <AddStaffModal
-          isOpen={isAddModalOpen}
+          key={editingStaff?._id || "create-staff"}
+          isOpen={isAddModalOpen || !!editingStaff}
           onClose={() => {
             setIsAddModalOpen(false);
             setEditingStaff(null);

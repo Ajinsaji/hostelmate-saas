@@ -1,23 +1,37 @@
-import { useTheme } from "../design-system/ThemeProvider";
 import { useState } from "react";
 import { X, User, Mail, Phone, Lock, Briefcase, DollarSign, Calendar, Image as ImageIcon } from "lucide-react";
 
 export default function AddStaffModal({ isOpen, onClose, onSubmit, initialData = null }) {
-  
-  const [form, setForm] = useState(
-    initialData || {
-      fullName: "",
-      email: "",
-      phone: "",
-      role: "Warden",
-      designation: "Warden",
-      salary: "",
-      joiningDate: new Date().toISOString().slice(0, 10),
-      photo: "",
+  const getInitialForm = (data) => {
+    if (!data) {
+      return {
+        fullName: "",
+        email: "",
+        phone: "",
+        role: "Warden",
+        designation: "Warden",
+        salary: "",
+        joiningDate: new Date().toISOString().slice(0, 10),
+        photo: "",
+        password: "",
+        confirmPassword: "",
+      };
+    }
+    return {
+      fullName: data.fullName || "",
+      email: data.userId?.email || data.email || "",
+      phone: data.userId?.phone || data.phone || "",
+      role: data.userId?.role || data.role || "Warden",
+      designation: data.designation || "Warden",
+      salary: data.salary ?? "",
+      joiningDate: data.joiningDate ? new Date(data.joiningDate).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10),
+      photo: data.photo || "",
       password: "",
       confirmPassword: "",
-    }
-  );
+    };
+  };
+
+  const [form, setForm] = useState(() => getInitialForm(initialData));
   const [error, setError] = useState("");
 
   const handleChange = (key, value) => {

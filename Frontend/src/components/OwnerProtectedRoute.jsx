@@ -1,6 +1,6 @@
 import { Navigate, useLocation } from "react-router-dom";
 import RoleProtectedRoute from "./RoleProtectedRoute";
-import { getAuthToken, getStoredUser } from "../utils/authToken";
+import { getAuthToken, getStoredOwner, getStoredUser } from "../utils/authToken";
 import { useEffect, useState } from "react";
 import useSessionVerification from "../hooks/useSessionVerification";
 import PageLoader from "./PageLoader";
@@ -28,7 +28,7 @@ export default function OwnerProtectedRoute({ children }) {
   const token = getAuthToken();
   const { verifying } = useSessionVerification();
   const payload = token ? decodeJwtPayload(token) : null;
-  const storedUser = getStoredUser();
+  const storedUser = getStoredOwner() || getStoredUser();
   const ownerInfo = storedUser || payload;
   const onboardingCompleted = ownerInfo?.onboardingCompleted;
 
@@ -94,6 +94,6 @@ export default function OwnerProtectedRoute({ children }) {
     return <Navigate to="/subscription-expired" replace />;
   }
 
-  return <RoleProtectedRoute allowedRoles={["owner"]}>{children}</RoleProtectedRoute>;
+  return <RoleProtectedRoute allowedRoles={["owner", "Owner"]}>{children}</RoleProtectedRoute>;
 }
 
