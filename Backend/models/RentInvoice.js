@@ -150,10 +150,12 @@ rentInvoiceSchema.pre("save", function (next) {
     this.paymentStatus = "Paid";
   } else if (this.paidAmount > 0 && this.paidAmount < this.grandTotal) {
     this.paymentStatus = "Partially Paid";
-  } else if (this.dueDate < new Date() && this.paymentStatus === "Pending") {
-    this.paymentStatus = "Overdue";
+  } else {
+    this.paymentStatus = this.dueDate && new Date(this.dueDate) < new Date() ? "Overdue" : "Pending";
   }
-  next();
+  if (typeof next === "function") {
+    next();
+  }
 });
 
 rentInvoiceSchema.index({ hostelId: 1, invoiceNumber: 1 });

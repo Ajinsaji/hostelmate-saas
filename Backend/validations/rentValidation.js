@@ -40,6 +40,15 @@ const recordPaymentSchema = Joi.object({
   paymentMethod: Joi.string().valid("Cash", "UPI", "Bank Transfer", "Card", "Cheque", "Online", "Manual").default("UPI"),
   transactionReference: Joi.string().allow("", null),
   remarks: Joi.string().allow("", null),
+  idempotencyKey: Joi.string().allow("", null),
+});
+
+const reversePaymentSchema = Joi.object({
+  reason: Joi.string().trim().min(3).required().messages({
+    "string.empty": "Reversal reason is required",
+    "string.min": "Reversal reason must be at least 3 characters",
+    "any.required": "Reversal reason is required",
+  }),
 });
 
 const depositSchema = Joi.object({
@@ -59,6 +68,7 @@ module.exports = {
   createRentPlanSchema,
   createInvoiceSchema,
   recordPaymentSchema,
+  reversePaymentSchema,
   depositSchema,
   refundSchema,
 };

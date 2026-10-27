@@ -1,6 +1,6 @@
 const rentPaymentService = require("../services/rentPaymentService");
 const { generatePaymentReceiptPDF } = require("../services/pdfReceiptService");
-const { recordPaymentSchema } = require("../validations/rentValidation");
+const { recordPaymentSchema, reversePaymentSchema } = require("../validations/rentValidation");
 const RentPayment = require("../models/RentPayment");
 const { logger } = require("../utils/logger");
 
@@ -26,6 +26,20 @@ const recordPayment = async (req, res) => {
   }
 };
 
+const reversePayment = async (req, res) => {
+  try {
+    const userCtx = getUserContext(req);
+    const { error, value } = reversePaymentSchema.validate(req.body);
+    if (error) return res.status(400).json({ success: false, message: error.details[0].message });
+
+    const payment = await rentPaymentService.reversePayment(req.params.id, value, userCtx);
+    return res.status(200).json({ success: true, message: "Payment Reversed Successfully", payment });
+  } catch (err) {
+    logger.error("reversePayment error:", err);
+    return res.status(400).json({ success: false, message: err.message || "Payment reversal failed" });
+  }
+};
+
 const getPayments = async (req, res) => {
   try {
     const userCtx = getUserContext(req);
@@ -33,6 +47,7 @@ const getPayments = async (req, res) => {
       hostelId: userCtx.hostelId,
       residentId: req.query.residentId,
       invoiceId: req.query.invoiceId,
+      status: req.query.status,
       page: req.query.page,
       limit: req.query.limit,
     });
@@ -72,6 +87,7 @@ const streamReceiptPDF = async (req, res) => {
 
 module.exports = {
   recordPayment,
+  reversePayment,
   getPayments,
   streamReceiptPDF,
 };

@@ -326,28 +326,10 @@ const verifyPayment = async (req, res) => {
 // ==========================
 
 const deletePayment = async (req, res) => {
-  try {
-    const hostelId = req.owner?.hostelId;
-    const deleteQuery = { _id: req.params.paymentId };
-    if (hostelId) {
-      deleteQuery.hostelId = hostelId;
-    }
-
-    const deleted = await Payment.findOneAndDelete(deleteQuery);
-    if (!deleted) {
-      return res.status(404).json({
-        success: false,
-        message: "Payment not found or unauthorized",
-      });
-    }
-
-    res.status(200).json({
-      success: true,
-      message: "Payment Deleted",
-    });
-  } catch (error) {
-    res.status(500).json(error);
-  }
+  return res.status(400).json({
+    success: false,
+    message: "Permanent deletion of financial records is prohibited by accounting standards. Please use payment reversal to maintain audit trails.",
+  });
 };
 
 module.exports = {

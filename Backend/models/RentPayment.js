@@ -54,10 +54,28 @@ const rentPaymentSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
+    idempotencyKey: {
+      type: String,
+      default: null,
+      trim: true,
+    },
     status: {
       type: String,
-      enum: ["Pending", "Completed", "Failed", "Refunded"],
+      enum: ["Pending", "Completed", "Failed", "Refunded", "Reversed"],
       default: "Completed",
+    },
+    reversalReason: {
+      type: String,
+      default: "",
+    },
+    reversedAt: {
+      type: Date,
+      default: null,
+    },
+    reversedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Owner",
+      default: null,
     },
     receiptPdfPath: {
       type: String,
@@ -69,5 +87,6 @@ const rentPaymentSchema = new mongoose.Schema(
 
 rentPaymentSchema.index({ hostelId: 1, paymentNumber: 1 });
 rentPaymentSchema.index({ residentId: 1, paymentDate: -1 });
+rentPaymentSchema.index({ hostelId: 1, idempotencyKey: 1 }, { unique: true, sparse: true });
 
 module.exports = mongoose.model("RentPayment", rentPaymentSchema);

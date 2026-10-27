@@ -75,7 +75,12 @@ router.put(
 router.delete(
   "/delete/:paymentId",
   ownerAuth,
+  deletePayment
+);
 
+router.delete(
+  "/:paymentId",
+  ownerAuth,
   deletePayment
 );
 

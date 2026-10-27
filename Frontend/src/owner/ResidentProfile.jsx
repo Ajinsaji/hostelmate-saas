@@ -1,7 +1,6 @@
-import React, { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
-import { useTheme } from "../design-system/ThemeProvider";
 import api from "../utils/apiClient";
 import buildFileUrl from "../utils/buildFileUrl";
 
@@ -38,19 +37,19 @@ import {
   ExternalLink,
   Info,
   DollarSign,
-  AlertCircle
+  AlertCircle,
+  Download
 } from "lucide-react";
 
 export default function ResidentProfile() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { colors } = useTheme();
 
   // Primary Data State
   const [profile, setProfile] = useState(null);
   const [payments, setPayments] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [loadingPayments, setLoadingPayments] = useState(false);
+  const [loadingPayments, setLoadingPayments] = useState(true);
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState("overview");
 
@@ -105,8 +104,6 @@ export default function ResidentProfile() {
   // Fetch Resident Profile & Audit History
   const fetchProfile = useCallback(async () => {
     try {
-      setLoading(true);
-      setError(null);
       const res = await api.get(`/api/residents/${id}`);
       if (res.data?.success) {
         setProfile(res.data);
@@ -121,14 +118,38 @@ export default function ResidentProfile() {
     }
   }, [id]);
 
-  // Fetch Payments History
+  // Fetch Payments History from Authoritative Enterprise Rent Payments
   const fetchPayments = useCallback(async () => {
     try {
-      setLoadingPayments(true);
-      const res = await api.get(`/api/payments/resident/${id}`);
-      if (res.data?.success) {
-        setPayments(res.data.payments || []);
+      const res = await api.get(`/api/rent-payments?residentId=${id}&limit=100`);
+      let loaded = res.data?.payments || [];
+
+      // Fallback: if no enterprise payments found for this resident, check legacy endpoint
+      if (loaded.length === 0) {
+        try {
+          const legacyRes = await api.get(`/api/payments/resident/${id}`);
+          if (Array.isArray(legacyRes.data?.payments) && legacyRes.data.payments.length > 0) {
+            loaded = legacyRes.data.payments.map((lp) => {
+              const paid = lp.paidAmount || (lp.entries || []).reduce((s, e) => s + Number(e.amount || 0), 0);
+              return {
+                _id: lp._id,
+                paymentNumber: `LEGACY-${String(lp._id).slice(-6).toUpperCase()}`,
+                paymentDate: lp.createdAt || new Date(),
+                amount: paid,
+                paymentMethod: lp.paymentMethod ? (lp.paymentMethod.toUpperCase() === "CASH" ? "Cash" : "UPI") : "Cash",
+                transactionReference: lp.month ? `Month: ${lp.month}` : "Legacy Record",
+                status: "Completed",
+                isLegacy: true,
+                proof: (lp.entries || []).find((e) => e.proof)?.proof || "",
+              };
+            });
+          }
+        } catch {
+          // ignore legacy fallback errors
+        }
       }
+
+      setPayments(loaded);
     } catch (err) {
       console.warn("Could not load payment history:", err?.message || err);
     } finally {
@@ -138,6 +159,7 @@ export default function ResidentProfile() {
 
   useEffect(() => {
     if (id) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       fetchProfile();
       fetchPayments();
     }
@@ -231,7 +253,7 @@ export default function ResidentProfile() {
         reason: ""
       });
       setShowTransferModal(true);
-    } catch (err) {
+    } catch {
       toast.error("Failed to load rooms for transfer.");
     }
   };
@@ -347,11 +369,15 @@ export default function ResidentProfile() {
 
   // Compute Payment Totals from real payment records
   const totalPaidAmount = payments.reduce((sum, p) => {
-    const paid = p.paidAmount || (p.entries || []).reduce((s, e) => s + Number(e.amount || 0), 0);
+    if (p.status === "Reversed" || p.status === "Failed") return sum;
+    const paid = p.amount !== undefined ? p.amount : (p.paidAmount || (p.entries || []).reduce((s, e) => s + Number(e.amount || 0), 0));
     return sum + Number(paid || 0);
   }, 0);
 
-  const totalOutstandingDue = payments.reduce((sum, p) => sum + Number(p.balance || 0), 0);
+  const totalOutstandingDue = payments.reduce((sum, p) => {
+    const bal = p.balance !== undefined ? p.balance : (p.invoiceId?.balanceAmount || 0);
+    return sum + Number(bal || 0);
+  }, 0);
   const lastPayment = payments.length > 0 ? payments[0] : null;
 
   // Define Tabs
@@ -685,46 +711,68 @@ export default function ResidentProfile() {
                 <table className="w-full text-left text-sm text-slate-300">
                   <thead className="bg-slate-900/80 text-xs uppercase font-bold text-slate-400 border-b border-slate-800">
                     <tr>
-                      <th className="p-3">Month</th>
-                      <th className="p-3">Total Rent</th>
-                      <th className="p-3">Paid</th>
-                      <th className="p-3">Balance</th>
+                      <th className="p-3">Payment #</th>
+                      <th className="p-3">Date</th>
+                      <th className="p-3">Invoice / Ref</th>
+                      <th className="p-3">Amount</th>
+                      <th className="p-3">Method</th>
                       <th className="p-3">Status</th>
-                      <th className="p-3">Method / Verification</th>
                       <th className="p-3">Receipt</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-800/60">
                     {payments.map((p) => {
-                      const totalPaid = p.paidAmount || (p.entries || []).reduce((sum, e) => sum + Number(e.amount || 0), 0);
-                      const isPaid = p.status === "paid" || p.balance <= 0;
+                      const pNum = p.paymentNumber || (p.isLegacy ? `LEGACY-${String(p._id).slice(-6).toUpperCase()}` : String(p._id).slice(-8));
+                      const pDate = p.paymentDate ? formatDate(p.paymentDate) : (p.createdAt ? formatDate(p.createdAt) : "—");
+                      const amount = Number(p.amount !== undefined ? p.amount : (p.paidAmount || (p.entries || []).reduce((sum, e) => sum + Number(e.amount || 0), 0)));
+                      const isReversed = p.status === "Reversed";
+                      const invoiceRef = p.invoiceId?.invoiceNumber || p.transactionReference || (p.invoiceId?.billingPeriod ? `${p.invoiceId.billingPeriod.month}/${p.invoiceId.billingPeriod.year}` : (p.month ? `Month: ${p.month}` : "Direct Payment"));
+                      const proofUrl = p.proof || (p.entries || []).find((e) => e.proof)?.proof;
+
                       return (
                         <tr key={p._id} className="hover:bg-white/[0.02]">
-                          <td className="p-3 font-bold text-white">{p.month}</td>
-                          <td className="p-3 font-semibold">₹{(p.totalRent || 0).toLocaleString()}</td>
-                          <td className="p-3 text-emerald-400 font-bold">₹{totalPaid.toLocaleString()}</td>
-                          <td className="p-3 font-bold text-rose-400">₹{(p.balance || 0).toLocaleString()}</td>
+                          <td className="p-3 font-mono text-xs font-bold text-white">
+                            {pNum}
+                            {p.isLegacy && (
+                              <span className="ml-2 text-[10px] text-amber-400 bg-amber-400/10 px-1.5 py-0.5 rounded font-sans">
+                                Legacy
+                              </span>
+                            )}
+                          </td>
+                          <td className="p-3 text-xs text-slate-300">{pDate}</td>
+                          <td className="p-3 text-xs">
+                            <span className="font-mono text-emerald-400">{invoiceRef}</span>
+                            {p.reversalReason && (
+                              <div className="text-[10px] text-rose-400/80 max-w-xs truncate" title={p.reversalReason}>
+                                Reason: {p.reversalReason}
+                              </div>
+                            )}
+                          </td>
+                          <td className="p-3 font-bold">
+                            <span className={isReversed ? "line-through text-slate-500" : "text-emerald-400"}>
+                              ₹{amount.toLocaleString()}
+                            </span>
+                          </td>
+                          <td className="p-3 text-xs text-slate-300">
+                            {p.paymentMethod || "Cash"}
+                          </td>
                           <td className="p-3">
-                            <Badge variant={isPaid ? "success" : "warning"}>
-                              {isPaid ? "Paid" : "Partial"}
+                            <Badge variant={isReversed ? "danger" : (p.status === "Pending" ? "warning" : "success")}>
+                              {p.status || "Completed"}
                             </Badge>
                           </td>
-                          <td className="p-3 text-xs">
-                            {(p.entries || []).map((e, idx) => (
-                              <div key={idx} className="flex items-center gap-1.5">
-                                <span className="capitalize">{e.method || "Cash"}</span>
-                                {e.verified ? (
-                                  <span className="text-emerald-400 text-[10px] font-bold">✓ Verified</span>
-                                ) : (
-                                  <span className="text-amber-400 text-[10px]">Pending</span>
-                                )}
-                              </div>
-                            ))}
-                          </td>
                           <td className="p-3">
-                            {(p.entries || []).find((e) => e.proof) ? (
+                            {!p.isLegacy ? (
+                              <button
+                                onClick={() => window.open(`/api/rent-payments/${p._id}/pdf`, "_blank")}
+                                className="inline-flex items-center gap-1.5 text-xs text-emerald-400 hover:text-emerald-300 font-bold bg-emerald-500/10 px-2.5 py-1 rounded transition"
+                                title="Download Official PDF Receipt"
+                              >
+                                <Download size={13} /> Receipt
+                              </button>
+                            ) : proofUrl ? (
                               <a
-                                href={buildFileUrl((p.entries || []).find((e) => e.proof)?.proof)}
+                                href={buildFileUrl(proofUrl)}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="inline-flex items-center gap-1 text-xs text-emerald-400 hover:underline font-bold"

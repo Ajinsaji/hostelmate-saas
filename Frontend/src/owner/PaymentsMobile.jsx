@@ -1,20 +1,16 @@
-import { useState, memo } from "react";
+import { memo } from "react";
 import {
   Search,
   Plus,
-  Wallet,
-  IndianRupee,
-  ChevronRight,
-  ChevronLeft,
-  X,
-  CheckCircle2,
-  AlertTriangle
+  Download,
+  RotateCcw,
+  X
 } from "lucide-react";
 import { useTheme } from "../design-system/ThemeProvider";
 
 export const PaymentsMobile = memo(function PaymentsMobile({
-  payments,
-  filteredPayments,
+  filteredPayments = [],
+  invoices = [],
   totals,
   loading,
   search,
@@ -25,59 +21,54 @@ export const PaymentsMobile = memo(function PaymentsMobile({
   setShowAddForm,
   formData,
   setFormData,
-  residents,
+  residents = [],
   handleSavePayment,
-  deletePayment,
+  openReverseModal,
+  downloadReceipt,
   savingPayment,
 }) {
   const { colors } = useTheme();
-  const [wizardStep, setWizardStep] = useState(1);
 
   const tabs = [
-    { id: "all", label: "All Payments" },
-    { id: "pending", label: "Overdue Rent" },
-    { id: "paid", label: "Collected" },
+    { id: "all", label: "All Receipts" },
+    { id: "completed", label: "Collected" },
+    { id: "pending", label: "Pending Invoices" },
+    { id: "reversed", label: "Reversed" },
   ];
 
-  const openCollectWizard = () => {
-    setWizardStep(1);
-    setShowAddForm(true);
-  };
-
-  const calcTotals = (pay) => {
-    const totalRent = pay.totalRent || pay.amount || 0;
-    const paid = pay.paidAmount || pay.amount || 0;
-    const balance = Math.max(0, totalRent - paid);
-    const status = balance === 0 ? "paid" : "pending";
-    return { totalRent, paid, balance, status };
-  };
+  const residentOpenInvoices = invoices.filter(
+    (inv) =>
+      String(inv.residentId?._id || inv.residentId) === String(formData.residentId) &&
+      inv.paymentStatus !== "Paid" &&
+      inv.paymentStatus !== "Cancelled"
+  );
 
   return (
     <div
       style={{
         display: "flex",
         flexDirection: "column",
-        gap: "24px",
-        padding: "24px",
+        gap: "20px",
+        padding: "16px",
         boxSizing: "border-box",
         width: "100%",
       }}
     >
-      {/* 1. Header & Quick Collect Action */}
+      {/* 1. Header & Quick Action */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div>
-          <h1 style={{ fontSize: "28px", fontWeight: 700, color: "#FFFFFF", margin: 0 }}>
-            Payments
+          <h1 style={{ fontSize: "24px", fontWeight: 800, color: "#FFFFFF", margin: 0 }}>
+            Rent & Payments
           </h1>
-          <p style={{ fontSize: "13px", color: colors.text.secondary || "#94A3B8", margin: "4px 0 0" }}>
+          <p style={{ fontSize: "12px", color: colors.text.secondary || "#94A3B8", margin: "4px 0 0" }}>
             ₹{totals.collected.toLocaleString()} collected • ₹{totals.pending.toLocaleString()} pending
           </p>
         </div>
 
         <button
-          onClick={openCollectWizard}
+          onClick={() => setShowAddForm(true)}
           style={{
-            background: "#22C55E",
+            background: "#10B981",
             color: "#FFFFFF",
             border: "none",
             borderRadius: "14px",
@@ -88,16 +79,50 @@ export const PaymentsMobile = memo(function PaymentsMobile({
             display: "flex",
             alignItems: "center",
             gap: "6px",
-            minHeight: "48px",
-            boxShadow: "0 4px 12px rgba(34, 197, 94, 0.3)",
+            minHeight: "44px",
+            boxShadow: "0 4px 12px rgba(16, 185, 129, 0.3)",
           }}
         >
-          <Plus size={20} />
-          <span>Collect</span>
+          <Plus size={18} />
+          <span>Record</span>
         </button>
       </div>
 
-      {/* 2. Search Bar */}
+      {/* 2. Key Metrics Bar */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+        <div
+          style={{
+            background: colors.background.card || "#131C2E",
+            border: `1px solid ${colors.border.default || "#202B45"}`,
+            borderRadius: "16px",
+            padding: "12px 14px",
+          }}
+        >
+          <div style={{ fontSize: "11px", fontWeight: 700, color: "#94A3B8", textTransform: "uppercase" }}>
+            Collected
+          </div>
+          <div style={{ fontSize: "18px", fontWeight: 800, color: "#10B981", marginTop: "4px" }}>
+            ₹{totals.collected.toLocaleString()}
+          </div>
+        </div>
+        <div
+          style={{
+            background: colors.background.card || "#131C2E",
+            border: `1px solid ${colors.border.default || "#202B45"}`,
+            borderRadius: "16px",
+            padding: "12px 14px",
+          }}
+        >
+          <div style={{ fontSize: "11px", fontWeight: 700, color: "#94A3B8", textTransform: "uppercase" }}>
+            Pending Balance
+          </div>
+          <div style={{ fontSize: "18px", fontWeight: 800, color: "#F43F5E", marginTop: "4px" }}>
+            ₹{totals.pending.toLocaleString()}
+          </div>
+        </div>
+      </div>
+
+      {/* 3. Search Bar */}
       <div
         style={{
           display: "flex",
@@ -109,10 +134,10 @@ export const PaymentsMobile = memo(function PaymentsMobile({
           borderRadius: "14px",
         }}
       >
-        <Search size={22} style={{ color: colors.text.secondary || "#94A3B8" }} />
+        <Search size={18} style={{ color: "#94A3B8" }} />
         <input
           type="text"
-          placeholder="Search by resident name or month..."
+          placeholder="Search resident, receipt #..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           style={{
@@ -129,12 +154,12 @@ export const PaymentsMobile = memo(function PaymentsMobile({
             onClick={() => setSearch("")}
             style={{ background: "transparent", border: "none", color: "#94A3B8", cursor: "pointer", padding: "4px" }}
           >
-            <X size={18} />
+            <X size={16} />
           </button>
         )}
       </div>
 
-      {/* 3. Filter Chips */}
+      {/* 4. Filter Tabs */}
       <div style={{ display: "flex", gap: "8px", overflowX: "auto", paddingBottom: "4px" }}>
         {tabs.map((tb) => {
           const isSel = activeTab === tb.id;
@@ -143,16 +168,15 @@ export const PaymentsMobile = memo(function PaymentsMobile({
               key={tb.id}
               onClick={() => setActiveTab(tb.id)}
               style={{
-                background: isSel ? "#22C55E" : colors.background.card || "#131C2E",
-                color: isSel ? "#FFFFFF" : colors.text.secondary || "#94A3B8",
-                border: `1px solid ${isSel ? "#22C55E" : colors.border.default || "#202B45"}`,
-                borderRadius: "9999px",
-                padding: "8px 16px",
-                fontSize: "13px",
+                padding: "8px 14px",
+                borderRadius: "20px",
+                fontSize: "12px",
                 fontWeight: isSel ? 700 : 500,
+                border: isSel ? "1px solid #10B981" : "1px solid rgba(255,255,255,0.08)",
+                background: isSel ? "rgba(16, 185, 129, 0.15)" : "#131C2E",
+                color: isSel ? "#10B981" : "#94A3B8",
                 cursor: "pointer",
                 whiteSpace: "nowrap",
-                minHeight: "48px",
               }}
             >
               {tb.label}
@@ -161,135 +185,226 @@ export const PaymentsMobile = memo(function PaymentsMobile({
         })}
       </div>
 
-      {/* 4. Vertically Stacked Payment Cards */}
-      <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+      {/* 5. Mobile Cards List */}
+      <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
         {loading ? (
-          <div style={{ padding: "32px", textAlign: "center", color: colors.text.secondary || "#94A3B8", fontSize: "14px" }}>
-            Loading payments ledger...
+          <div style={{ textAlign: "center", padding: "32px", color: "#94A3B8", fontSize: "14px" }}>
+            Loading enterprise records...
           </div>
+        ) : activeTab === "pending" ? (
+          // Pending Invoices
+          invoices.filter((inv) => inv.paymentStatus !== "Paid" && inv.paymentStatus !== "Cancelled").length === 0 ? (
+            <div
+              style={{
+                padding: "32px 16px",
+                textAlign: "center",
+                background: "#131C2E",
+                borderRadius: "18px",
+                border: "1px dashed #202B45",
+                color: "#94A3B8",
+                fontSize: "13px",
+              }}
+            >
+              No pending invoices. All rent is collected!
+            </div>
+          ) : (
+            invoices
+              .filter((inv) => inv.paymentStatus !== "Paid" && inv.paymentStatus !== "Cancelled")
+              .map((inv) => {
+                const resName = inv.residentId?.fullName || inv.residentId?.name || "Resident";
+                return (
+                  <div
+                    key={inv._id}
+                    style={{
+                      background: "#131C2E",
+                      border: "1px solid #202B45",
+                      borderRadius: "18px",
+                      padding: "16px",
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: "10px",
+                    }}
+                  >
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                      <div>
+                        <div style={{ fontSize: "15px", fontWeight: 700, color: "#FFFFFF" }}>{resName}</div>
+                        <div style={{ fontSize: "12px", color: "#94A3B8" }}>
+                          Room {inv.roomId?.roomNumber || "—"} • {inv.billingPeriod}
+                        </div>
+                      </div>
+                      <span
+                        style={{
+                          fontSize: "11px",
+                          fontWeight: 700,
+                          padding: "4px 8px",
+                          borderRadius: "8px",
+                          background: inv.paymentStatus === "Overdue" ? "rgba(244, 63, 94, 0.15)" : "rgba(245, 158, 11, 0.15)",
+                          color: inv.paymentStatus === "Overdue" ? "#F43F5E" : "#F59E0B",
+                        }}
+                      >
+                        {inv.paymentStatus}
+                      </span>
+                    </div>
+
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingTop: "8px", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+                      <div>
+                        <div style={{ fontSize: "11px", color: "#94A3B8" }}>Balance Due</div>
+                        <div style={{ fontSize: "16px", fontWeight: 800, color: "#F43F5E" }}>
+                          ₹{(inv.balanceAmount || 0).toLocaleString()}
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => {
+                          setFormData({
+                            residentId: inv.residentId?._id || inv.residentId,
+                            invoiceId: inv._id,
+                            amount: String(inv.balanceAmount || ""),
+                            paymentMethod: "UPI",
+                            transactionReference: "",
+                            remarks: `Payment for ${inv.invoiceNumber}`,
+                          });
+                          setShowAddForm(true);
+                        }}
+                        style={{
+                          background: "#10B981",
+                          color: "#FFFFFF",
+                          border: "none",
+                          borderRadius: "10px",
+                          padding: "8px 16px",
+                          fontSize: "13px",
+                          fontWeight: 700,
+                          cursor: "pointer",
+                        }}
+                      >
+                        Collect
+                      </button>
+                    </div>
+                  </div>
+                );
+              })
+          )
         ) : filteredPayments.length === 0 ? (
           <div
             style={{
-              padding: "40px 20px",
+              padding: "32px 16px",
               textAlign: "center",
-              background: colors.background.card || "#131C2E",
-              borderRadius: "16px",
-              border: `1px solid ${colors.border.default || "#202B45"}`,
-              color: colors.text.secondary || "#94A3B8",
+              background: "#131C2E",
+              borderRadius: "18px",
+              border: "1px dashed #202B45",
+              color: "#94A3B8",
+              fontSize: "13px",
             }}
           >
-            No payments found. Tap <strong>Collect</strong> to record a payment.
+            No payment receipts matching your filters.
           </div>
         ) : (
           filteredPayments.map((p) => {
-            const { totalRent, paid, balance, status } = calcTotals(p);
-            const residentName = p.residentId?.name || p.residentName || "Resident";
-            const roomNum = p.residentId?.roomNumber || p.roomNumber || "";
+            const resName = p.residentId?.fullName || p.residentId?.name || "Resident";
+            const pDate = p.paymentDate ? new Date(p.paymentDate).toLocaleDateString() : "—";
+            const isReversed = p.status === "Reversed";
 
             return (
               <div
                 key={p._id}
                 style={{
-                  background: colors.background.card || "#131C2E",
-                  border: `1px solid ${colors.border.default || "#202B45"}`,
-                  borderRadius: "16px",
-                  padding: "20px",
+                  background: "#131C2E",
+                  border: "1px solid #202B45",
+                  borderRadius: "18px",
+                  padding: "16px",
                   display: "flex",
                   flexDirection: "column",
-                  gap: "12px",
+                  gap: "10px",
                 }}
               >
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                    <div style={{ padding: "8px", borderRadius: "10px", background: "rgba(34, 197, 94, 0.12)", color: "#22C55E" }}>
-                      <IndianRupee size={22} />
-                    </div>
-                    <div>
-                      <div style={{ fontSize: "16px", fontWeight: 700, color: "#FFFFFF" }}>{residentName}</div>
-                      <div style={{ fontSize: "13px", color: colors.text.secondary || "#94A3B8" }}>
-                        {roomNum ? `Room ${roomNum} • ` : ""}{p.month || "Current Month"}
-                      </div>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                  <div>
+                    <div style={{ fontSize: "15px", fontWeight: 700, color: "#FFFFFF" }}>{resName}</div>
+                    <div style={{ fontSize: "11px", color: "#94A3B8" }}>
+                      {p.paymentNumber} • {pDate}
                     </div>
                   </div>
-
                   <span
                     style={{
-                      fontSize: "12px",
+                      fontSize: "11px",
                       fontWeight: 700,
-                      padding: "4px 10px",
-                      borderRadius: "9999px",
-                      background: status === "paid" ? "rgba(34, 197, 94, 0.12)" : "rgba(239, 68, 68, 0.12)",
-                      color: status === "paid" ? "#22C55E" : "#EF4444",
+                      padding: "4px 8px",
+                      borderRadius: "8px",
+                      background: isReversed ? "rgba(244, 63, 94, 0.15)" : "rgba(16, 185, 129, 0.15)",
+                      color: isReversed ? "#F43F5E" : "#10B981",
                     }}
                   >
-                    {status === "paid" ? "Paid" : `Due ₹${balance.toLocaleString()}`}
+                    {isReversed ? "Reversed" : "Completed"}
                   </span>
                 </div>
 
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                  <div style={{ fontSize: "13px", color: colors.text.secondary || "#94A3B8" }}>
-                    Rent: ₹{totalRent.toLocaleString()} • Paid: <strong style={{ color: "#22C55E" }}>₹{paid.toLocaleString()}</strong>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <div>
+                    <div style={{ fontSize: "18px", fontWeight: 800, color: isReversed ? "#64748B" : "#10B981", textDecoration: isReversed ? "line-through" : "none" }}>
+                      ₹{(p.amount || 0).toLocaleString()}
+                    </div>
+                    <div style={{ fontSize: "11px", color: "#94A3B8" }}>
+                      {p.paymentMethod || "UPI"} {p.transactionReference ? `• Ref: ${p.transactionReference}` : ""}
+                    </div>
                   </div>
-                  <div style={{ fontSize: "12px", color: "#94A3B8" }}>
-                    {p.method || p.paymentMethod || "UPI"}
+
+                  <div style={{ display: "flex", gap: "8px" }}>
+                    {!p.isLegacy && (
+                      <button
+                        onClick={() => downloadReceipt(p._id)}
+                        style={{
+                          background: "rgba(16, 185, 129, 0.1)",
+                          border: "1px solid rgba(16, 185, 129, 0.25)",
+                          color: "#10B981",
+                          borderRadius: "10px",
+                          padding: "8px 12px",
+                          fontSize: "12px",
+                          fontWeight: 700,
+                          cursor: "pointer",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "4px",
+                        }}
+                      >
+                        <Download size={14} />
+                        <span>PDF</span>
+                      </button>
+                    )}
+                    {!isReversed && !p.isLegacy && (
+                      <button
+                        onClick={() => openReverseModal(p)}
+                        style={{
+                          background: "rgba(244, 63, 94, 0.1)",
+                          border: "1px solid rgba(244, 63, 94, 0.25)",
+                          color: "#F43F5E",
+                          borderRadius: "10px",
+                          padding: "8px 12px",
+                          fontSize: "12px",
+                          fontWeight: 700,
+                          cursor: "pointer",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "4px",
+                        }}
+                      >
+                        <RotateCcw size={14} />
+                        <span>Reverse</span>
+                      </button>
+                    )}
                   </div>
                 </div>
 
-                <div style={{ display: "flex", gap: "8px" }}>
-                  {status !== "paid" && (
-                    <button
-                      onClick={() => {
-                        setFormData({
-                          residentId: p.residentId?._id || p.residentId || "",
-                          amount: balance.toString(),
-                          totalRent: totalRent.toString(),
-                          month: p.month || "",
-                          method: "UPI",
-                        });
-                        setWizardStep(1);
-                        setShowAddForm(true);
-                      }}
-                      style={{
-                        flex: 1,
-                        padding: "10px",
-                        borderRadius: "12px",
-                        background: "#22C55E",
-                        border: "none",
-                        color: "#FFFFFF",
-                        fontSize: "13px",
-                        fontWeight: 700,
-                        cursor: "pointer",
-                        minHeight: "44px",
-                      }}
-                    >
-                      Collect Pending Rent
-                    </button>
-                  )}
-
-                  <button
-                    onClick={() => deletePayment(p._id)}
-                    style={{
-                      padding: "10px 16px",
-                      borderRadius: "12px",
-                      background: "rgba(239, 68, 68, 0.1)",
-                      border: "1px solid rgba(239, 68, 68, 0.25)",
-                      color: "#EF4444",
-                      fontSize: "13px",
-                      fontWeight: 700,
-                      cursor: "pointer",
-                      minHeight: "44px",
-                    }}
-                  >
-                    Delete
-                  </button>
-                </div>
+                {isReversed && p.reversalReason && (
+                  <div style={{ fontSize: "11px", color: "rgba(244, 63, 94, 0.8)", background: "rgba(244, 63, 94, 0.05)", padding: "6px 10px", borderRadius: "8px" }}>
+                    Reversal reason: {p.reversalReason}
+                  </div>
+                )}
               </div>
             );
           })
         )}
       </div>
 
-      {/* 4-STEP WIZARD COLLECT PAYMENT MODAL */}
+      {/* 6. Collect Payment Bottom Sheet */}
       {showAddForm && (
         <div
           style={{
@@ -319,175 +434,206 @@ export const PaymentsMobile = memo(function PaymentsMobile({
               overflowY: "auto",
             }}
           >
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <div>
-                <h3 style={{ fontSize: "20px", fontWeight: 700, color: "#FFFFFF", margin: 0 }}>
-                  Collect Payment (Step {wizardStep} of 3)
-                </h3>
-                <p style={{ fontSize: "13px", color: colors.text.secondary || "#94A3B8", margin: "2px 0 0" }}>
-                  {wizardStep === 1 && "Resident & Amount"}
-                  {wizardStep === 2 && "Payment Method & Month"}
-                  {wizardStep === 3 && "Review & Submit"}
-                </p>
-              </div>
-
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <h3 style={{ fontSize: "18px", fontWeight: 700, color: "#FFFFFF", margin: 0 }}>
+                Record Rent Payment
+              </h3>
               <button
                 onClick={() => setShowAddForm(false)}
-                style={{
-                  background: "rgba(255, 255, 255, 0.05)",
-                  border: "none",
-                  borderRadius: "50%",
-                  width: "36px",
-                  height: "36px",
-                  color: "#94A3B8",
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
+                style={{ background: "transparent", border: "none", color: "#94A3B8", cursor: "pointer" }}
               >
                 <X size={20} />
               </button>
             </div>
 
-            <div style={{ width: "100%", height: "6px", background: "rgba(255, 255, 255, 0.1)", borderRadius: "9999px" }}>
-              <div
-                style={{
-                  width: `${(wizardStep / 3) * 100}%`,
-                  height: "100%",
-                  background: "#22C55E",
-                  borderRadius: "9999px",
-                  transition: "width 200ms ease",
-                }}
-              />
-            </div>
+            <form onSubmit={handleSavePayment} style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+              <div>
+                <label style={{ display: "block", fontSize: "11px", fontWeight: 700, color: "#94A3B8", marginBottom: "6px" }}>
+                  Select Resident *
+                </label>
+                <select
+                  value={formData.residentId}
+                  onChange={(e) => {
+                    const resId = e.target.value;
+                    const res = residents.find((r) => r._id === resId);
+                    const openInvs = invoices.filter(
+                      (inv) =>
+                        String(inv.residentId?._id || inv.residentId) === String(resId) &&
+                        inv.paymentStatus !== "Paid" &&
+                        inv.paymentStatus !== "Cancelled"
+                    );
+                    const defaultInv = openInvs[0];
+                    setFormData({
+                      ...formData,
+                      residentId: resId,
+                      invoiceId: defaultInv ? defaultInv._id : "",
+                      amount: defaultInv ? String(defaultInv.balanceAmount) : String(res?.monthlyRent || ""),
+                    });
+                  }}
+                  style={{
+                    width: "100%",
+                    padding: "12px",
+                    borderRadius: "12px",
+                    border: "1px solid #202B45",
+                    background: "#1A2438",
+                    color: "#FFFFFF",
+                    fontSize: "14px",
+                  }}
+                  required
+                >
+                  <option value="">Select Resident</option>
+                  {residents.map((r) => (
+                    <option key={r._id} value={r._id}>
+                      {r.fullName || r.name} (Room {r.roomId?.roomNumber || "—"})
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-            {wizardStep === 1 && (
-              <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+              {formData.residentId && residentOpenInvoices.length > 0 && (
                 <div>
-                  <label style={{ fontSize: "13px", color: "#94A3B8", display: "block", marginBottom: "4px" }}>Select Resident *</label>
+                  <label style={{ display: "block", fontSize: "11px", fontWeight: 700, color: "#94A3B8", marginBottom: "6px" }}>
+                    Link to Invoice (Optional)
+                  </label>
                   <select
-                    value={formData.residentId}
-                    onChange={(e) => setFormData({ ...formData, residentId: e.target.value })}
-                    style={{ width: "100%", padding: "12px", borderRadius: "12px", background: "#131C2E", border: "1px solid #202B45", color: "#FFF", fontSize: "14px", boxSizing: "border-box", minHeight: "44px" }}
+                    value={formData.invoiceId}
+                    onChange={(e) => {
+                      const invId = e.target.value;
+                      const selectedInv = invoices.find((i) => i._id === invId);
+                      setFormData({
+                        ...formData,
+                        invoiceId: invId,
+                        amount: selectedInv ? String(selectedInv.balanceAmount) : formData.amount,
+                      });
+                    }}
+                    style={{
+                      width: "100%",
+                      padding: "12px",
+                      borderRadius: "12px",
+                      border: "1px solid #202B45",
+                      background: "#1A2438",
+                      color: "#FFFFFF",
+                      fontSize: "14px",
+                    }}
                   >
-                    <option value="">Choose resident</option>
-                    {residents.map((r) => (
-                      <option key={r._id} value={r._id}>
-                        {r.firstName} {r.lastName} (Room {r.roomId?.roomNumber || r.roomNumber || "N/A"})
+                    <option value="">No invoice linked (Direct advance)</option>
+                    {residentOpenInvoices.map((inv) => (
+                      <option key={inv._id} value={inv._id}>
+                        {inv.invoiceNumber} — {inv.billingPeriod} (Due: ₹{inv.balanceAmount})
                       </option>
                     ))}
                   </select>
                 </div>
-                <div>
-                  <label style={{ fontSize: "13px", color: "#94A3B8", display: "block", marginBottom: "4px" }}>Amount Paid (₹) *</label>
-                  <input
-                    type="number"
-                    required
-                    value={formData.amount}
-                    onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-                    placeholder="Enter amount collected"
-                    style={{ width: "100%", padding: "12px", borderRadius: "12px", background: "#131C2E", border: "1px solid #202B45", color: "#FFF", fontSize: "14px", boxSizing: "border-box", minHeight: "44px" }}
-                  />
-                </div>
-              </div>
-            )}
+              )}
 
-            {wizardStep === 2 && (
-              <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-                <div>
-                  <label style={{ fontSize: "13px", color: "#94A3B8", display: "block", marginBottom: "4px" }}>Payment Method</label>
-                  <select
-                    value={formData.method}
-                    onChange={(e) => setFormData({ ...formData, method: e.target.value })}
-                    style={{ width: "100%", padding: "12px", borderRadius: "12px", background: "#131C2E", border: "1px solid #202B45", color: "#FFF", fontSize: "14px", boxSizing: "border-box", minHeight: "44px" }}
-                  >
-                    <option value="UPI">UPI / PhonePe / GPay</option>
-                    <option value="Cash">Cash</option>
-                    <option value="Bank Transfer">Bank Transfer (NEFT/IMPS)</option>
-                  </select>
-                </div>
-                <div>
-                  <label style={{ fontSize: "13px", color: "#94A3B8", display: "block", marginBottom: "4px" }}>Billing Month</label>
-                  <input
-                    type="text"
-                    value={formData.month}
-                    onChange={(e) => setFormData({ ...formData, month: e.target.value })}
-                    style={{ width: "100%", padding: "12px", borderRadius: "12px", background: "#131C2E", border: "1px solid #202B45", color: "#FFF", fontSize: "14px", boxSizing: "border-box", minHeight: "44px" }}
-                  />
-                </div>
-              </div>
-            )}
-
-            {wizardStep === 3 && (
-              <div style={{ display: "flex", flexDirection: "column", gap: "12px", background: "#131C2E", padding: "16px", borderRadius: "14px", border: "1px solid #202B45" }}>
-                <div style={{ fontSize: "16px", fontWeight: 700, color: "#FFF" }}>Confirm Payment Record</div>
-                <div style={{ fontSize: "13px", color: "#94A3B8" }}>Amount: <span style={{ color: "#22C55E", fontWeight: 700 }}>₹{formData.amount}</span></div>
-                <div style={{ fontSize: "13px", color: "#94A3B8" }}>Method: <span style={{ color: "#FFF", fontWeight: 700 }}>{formData.method}</span></div>
-                <div style={{ fontSize: "13px", color: "#94A3B8" }}>Month: <span style={{ color: "#FFF", fontWeight: 700 }}>{formData.month}</span></div>
-              </div>
-            )}
-
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingTop: "8px" }}>
-              {wizardStep > 1 ? (
-                <button
-                  type="button"
-                  onClick={() => setWizardStep((prev) => Math.max(1, prev - 1))}
+              <div>
+                <label style={{ display: "block", fontSize: "11px", fontWeight: 700, color: "#94A3B8", marginBottom: "6px" }}>
+                  Amount Received (₹) *
+                </label>
+                <input
+                  type="number"
+                  step="any"
+                  required
+                  value={formData.amount}
+                  onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
                   style={{
-                    background: "rgba(255, 255, 255, 0.05)",
-                    color: "#FFF",
+                    width: "100%",
+                    padding: "12px",
+                    borderRadius: "12px",
                     border: "1px solid #202B45",
-                    borderRadius: "12px",
-                    padding: "10px 16px",
-                    fontWeight: 700,
-                    fontSize: "13px",
-                    cursor: "pointer",
-                    minHeight: "44px",
+                    background: "#1A2438",
+                    color: "#FFFFFF",
+                    fontSize: "14px",
+                    boxSizing: "border-box",
                   }}
-                >
-                  Back
-                </button>
-              ) : <div />}
+                />
+              </div>
 
-              {wizardStep < 3 ? (
-                <button
-                  type="button"
-                  onClick={() => setWizardStep((prev) => Math.min(3, prev + 1))}
+              <div>
+                <label style={{ display: "block", fontSize: "11px", fontWeight: 700, color: "#94A3B8", marginBottom: "6px" }}>
+                  Payment Method *
+                </label>
+                <select
+                  value={formData.paymentMethod}
+                  onChange={(e) => setFormData({ ...formData, paymentMethod: e.target.value })}
                   style={{
-                    background: "#22C55E",
-                    color: "#FFF",
-                    border: "none",
+                    width: "100%",
+                    padding: "12px",
                     borderRadius: "12px",
-                    padding: "10px 20px",
-                    fontWeight: 700,
-                    fontSize: "13px",
-                    cursor: "pointer",
-                    minHeight: "44px",
+                    border: "1px solid #202B45",
+                    background: "#1A2438",
+                    color: "#FFFFFF",
+                    fontSize: "14px",
                   }}
                 >
-                  Next
-                </button>
-              ) : (
+                  <option value="UPI">UPI / GPay / PhonePe</option>
+                  <option value="Cash">Cash</option>
+                  <option value="Bank Transfer">Bank Transfer / IMPS</option>
+                  <option value="Card">Card</option>
+                  <option value="Cheque">Cheque</option>
+                </select>
+              </div>
+
+              <div>
+                <label style={{ display: "block", fontSize: "11px", fontWeight: 700, color: "#94A3B8", marginBottom: "6px" }}>
+                  Reference / UTR Number
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. UTR or Cheque #"
+                  value={formData.transactionReference}
+                  onChange={(e) => setFormData({ ...formData, transactionReference: e.target.value })}
+                  style={{
+                    width: "100%",
+                    padding: "12px",
+                    borderRadius: "12px",
+                    border: "1px solid #202B45",
+                    background: "#1A2438",
+                    color: "#FFFFFF",
+                    fontSize: "14px",
+                    boxSizing: "border-box",
+                  }}
+                />
+              </div>
+
+              <div style={{ display: "flex", gap: "10px", marginTop: "10px" }}>
                 <button
                   type="button"
-                  onClick={handleSavePayment}
+                  onClick={() => setShowAddForm(false)}
+                  style={{
+                    flex: 1,
+                    padding: "12px",
+                    borderRadius: "12px",
+                    border: "1px solid #202B45",
+                    background: "transparent",
+                    color: "#94A3B8",
+                    fontSize: "14px",
+                    fontWeight: 700,
+                    cursor: "pointer",
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
                   disabled={savingPayment}
                   style={{
-                    background: "#22C55E",
-                    color: "#FFF",
-                    border: "none",
+                    flex: 1,
+                    padding: "12px",
                     borderRadius: "12px",
-                    padding: "10px 24px",
-                    fontWeight: 700,
+                    border: "none",
+                    background: "#10B981",
+                    color: "#FFFFFF",
                     fontSize: "14px",
+                    fontWeight: 700,
                     cursor: "pointer",
-                    minHeight: "44px",
+                    opacity: savingPayment ? 0.6 : 1,
                   }}
                 >
-                  {savingPayment ? "Saving..." : "Record Payment"}
+                  {savingPayment ? "Recording..." : "Record Payment"}
                 </button>
-              )}
-            </div>
+              </div>
+            </form>
           </div>
         </div>
       )}
