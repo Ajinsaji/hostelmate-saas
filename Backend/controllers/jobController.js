@@ -4,8 +4,8 @@ const { logger } = require("../utils/logger");
 
 function getUserContext(req) {
   return {
-    hostelId: req.owner?.hostelId || req.user?.hostelId || req.body?.hostelId,
-    userId: req.owner?._id || req.user?._id,
+    hostelId: req.context?.hostelId || req.owner?.hostelId || req.user?.hostelId,
+    userId: req.context?.userId || req.owner?._id || req.owner?.ownerId || req.user?._id || req.user?.userId,
     ip: req.ip || req.headers["x-forwarded-for"] || "",
   };
 }
@@ -13,6 +13,9 @@ function getUserContext(req) {
 const enqueueJob = async (req, res) => {
   try {
     const userCtx = getUserContext(req);
+    if (!userCtx.hostelId) {
+      return res.status(400).json({ success: false, message: "Active hostel context required" });
+    }
     const { jobType, payload, scheduledAt, maxRetries, idempotencyKey, dependsOnJobId, dependsOnJobs, priority } = req.body;
     if (!jobType) return res.status(400).json({ success: false, message: "jobType is required" });
 
@@ -37,6 +40,9 @@ const enqueueJob = async (req, res) => {
 const getJobs = async (req, res) => {
   try {
     const userCtx = getUserContext(req);
+    if (!userCtx.hostelId) {
+      return res.status(400).json({ success: false, message: "Active hostel context required" });
+    }
     const page = parseInt(req.query.page, 10) || 1;
     const limit = parseInt(req.query.limit, 10) || 20;
     const skip = (page - 1) * limit;
@@ -44,7 +50,6 @@ const getJobs = async (req, res) => {
     const query = { hostelId: userCtx.hostelId };
     if (req.query.status) query.status = req.query.status;
     if (req.query.dlq === "true") query.isDeadLetterQueue = true;
-
 
     const [jobs, total] = await Promise.all([
       Job.find(query).sort({ createdAt: -1 }).skip(skip).limit(limit),
@@ -61,6 +66,9 @@ const getJobs = async (req, res) => {
 const getJobStats = async (req, res) => {
   try {
     const userCtx = getUserContext(req);
+    if (!userCtx.hostelId) {
+      return res.status(400).json({ success: false, message: "Active hostel context required" });
+    }
     const stats = await schedulerService.getJobQueueStats(userCtx.hostelId);
     return res.status(200).json({ success: true, stats });
   } catch (err) {
@@ -71,7 +79,11 @@ const getJobStats = async (req, res) => {
 
 const retryJob = async (req, res) => {
   try {
-    const job = await schedulerService.retryFailedJob(req.params.id);
+    const userCtx = getUserContext(req);
+    if (!userCtx.hostelId) {
+      return res.status(400).json({ success: false, message: "Active hostel context required" });
+    }
+    const job = await schedulerService.retryFailedJob(req.params.id, userCtx.hostelId);
     return res.status(200).json({ success: true, message: "Job Re-queued for Retry", job });
   } catch (err) {
     logger.error("retryJob error:", err);

@@ -3,8 +3,8 @@ const { logger } = require("../utils/logger");
 
 function getUserContext(req) {
   return {
-    hostelId: req.owner?.hostelId || req.user?.hostelId || req.body?.hostelId,
-    userId: req.owner?._id || req.user?._id || req.admin?._id,
+    hostelId: req.context?.hostelId || req.owner?.hostelId || req.user?.hostelId,
+    userId: req.context?.userId || req.owner?._id || req.owner?.ownerId || req.user?._id || req.user?.userId || req.admin?._id,
     ip: req.ip || req.headers["x-forwarded-for"] || "",
   };
 }
@@ -12,6 +12,9 @@ function getUserContext(req) {
 const getPeriods = async (req, res) => {
   try {
     const userCtx = getUserContext(req);
+    if (!userCtx.hostelId) {
+      return res.status(400).json({ success: false, message: "Active hostel context required" });
+    }
     const periods = await financialPeriodService.getFinancialPeriods(userCtx.hostelId);
     return res.status(200).json({ success: true, periods });
   } catch (err) {
@@ -23,6 +26,9 @@ const getPeriods = async (req, res) => {
 const closePeriod = async (req, res) => {
   try {
     const userCtx = getUserContext(req);
+    if (!userCtx.hostelId) {
+      return res.status(400).json({ success: false, message: "Active hostel context required to close period" });
+    }
     const { month, year, remarks } = req.body;
     if (!month || !year) return res.status(400).json({ success: false, message: "Month and Year are required" });
 
@@ -46,8 +52,14 @@ const unlockPeriod = async (req, res) => {
   try {
     const userCtx = getUserContext(req);
     const { hostelId, month, year, remarks } = req.body;
-    const targetHostel = hostelId || userCtx.hostelId;
-    if (!targetHostel || !month || !year) return res.status(400).json({ success: false, message: "Hostel ID, Month, and Year are required" });
+    const isPlatformAdmin = Boolean(
+      req.user?.role && ["super_admin", "admin", "Admin", "SuperAdmin", "eps_admin"].includes(req.user.role)
+    );
+    const targetHostel = isPlatformAdmin ? (hostelId || userCtx.hostelId) : userCtx.hostelId;
+
+    if (!targetHostel || !month || !year) {
+      return res.status(400).json({ success: false, message: "Hostel ID, Month, and Year are required" });
+    }
 
     const period = await financialPeriodService.unlockPeriod(
       {

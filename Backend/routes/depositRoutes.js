@@ -1,9 +1,9 @@
 const express = require("express");
 const router = express.Router();
-const ownerAuth = require("../middleware/ownerAuth");
+const accountantAuth = require("../middleware/accountantAuth");
 const { receiveDeposit, refundDeposit, getDeposits } = require("../controllers/depositController");
 
-router.use(ownerAuth);
+router.use(accountantAuth);
 
 router.post("/", receiveDeposit);
 router.post("/refund", refundDeposit);

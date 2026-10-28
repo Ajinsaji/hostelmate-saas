@@ -12,6 +12,19 @@ const createRentPlanSchema = Joi.object({
   status: Joi.string().valid("Active", "Inactive").default("Active"),
 });
 
+const updateRentPlanSchema = Joi.object({
+  planName: Joi.string().trim(),
+  billingCycle: Joi.string().valid("Monthly", "Weekly", "Daily", "Custom"),
+  amount: Joi.number().min(0),
+  dueDay: Joi.number().min(1).max(31),
+  graceDays: Joi.number().min(0),
+  lateFeeType: Joi.string().valid("Fixed", "Percentage"),
+  lateFeeValue: Joi.number().min(0),
+  autoGenerateInvoices: Joi.boolean(),
+  status: Joi.string().valid("Active", "Inactive"),
+  isDeleted: Joi.boolean(),
+}).min(1);
+
 const createInvoiceSchema = Joi.object({
   residentId: Joi.string().required(),
   roomId: Joi.string().allow("", null),
@@ -66,6 +79,7 @@ const refundSchema = Joi.object({
 
 module.exports = {
   createRentPlanSchema,
+  updateRentPlanSchema,
   createInvoiceSchema,
   recordPaymentSchema,
   reversePaymentSchema,

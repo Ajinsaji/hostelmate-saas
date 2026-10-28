@@ -192,9 +192,11 @@ async function runSchedulerWorkerCycle() {
 /**
  * Retry a Failed Job
  */
-async function retryFailedJob(jobId) {
-  const job = await Job.findById(jobId);
-  if (!job) throw new Error("Job not found");
+async function retryFailedJob(jobId, hostelId = null) {
+  const query = { _id: jobId };
+  if (hostelId) query.hostelId = hostelId;
+  const job = await Job.findOne(query);
+  if (!job) throw new Error("Job not found or unauthorized");
 
   job.status = "Pending";
   job.attempts = 0;

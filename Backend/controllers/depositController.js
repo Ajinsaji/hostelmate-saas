@@ -14,6 +14,9 @@ function getUserContext(req) {
 const receiveDeposit = async (req, res) => {
   try {
     const userCtx = getUserContext(req);
+    if (!userCtx.hostelId) {
+      return res.status(400).json({ success: false, message: "Active hostel context required" });
+    }
     const { error, value } = depositSchema.validate(req.body);
     if (error) return res.status(400).json({ success: false, message: error.details[0].message });
 
@@ -28,6 +31,9 @@ const receiveDeposit = async (req, res) => {
 const refundDeposit = async (req, res) => {
   try {
     const userCtx = getUserContext(req);
+    if (!userCtx.hostelId) {
+      return res.status(400).json({ success: false, message: "Active hostel context required" });
+    }
     const { error, value } = refundSchema.validate(req.body);
     if (error) return res.status(400).json({ success: false, message: error.details[0].message });
 
@@ -42,6 +48,9 @@ const refundDeposit = async (req, res) => {
 const getDeposits = async (req, res) => {
   try {
     const userCtx = getUserContext(req);
+    if (!userCtx.hostelId) {
+      return res.status(400).json({ success: false, message: "Active hostel context required" });
+    }
     const deposits = await depositService.getDepositsList(userCtx.hostelId, req.query.residentId);
     return res.status(200).json({ success: true, deposits });
   } catch (err) {

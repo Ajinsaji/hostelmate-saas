@@ -13,6 +13,9 @@ function getUserContext(req) {
 const createRentInvoice = async (req, res) => {
   try {
     const userCtx = getUserContext(req);
+    if (!userCtx.hostelId) {
+      return res.status(400).json({ success: false, message: "Active hostel context required" });
+    }
     const { error, value } = createInvoiceSchema.validate(req.body);
     if (error) return res.status(400).json({ success: false, message: error.details[0].message });
 
@@ -27,6 +30,9 @@ const createRentInvoice = async (req, res) => {
 const generateMonthlyInvoices = async (req, res) => {
   try {
     const userCtx = getUserContext(req);
+    if (!userCtx.hostelId) {
+      return res.status(400).json({ success: false, message: "Active hostel context required" });
+    }
     const result = await rentInvoiceService.generateMonthlyInvoices(userCtx.hostelId, userCtx);
     return res.status(200).json({
       success: true,
@@ -42,6 +48,9 @@ const generateMonthlyInvoices = async (req, res) => {
 const getInvoices = async (req, res) => {
   try {
     const userCtx = getUserContext(req);
+    if (!userCtx.hostelId) {
+      return res.status(400).json({ success: false, message: "Active hostel context required" });
+    }
     const result = await rentInvoiceService.getInvoicesList({
       hostelId: userCtx.hostelId,
       residentId: req.query.residentId,

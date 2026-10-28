@@ -1,4 +1,5 @@
 const SecurityDeposit = require("../models/SecurityDeposit");
+const Resident = require("../models/Resident");
 const { recordLedgerEntry } = require("./ledgerService");
 const { assertPeriodOpen } = require("./financialPeriodService");
 const { logger } = require("../utils/logger");
@@ -7,14 +8,22 @@ const { logger } = require("../utils/logger");
  * Receive security deposit from resident
  */
 async function receiveDeposit(data, userContext = {}) {
-  const hostelId = data.hostelId || userContext.hostelId;
+  const hostelId = userContext.hostelId || data.hostelId;
   if (!hostelId) throw new Error("Hostel ID is required");
 
-  await assertPeriodOpen(hostelId, data.receivedDate || new Date());
+  // Validate resident belongs to the active hostel
+  const resident = await Resident.findOne({ _id: data.residentId, hostelId, isDeleted: false });
+  if (!resident) throw new Error("Resident not found in this hostel");
+
+  const depositDate = data.receivedDate ? new Date(data.receivedDate) : new Date();
+  await assertPeriodOpen(hostelId, depositDate);
+
+  const safeData = { ...data };
+  delete safeData.hostelId;
+  delete safeData.tenantId;
 
   const deposit = await SecurityDeposit.create({
-
-    ...data,
+    ...safeData,
     tenantId: hostelId,
     hostelId,
     balance: data.depositAmount,
@@ -41,6 +50,8 @@ async function refundDeposit({ depositId, refundAmount, deductionAmount = 0, rem
   const hostelId = userContext.hostelId;
   if (!hostelId) throw new Error("Hostel context required");
 
+  await assertPeriodOpen(hostelId, new Date());
+
   const deposit = await SecurityDeposit.findOne({ _id: depositId, hostelId });
   if (!deposit) throw new Error("Security deposit record not found");
 
@@ -51,22 +62,17 @@ async function refundDeposit({ depositId, refundAmount, deductionAmount = 0, rem
     throw new Error(`Refund amount ₹${amt} exceeds active deposit balance ₹${deposit.balance}`);
   }
 
-  const newRefunded = (deposit.refundedAmount || 0) + amt;
-  let newRemarks = deposit.remarks || "";
-  if (remarks) newRemarks = `${newRemarks}\n[Refund]: ${remarks}`.trim();
+  deposit.refundedAmount = (deposit.refundedAmount || 0) + amt;
+  deposit.balance = Math.max(0, (deposit.depositAmount || 0) - deposit.refundedAmount);
+  if (deposit.balance === 0) {
+    deposit.status = "Refunded";
+  } else {
+    deposit.status = "Partially Refunded";
+  }
+  deposit.refundDate = new Date();
+  if (remarks) deposit.remarks = `${deposit.remarks || ""}\n[Refund]: ${remarks}`.trim();
 
-  const updatedDeposit = await SecurityDeposit.findOneAndUpdate(
-    { _id: depositId, hostelId },
-    {
-      $set: {
-        refundedAmount: newRefunded,
-        refundDate: new Date(),
-        remarks: newRemarks,
-      }
-    },
-    { returnDocument: "after" }
-  );
-  if (!updatedDeposit) throw new Error("Security deposit record not found");
+  await deposit.save();
 
   // Record Ledger DEBIT entry for refund
   await recordLedgerEntry({
@@ -75,11 +81,11 @@ async function refundDeposit({ depositId, refundAmount, deductionAmount = 0, rem
     transactionType: "Refund",
     debit: amt,
     credit: 0,
-    referenceId: updatedDeposit._id,
+    referenceId: deposit._id,
     remarks: `Security Deposit Refunded: ₹${amt}${deductionAmount > 0 ? ` (Deductions: ₹${deductionAmount})` : ""}`,
   });
 
-  return updatedDeposit;
+  return deposit;
 }
 
 async function getDepositsList(hostelId, residentId) {

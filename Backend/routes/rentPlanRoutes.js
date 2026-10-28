@@ -1,9 +1,9 @@
 const express = require("express");
 const router = express.Router();
-const ownerAuth = require("../middleware/ownerAuth");
+const accountantAuth = require("../middleware/accountantAuth");
 const { createRentPlan, getRentPlans, updateRentPlan } = require("../controllers/rentPlanController");
 
-router.use(ownerAuth);
+router.use(accountantAuth);
 
 router.post("/", createRentPlan);
 router.get("/", getRentPlans);

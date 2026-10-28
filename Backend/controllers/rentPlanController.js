@@ -1,11 +1,11 @@
 const rentPlanService = require("../services/rentPlanService");
-const { createRentPlanSchema } = require("../validations/rentValidation");
+const { createRentPlanSchema, updateRentPlanSchema } = require("../validations/rentValidation");
 const { logger } = require("../utils/logger");
 
 function getUserContext(req) {
   return {
-    hostelId: req.owner?.hostelId || req.user?.hostelId,
-    userId: req.owner?._id || req.user?._id,
+    hostelId: req.context?.hostelId || req.owner?.hostelId || req.user?.hostelId,
+    userId: req.context?.userId || req.owner?._id || req.owner?.ownerId || req.user?._id || req.user?.userId,
     ip: req.ip || req.headers["x-forwarded-for"] || "",
   };
 }
@@ -37,7 +37,11 @@ const getRentPlans = async (req, res) => {
 
 const updateRentPlan = async (req, res) => {
   try {
-    const plan = await rentPlanService.updateRentPlan(req.params.id, req.body);
+    const userCtx = getUserContext(req);
+    const { error, value } = updateRentPlanSchema.validate(req.body);
+    if (error) return res.status(400).json({ success: false, message: error.details[0].message });
+
+    const plan = await rentPlanService.updateRentPlan(req.params.id, value, userCtx);
     return res.status(200).json({ success: true, message: "Rent Plan Updated", plan });
   } catch (err) {
     logger.error("updateRentPlan error:", err);

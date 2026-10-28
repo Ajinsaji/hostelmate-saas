@@ -6,7 +6,7 @@ const { logger } = require("../utils/logger");
  */
 async function checkFinancialPeriodLock(req, res, next) {
   try {
-    const hostelId = req.owner?.hostelId || req.user?.hostelId || req.body?.hostelId;
+    const hostelId = req.context?.hostelId || req.owner?.hostelId || req.user?.hostelId;
     if (!hostelId) return next();
 
     // Determine target transaction date from request body or query or default to now

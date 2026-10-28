@@ -118,6 +118,13 @@ async function recordPayment(data, userContext = {}) {
         invoiceToUpdate = await q;
         if (!invoiceToUpdate) throw new Error("Target invoice not found during transaction");
 
+        if (invoiceToUpdate.paymentStatus === "Paid" || invoiceToUpdate.balanceAmount <= 0) {
+          throw new Error("Invoice is already fully paid");
+        }
+        if (amount > invoiceToUpdate.balanceAmount) {
+          throw new Error(`Payment amount (₹${amount}) exceeds invoice outstanding balance (₹${invoiceToUpdate.balanceAmount})`);
+        }
+
         invoiceToUpdate.paidAmount = (invoiceToUpdate.paidAmount || 0) + amount;
         await invoiceToUpdate.save({ session });
       }

@@ -146,7 +146,9 @@ rentInvoiceSchema.pre("save", function (next) {
   this.grandTotal = Math.max(0, this.subtotal + (this.lateFee || 0) - (this.discount || 0));
   this.balanceAmount = Math.max(0, this.grandTotal - (this.paidAmount || 0));
 
-  if (this.paidAmount >= this.grandTotal && this.grandTotal > 0) {
+  if (this.paymentStatus === "Cancelled") {
+    // Preserve explicit cancellation status
+  } else if (this.paidAmount >= this.grandTotal && this.grandTotal > 0) {
     this.paymentStatus = "Paid";
   } else if (this.paidAmount > 0 && this.paidAmount < this.grandTotal) {
     this.paymentStatus = "Partially Paid";

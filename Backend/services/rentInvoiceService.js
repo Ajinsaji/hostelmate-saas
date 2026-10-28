@@ -1,8 +1,36 @@
+const mongoose = require("mongoose");
 const RentInvoice = require("../models/RentInvoice");
 const Resident = require("../models/Resident");
 const { recordLedgerEntry } = require("./ledgerService");
 const { assertPeriodOpen } = require("./financialPeriodService");
 const { logger } = require("../utils/logger");
+
+/**
+ * Execute multi-document writes within an atomic transaction.
+ * Fails closed if connection is not ready in production.
+ */
+async function withTransaction(fn) {
+  if (mongoose.connection.readyState !== 1) {
+    if (process.env.NODE_ENV === "production") {
+      throw new Error("Financial transaction aborted: MongoDB connection is not active.");
+    }
+    return await fn(null);
+  }
+
+  const session = await mongoose.startSession();
+  try {
+    let result;
+    await session.withTransaction(async () => {
+      result = await fn(session);
+    });
+    return result;
+  } catch (err) {
+    logger.error({ err }, "[RentInvoice] Financial transaction aborted due to error");
+    throw err;
+  } finally {
+    await session.endSession();
+  }
+}
 
 async function generateInvoiceNumber(hostelId) {
   const now = new Date();
@@ -13,7 +41,31 @@ async function generateInvoiceNumber(hostelId) {
 }
 
 /**
- * Creates a single Rent Invoice and logs a DEBIT entry to the resident's ledger
+ * Safely calculates the due date avoiding calendar rollover (e.g. day 31 in 30-day months)
+ */
+function calculateSafeDueDate(issueDate, targetDay) {
+  const day = Math.min(Math.max(parseInt(targetDay, 10) || 5, 1), 31);
+  let year = issueDate.getFullYear();
+  let month = issueDate.getMonth();
+
+  // Find max days in current issue month
+  const maxDaysCurrentMonth = new Date(year, month + 1, 0).getDate();
+  let candidateDate = new Date(year, month, Math.min(day, maxDaysCurrentMonth));
+
+  if (candidateDate <= issueDate) {
+    month += 1;
+    if (month > 11) {
+      month = 0;
+      year += 1;
+    }
+    const maxDaysNextMonth = new Date(year, month + 1, 0).getDate();
+    candidateDate = new Date(year, month, Math.min(day, maxDaysNextMonth));
+  }
+  return candidateDate;
+}
+
+/**
+ * Creates a single Rent Invoice and logs a DEBIT entry to the resident's ledger atomically
  */
 async function createRentInvoice(data, userContext = {}) {
   const hostelId = userContext.hostelId || data.hostelId;
@@ -41,15 +93,10 @@ async function createRentInvoice(data, userContext = {}) {
 
   const invoiceNumber = data.invoiceNumber || (await generateInvoiceNumber(hostelId));
 
-  // Due Date default = 5th of current/next month if not specified
-  let dueDate = data.dueDate ? new Date(data.dueDate) : null;
-  if (!dueDate) {
-    dueDate = new Date(issueDate);
-    dueDate.setDate(resident.paymentDay || 5);
-    if (dueDate <= issueDate) dueDate.setMonth(dueDate.getMonth() + 1);
-  }
+  // Calculate safe due date
+  const dueDate = data.dueDate ? new Date(data.dueDate) : calculateSafeDueDate(issueDate, resident.paymentDay || 5);
 
-  const invoice = await RentInvoice.create({
+  const invoiceDocData = {
     ...data,
     tenantId: hostelId,
     hostelId,
@@ -60,42 +107,61 @@ async function createRentInvoice(data, userContext = {}) {
     billingPeriod,
     issueDate,
     dueDate,
-    rentAmount: data.rentAmount !== undefined ? data.rentAmount : resident.monthlyRent,
+    rentAmount: data.rentAmount !== undefined ? data.rentAmount : (resident.monthlyRent || 0),
     generatedBy: userContext.userId || null,
-  });
+  };
 
-  // Record Ledger DEBIT entry for the invoice amount
-  await recordLedgerEntry({
-    hostelId,
-    residentId: resident._id,
-    transactionType: "Rent",
-    debit: invoice.grandTotal,
-    credit: 0,
-    referenceId: invoice._id,
-    remarks: `Rent Invoice ${invoice.invoiceNumber} for ${billingPeriod}`,
+  // Atomic transactional creation of invoice and ledger DEBIT
+  const invoice = await withTransaction(async (session) => {
+    let createdInvoice;
+    if (session) {
+      const created = await RentInvoice.create([invoiceDocData], { session });
+      createdInvoice = created[0];
+    } else {
+      createdInvoice = await RentInvoice.create(invoiceDocData);
+    }
+
+    // Record Ledger DEBIT entry for the invoice amount
+    await recordLedgerEntry({
+      hostelId,
+      residentId: resident._id,
+      transactionType: "Rent",
+      debit: createdInvoice.grandTotal,
+      credit: 0,
+      referenceId: createdInvoice._id,
+      remarks: `Rent Invoice ${createdInvoice.invoiceNumber} for ${billingPeriod}`,
+      session,
+    });
+
+    return createdInvoice;
   });
 
   return invoice;
 }
 
 /**
- * Batch Monthly Invoice Generator for all Active residents in a hostel
+ * Batch Monthly Invoice Generator for all Active and Notice-Period residents in a hostel
  */
 async function generateMonthlyInvoices(hostelId, userContext = {}) {
+  if (!hostelId) throw new Error("Hostel ID is required for batch invoice generation");
+
+  const now = new Date();
+  await assertPeriodOpen(hostelId, now);
+
   const activeResidents = await Resident.find({
     hostelId,
-    status: { $in: ["Active", "active"] },
+    status: { $in: ["Active", "active", "Notice Period"] },
     isDeleted: false,
   });
 
-  const now = new Date();
   const currentMonthYear = now.toLocaleString("default", { month: "long", year: "numeric" });
 
   let generatedCount = 0;
+  let skippedCount = 0;
   const createdInvoices = [];
+  const errors = [];
 
   for (const res of activeResidents) {
-    // Check if invoice already exists for this resident and billing period
     const existing = await RentInvoice.findOne({
       hostelId,
       residentId: res._id,
@@ -103,22 +169,30 @@ async function generateMonthlyInvoices(hostelId, userContext = {}) {
       isDeleted: false,
     });
 
-    if (!existing) {
+    if (existing) {
+      skippedCount++;
+      continue;
+    }
+
+    try {
       const inv = await createRentInvoice(
         {
           hostelId,
           residentId: res._id,
           billingPeriod: currentMonthYear,
-          rentAmount: res.monthlyRent,
+          rentAmount: res.monthlyRent || 0,
         },
         userContext
       );
       createdInvoices.push(inv);
       generatedCount++;
+    } catch (err) {
+      logger.error({ err, residentId: res._id }, "[RentInvoice] Failed to generate invoice for resident");
+      errors.push({ residentId: res._id, name: res.fullName || res.name, error: err.message });
     }
   }
 
-  return { generatedCount, createdInvoices };
+  return { generatedCount, skippedCount, createdInvoices, errors };
 }
 
 /**
@@ -150,4 +224,5 @@ module.exports = {
   createRentInvoice,
   generateMonthlyInvoices,
   getInvoicesList,
+  calculateSafeDueDate,
 };
