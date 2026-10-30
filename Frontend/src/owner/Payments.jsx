@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo, useCallback } from "react";
+import { useLocation } from "react-router-dom";
 import toast from "react-hot-toast";
 
 import api from "../utils/apiClient";
@@ -12,16 +13,42 @@ export default function Payments() {
   const { hostel } = useCurrentHostel();
   const activeHostelId = hostel?.id || hostel?._id;
   const isMobile = useIsMobile();
+  const location = useLocation();
 
   const [payments, setPayments] = useState([]);
   const [invoices, setInvoices] = useState([]);
   const [residents, setResidents] = useState([]);
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [showAddForm, setShowAddForm] = useState(false);
+  const [showAddForm, setShowAddForm] = useState(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      return params.get("action") === "collect";
+    }
+    return false;
+  });
   const [savingPayment, setSavingPayment] = useState(false);
   const [search, setSearch] = useState("");
-  const [activeTab, setActiveTab] = useState("all");
+  const [activeTab, setActiveTab] = useState(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const tab = params.get("tab");
+      if (tab === "pending" || tab === "collected") return tab;
+    }
+    return "all";
+  });
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.get("action") === "collect") {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setShowAddForm(true);
+    }
+    const tab = params.get("tab");
+    if (tab === "pending" || tab === "collected" || tab === "all") {
+      setActiveTab(tab);
+    }
+  }, [location.search]);
 
   // Reversal Modal state
   const [reversalPayment, setReversalPayment] = useState(null);

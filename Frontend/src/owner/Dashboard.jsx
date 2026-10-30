@@ -32,6 +32,15 @@ export const Dashboard = memo(function Dashboard() {
     return user?.ownerName || "Hostel Owner";
   });
   const [aiSuggestionsOpen, setAiSuggestionsOpen] = useState(false);
+  const [attentionMetrics, setAttentionMetrics] = useState({
+    payTodayCount: 0,
+    payTodayAmount: 0,
+    overdueCount: 0,
+    overdueAmount: 0,
+    pendingAdmissionsCount: 0,
+    maintenanceCount: 0,
+    loading: true,
+  });
 
   const activeHostelId = hostel?.id || hostel?._id;
 
@@ -91,6 +100,82 @@ export const Dashboard = memo(function Dashboard() {
     }
   }, [updatePendingAdmissionsCount]);
 
+  const fetchAttentionMetrics = useCallback(async () => {
+    try {
+      const [invRes, maintRes, repRes] = await Promise.all([
+        api.get("/api/rent-invoices?limit=250").catch(() => ({ data: null })),
+        api.get("/api/maintenance").catch(() => ({ data: null })),
+        api.get("/api/rent-reports/dashboard").catch(() => ({ data: null })),
+      ]);
+
+      const invoices = invRes.data?.invoices || [];
+      const maintLogs = Array.isArray(maintRes.data?.logs) ? maintRes.data.logs : [];
+
+      const now = new Date();
+      const todayYear = now.getFullYear();
+      const todayMonth = now.getMonth();
+      const todayDate = now.getDate();
+      const startOfToday = new Date(todayYear, todayMonth, todayDate, 0, 0, 0, 0);
+
+      let payTodayAmount = 0;
+      let overdueAmount = 0;
+      const payTodayResidentIds = new Set();
+      const overdueResidentIds = new Set();
+
+      invoices.forEach((inv) => {
+        if (inv.paymentStatus === "Cancelled" || inv.paymentStatus === "Paid") return;
+        const bal = Number(inv.balanceAmount || 0);
+        if (bal <= 0) return;
+
+        // Unique resident key: handles populated residentId object or ObjectId string
+        const residentKey = inv.residentId?._id
+          ? String(inv.residentId._id)
+          : (inv.residentId ? String(inv.residentId) : String(inv._id));
+
+        if (inv.dueDate) {
+          const d = new Date(inv.dueDate);
+          const isToday =
+            d.getFullYear() === todayYear &&
+            d.getMonth() === todayMonth &&
+            d.getDate() === todayDate;
+          const isPast = d < startOfToday;
+
+          if (isToday) {
+            payTodayAmount += bal;
+            if (residentKey) payTodayResidentIds.add(residentKey);
+          } else if (isPast || inv.paymentStatus === "Overdue") {
+            overdueAmount += bal;
+            if (residentKey) overdueResidentIds.add(residentKey);
+          }
+        } else if (inv.paymentStatus === "Overdue") {
+          overdueAmount += bal;
+          if (residentKey) overdueResidentIds.add(residentKey);
+        }
+      });
+
+      const payTodayResidentCount = payTodayResidentIds.size;
+      const overdueResidentCount = overdueResidentIds.size;
+      const totalOverdueAmount = repRes.data?.overdueCollection || overdueAmount;
+
+      const openMaintenanceCount = maintLogs.filter(
+        (m) => m.status !== "Completed" && m.status !== "Cancelled"
+      ).length;
+
+      setAttentionMetrics({
+        payTodayCount: payTodayResidentCount,
+        payTodayAmount,
+        overdueCount: overdueResidentCount,
+        overdueAmount: totalOverdueAmount,
+        pendingAdmissionsCount: pendingCount,
+        maintenanceCount: openMaintenanceCount,
+        loading: false,
+      });
+    } catch (err) {
+      console.warn("Failed to load attention metrics:", err);
+      setAttentionMetrics((prev) => ({ ...prev, loading: false }));
+    }
+  }, [pendingCount]);
+
   const fetchWorkspaceOverview = useCallback(async () => {
     try {
       const response = await api.get("/api/v2/workspaces/overview");
@@ -107,7 +192,15 @@ export const Dashboard = memo(function Dashboard() {
     fetchSubscription();
     fetchWorkspaceOverview();
     fetchPendingAdmissionsCount();
-  }, [activeHostelId, fetchStats, fetchSubscription, fetchWorkspaceOverview, fetchPendingAdmissionsCount]);
+    fetchAttentionMetrics();
+  }, [
+    activeHostelId,
+    fetchStats,
+    fetchSubscription,
+    fetchWorkspaceOverview,
+    fetchPendingAdmissionsCount,
+    fetchAttentionMetrics,
+  ]);
 
   const vacantRoomsCount = Math.max(0, (stats.rooms || 0) - Math.ceil(((stats.occupancyRate || 0) / 100) * (stats.rooms || 1)));
 
@@ -121,6 +214,10 @@ export const Dashboard = memo(function Dashboard() {
         activeHostelId={activeHostelId}
         switchHostel={switchHostel}
         vacantRoomsCount={vacantRoomsCount}
+        attentionMetrics={attentionMetrics}
+        ownerName={ownerName}
+        hostel={hostel}
+        navigate={navigate}
       />
     );
   }
@@ -134,6 +231,7 @@ export const Dashboard = memo(function Dashboard() {
       activeHostelId={activeHostelId}
       switchHostel={switchHostel}
       vacantRoomsCount={vacantRoomsCount}
+      attentionMetrics={attentionMetrics}
       ownerName={ownerName}
       hostel={hostel}
       navigate={navigate}

@@ -14,6 +14,7 @@ const Bed = require("../models/Bed");
 const Resident = require("../models/Resident");
 const Payment = require("../models/Payment");
 const PublicAdmission = require("../models/PublicAdmission");
+const { getISTStartOfDay, getISTEndOfDay } = require("../utils/timezoneHelper");
 
 // Utility: detect bcrypt hash format ($2a$, $2b$, $2y$ prefix, 60 chars)
 const looksLikeBcryptHash = (str) => {
@@ -434,11 +435,8 @@ const getDashboardStats = async (req, res) => {
     const mongoose = require("mongoose");
     const hId = new mongoose.Types.ObjectId(hostelId);
 
-    const now = new Date();
-    const istOffsetMs = 5.5 * 60 * 60 * 1000;
-    const istNow = new Date(now.getTime() + istOffsetMs);
-    const startOfDay = new Date(Date.UTC(istNow.getUTCFullYear(), istNow.getUTCMonth(), istNow.getUTCDate(), 0, 0, 0, 0) - istOffsetMs);
-    const endOfDay = new Date(Date.UTC(istNow.getUTCFullYear(), istNow.getUTCMonth(), istNow.getUTCDate(), 23, 59, 59, 999) - istOffsetMs);
+    const startOfDay = getISTStartOfDay();
+    const endOfDay = getISTEndOfDay();
 
     const [
       residentsAgg,

@@ -1,24 +1,27 @@
-import React from "react";
 import { useNavigate } from "react-router-dom";
-import { AlertTriangle, Clock, Sparkles, ArrowRight, Lock } from "lucide-react";
+import { AlertTriangle, Sparkles, ArrowRight, Lock } from "lucide-react";
 
 export default function SubscriptionBanner({
   status = "trial",
-  daysLeft = 30,
+  daysLeft = null,
   trialEndDate = null,
   expiryDate = null,
-  warningLevel = "none",
-  renewalRequired = false,
   isTrial = true,
   onRequestContinuation,
 }) {
   const navigate = useNavigate();
 
   const statusNormalized = (status || "").toLowerCase();
-  const dLeft = typeof daysLeft === "number" ? Math.max(0, daysLeft) : null;
-  const isExpired = statusNormalized === "expired" || (typeof daysLeft === "number" && daysLeft < 0);
+  const dLeft = typeof daysLeft === "number" && !isNaN(daysLeft) ? daysLeft : null;
+  const isExpired = statusNormalized === "expired" || (dLeft !== null && dLeft < 0);
   const targetDate = trialEndDate || expiryDate;
-  const formattedDate = targetDate ? new Date(targetDate).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }) : "Soon";
+  let formattedDate = null;
+  if (targetDate) {
+    const d = new Date(targetDate);
+    if (!isNaN(d.getTime())) {
+      formattedDate = d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+    }
+  }
 
   const handleRequestClick = () => {
     if (onRequestContinuation) {
@@ -42,11 +45,11 @@ export default function SubscriptionBanner({
                 <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-rose-500/20 text-rose-300 border border-rose-500/30">
                   Access Locked
                 </span>
-                <span className="text-xs text-rose-300/80 font-bold uppercase">Trial Ended {formattedDate}</span>
+                <span className="text-xs text-rose-300/80 font-bold uppercase">{formattedDate ? `Trial Ended ${formattedDate}` : "Trial Expired"}</span>
               </div>
               <h3 className="text-xl sm:text-2xl font-black text-white mt-1">TRIAL EXPIRED</h3>
               <p className="text-sm text-slate-300 mt-1 max-w-xl">
-                Your free 30-day trial has ended. To continue using HostelMate operations, please request subscription continuation.
+                Your free trial has ended. To continue using HostelMate operations, please request subscription continuation.
               </p>
             </div>
           </div>
@@ -92,7 +95,7 @@ export default function SubscriptionBanner({
                   : `YOUR SUBSCRIPTION EXPIRES IN ${dLeft} DAY${dLeft === 1 ? "" : "S"}`}
               </div>
               <div className="text-xs opacity-90 mt-0.5">
-                Please request continuation to avoid operational interruption (Ends {formattedDate}).
+                Please request continuation to avoid operational interruption{formattedDate ? ` (Ends ${formattedDate})` : ""}.
               </div>
             </div>
           </div>
@@ -126,10 +129,17 @@ export default function SubscriptionBanner({
                 <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-sky-500/20 text-sky-300">
                   FREE TRIAL
                 </span>
-                <span className="text-sm font-black text-sky-300">{dLeft !== null ? `${dLeft} DAYS LEFT` : "30 DAYS"}</span>
+                <span className="text-sm font-black text-sky-300">
+                  {dLeft !== null ? `${dLeft} DAY${dLeft === 1 ? "" : "S"} LEFT` : (statusNormalized === "active" ? "ACTIVE PLAN" : "FREE TRIAL")}
+                </span>
               </div>
               <div className="text-xs text-slate-300 mt-1">
-                Your free HostelMate trial is active. All modules are unlocked. Trial ends: <b className="text-white">{formattedDate}</b>.
+                Your free HostelMate trial is active. All modules are unlocked.
+                {formattedDate ? (
+                  <span> Trial ends: <b className="text-white">{formattedDate}</b>.</span>
+                ) : (
+                  dLeft !== null ? <span> Current period: <b className="text-white">{dLeft} days left</b>.</span> : ""
+                )}
               </div>
             </div>
           </div>

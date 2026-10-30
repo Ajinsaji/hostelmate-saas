@@ -3,25 +3,26 @@ const RentPayment = require("../models/RentPayment");
 const SecurityDeposit = require("../models/SecurityDeposit");
 const ExcelJS = require("exceljs");
 const { logger } = require("../utils/logger");
+const { getISTStartOfDay, getISTEndOfDay, getISTStartOfMonth, getISTEndOfMonth, formatISTDate } = require("../utils/timezoneHelper");
 
 /**
- * Calculates Dashboard KPIs & Financial Metrics
+ * Calculates Dashboard KPIs & Financial Metrics in Indian Standard Time (IST)
+ * @param {string|ObjectId} hostelId
+ * @param {Date|string|number} [refDate=new Date()] Optional reference date for deterministic testing
  */
-async function getFinancialDashboardStats(hostelId) {
-  const startOfDay = new Date();
-  startOfDay.setHours(0, 0, 0, 0);
-
-  const startOfMonth = new Date();
-  startOfMonth.setDate(1);
-  startOfMonth.setHours(0, 0, 0, 0);
+async function getFinancialDashboardStats(hostelId, refDate = new Date()) {
+  const startOfDay = getISTStartOfDay(refDate);
+  const endOfDay = getISTEndOfDay(refDate);
+  const startOfMonth = getISTStartOfMonth(refDate);
+  const endOfMonth = getISTEndOfMonth(refDate);
 
   const [todayPayments, monthPayments, pendingInvoices, overdueInvoices, deposits, refunds] = await Promise.all([
     RentPayment.aggregate([
-      { $match: { hostelId: new (require("mongoose").Types.ObjectId)(hostelId), paymentDate: { $gte: startOfDay }, status: "Completed" } },
+      { $match: { hostelId: new (require("mongoose").Types.ObjectId)(hostelId), paymentDate: { $gte: startOfDay, $lte: endOfDay }, status: "Completed" } },
       { $group: { _id: null, total: { $sum: "$amount" } } },
     ]),
     RentPayment.aggregate([
-      { $match: { hostelId: new (require("mongoose").Types.ObjectId)(hostelId), paymentDate: { $gte: startOfMonth }, status: "Completed" } },
+      { $match: { hostelId: new (require("mongoose").Types.ObjectId)(hostelId), paymentDate: { $gte: startOfMonth, $lte: endOfMonth }, status: "Completed" } },
       { $group: { _id: null, total: { $sum: "$amount" } } },
     ]),
     RentInvoice.aggregate([
@@ -90,7 +91,7 @@ async function generatePaymentsExcelReport(hostelId) {
     worksheet.addRow({
       paymentNumber: p.paymentNumber,
       residentName: p.residentId?.fullName || "Resident",
-      paymentDate: new Date(p.paymentDate).toLocaleDateString(),
+      paymentDate: formatISTDate(p.paymentDate),
       amount: p.amount,
       paymentMethod: p.paymentMethod,
       transactionReference: p.transactionReference || "N/A",

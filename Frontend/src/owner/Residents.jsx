@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import toast from "react-hot-toast";
 
 import api from "../utils/apiClient";
@@ -17,6 +17,7 @@ export default function Residents() {
   const activeHostelId = hostel?.id || hostel?._id;
   const isMobile = useIsMobile();
   const navigate = useNavigate();
+  const location = useLocation();
 
   // State hooks
   const [residents, setResidents] = useState([]);
@@ -30,7 +31,21 @@ export default function Residents() {
   const [filterGender, setFilterGender] = useState("");
   const page = 1;
 
-  const [showAddModal, setShowAddModal] = useState(false);
+  const [showAddModal, setShowAddModal] = useState(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      return params.get("action") === "add";
+    }
+    return false;
+  });
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.get("action") === "add") {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setShowAddModal(true);
+    }
+  }, [location.search]);
   const [showCsvModal, setShowCsvModal] = useState(false);
   const [editingResident, setEditingResident] = useState(null);
   const [formStep, setFormStep] = useState(0);

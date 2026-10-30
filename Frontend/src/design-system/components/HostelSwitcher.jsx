@@ -5,7 +5,7 @@ import { Building, ChevronDown, Check, Plus } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { api } from '../../services/api';
 
-export function HostelSwitcher() {
+export function HostelSwitcher({ variant = 'default', dropdownPosition = 'bottom' }) {
   const { colors, spacing, radius, typography, shadows } = useTheme();
   const { user } = useCurrentUser();
   const { hostel, switchHostel } = useCurrentHostel();
@@ -41,6 +41,43 @@ export function HostelSwitcher() {
   }, []);
 
   if (!isMultiHostel && hostelsList.length <= 1) {
+    if (variant === 'pill') {
+      return (
+        <div
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '8px',
+            padding: '6px 12px',
+            borderRadius: '12px',
+            background: '#111C2E',
+            border: `1px solid ${colors.border.default || '#1E293B'}`,
+            color: '#FFFFFF',
+            fontSize: '13px',
+            fontWeight: 600,
+          }}
+        >
+          <div
+            style={{
+              width: '24px',
+              height: '24px',
+              borderRadius: '7px',
+              background: 'rgba(34, 197, 94, 0.15)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#22C55E',
+              flexShrink: 0,
+            }}
+          >
+            <Building size={14} />
+          </div>
+          <span style={{ maxWidth: '130px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {hostel?.name || hostel?.hostelName || user?.hostelName || 'Hostel'}
+          </span>
+        </div>
+      );
+    }
     return (
       <div 
         style={{
@@ -67,51 +104,94 @@ export function HostelSwitcher() {
 
   return (
     <div style={{ position: 'relative', fontFamily: typography.fontFamily }}>
-      <button
-        onClick={() => setOpen(!open)}
-        style={{
-          width: '100%',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          background: colors.background.elevated,
-          border: `1px solid ${colors.border.default}`,
-          borderRadius: radius.md,
-          padding: `${spacing.sm} ${spacing.md}`,
-          color: colors.text.primary,
-          cursor: 'pointer',
-          outline: 'none',
-          transition: 'all 200ms ease',
-        }}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.borderColor = colors.accent.primary;
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.borderColor = colors.border.default;
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: spacing.sm, minWidth: 0 }}>
-          <Building size={16} style={{ color: colors.accent.primary, flexShrink: 0 }} />
-          <span style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.semibold, textAlign: 'left', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+      {variant === 'pill' ? (
+        <button
+          onClick={() => setOpen(!open)}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '8px',
+            background: '#111C2E',
+            border: `1px solid ${colors.border.default || '#1E293B'}`,
+            borderRadius: '12px',
+            padding: '6px 12px',
+            color: '#FFFFFF',
+            cursor: 'pointer',
+            fontSize: '13px',
+            fontWeight: 600,
+            maxWidth: '180px',
+            outline: 'none',
+            transition: 'all 150ms ease',
+          }}
+        >
+          <div
+            style={{
+              width: '24px',
+              height: '24px',
+              borderRadius: '7px',
+              background: 'rgba(34, 197, 94, 0.15)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#22C55E',
+              flexShrink: 0,
+            }}
+          >
+            <Building size={14} />
+          </div>
+          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {hostel?.name || hostel?.hostelName || user?.hostelName || 'Hostel'}
           </span>
-        </div>
-        <ChevronDown size={14} style={{ color: colors.text.muted, flexShrink: 0, transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 200ms ease' }} />
-      </button>
+          <ChevronDown size={14} style={{ color: '#94A3B8', flexShrink: 0, transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 200ms ease' }} />
+        </button>
+      ) : (
+        <button
+          onClick={() => setOpen(!open)}
+          style={{
+            width: '100%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            background: colors.background.elevated,
+            border: `1px solid ${colors.border.default}`,
+            borderRadius: radius.md,
+            padding: `${spacing.sm} ${spacing.md}`,
+            color: colors.text.primary,
+            cursor: 'pointer',
+            outline: 'none',
+            transition: 'all 200ms ease',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.borderColor = colors.accent.primary;
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.borderColor = colors.border.default;
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: spacing.sm, minWidth: 0 }}>
+            <Building size={16} style={{ color: colors.accent.primary, flexShrink: 0 }} />
+            <span style={{ fontSize: typography.sizes.sm, fontWeight: typography.weights.semibold, textAlign: 'left', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {hostel?.name || hostel?.hostelName || user?.hostelName || 'Hostel'}
+            </span>
+          </div>
+          <ChevronDown size={14} style={{ color: colors.text.muted, flexShrink: 0, transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 200ms ease' }} />
+        </button>
+      )}
 
       {open && (
         <div
           style={{
             position: 'absolute',
-            bottom: '100%',
+            ...(dropdownPosition === 'top'
+              ? { bottom: '100%', marginBottom: '6px' }
+              : { top: '100%', marginTop: '6px' }),
             left: 0,
-            right: 0,
-            background: colors.background.card,
-            border: `1px solid ${colors.border.default}`,
-            borderRadius: radius.md,
-            marginBottom: '6px',
+            minWidth: '220px',
+            background: colors.background.card || '#131C2E',
+            border: `1px solid ${colors.border.default || '#202B45'}`,
+            borderRadius: radius.md || '12px',
             zIndex: 100,
-            boxShadow: shadows.elevated,
+            boxShadow: shadows?.elevated || '0 10px 25px rgba(0,0,0,0.5)',
             overflow: 'hidden',
           }}
         >

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { useLocation } from "react-router-dom";
 import toast from "react-hot-toast";
 
 import api from "../utils/apiClient";
@@ -13,6 +14,7 @@ export function ExpenseDashboard() {
   const { hostel } = useCurrentHostel();
   const activeHostelId = hostel?.id || hostel?._id;
   const isMobile = useIsMobile();
+  const location = useLocation();
 
   const [expenses, setExpenses] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -24,7 +26,21 @@ export function ExpenseDashboard() {
   const [filterCategory, setFilterCategory] = useState("");
 
   // Modals
-  const [showAddExpenseModal, setShowAddExpenseModal] = useState(false);
+  const [showAddExpenseModal, setShowAddExpenseModal] = useState(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      return params.get("action") === "add";
+    }
+    return false;
+  });
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.get("action") === "add") {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setShowAddExpenseModal(true);
+    }
+  }, [location.search]);
 
   const [submitting, setSubmitting] = useState(false);
 

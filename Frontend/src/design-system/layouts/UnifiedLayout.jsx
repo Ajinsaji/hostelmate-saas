@@ -193,12 +193,14 @@ export function UnifiedLayout({
       )}
 
       {/* Mobile Bottom Navigation */}
-      <UnifiedMobileNav
-        role={role}
-        mobileItems={mobileNavItems}
-        onQuickAddClick={() => setShowQuickAdd(true)}
-        onMoreClick={() => setMobileDrawerOpen(true)}
-      />
+      {isMobile && (
+        <UnifiedMobileNav
+          role={role}
+          mobileItems={mobileNavItems}
+          onQuickAddClick={() => setShowQuickAdd(true)}
+          onMoreClick={() => setMobileDrawerOpen(true)}
+        />
+      )}
     </div>
   );
 }

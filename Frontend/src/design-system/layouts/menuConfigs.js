@@ -34,9 +34,8 @@ export const ownerMenuItems = [
 export const ownerMobileItems = [
   { key: 'home', label: 'Home', icon: 'Home', href: '/owner/dashboard' },
   { key: 'residents', label: 'Residents', icon: 'Users', href: '/residents' },
-  { key: 'fab', label: '', icon: 'Plus', href: 'fab' },
-  { key: 'finance', label: 'Finance', icon: 'Wallet', href: '/payments' },
-  { key: 'more', label: 'More', icon: 'Menu', href: '/owner/settings' },
+  { key: 'payments', label: 'Payments', icon: 'CreditCard', href: '/payments' },
+  { key: 'more', label: 'More', icon: 'Menu', href: 'more' },
 ];
 
 export const wardenMenuItems = [

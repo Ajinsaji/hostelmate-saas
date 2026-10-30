@@ -1,7 +1,7 @@
 import { memo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useTheme } from '../ThemeProvider';
-import { Home, Users, Plus, Wallet, Menu, Building, CreditCard, HelpCircle, Settings, ShieldCheck } from 'lucide-react';
+import { Home, Users, Plus, Wallet, Menu, Building, CreditCard, HelpCircle, Settings, ShieldCheck, LayoutGrid } from 'lucide-react';
 
 /**
  * HostelMate Enterprise v5.1 — Role-Aware Mobile Bottom Navigation
@@ -23,13 +23,12 @@ export const UnifiedMobileNav = memo(function UnifiedMobileNav({ role = 'owner',
   const defaultOwnerNav = [
     { key: 'home', label: 'Home', icon: Home, href: '/owner/dashboard' },
     { key: 'residents', label: 'Residents', icon: Users, href: '/residents' },
-    { key: 'fab', label: '', icon: Plus, href: 'fab' },
-    { key: 'finance', label: 'Finance', icon: Wallet, href: '/payments' },
-    { key: 'more', label: 'More', icon: Menu, href: 'more' },
+    { key: 'payments', label: 'Payments', icon: CreditCard, href: '/payments' },
+    { key: 'more', label: 'More', icon: LayoutGrid, href: 'more' },
   ];
 
   const iconMap = {
-    Home, Users, Plus, Wallet, Menu, Building, CreditCard, HelpCircle, Settings, ShieldCheck
+    Home, Users, Plus, Wallet, Menu, Building, CreditCard, HelpCircle, Settings, ShieldCheck, LayoutGrid
   };
 
   let navItems = defaultOwnerNav;
@@ -40,9 +39,14 @@ export const UnifiedMobileNav = memo(function UnifiedMobileNav({ role = 'owner',
       { key: 'hostels', label: 'Hostels', icon: 'Building', href: '/admin/hostels' },
       { key: 'plans', label: 'Plans', icon: 'CreditCard', href: '/admin/subscriptions' },
       { key: 'support', label: 'Support', icon: 'HelpCircle', href: '/admin/support' },
-      { key: 'more', label: 'More', icon: 'Menu', href: 'more' },
+      { key: 'more', label: 'More', icon: 'LayoutGrid', href: 'more' },
     ];
     navItems = rawItems.map(item => ({
+      ...item,
+      icon: typeof item.icon === 'string' ? (iconMap[item.icon] || Home) : item.icon
+    }));
+  } else if (mobileItems && mobileItems.length > 0) {
+    navItems = mobileItems.map(item => ({
       ...item,
       icon: typeof item.icon === 'string' ? (iconMap[item.icon] || Home) : item.icon
     }));
@@ -52,7 +56,7 @@ export const UnifiedMobileNav = memo(function UnifiedMobileNav({ role = 'owner',
 
   return (
     <nav
-      className="lg:hidden"
+      className="md:hidden"
       aria-label="Mobile navigation"
       style={{
         position: 'fixed',
@@ -62,11 +66,13 @@ export const UnifiedMobileNav = memo(function UnifiedMobileNav({ role = 'owner',
         zIndex: 900,
         paddingLeft: 'max(8px, env(safe-area-inset-left))',
         paddingRight: 'max(8px, env(safe-area-inset-right))',
-        paddingBottom: 'max(8px, env(safe-area-inset-bottom))',
-        paddingTop: '6px',
-        background: colors.background.primary || '#0B1220',
+        paddingBottom: 'max(10px, env(safe-area-inset-bottom))',
+        paddingTop: '2px',
+        background: 'rgba(11, 18, 32, 0.98)',
+        backdropFilter: 'blur(16px)',
+        WebkitBackdropFilter: 'blur(16px)',
         borderTop: `1px solid ${colors.border.default || '#202B45'}`,
-        boxShadow: '0 -4px 20px rgba(0, 0, 0, 0.4)',
+        boxShadow: '0 -4px 20px rgba(0, 0, 0, 0.5)',
       }}
     >
       <div
@@ -75,7 +81,7 @@ export const UnifiedMobileNav = memo(function UnifiedMobileNav({ role = 'owner',
           gridTemplateColumns: `repeat(${columnsCount}, 1fr)`,
           alignItems: 'center',
           width: '100%',
-          maxWidth: '500px',
+          maxWidth: '480px',
           margin: '0 auto',
         }}
       >
@@ -100,30 +106,47 @@ export const UnifiedMobileNav = memo(function UnifiedMobileNav({ role = 'owner',
               aria-current={active ? 'page' : undefined}
               aria-label={item.label || 'Navigation link'}
               style={{
+                position: 'relative',
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
                 justifyContent: 'center',
-                gap: '4px',
+                gap: '3px',
                 cursor: 'pointer',
                 border: 'none',
                 background: 'transparent',
-                color: active ? (colors.accent.primary || '#22C55E') : (colors.text.secondary || '#94A3B8'),
+                color: active ? '#22C55E' : (colors.text.secondary || '#94A3B8'),
                 fontSize: '11px',
                 fontWeight: active ? 700 : 500,
                 fontFamily: typography.fontFamily,
                 minHeight: '52px',
                 minWidth: '44px',
-                padding: '4px 0',
+                padding: '6px 4px 4px',
+                transition: 'color 150ms ease',
               }}
             >
+              {/* Glowing top indicator for active tab */}
+              {active && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: '-2px',
+                    width: '28px',
+                    height: '3px',
+                    borderRadius: '2px',
+                    background: '#22C55E',
+                    boxShadow: '0 0 10px rgba(34, 197, 94, 0.8)',
+                  }}
+                />
+              )}
+
               {isFab && !isAdmin ? (
                 <div
                   style={{
-                    width: '56px',
-                    height: '56px',
+                    width: '52px',
+                    height: '52px',
                     borderRadius: '50%',
-                    background: colors.accent.primary || '#22C55E',
+                    background: '#22C55E',
                     color: '#FFFFFF',
                     display: 'flex',
                     alignItems: 'center',
@@ -136,10 +159,17 @@ export const UnifiedMobileNav = memo(function UnifiedMobileNav({ role = 'owner',
                   <Icon size={24} />
                 </div>
               ) : (
-                <>
-                  <Icon size={22} style={{ color: active ? (colors.accent.primary || '#22C55E') : (colors.text.secondary || '#94A3B8') }} />
-                  <span>{item.label}</span>
-                </>
+                <div
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    gap: '3px',
+                  }}
+                >
+                  <Icon size={22} style={{ color: active ? '#22C55E' : (colors.text.secondary || '#94A3B8') }} />
+                  <span style={{ fontSize: '11px', letterSpacing: '-0.1px' }}>{item.label}</span>
+                </div>
               )}
             </button>
           );
